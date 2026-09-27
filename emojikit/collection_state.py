@@ -311,4 +311,4 @@ def _all_items(cat: Catalog, fmt: str):
             "SELECT * FROM items WHERE format=? ORDER BY position, content_key",
             (fmt,)).fetchall()
     from emojikit.catalog import _row_to_item  # local import to avoid cycle noise
-    return [_row_to_item(r) for r in rows]
+    return [_row_to_item(r, cat.media_base) for r in rows]

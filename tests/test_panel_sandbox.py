@@ -166,7 +166,12 @@ class TheCloneSharesNothingWithTheSource(SandboxFixture):
         (rel_dir / "rel.png").write_bytes(b"PNG-relative")
         with Catalog(self.source / "catalog.db") as cat:
             cat.add(content_key="s:" + "r" * 32, fmt="static",
-                    file_path=Path("tests/__sandbox_rel__/rel.png"))
+                    file_path=rel_dir / "rel.png")
+        # The catalog no longer writes this shape; an older one on disk still
+        # holds it, unconverted: no media_paths record, relative to the project.
+        with sqlite3.connect(self.source / "catalog.db") as con:
+            con.execute("DELETE FROM meta WHERE key='media_paths'")
+            con.execute("UPDATE items SET file_path='tests/__sandbox_rel__/rel.png'")
         dest = self.dest()
         sandbox_clone.clone_catalog(self.source, dest)
         with sqlite3.connect(dest / "catalog.db") as con:

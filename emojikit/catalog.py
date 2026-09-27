@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import media_paths
 from .ingest import catalog_identity
 from .maintenance import writer
 
@@ -123,6 +124,8 @@ class Catalog:
         # silently merges unrelated emoji, and every caller routes through here.
         self.phash_threshold = check_phash_threshold(phash_threshold)
         self.path = Path(db_path)
+        # What a relative items.file_path is relative to (see media_paths).
+        self.media_base = self.path.parent
         self._ownership = writer(self.path.parent)
         self._ownership.__enter__()
         try:
@@ -208,7 +211,33 @@ class Catalog:
             "INSERT OR IGNORE INTO meta(key, value) VALUES('schema_version', ?)",
             (str(SCHEMA_VERSION),),
         )
+        self.converted_media_paths = self._migrate_media_paths()
         self.db.commit()
+
+    def _migrate_media_paths(self) -> int:
+        """Make every in-folder media path relative to the data folder, once.
+
+        Read-only when already done: the panel opens a Catalog per request while
+        build_collection may hold the file, and a write here would contend for
+        the lock on every one of those opens.
+        """
+        if media_paths.base(self.db, self.media_base) == self.media_base:
+            return 0
+        changed = 0
+        rows = self.db.execute("SELECT content_key, file_path FROM items").fetchall()
+        for key, stored in rows:
+            # Unconverted rows: relative meant the project root (media_paths.base).
+            new = media_paths.store(
+                self.media_base, media_paths.resolve(media_paths.PROJECT_ROOT, stored))
+            if new != stored:
+                self.db.execute("UPDATE items SET file_path=? WHERE content_key=?", (new, key))
+                changed += 1
+        self.db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('media_paths', ?)",
+                        (media_paths.DATA_RELATIVE,))
+        if changed:
+            log.info("catalog media paths: %d row(s) made relative to %s",
+                     changed, self.media_base)
+        return changed
 
     def close(self) -> None:
         # Idempotent: safe to call more than once (e.g. context manager + test).
@@ -301,7 +330,8 @@ class Catalog:
         self.db.execute(
             "INSERT INTO items(content_key, format, file_path, emojis, keywords, "
             "sources, phash, uploaded, created_utc, position) VALUES(?,?,?,?,?,?,?,0,?,?)",
-            (content_key, fmt, str(file_path), json.dumps(emojis),
+            (content_key, fmt, media_paths.store(self.media_base, Path(file_path)),
+             json.dumps(emojis),
              json.dumps(keywords), json.dumps([source] if source else []),
              _phash_to_db(phash), _now(), next_pos),
         )
@@ -325,7 +355,8 @@ class Catalog:
         if row is None:
             return
         try:
-            kept, losing = Path(row["file_path"]).resolve(), Path(file_path).resolve()
+            kept = media_paths.resolve(self.media_base, row["file_path"]).resolve()
+            losing = Path(file_path).resolve()
         except OSError:
             return
         if kept == losing or not losing.is_file():
@@ -470,7 +501,7 @@ class Catalog:
         rows = self.db.execute(
             f"SELECT * FROM items WHERE {' AND '.join(where)} "
             f"ORDER BY position, content_key", params).fetchall()
-        return [_row_to_item(r) for r in rows]
+        return [_row_to_item(r, self.media_base) for r in rows]
 
     def all_items(self, fmt: str | None = None) -> list[Item]:
         """Every catalog item (any state) in the manual publish order (position).
@@ -486,7 +517,7 @@ class Catalog:
         else:
             rows = self.db.execute(
                 "SELECT * FROM items ORDER BY position, content_key").fetchall()
-        return [_row_to_item(r) for r in rows]
+        return [_row_to_item(r, self.media_base) for r in rows]
 
     def set_order(self, ordered_keys: list[str]) -> int:
         """Persist a manual order: position = index for each given content_key.
@@ -562,7 +593,7 @@ class Catalog:
         row = self.db.execute(
             "SELECT * FROM items WHERE content_key=?", (content_key,)
         ).fetchone()
-        return _row_to_item(row) if row else None
+        return _row_to_item(row, self.media_base) if row else None
 
     def merge_labels(self, content_key: str, *, emojis: list[str] | None = None,
                      keywords: list[str] | None = None, source: str | None = None,
@@ -615,9 +646,10 @@ def _merge_unique(base: list[str], extra: list[str]) -> list[str]:
     return out
 
 
-def _row_to_item(r: sqlite3.Row) -> Item:
+def _row_to_item(r: sqlite3.Row, media_base: Path) -> Item:
     return Item(
-        content_key=r["content_key"], fmt=r["format"], file_path=r["file_path"],
+        content_key=r["content_key"], fmt=r["format"],
+        file_path=str(media_paths.resolve(media_base, r["file_path"])),
         emojis=json.loads(r["emojis"]), keywords=json.loads(r["keywords"]),
         sources=json.loads(r["sources"]),
         phash=_phash_from_db(r["phash"]),
