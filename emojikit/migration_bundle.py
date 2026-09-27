@@ -86,14 +86,13 @@ def rewrite_database(con, key_map, phashes):
 def plan_files(db: Path, key_map: dict[str, str]) -> list[dict]:
     con = sqlite3.connect(db)
     try:
-        base = media_paths.base(con, Path(db).parent)
         rows = con.execute("SELECT content_key, file_path, format FROM items").fetchall()
     finally:
         con.close()
     files = []
     destinations = {}
     for old, stored, fmt in rows:
-        source = media_paths.resolve(base, stored)
+        source = media_paths.resolve(Path(db).parent, stored)
         if source.is_symlink() or not source.is_file():
             raise RuntimeError(f"missing or unsupported media path: {source}")
         source = source.resolve()
@@ -156,7 +155,6 @@ def validate_bundle(data_dir: Path, doc: dict) -> None:
         raise RuntimeError("migration journal has no complete file and JSON intents")
     con = sqlite3.connect(backup)
     try:
-        base = media_paths.base(con, directory)
         original = {k: (p, fmt) for k, p, fmt in con.execute(
             "SELECT content_key, file_path, format FROM items")}
     finally:
@@ -175,7 +173,7 @@ def validate_bundle(data_dir: Path, doc: dict) -> None:
         expected_name = source.name.replace(origin.split(":", 1)[1][:12], key.split(":", 1)[1][:12])
         if (row != (intent["stored_source"], intent["format"])
                 or (origin != old and doc["key_map"].get(origin) != key)
-                or source != media_paths.resolve(base, intent["stored_source"]).resolve()
+                or source != media_paths.resolve(directory, intent["stored_source"]).resolve()
                 or intent["key"] != key or dest.name != expected_name
                 or not source.is_absolute() or source.parent != dest.parent):
             raise RuntimeError("migration file intent is not an evidenced sibling rename")

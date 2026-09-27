@@ -46,7 +46,7 @@ class MediaPathTests(unittest.TestCase):
         with Catalog(self.data / "catalog.db") as cat:
             cat.add(content_key="s:a", fmt="static", file_path=inside)
             self.assertEqual(Path(cat.get("s:a").file_path), inside)
-        self.assertEqual(self._raw_paths(self.data)["s:a"], "media/static/a.webp")
+        self.assertEqual(self._raw_paths(self.data)["s:a"], "./media/static/a.webp")
 
     def test_outside_the_data_folder_stays_absolute(self):
         archived = self._file(self.outside / "001_static.webp")
@@ -75,16 +75,15 @@ class MediaPathTests(unittest.TestCase):
         with Catalog(self.data / "catalog.db") as cat:
             cat.add(content_key="s:a", fmt="static", file_path=inside)
         with sqlite3.connect(self.data / "catalog.db") as con:
-            base = media_paths.base(con, self.data)
             (stored,) = con.execute("SELECT file_path FROM items").fetchone()
-        self.assertEqual(media_paths.resolve(base, stored), inside)
+        self.assertEqual(media_paths.resolve(self.data, stored), inside)
 
     def test_windows_case_does_not_make_a_path_outside(self):
         if sys.platform != "win32":
             self.skipTest("case-insensitive paths are a Windows property")
         inside = self.data / "media" / "static" / "a.webp"
         other_case = Path(str(self.data).upper())
-        self.assertEqual(media_paths.store(other_case, inside), "media/static/a.webp")
+        self.assertEqual(media_paths.store(other_case, inside), "./media/static/a.webp")
 
 
 class LegacyConversionTests(unittest.TestCase):
@@ -122,7 +121,7 @@ class LegacyConversionTests(unittest.TestCase):
         with sqlite3.connect(self.data / "catalog.db") as con:
             raw = dict(con.execute("SELECT content_key, file_path FROM items"))
             flag = con.execute("SELECT value FROM meta WHERE key='media_paths'").fetchone()
-        self.assertEqual(raw["s:a"], "media/a.webp")
+        self.assertEqual(raw["s:a"], "./media/a.webp")
         self.assertTrue(Path(raw["s:p"]).is_absolute(), "outside the data folder: absolute")
         self.assertEqual(flag, ("data-relative",))
 
@@ -132,11 +131,14 @@ class LegacyConversionTests(unittest.TestCase):
         with Catalog(self.data / "catalog.db") as cat:
             self.assertEqual(cat.converted_media_paths, 0)
 
-    def test_a_raw_reader_resolves_an_unconverted_row_against_the_project(self):
+    def test_a_legacy_relative_row_means_the_project_even_without_meta(self):
+        """Each row says which rule it follows, so a lost meta record cannot flip it."""
         with sqlite3.connect(self.data / "catalog.db") as con:
-            base = media_paths.base(con, self.data)
-        self.assertEqual(media_paths.resolve(base, "tests/__media_paths_rel__/p.webp").resolve(),
-                         self.project_file.resolve())
+            con.execute("DROP TABLE meta")
+        self.assertEqual(
+            media_paths.resolve(self.data, "tests/__media_paths_rel__/p.webp").resolve(),
+            self.project_file.resolve())
+        self.assertEqual(media_paths.resolve(self.data, "./media/a.webp"), self.inside)
 
 
 if __name__ == "__main__":

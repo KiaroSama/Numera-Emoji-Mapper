@@ -97,7 +97,6 @@ def _catalog() -> tuple[dict[str, dict], dict[str, list[str]]]:
     db = sqlite3.connect(CATALOG)
     db.row_factory = sqlite3.Row
     try:
-        base = media_paths.base(db, DATA_DIR)
         rows = db.execute(
             "SELECT i.content_key ck, i.file_path fp, i.format fmt, i.keywords kw, "
             "       p.set_name sn, p.custom_emoji_id cid "
@@ -106,7 +105,7 @@ def _catalog() -> tuple[dict[str, dict], dict[str, list[str]]]:
     finally:
         db.close()
     for r in rows:
-        items[r["ck"]] = {"path": media_paths.resolve(base, r["fp"]), "fmt": r["fmt"], "cid": str(r["cid"] or ""),
+        items[r["ck"]] = {"path": media_paths.resolve(DATA_DIR, r["fp"]), "fmt": r["fmt"], "cid": str(r["cid"] or ""),
                           "set": r["sn"], "keywords": json.loads(r["kw"] or "[]")}
         by_set.setdefault(r["sn"], []).append(r["ck"])
     return items, by_set

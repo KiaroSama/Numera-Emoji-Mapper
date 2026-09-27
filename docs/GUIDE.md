@@ -1063,10 +1063,10 @@ first opens it.
 never hard-linked, into `media/<hex>.<ext>`, where `<hex>` is the content key's
 UTF-8 bytes in hexadecimal: injective, so two keys can never share a file (the
 old colon-to-underscore swap mapped `s:a_b` and `s_a:b` to one name), and free
-of the colon that opens an alternate data stream on NTFS. A relative
-`file_path` resolves against what the catalog itself records (`meta.media_paths`,
-`emojikit.media_paths.base`): the data folder once converted, the PROJECT ROOT for
-an older unconverted snapshot -- and an absolute one (the owner's archive) stays absolute;
+of the colon that opens an alternate data stream on NTFS. Each `file_path` says
+which rule it follows (`emojikit.media_paths.resolve`): `./...` is the source data
+folder, any other relative path is the PROJECT ROOT (the shape older code wrote) --
+and an absolute one (the owner's archive) stays absolute;
 searching beside the source first used to let a stray file of the same name win.
 Each file's SHA-256 is compared before copying, on the copy, and on the source
 again afterwards, so a same-length corruption or a file changed mid-copy
@@ -1450,9 +1450,11 @@ SQLite, created/managed by `emojikit/catalog.py`. Three tables:
 **Media paths survive a folder rename.** They used to be absolute: renaming the
 project folder left 68 rows pointing at a folder that no longer existed, and the
 panel showed each as a broken thumbnail. Opening a catalog now converts it once
-(`_migrate_media_paths`): every path inside the data folder becomes relative to it,
-and `meta.media_paths = data-relative` records that, so a relative path is never
-read under the wrong rule. An already converted catalog's open writes nothing.
+(`_migrate_media_paths`): every path inside the data folder becomes `./<path>`,
+relative to it. The `./` marks the row itself -- older code never wrote a leading
+`./`, so its relative rows (project-root relative) stay distinguishable without
+looking at any other table. `meta.media_paths = data-relative` only records that
+the scan is done, so an already converted catalog's open writes nothing.
 
 ### 13.1 `items` — one row per distinct emoji
 
@@ -1460,7 +1462,7 @@ read under the wrong rule. An already converted catalog's open writes nothing.
 |--------|------|---------|
 | `content_key` | TEXT PK | Normalized content hash, prefixed by format: `s:` static, `v:` video, `a:` animated, `r:` raw fallback. |
 | `format` | TEXT | `static` / `video` / `animated`. |
-| `file_path` | TEXT | Where the media file is. Inside the data folder it is stored **relative to that folder** (`media/static/<key>.webp`), so the folder can be renamed or moved; anywhere else (the archive on another drive) it is absolute. Read it through `emojikit.media_paths` (`base` + `resolve`), never with a bare `Path(...)`. |
+| `file_path` | TEXT | Where the media file is. Inside the data folder it is stored **relative to that folder** (`./media/static/<key>.webp`), so the folder can be renamed or moved; anywhere else (the archive on another drive) it is absolute. Read it through `emojikit.media_paths.resolve(data_dir, stored)`, never with a bare `Path(...)`. |
 | `emojis` | TEXT (JSON) | Associated standard emoji(s), e.g. `["🪙"]`. |
 | `keywords` | TEXT (JSON) | Search keywords / labels. |
 | `sources` | TEXT (JSON) | Where it came from, e.g. `["RMaccs"]` or `["local:foo.png"]`. |

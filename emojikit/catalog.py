@@ -35,6 +35,9 @@ from .maintenance import writer
 log = logging.getLogger("emojikit.catalog")
 
 SCHEMA_VERSION = 1
+# meta.media_paths once every in-folder row carries media_paths' `./` form. It only
+# saves the scan on later opens; each row says on its own which rule it follows.
+MEDIA_PATHS_DONE = "data-relative"
 # Near-duplicate (perceptual) merging is OFF by default: faithfully copying a
 # pack must keep visually-similar-but-DISTINCT emoji. Dedup then relies on exact
 # content (normalized pixels) + file_unique_id only. Set a >=0 Hamming threshold
@@ -221,19 +224,18 @@ class Catalog:
         build_collection may hold the file, and a write here would contend for
         the lock on every one of those opens.
         """
-        if media_paths.base(self.db, self.media_base) == self.media_base:
+        done = self.db.execute("SELECT value FROM meta WHERE key='media_paths'").fetchone()
+        if done and done[0] == MEDIA_PATHS_DONE:
             return 0
         changed = 0
         rows = self.db.execute("SELECT content_key, file_path FROM items").fetchall()
         for key, stored in rows:
-            # Unconverted rows: relative meant the project root (media_paths.base).
-            new = media_paths.store(
-                self.media_base, media_paths.resolve(media_paths.PROJECT_ROOT, stored))
+            new = media_paths.store(self.media_base, media_paths.resolve(self.media_base, stored))
             if new != stored:
                 self.db.execute("UPDATE items SET file_path=? WHERE content_key=?", (new, key))
                 changed += 1
         self.db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('media_paths', ?)",
-                        (media_paths.DATA_RELATIVE,))
+                        (MEDIA_PATHS_DONE,))
         if changed:
             log.info("catalog media paths: %d row(s) made relative to %s",
                      changed, self.media_base)

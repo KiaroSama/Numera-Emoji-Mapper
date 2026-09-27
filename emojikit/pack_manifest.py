@@ -185,8 +185,7 @@ def general_art() -> dict[str, Path]:
         return {}
     db = sqlite3.connect(CATALOG)
     try:
-        base = media_paths.base(db, DATA_DIR)
-        return {str(c): media_paths.resolve(base, f) for c, f in db.execute(
+        return {str(c): media_paths.resolve(DATA_DIR, f) for c, f in db.execute(
             "SELECT p.custom_emoji_id, i.file_path FROM publications p "
             "JOIN items i ON i.content_key = p.content_key")}
     finally:

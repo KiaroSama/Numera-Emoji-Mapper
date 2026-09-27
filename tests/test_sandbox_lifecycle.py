@@ -66,6 +66,7 @@ class CloneBoundaries(SandboxFixture):
         canonical.mkdir()
         (canonical / '0.png').write_bytes(b'PROJECT-original')
         (self.source / 'media' / '0.png').write_bytes(b'SOURCE-decoy')
+        # A relative row without the `./` marker is the old project-root shape.
         with contextlib.closing(sqlite3.connect(self.source / 'catalog.db')) as con:
             con.execute("UPDATE items SET file_path='media/0.png'")
             con.commit()
@@ -73,6 +74,22 @@ class CloneBoundaries(SandboxFixture):
         with contextlib.closing(sqlite3.connect(self.dest() / 'catalog.db')) as con:
             path = Path(con.execute('SELECT file_path FROM items').fetchone()[0])
         self.assertEqual(path.read_bytes(), b'PROJECT-original')
+
+    def test_data_relative_path_is_not_shadowed_by_a_project_relative_file(self):
+        """The converse: a `./` row means the data folder, however tempting a
+        same-named file under the project root looks."""
+        self.fill()
+        canonical = self.tmp / 'media'
+        canonical.mkdir()
+        (canonical / '0.png').write_bytes(b'PROJECT-decoy')
+        (self.source / 'media' / '0.png').write_bytes(b'SOURCE-original')
+        with contextlib.closing(sqlite3.connect(self.source / 'catalog.db')) as con:
+            con.execute("UPDATE items SET file_path='./media/0.png'")
+            con.commit()
+        sc.clone_catalog(self.source, self.dest(), project_root=self.tmp)
+        with contextlib.closing(sqlite3.connect(self.dest() / 'catalog.db')) as con:
+            path = Path(con.execute('SELECT file_path FROM items').fetchone()[0])
+        self.assertEqual(path.read_bytes(), b'SOURCE-original')
 
     def test_same_length_copy_corruption_is_refused_and_removed(self):
         self.fill()
