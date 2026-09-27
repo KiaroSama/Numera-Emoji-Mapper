@@ -97,18 +97,25 @@ plain-text log line carries no custom emoji, so the handler returns before
 sending — but it becomes one the moment channel handling grows a path that logs
 an ERROR.
 
-**D1**, capped at 10 MB, oldest evicted first. The eviction sums the whole
-table, so it runs once every 250 rows rather than on every insert — keyed off
-the `last_row_id` the insert just returned, not a counter in the isolate, which
-would reset before it ever reached its threshold and let the table grow without
-bound. Running it every time was affordable at 77 rows and ruinous at the cap:
-10 MB holds roughly 163 000 rows, and D1's free tier allows 5 000 000 row reads
-a day — about thirty log lines. The budget is exact when it runs; between runs
-the table may sit up to 250 rows over it. The cap
-counts the *text* stored, not the database file: D1 offers no cheap, reliable
-file-size reading, and page overhead plus the index put the file somewhat above
-it. One line's detail is capped at 2000 characters — a publish announcing 120
-packs listed every name and cost ~6 KB by itself.
+**D1** stores **warnings, errors and publishes only** — the routine
+`update N: …` line of every handled message, 91% of the old rows, goes to
+`console.log` and so to Workers Logs (`[observability]` in `wrangler.toml`),
+never to D1. Unauthorised webhook hits are not stored either: D1's free
+allowance (100 000 rows written, 5 000 000 read, per day) is shared by the whole
+account, and a scanner must not be able to spend it. A call can override the
+default with `store: true/false`.
+
+The table (`migrations/0002_lean_logs.sql`) has **no secondary index and no
+AUTOINCREMENT**, so one stored line costs **1 row written and 0 read** — it was
+4 and 2 (each index and `sqlite_sequence` added its own). It is capped at the
+**newest 5 000 rows**: once every 250 rows, keyed off the `last_row_id` the
+insert just returned (not a counter in the isolate, which would reset before it
+reached its threshold), one `DELETE … WHERE id <= ?` removes everything older.
+That is a range on the rowid, so it reads only the rows it deletes; the old
+byte budget summed every row with a window function instead. Ids keep rising
+because eviction never deletes the newest row. One line's detail is capped at
+2000 characters — a publish announcing 120 packs listed every name and cost
+~6 KB by itself.
 
 **Channel** (`LOG_CHAT_ID`), errors only. Level-based routing with WARNING
 included was the obvious design and the wrong one: an unauthorised hit on a

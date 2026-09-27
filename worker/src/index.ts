@@ -52,8 +52,10 @@ async function onWebhook(request: Request, env: Env, ctx: ExecutionContext,
     // suppresses retries on 4xx; no authenticated action is allowed here.
     // Recorded, but never forwarded to the channel: this URL is public, and a
     // scanner walking the internet would otherwise flood it.
+    // Never stored either: every stored row spends the account-wide daily D1
+    // write allowance, and a scanner must not be able to spend it for us.
     ctx.waitUntil(log(env, { bot, level: "WARNING", event: "unauthorized",
-                             detail: "webhook secret did not match" }));
+                             detail: "webhook secret did not match", store: false }));
     return new Response("unauthorized", { status: 401 });
   }
   if (!token) {
@@ -77,8 +79,9 @@ async function onWebhook(request: Request, env: Env, ctx: ExecutionContext,
   const admins = parseAdmins(env.ADMIN_USER_IDS);
   try {
     const outcome = await handleUpdate(tg, update, admins, env.LOG_CHAT_ID);
-    // Our own log line coming back from the channel. Recording it would write a
-    // row about a row -- two of them, since both bots administer that channel.
+    // Our own log line coming back from the channel. Recording it would log a
+    // line about a line -- two of them, since both bots administer that channel.
+    // A routine INFO line goes to console/Workers Logs only, never to D1.
     if (outcome !== LOG_ECHO) {
       ctx.waitUntil(log(env, { bot, level: "INFO", event: "webhook",
                                detail: `update ${update.update_id}: ${outcome}` }));
@@ -127,7 +130,7 @@ async function onPublish(request: Request, env: Env,
   try {
     const messageIds = await announce(tg, chat, body);
     ctx.waitUntil(log(env, {
-      bot, level: "INFO", event: "publish",
+      bot, level: "INFO", event: "publish", store: true,
       detail: `${body.packs.length} pack(s) in ${messageIds.length} message(s): ` +
               body.packs.map((p) => p.name).join(", "),
     }));

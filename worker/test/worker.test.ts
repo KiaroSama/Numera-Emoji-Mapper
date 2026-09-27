@@ -360,39 +360,89 @@ describe("logging", () => {
     expect(out).toContain("+7000 chars");
   });
 
-  it("does NOT scan the whole table on an ordinary write", async () => {
-    // The eviction reads every row. It used to run on every insert: harmless
-    // at 77 rows, but at the 10 MB cap the table holds ~163 000 and D1's free
-    // tier allows 5 000 000 row reads a day -- about thirty log lines.
+  it("keeps a routine INFO line out of D1", async () => {
+    // 91% of stored rows were "update N: ..." lines nobody reads, each costing
+    // D1 writes against an account-wide daily allowance. console.log and
+    // Workers Logs still carry them.
     const { db, runs } = stubDb(7);
     await log({ ...ENV, DB: db }, { bot: "coin", level: "INFO", event: "webhook" });
-    expect(runs).toHaveLength(1);
-    expect(runs[0].sql).toContain("INSERT INTO logs");
-    expect(runs.some((r) => r.sql.includes("DELETE FROM logs"))).toBe(false);
+    expect(runs).toHaveLength(0);
   });
 
-  it("enforces the budget every Nth row, keyed off the id just written", async () => {
-    const { db, runs } = stubDb(250);
-    await log({ ...ENV, DB: db }, { bot: "coin", level: "INFO", event: "webhook" });
+  it("stores a WARNING, an ERROR, and an INFO marked for storage", async () => {
+    const { db, runs } = stubDb(7);
+    await log({ ...ENV, DB: db }, { bot: "coin", level: "WARNING", event: "w" });
+    await log({ ...ENV, DB: db }, { bot: "coin", level: "ERROR", event: "e" });
+    await log({ ...ENV, DB: db }, { bot: "coin", level: "INFO", event: "publish", store: true });
+    expect(runs.map((r) => r.sql.includes("INSERT INTO logs"))).toEqual([true, true, true]);
+  });
+
+  it("an explicit store: false wins over the level", async () => {
+    const { db, runs } = stubDb(7);
+    await log({ ...ENV, DB: db }, { bot: "coin", level: "WARNING", event: "w", store: false });
+    expect(runs).toHaveLength(0);
+  });
+
+  it("the insert carries no byte count: the cap is a row count", async () => {
+    const { db, runs } = stubDb(7);
+    await log({ ...ENV, DB: db }, { bot: "coin", level: "ERROR", event: "e", detail: "سلام" });
+    expect(runs).toHaveLength(1);
+    expect(runs[0].sql).not.toContain("bytes");
+    expect(runs[0].args).toHaveLength(5);
+  });
+
+  it("evicts by id range every Nth row once past the cap", async () => {
+    // A range delete on the rowid reads only the rows it deletes. The old
+    // byte-budget eviction summed EVERY row with a window function.
+    const { db, runs } = stubDb(5250);
+    await log({ ...ENV, DB: db }, { bot: "coin", level: "ERROR", event: "e" });
     const evict = runs.find((r) => r.sql.includes("DELETE FROM logs"));
-    expect(evict, "row 250 must trigger the scan").toBeTruthy();
-    expect(evict!.args[0]).toBe(10 * 1024 * 1024);
+    expect(evict, "row 5250 must trigger eviction").toBeTruthy();
+    expect(evict!.sql).toMatch(/WHERE id <= \?1\s*$/);
+    expect(evict!.sql).not.toMatch(/SELECT|OVER/i);
+    expect(evict!.args).toEqual([250]);
+  });
+
+  it("does not evict off the cadence or while under the cap", async () => {
+    for (const id of [5251, 250]) {
+      const { db, runs } = stubDb(id);
+      await log({ ...ENV, DB: db }, { bot: "coin", level: "ERROR", event: "e" });
+      expect(runs.some((r) => r.sql.includes("DELETE FROM logs"))).toBe(false);
+    }
   });
 
   it("a failed insert reports no row id and triggers nothing", async () => {
     // `id > 0` guards it: a missing last_row_id must not read as row 0 and
-    // fire the scan on every write that failed to store anything.
+    // fire the eviction on every write that failed to store anything.
     const { db, runs } = stubDb(0);
-    await log({ ...ENV, DB: db }, { bot: "coin", level: "INFO", event: "webhook" });
+    await log({ ...ENV, DB: db }, { bot: "coin", level: "ERROR", event: "e" });
     expect(runs.some((r) => r.sql.includes("DELETE FROM logs"))).toBe(false);
   });
 
-  it("counts BYTES, not characters, so non-ASCII cannot overshoot the cap", async () => {
-    const { db, runs } = stubDb();
-    await log({ ...ENV, DB: db }, { bot: "coin", level: "INFO", event: "e", detail: "سلام" });
-    const bytes = runs[0].args[5] as number;
-    // 4 Persian characters are 8 UTF-8 bytes; "coin"+"INFO"+"e" adds 9.
-    expect(bytes).toBe(17);
+  it("a handled update and an unauthorized hit store nothing", async () => {
+    stubApi();
+    const { db, runs } = stubDb(7);
+    const env = { ...ENV, DB: db };
+    await worker.fetch(webhookReq("/tg/general", "wrong-secret", { update_id: 1 }), env, CTX);
+    await worker.fetch(webhookReq("/tg/general", ENV.GENERAL_WEBHOOK_SECRET, {
+      update_id: 2, message: msgFrom(5, { text: "hi" }),
+    }), env, CTX);
+    await settle();
+    expect(runs).toHaveLength(0);
+  });
+
+  it("a publish IS stored", async () => {
+    stubApi();
+    const { db, runs } = stubDb(7);
+    const res = await worker.fetch(new Request("https://w.dev/publish", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${ENV.PUBLISH_SECRET}` },
+      body: JSON.stringify({ packs: [{ name: "cryptoemoji1_by_bot", title: "C", count: 1 }] }),
+    }), { ...ENV, DB: db }, CTX);
+    await settle();
+    expect(res.status).toBe(200);
+    expect(runs).toHaveLength(1);
+    expect(runs[0].args[3]).toBe("publish");
   });
 
   it("sends an ERROR to the log channel and an INFO nowhere near it", async () => {

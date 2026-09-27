@@ -1418,11 +1418,13 @@ bare channel id copied from the Telegram UI and adds the `-100` prefix.
 **Channel posts from the log channel itself are ignored** — both bots administer
 it, so every line posted there came back to both and each wrote another row
 about a message we had just written.
-D1 is capped at **10 MB, oldest evicted first**, with the insert and the
-eviction in one `batch()` — a row cannot be stored without its budget check.
-The cap counts stored *text*, not the database file: D1 exposes no cheap
-reliable file size, and page overhead plus the index put the file above it.
-One line's detail is capped at 2000 characters (a publish announcing 120 packs
+D1 stores **warnings, errors and publishes only**; routine lines and
+unauthorised hits go to `console.log` / Workers Logs (`[observability]` in
+`wrangler.toml`), because D1's daily allowance is account-wide. The table has
+no secondary index and no AUTOINCREMENT (`migrations/0002_lean_logs.sql`), so a
+stored line costs 1 row written and 0 read. It keeps the **newest 5 000 rows**:
+every 250th row id runs one `DELETE … WHERE id <= ?`, a rowid range that reads
+only what it deletes. One line's detail is capped at 2000 characters (a publish announcing 120 packs
 listed every name and cost ~6 KB alone). `LOG_CHAT_ID` receives **errors only**
 — an unauthorised hit on a public webhook URL is a WARNING, and level-based
 routing would let an internet scanner turn that channel into a firehose. Both

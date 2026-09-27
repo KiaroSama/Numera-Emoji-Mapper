@@ -230,8 +230,9 @@ channel rather than by this machine: set `WORKER_PUBLISH_URL` and
 `emojikit/build_collection.py` and `coins/rebuild_dedup.py` — route their links through
 it. Leave either unset and the existing direct path is used, unchanged.
 
-It keeps its own log: a D1 table capped at 10 MB (oldest evicted first) plus an
-errors-only Telegram channel. Every line starts with the bot that wrote it,
+It keeps its own log: a D1 table of warnings, errors and publishes, capped at the
+newest 5 000 rows, plus an errors-only Telegram channel; routine lines go to
+Workers Logs only, so a message to a bot costs no D1 write. Every line starts with the bot that wrote it,
 because both bots share the Worker, the table and the channel.
 
 > **A Telegram bot token can use `getUpdates` (polling) or a webhook — never
