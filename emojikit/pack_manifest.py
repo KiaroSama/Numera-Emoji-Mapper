@@ -39,7 +39,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from emojikit import pack_gallery
+from emojikit import media_paths, pack_gallery
 from emojikit.build_pack import EXIT_FAILED, EXIT_OK, Telegram, load_env
 from emojikit import operator_config
 from emojikit import media
@@ -185,7 +185,8 @@ def general_art() -> dict[str, Path]:
         return {}
     db = sqlite3.connect(CATALOG)
     try:
-        return {str(c): Path(f) for c, f in db.execute(
+        base = media_paths.base(db, DATA_DIR)
+        return {str(c): media_paths.resolve(base, f) for c, f in db.execute(
             "SELECT p.custom_emoji_id, i.file_path FROM publications p "
             "JOIN items i ON i.content_key = p.content_key")}
     finally:

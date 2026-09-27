@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - renaming the project folder no longer breaks the catalog
+
+- **Media paths inside the data folder are stored relative to it.** They were
+  absolute, so renaming the project folder left every unarchived emoji pointing
+  at a folder that no longer existed and the panel showed broken thumbnails.
+  Archive paths on another drive stay absolute.
+- **Older catalogs convert themselves once when opened**, and every tool that
+  reads the table directly resolves a path the same way the catalog does.
+
 ### Changed - Worker log store uses far less D1
 
 - **Only warnings, errors and publishes are stored in D1.** The routine line of

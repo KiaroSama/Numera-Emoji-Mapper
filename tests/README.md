@@ -80,6 +80,7 @@ rather than adding an opt-out.
 | `test_identity_video.py` | video identity: alpha is part of the picture, and the two fingerprint APIs sample the same way. ffmpeg's default `vp9` decoder drops the alpha layer in silence, so the decoder is chosen from the PROBED codec, never the extension. Real VP9/VP8 encodes |
 | `test_lottie_repaint.py` | `validate_tgs` against a timeline that is not a number (NaN defeats every comparison), and `repaint_in_place` against the two shapes it silently skipped: a keyframed colour and a gradient's opacity ramp |
 | `test_catalog.py` | catalog dedup (exact + perceptual), `file_unique_id` skip, pending/upload tracking, persistence |
+| `test_media_paths.py` | media paths survive a folder move: in-folder paths stored relative to the data folder, archive paths absolute, an older catalog converted once (absolute and project-relative rows), a converted one left alone, and a direct SQL reader resolving exactly like the catalog |
 | `test_catalog_order.py` | the manual publish order (the `position` column) shared by the panel's drag-and-drop and `build_collection`'s publish order |
 | `test_migration_provenance.py` | Legacy CLI recovery requires unambiguous immutable identifiers across snapshots; reused paths/slots, conflicting identifiers and missing provenance cannot rewrite required references |
 | `test_ingest_retention.py` | Both fake-Telegram CLI paths preserve complete refused VP9 downloads and provenance after scratch cleanup, without replacing sentinels or binding identifiers |

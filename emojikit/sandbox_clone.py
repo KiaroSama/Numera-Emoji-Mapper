@@ -16,7 +16,7 @@ import sqlite3
 from contextlib import closing, contextmanager
 from pathlib import Path
 
-from emojikit import sqlite_snapshot
+from emojikit import media_paths, sqlite_snapshot
 from emojikit.maintenance import writer
 from emojikit.packstate import LockBusy, exclusive_lock, write_json_atomic
 from emojikit.state_artifacts import state_files
@@ -118,16 +118,17 @@ def _check_destination(source: Path, dest: Path) -> None:
         raise CloneRefused(f"destination {dest} overlaps the source {source}")
 
 
-def _resolve_media(raw: str, source: Path, project_root: Path) -> Path:
-    """Absolute archives stay absolute; relative paths mean the project root.
+def _resolve_media(raw: str, base: Path) -> Path:
+    """Absolute archives stay absolute; a relative path means `base`.
 
-    Searching source/source.parent first can select a different existing file
-    from the one the application uses. Never infer path semantics from existence.
+    `base` comes from the catalog's own record (media_paths.base): the data
+    folder once converted, the project root before. Searching both first can
+    select a different existing file from the one the application uses. Never
+    infer path semantics from existence.
     """
     if not isinstance(raw, str) or not raw:
         raise CloneRefused("catalog media path must be a nonempty string")
-    path = Path(raw)
-    return path if path.is_absolute() else project_root / path
+    return media_paths.resolve(base, raw)
 
 
 def _digest(path: Path) -> bytes:
@@ -138,8 +139,10 @@ def _digest(path: Path) -> bytes:
 def _rebase_media(con: sqlite3.Connection, source: Path, dest: Path, root: Path) -> int:
     """Read the completed database snapshot, verify and independently copy media."""
     rows = con.execute("SELECT content_key, file_path FROM items").fetchall()
+    # An unconverted snapshot's relative rows mean the (caller's) project root.
+    base = source if media_paths.base(con, source) == source else root
     for key, stored in rows:
-        origin = _resolve_media(stored, source, root)
+        origin = _resolve_media(stored, base)
         if not isinstance(key, str) or not key:
             raise CloneRefused("catalog content key must be a nonempty string")
         out = dest / "media" / (safe_key(key) + origin.suffix)
