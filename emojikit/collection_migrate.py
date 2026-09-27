@@ -97,7 +97,6 @@ def survey(data_dir: Path) -> Survey:
     out = Survey()
     con = sqlite3.connect(db)
     try:
-        base = media_paths.base(con, Path(data_dir))
         rows = con.execute(
             "SELECT content_key, file_path, phash FROM items WHERE format='video'"
         ).fetchall()
@@ -107,7 +106,7 @@ def survey(data_dir: Path) -> Survey:
 
     for old, path, stored in rows:
         out.checked += 1
-        p = media_paths.resolve(base, path)
+        p = media_paths.resolve(Path(data_dir), path)
         if not p.is_file():
             out.missing.append(f"{old}: {p}")
             continue
@@ -423,8 +422,7 @@ def recover_key_map(data_dir: Path, backup: Path) -> dict[str, str]:
         con = sqlite3.connect(db)
         try:
             # A backup's relative rows are relative to the same data folder.
-            base = media_paths.base(con, Path(data_dir))
-            rows = {key: str(media_paths.resolve(base, stored)) for key, stored in con.execute(
+            rows = {key: str(media_paths.resolve(Path(data_dir), stored)) for key, stored in con.execute(
                 "SELECT content_key, file_path FROM items WHERE format='video'")}
             identifiers = {}
 
@@ -560,7 +558,6 @@ def invariant_issues(data_dir: Path, *, moved=frozenset()) -> list[str]:
                                  "NOT IN (SELECT content_key FROM items)").fetchall()
             if orphan:
                 issues.append(f"{table} has {len(orphan)} orphaned reference(s)")
-        base = media_paths.base(con, Path(data_dir))
         rows = con.execute("SELECT content_key, file_path, format FROM items").fetchall()
         check = con.execute("PRAGMA integrity_check").fetchone()[0]
         if check != "ok":
@@ -568,7 +565,7 @@ def invariant_issues(data_dir: Path, *, moved=frozenset()) -> list[str]:
     finally:
         con.close()
     for key, path, fmt in rows:
-        p = media_paths.resolve(base, path)
+        p = media_paths.resolve(Path(data_dir), path)
         if not p.is_file():
             issues.append(f"missing catalog media: {key}")
         elif fmt != "video":
