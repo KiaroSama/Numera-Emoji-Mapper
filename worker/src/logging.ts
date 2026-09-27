@@ -1,5 +1,5 @@
 /**
- * Where this Worker's log lines go: a D1 table held under a byte budget, and --
+ * Where this Worker's log lines go: a D1 table held under a row cap, and --
  * for the ones worth interrupting someone for -- a Telegram channel.
  *
  * Two rules shape everything here:
@@ -18,15 +18,16 @@ import { Telegram } from "./telegram";
 import type { BotName, Env } from "./types";
 
 /**
- * Byte budget for the log table, oldest evicted first.
+ * Row cap for the log table, oldest evicted first.
  *
- * This counts the TEXT actually stored (bot + level + event + detail), not the
- * database file: D1 gives no cheap, reliable file-size reading, and page
- * overhead plus the primary-key index mean the file will sit somewhat above
- * this. It is an honest bound on what we put in, not a promise about what
- * SQLite writes out.
+ * A ROW count, not the byte budget it used to be. Holding a byte budget meant
+ * summing every row's size with a window function -- a read of the whole table
+ * each time it ran. A row count needs no read at all: the id the insert just
+ * returned says how many rows sit below it. Only warnings, errors and publishes
+ * are stored (see `store`), and one detail is capped at DETAIL_LIMIT, so this
+ * is years of history in a few megabytes.
  */
-export const LOG_BYTES_CAP = 10 * 1024 * 1024;
+export const LOG_ROWS_CAP = 5000;
 
 export type LogLevel = "INFO" | "WARNING" | "ERROR";
 
@@ -46,48 +47,39 @@ export interface LogEntry {
    * firehose. The channel is for things a person must see.
    */
   toChannel?: boolean;
+  /**
+   * Force storage in D1 on or off. Default: everything but INFO.
+   *
+   * D1's free allowance is per ACCOUNT, per day, and every project on the
+   * account draws on it. Routine INFO lines were 91% of the rows and nothing
+   * ever read them; console.log (and so Workers Logs) still carries them.
+   */
+  store?: boolean;
 }
 
 /**
- * Delete the oldest rows until the stored text fits the budget.
+ * Delete every row older than the cap in one range on the rowid.
  *
- * Rows are summed newest-first; every row whose running total has already
- * passed the cap is older than the budget allows, and `id` is monotonic, so one
- * `id <= MAX(...)` covers all of them. Recomputed from the table each time
- * rather than tracked in a counter, so it cannot drift out of step with reality
- * after a failed write. COALESCE keeps the delete a no-op while under budget:
- * ids start at 1, so nothing is `<= -1`.
- *
- * The window function reads EVERY row, so this must not run on every insert.
- * It used to. Harmless at 77 rows; at the 10 MB cap the table holds roughly
- * 163 000 of them, and D1's free tier allows 5 000 000 row reads a day -- about
- * THIRTY log lines. The cost grows exactly as the log fills, which is its normal
- * state. See EVICT_EVERY.
+ * Reads and writes only the rows it deletes -- no index to update (the table
+ * has none) and no scan. Correct because ids only rise: the table is a plain
+ * rowid table, a new row gets max(rowid)+1, and eviction never deletes the
+ * newest row, so "lower id" still means "older".
  */
-const EVICT_SQL = `
-DELETE FROM logs WHERE id <= COALESCE((
-  SELECT MAX(id) FROM (
-    SELECT id, SUM(bytes) OVER (ORDER BY id DESC) AS running FROM logs
-  ) WHERE running > ?1
-), -1)`;
+const EVICT_SQL = "DELETE FROM logs WHERE id <= ?1";
 
 const INSERT_SQL =
-  "INSERT INTO logs (ts, bot, level, event, detail, bytes) VALUES (?1,?2,?3,?4,?5,?6)";
+  "INSERT INTO logs (ts, bot, level, event, detail) VALUES (?1,?2,?3,?4,?5)";
 
 /**
- * Run the eviction scan once every N rows, keyed off the row id the insert
- * just returned.
+ * Run the eviction once every N rows, keyed off the row id the insert just
+ * returned.
  *
  * Keyed off the ID rather than a counter in the isolate: a Worker isolate is
  * short-lived, so a per-isolate counter would reset before it ever reached its
  * threshold and the eviction would simply never run -- the table would grow
  * without bound. `last_row_id` is durable, monotonic and free (the insert
  * already returns it), so the cadence holds no matter how the isolates come
- * and go.
- *
- * The budget is still exact when it runs; between runs the table may sit up to
- * N rows over. One row is capped at DETAIL_LIMIT characters, so 250 rows is
- * well under a megabyte against a ten megabyte cap.
+ * and go. Between runs the table may sit up to N rows over the cap.
  */
 const EVICT_EVERY = 250;
 
@@ -105,8 +97,7 @@ const EVICT_EVERY = 250;
  * Cap on one line's detail.
  *
  * A publish announcing 120 packs listed every name: ~6 KB for a single INFO
- * row, which spends the whole 10 MB budget in under two thousand lines. The
- * cap belongs here rather than at each call site, so the next caller that
+ * row. The cap belongs here rather than at each call site, so the next caller that
  * builds a long string cannot reintroduce it.
  */
 const DETAIL_LIMIT = 2000;
@@ -190,17 +181,12 @@ const rate = { windowStartMs: 0, sentInWindow: 0, suppressed: 0 };
 async function writeToD1(env: Env, e: LogEntry): Promise<void> {
   if (!env.DB) return;
   const detail = e.detail ? redact(e.detail, env) : null;
-  // Byte length, not character count: a Persian or emoji-bearing detail costs
-  // more than its .length suggests, and undercounting would push the table
-  // past the budget it is supposed to hold.
-  const bytes = new TextEncoder().encode(
-    `${e.bot}${e.level}${e.event}${detail ?? ""}`).length;
   const written = await env.DB.prepare(INSERT_SQL)
-    .bind(Date.now(), e.bot, e.level, e.event, detail, bytes)
+    .bind(Date.now(), e.bot, e.level, e.event, detail)
     .run();
   const id = Number(written?.meta?.last_row_id ?? 0);
-  if (id > 0 && id % EVICT_EVERY === 0) {
-    await env.DB.prepare(EVICT_SQL).bind(LOG_BYTES_CAP).run();
+  if (id > LOG_ROWS_CAP && id % EVICT_EVERY === 0) {
+    await env.DB.prepare(EVICT_SQL).bind(id - LOG_ROWS_CAP).run();
   }
 }
 
@@ -242,7 +228,9 @@ export function log(env: Env, e: LogEntry): Promise<void> {
   // console.log stays as well: it is the only sink that survives a D1 outage,
   // and `wrangler tail` reads it.
   console.log(formatLine(e, atMs, 0, env));
-  const jobs = [writeToD1(env, e)];
+  const store = e.store ?? e.level !== "INFO";
+  const jobs: Promise<void>[] = [];
+  if (store) jobs.push(writeToD1(env, e));
   if (toChannel) jobs.push(writeToChannel(env, e, atMs));
   return Promise.allSettled(jobs).then((results) => {
     for (const r of results) {

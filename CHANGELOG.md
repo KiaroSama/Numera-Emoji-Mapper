@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Worker log store uses far less D1
+
+- **Only warnings, errors and publishes are stored in D1.** The routine line of
+  every handled message (91% of rows) and unauthorised webhook hits go to the
+  console and Workers Logs, which is now enabled.
+- **A stored line costs 1 row written and 0 read (was 4 and 2).** The log table
+  is rebuilt without its two unused indexes and without AUTOINCREMENT; every
+  existing row is kept.
+- **The cap is the newest 5 000 rows**, evicted by an id range that reads only
+  the rows it deletes, instead of a 10 MB budget that summed the whole table.
+
 ### Changed - new project logos
 
 - **New logos.** The project logo (README, general workflow, the curate panel's
