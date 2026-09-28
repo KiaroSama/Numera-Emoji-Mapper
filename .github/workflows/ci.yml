@@ -40,12 +40,12 @@ jobs:
       run:
         working-directory: worker
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
           cache-dependency-path: worker/package-lock.json
 
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -121,10 +121,11 @@ jobs:
       matrix:
         # 3.11 is the runtime run.ps1 / .venv target; 3.12 guards against the
         # old reportlab-era assumption that newer Pythons are unsupported --
-        # every dependency now ships wheels for both.
-        python-version: ["3.11", "3.12"]
+        # every dependency ships wheels for all three. 3.14 is the newest stable
+        # release, so an incompatibility with it shows up here first.
+        python-version: ["3.11", "3.12", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
@@ -198,7 +199,7 @@ jobs:
     env:
       NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: actions/setup-python@v7

@@ -147,7 +147,7 @@ emoji. Install on Windows: `winget install Gyan.FFmpeg`.
 SVG note: SVG rasterizing uses `resvg-py`, a self-contained Rust renderer
 shipped as a prebuilt wheel — no system cairo and no build toolchain. It renders
 straight to RGBA (gradients included). 3.11 remains the reference runtime; CI
-also exercises 3.12.
+also exercises 3.12 and 3.14.
 
 ---
 
@@ -507,7 +507,7 @@ lockfile and fails if `package.json` and the lock disagree, so CI cannot quietly
 test a different dependency tree than the one committed. `dependabot.yml` has an
 `npm` entry for `/worker` so that tree gets updates like every other one.
 
-CI (`.github/workflows/ci.yml`, Python 3.11 **and** 3.12): installs both
+CI (`.github/workflows/ci.yml`, Python 3.11, 3.12 **and** 3.14): installs both
 dependency manifests + ruff + ffmpeg, runs `ruff check .`, the import smoke
 test, then `scripts/check.ps1` (compile + lint + suite, `shell: pwsh`), then an
 offline `build_pack` dry-run. Run `scripts\check.ps1` locally before pushing.
@@ -2291,7 +2291,7 @@ moment and a half-written plan is a scrambled instruction set.
 | `… exists but its first sticker is not <x>.png; refusing to adopt` | A set of that name exists but this run did not create it (leftover family, or someone else's). Existence is not identity. | Rename the family, or delete the stale set, then re-run. |
 | `position N could not be examined …` from `build_collection` | A live sticker could not be downloaded or hashed, so the publisher cannot tell whether it is one of ours. Guessing "not ours" is what publishes a second copy. | Usually transient — re-run. If it repeats on **video or animated** sets, ffmpeg is off PATH: content hashing needs it, and without it every such sticker is unexaminable. Install ffmpeg (see Prerequisites). |
 | `Bad Request: wrong file type` on an **animated** item | Telegram's **uploader** refuses a subtract mask (`masksProperties[].mode == "s"`); its **player** renders one happily. So a sticker can be live in a published pack for years and still be refused when you upload the same bytes -- proven by downloading one from a live pack and sending it straight back untouched. Add masks (`"a"`) are fine. Nothing local can see it: the file is valid gzip, valid Lottie, 512x512, in-spec fps and duration. | `validate_tgs` now refuses it at ingest and names the layer, so this should no longer reach a publish. If it does, the publisher records it as a **skip** with the reason rather than retrying it on every future run. The only repair is re-exporting the animation without that mask, which changes the artwork -- an owner decision, never automatic. |
-| CI red on push | A check failed (install/import/checks/dry-run). | `gh run view <id> --log-failed`; reproduce locally with `.\scripts\check.ps1`; the matrix is Python 3.11 **and** 3.12, so check which one failed. |
+| CI red on push | A check failed (install/import/checks/dry-run). | `gh run view <id> --log-failed`; reproduce locally with `.\scripts\check.ps1`; the matrix is Python 3.11, 3.12 **and** 3.14, so check which one failed. |
 | `ModuleNotFoundError: No module named 'numpy'` from `coins\remap_ids.py` | numpy is the coin extra, not part of the core manifest. | `pip install -r requirements-coins.txt`. |
 | `SuiteIsHermetic ... the hermetic guard was NOT active` | The suite was started without `-t .`, so `tests/__init__.py` never ran. | Use `.\scripts\check.ps1`, or the exact form the failure message prints. |
 
