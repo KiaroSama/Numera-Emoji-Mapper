@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import hashlib
 import logging
+import os
 from pathlib import Path
 
 from PIL import Image
@@ -47,6 +48,18 @@ DEFAULT_EMOJI = "\U0001F600"
 BRAND_LOGO_EMOJI = "✅"          # ✅ associated standard emoji for the logo
 
 
+def _usable_logo(path: Path) -> bool:
+    """A cached logo is trusted only if it decodes to the size Telegram wants."""
+    if not path.is_file():
+        return False
+    try:
+        with Image.open(path) as im:
+            im.load()
+            return im.size == (media.SIZE, media.SIZE)
+    except (OSError, ValueError, Image.DecompressionBombError):
+        return False
+
+
 class BrandLogo:
     """The operator's brand logo, used as the FIRST emoji of every set.
 
@@ -65,28 +78,31 @@ class BrandLogo:
         return bool(self.src and self.src.is_file())
 
     def static_png(self) -> Path | None:
-        """Return a ready 100x100 PNG logo path, or None if unavailable.
+        """Return a ready 100x100 PNG logo path, or None if the file is missing.
+
+        Raises when the logo cannot be prepared -- a pack whose first slot is
+        not the logo cannot be repaired later. (It used to log a warning and
+        return None, and the set was then created with an ordinary emoji first.)
 
         The cache file is named after a digest of the SOURCE image, so
         replacing the logo produces a different name and is picked up. A fixed
         ``logo.png`` was reused forever, so a changed brand logo kept
-        publishing the old pixels.
+        publishing the old pixels. It is written to a temporary name and moved
+        into place, and a cached file is reused only if it opens as a 100x100
+        image: an interrupted write must not become the first emoji of a pack.
         """
         if not self.available():
             return None
         if self._png and self._png.is_file():
             return self._png
-        from emojikit import media
-        try:
-            digest = hashlib.sha256(self.src.read_bytes()).hexdigest()[:12]
-            out = self.dir / f"logo_{digest}.png"
-            if not out.is_file():
-                media.to_static_png(self.src, out)
-            self._png = out
-            return out
-        except Exception as exc:  # noqa: BLE001 - logo is best-effort, never fatal
-            log.warning("brand logo prepare failed: %s", exc)
-            return None
+        digest = hashlib.sha256(self.src.read_bytes()).hexdigest()[:12]
+        out = self.dir / f"logo_{digest}.png"
+        if not _usable_logo(out):
+            tmp = out.with_name(out.stem + ".tmp.png")
+            media.to_static_png(self.src, tmp)
+            os.replace(tmp, out)
+        self._png = out
+        return out
 
 
 def _static_is_blank(path: Path) -> bool:
