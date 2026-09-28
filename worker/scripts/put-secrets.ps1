@@ -13,13 +13,16 @@
 # Each value is written to wrangler's stdin. It is never echoed, never passed as
 # an argument (arguments are visible in the process list), and never logged.
 #
-# Usage:  cd worker; .\scripts\put-secrets.ps1  [-DryRun] [-EnvFile ..\.env]
+# Usage:  cd worker; .\scripts\put-secrets.ps1  [-DryRun] [-DevVars] [-EnvFile ..\.env]
 
 [CmdletBinding()]
 param(
     [string]$EnvFile,
     # Report which keys would be set, and from where, without calling wrangler.
-    [switch]$DryRun
+    [switch]$DryRun,
+    # Write the same keys to worker\.dev.vars for `npm run dev` instead of
+    # pushing them: without it a local Worker has no admin list and answers nobody.
+    [switch]$DevVars
 )
 
 $ErrorActionPreference = 'Stop'
@@ -98,6 +101,21 @@ foreach ($name in $plan.Keys) {
 }
 
 if ($DryRun) { Write-Host "`ndry run - wrangler was not called."; exit 0 }
+
+if ($DevVars) {
+    $devVarsFile = Join-Path $workerDir '.dev.vars'
+    # Every secret in plain text: refuse unless git is certain to ignore it.
+    & git -C $workerDir check-ignore -q -- $devVarsFile
+    if ($LASTEXITCODE -ne 0) { throw "$devVarsFile is not git-ignored - refusing to write secrets there" }
+    $lines = [string[]]@(foreach ($name in $plan.Keys) { "$name=$($plan[$name].value)" })
+    [System.IO.File]::WriteAllLines($devVarsFile, $lines, (New-Object System.Text.UTF8Encoding $false))
+    if ($generated.Count) {
+        # Not written back: these exist for local runs only, not for Telegram.
+        Write-Host "`n$($generated.Count) secret(s) were generated for .dev.vars only; .env is unchanged."
+    }
+    Write-Host "`nwritten: $devVarsFile (values not shown). Next: npm run dev"
+    exit 0
+}
 
 Push-Location $workerDir
 try {
