@@ -118,6 +118,19 @@ def archive_name(slot: int, fmt: str, key: str, suffix: str) -> str:
 # --------------------------------------------------------------------------- #
 # Freshness -- local only, so the Stop hook costs no network call
 # --------------------------------------------------------------------------- #
+_UNSAFE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def _folder_name(title: str) -> str:
+    """A pack title as a Windows folder name: reserved characters become ``_``.
+
+    A title is free text; ``:`` or ``?`` in it made ``mkdir`` fail half-way
+    through a sync. A title without them is used unchanged, so existing archive
+    folders keep their names.
+    """
+    return _UNSAFE.sub("_", title).rstrip(". ") or "_"
+
+
 def check() -> tuple[bool, list[str]]:
     """``(stale, reasons)`` from the catalog and the state file alone.
 
@@ -129,7 +142,7 @@ def check() -> tuple[bool, list[str]]:
     root = archive_root()
     why: list[str] = []
     for rec in _sets():
-        folder = root / rec["title"]
+        folder = root / _folder_name(rec["title"])
         full = int(rec.get("live") or 0) >= PER_SET
         keys = by_set.get(rec["name"], [])
         if not full:
@@ -174,12 +187,20 @@ def _rows(rec: dict, live: list[dict], items: dict[str, dict],
     for slot, st in enumerate(live, start=1):
         cid = str(st.get("custom_emoji_id") or "")
         ck = ck_of.get(cid)
-        if ck is None:
+        if ck is None and slot == 1:
             # The brand logo is inserted at publish time and has no catalog row,
             # so it can only ever be identified by sitting at slot 1.
             out.append({"position": slot, "file": LOGO_NAME, "format": "static",
                         "premium_id": None, "content_key": None,
                         "note": "brand logo, copied from the repo"})
+            continue
+        if ck is None:
+            # Anywhere else an unknown sticker is exactly that: calling it the
+            # logo would put a second logo line in the history and hide it.
+            log.warning("%s: slot %d is not in the catalog (%s)", rec["title"], slot, cid)
+            out.append({"position": slot, "file": None, "format": None,
+                        "premium_id": cid or None, "content_key": None,
+                        "note": "not in the catalog (unidentified)"})
             continue
         it = items[ck]
         out.append({"position": slot,
@@ -200,6 +221,9 @@ def render_history_md(rec: dict, rows: list[dict]) -> str:
            "|---|------|--------|------------|-------------|"]
     for r in rows:
         pid = f"`{r['premium_id']}`" if r["premium_id"] else "`-`"
+        if r["file"] is None:
+            out.append(f"| {r['position']} | `-` | - | {pid} | `unidentified` |")
+            continue
         ck = f"`{r['content_key']}`" if r["content_key"] else "`brand logo`"
         out.append(f"| {r['position']} | `{r['file']}` | {r['format']} | {pid} | {ck} |")
     return "\n".join(out) + "\n"
@@ -232,11 +256,14 @@ def _sync(tg) -> int:
     items, by_set = _catalog()
     ck_of = {v["cid"]: k for k, v in items.items() if v["cid"]}
     root = archive_root()
+    # Resolved before the first move: a missing logo must fail while nothing
+    # has been touched yet, not half-way through the first full pack.
+    logo_src = operator_config.brand_logo_path()
     db = sqlite3.connect(CATALOG)
     touched = moved = renamed = 0
     try:
         for rec in _sets():
-            folder = root / rec["title"]
+            folder = root / _folder_name(rec["title"])
             if int(rec.get("live") or 0) < PER_SET:
                 if folder.is_dir():
                     log.warning("%s is not full; leaving its folder alone", rec["title"])
@@ -267,7 +294,12 @@ def _sync(tg) -> int:
                         return EXIT_FAILED
                     shutil.move(str(src), str(dest))
                     moved += 1
-                db.execute("UPDATE items SET file_path=? WHERE content_key=?", (str(dest), ck))
+                # Committed per file: a later failure (a missing source, a
+                # Telegram error) must not un-record a file that already moved,
+                # or the catalog points at a path that no longer exists.
+                with db:
+                    db.execute("UPDATE items SET file_path=? WHERE content_key=?",
+                               (media_paths.store(DATA_DIR, dest), ck))
 
             logo = folder / LOGO_NAME
             if not logo.is_file():
@@ -277,7 +309,7 @@ def _sync(tg) -> int:
                 if older:
                     os.replace(older[0], logo)
                 else:
-                    shutil.copy2(operator_config.brand_logo_path(), logo)
+                    shutil.copy2(logo_src, logo)
             write_json_atomic(folder / "_history.json",
                               {"set_name": rec["name"],
                                "link": f"https://t.me/addemoji/{rec['name']}",
