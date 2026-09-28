@@ -43,6 +43,11 @@ from pathlib import Path
 
 
 from emojikit.announce import announce_packs
+# Re-exported: these used to live here, and many modules import them from here.
+from emojikit.cli_env import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL,  # noqa: F401
+                              EXIT_USAGE, _under_a_test_runner, ingest_exit_code,
+                              load_env, safe_int_env)
+from emojikit.repaint_gate import REPAINT_MODES, repaintable_gate  # noqa: F401
 from emojikit.packstate import (LockBusy, StateInvalid, _intent_key,
                        exclusive_lock, make_intent,
                        pack_family_lock_path, validate_state_shape,
@@ -54,154 +59,11 @@ ROOT = Path(__file__).resolve().parent.parent
 log = logging.getLogger("build_pack")
 
 
-# Exit codes shared by every CLI entry point, so a launcher or CI job can tell
-# "done", "bad input", "retry me" and "stop" apart. Returning 0 after total
-# failure made retry logic and menu actions treat a dead run as a success.
-EXIT_OK = 0
-EXIT_USAGE = 2       # invalid arguments or configuration
-EXIT_PARTIAL = 3     # some items succeeded, some failed -- retryable
-EXIT_FAILED = 4      # nothing succeeded, or an integrity stop
-
-
-def ingest_exit_code(succeeded: int, failed: int) -> int:
-    """Exit code for a batch that processed ``succeeded`` and ``failed`` items."""
-    if not failed:
-        return EXIT_OK
-    return EXIT_PARTIAL if succeeded else EXIT_FAILED
-
-
-# What to do about emoji Telegram repaints (see media.is_repaintable).
-REPAINT_MODES = ("ask", "skip", "keep")
-_REPAINT_SAMPLE = 8
-_NO_ANSWER = ("  nobody answered, so skipping them. Re-run with "
-              "--repaintable keep to ingest them.")
-
-
-def repaintable_gate(labels: list[str], *, mode: str = "ask",
-                     prompt=None) -> bool:
-    """Should these repaintable emoji be ingested? True = keep them.
-
-    ``ask`` prompts, but only when there is someone to answer: with no tty the
-    answer is SKIP, because skipping is the reversible half. A skipped emoji is
-    one re-run away with ``--repaintable keep``; one already published into a
-    live set has to be replaced sticker by sticker -- the exact round trip this
-    gate exists to prevent.
-    """
-    if not labels:
-        return True
-    n = len(labels)
-    shown = ", ".join(labels[:_REPAINT_SAMPLE])
-    if n > _REPAINT_SAMPLE:
-        shown += f", ... (+{n - _REPAINT_SAMPLE} more)"
-    warning = "\n".join((
-        f"WARNING: {n} of these emoji are REPAINTABLE: {shown}",
-        "  Telegram OVERRIDES their colours with the text/accent colour, so"
-        " what you see in the source pack is not the stored art.",
-        "  In a pack without the flag they show that stored art instead --"
-        " sometimes flat black, sometimes full colour, so LOOK before deciding.",
-        "  The flag is set once per set at creation; it cannot be added later.",
-    ))
-    log.warning("%d repaintable emoji in this batch: %s", n, shown)
-    print(warning, file=sys.stderr)
-
-    if mode == "keep":
-        print("  --repaintable keep: ingesting them anyway.", file=sys.stderr)
-        return True
-    if mode == "skip":
-        print("  --repaintable skip: leaving them out.", file=sys.stderr)
-        return False
-
-    if prompt is None:
-        if not sys.stdin.isatty():
-            print(_NO_ANSWER, file=sys.stderr)
-            return False
-        prompt = input
-    try:
-        answer = prompt("  Ingest them anyway? [y/N] ")
-    except (EOFError, KeyboardInterrupt):
-        # isatty() is NOT enough: under Git Bash `... < /dev/null` still reports
-        # a tty, and input() then raises EOFError and kills the whole ingest.
-        # A question nobody answered is a no, never a crash.
-        print("", file=sys.stderr)
-        print(_NO_ANSWER, file=sys.stderr)
-        return False
-    return answer.strip().lower() in ("y", "yes")
-
-
-
-
-def safe_int_env(name: str, default: int = 0, *, minimum: int | None = None,
-                 maximum: int | None = None) -> int:
-    """Parse a numeric env var without letting a typo kill the process.
-
-    ``int(os.environ.get(...))`` at import time turns one bad character in .env
-    into an unexplained crash before argparse can print anything useful.
-    """
-    raw = (os.environ.get(name) or "").strip()
-    if not raw:
-        return default
-    try:
-        value = int(raw)
-    except ValueError:
-        print(f"WARNING: {name} is not a whole number; using {default}.",
-              file=sys.stderr)
-        return default
-    if minimum is not None and value < minimum:
-        print(f"WARNING: {name}={value} below {minimum}; using {minimum}.",
-              file=sys.stderr)
-        return minimum
-    if maximum is not None and value > maximum:
-        print(f"WARNING: {name}={value} above {maximum}; using {maximum}.",
-              file=sys.stderr)
-        return maximum
-    return value
-
 
 # Default source/keyword locations (crypto-coin workflow). Override per run with
 # --source-dir / --keywords so the same engine builds any kind of emoji pack.
 EMOJI_DIR = ROOT / "logos" / "emoji"
 KEYWORDS_CSV = ROOT / "keywords.csv"
-
-
-
-
-
-def _under_a_test_runner() -> bool:
-    """True when a test runner, not a tool, owns this process.
-
-    The suite's own guard (tests/__init__.py) sets NUMERA_EMOJI_MAPPER_NO_DOTENV, but
-    it protects only what is imported AFTER it, and it runs at all only when
-    `tests` is imported as a package -- `unittest discover -s tests` without
-    `-t .` loads the modules as top level and skips it. Either way the modules
-    under test call load_env() at import time and put the real credentials back;
-    the scrub that follows removes credential-SHAPED names, so anything else in
-    .env survives in os.environ for the whole run.
-
-    Deciding here makes the protection independent of how the suite was invoked
-    and of which module imported first. The signal is exact -- it reads the spec
-    of the process entry point, so an ordinary CLI run cannot trip it -- and a
-    false positive would only mean .env is not auto-loaded, with explicit
-    environment variables still working. It fails safe in both directions.
-    """
-    spec = getattr(sys.modules.get("__main__"), "__spec__", None)
-    entry = getattr(spec, "name", "") or ""
-    return entry.split(".")[0] in {"unittest", "pytest"} or "pytest" in sys.modules
-
-
-def load_env() -> None:
-    # Several modules call load_env() at IMPORT time, which would put the real
-    # credentials straight back into os.environ after the suite scrubbed them --
-    # reopening the hole that once let a test reach live Telegram and replace a
-    # sticker in a production pack.
-    if os.environ.get("NUMERA_EMOJI_MAPPER_NO_DOTENV") == "1" or _under_a_test_runner():
-        return
-    env = ROOT / ".env"
-    if env.is_file():
-        for line in env.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
 def load_keywords(path: Path = KEYWORDS_CSV) -> dict[str, str]:
@@ -212,8 +74,6 @@ def load_keywords(path: Path = KEYWORDS_CSV) -> dict[str, str]:
             for row in csv.DictReader(fh):
                 out[row["ticker"].lower()] = row.get("keywords") or row["ticker"]
     return out
-
-
 
 
 def main() -> int:
