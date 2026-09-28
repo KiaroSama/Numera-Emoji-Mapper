@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import contextlib
 import importlib
+import io
 import json
 import sys
 import tempfile
@@ -38,7 +39,9 @@ from emojikit import build_pack as bp  # noqa: E402
 from emojikit import telegram_api as tg_api  # noqa: E402
 from emojikit import packstate as ps  # noqa: E402
 from coins import fetch_cmc, fetch_paprika as fp  # noqa: E402
+from coins import _provider_publish as pp  # noqa: E402
 from coins import _dedup_plan as cfg  # noqa: E402
+from coins import _http  # noqa: E402
 
 SET = "cryptoemoji1_by_bot"
 
@@ -83,7 +86,7 @@ class VerifyLogosModule(unittest.TestCase):
 
     def test_it_uses_the_shared_pack_lock(self):
         mod = importlib.import_module("coins.verify_logos")
-        self.assertEqual(mod.PACK_LOCK, fp.PACK_LOCK,
+        self.assertEqual(mod.PACK_LOCK, pp.PACK_LOCK,
                          "--fix mutates the same pack family as the fetchers")
 
 
@@ -103,10 +106,10 @@ class VerifiedPublish(unittest.TestCase):
         ps.write_json_atomic(self.ids, {"btc": "c-btc"})
         self.lock = self.dir / "pack_cryptoemoji.lock"
         self.patch = mock.patch.multiple(
-            fp, EMOJI=self.emoji, STATE=self.state, TICKER_IDS=self.ids,
+            pp, EMOJI=self.emoji, STATE=self.state, TICKER_IDS=self.ids,
             PACK_LOCK=self.lock, KEYWORDS_CSV=self.dir / "none.csv", USER_ID=1)
         self.patch.start()
-        self.sleep = mock.patch.object(fp.time, "sleep", lambda s: None)
+        self.sleep = mock.patch.object(pp.time, "sleep", lambda s: None)
         self.sleep.start()
 
     def tearDown(self):
@@ -118,7 +121,7 @@ class VerifiedPublish(unittest.TestCase):
         """Without it a timeout after Telegram applied the add duplicates it."""
         tg = FakeTelegram(existing=2)
         mapping = {}
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (1, 0))
         self.assertEqual(tg.adds, [(SET, "aaa", 2)])
 
     def test_the_id_is_ours_even_when_another_sticker_appears(self):
@@ -128,7 +131,7 @@ class VerifiedPublish(unittest.TestCase):
         tg.after_add = lambda t, name: t.append(name, alien)
 
         mapping: dict[str, str] = {}
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (1, 0))
 
         live = tg.sets[SET]
         ours, tail = live[-2]["custom_emoji_id"], live[-1]["custom_emoji_id"]
@@ -143,14 +146,14 @@ class VerifiedPublish(unittest.TestCase):
             name, (self.emoji / "aaa.png").read_bytes())  # same image twice
 
         mapping: dict[str, str] = {}
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (0, 1))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (0, 1))
         self.assertNotIn("aaa", mapping)
 
     def test_a_failed_add_is_neither_mapped_nor_counted_as_added(self):
         tg = FakeTelegram(existing=2)
         tg.fail_add = RuntimeError("addStickerToSet failed: STICKER_PNG_NOPNG")
         mapping: dict[str, str] = {}
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (0, 1))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (0, 1))
         self.assertNotIn("aaa", mapping)
 
     def test_an_ambiguous_add_is_resolved_from_live_state_not_re_sent(self):
@@ -163,14 +166,14 @@ class VerifiedPublish(unittest.TestCase):
 
         tg.add_sticker = ambiguous
         mapping: dict[str, str] = {}
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (1, 0))
         self.assertEqual(len(tg.adds), 1, "an ambiguous add must never be re-sent")
         self.assertEqual(mapping["aaa"], tg.sets[SET][-1]["custom_emoji_id"])
 
     def test_a_full_set_rolls_over_and_the_new_set_is_recorded_after_it_exists(self):
-        tg = FakeTelegram(existing=fp.PER_SET)
+        tg = FakeTelegram(existing=pp.PER_SET)
         mapping: dict[str, str] = {}
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (1, 0))
         self.assertEqual(tg.creates, ["cryptoemoji2_by_bot"])
         sets = json.loads(self.state.read_text("utf-8"))["sets"]
         self.assertEqual([s["name"] for s in sets], [SET, "cryptoemoji2_by_bot"])
@@ -188,7 +191,7 @@ class VerifiedPublish(unittest.TestCase):
         tg = FakeTelegram(existing=2)
         mapping: dict[str, str] = {}
         with ps.exclusive_lock(self.lock):
-            self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (0, 1))
+            self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (0, 1))
         self.assertEqual(tg.adds, [], "the lock must stop the second run")
 
     def test_a_rebuild_holding_the_family_lock_blocks_a_top_up(self):
@@ -196,7 +199,7 @@ class VerifiedPublish(unittest.TestCase):
         tg = FakeTelegram(existing=2)
         with mock.patch.object(cfg, "LOCK", self.lock), \
              ps.exclusive_lock(cfg.LOCK):
-            self.assertEqual(fp.publish_logos(tg, ["aaa"], {}), (0, 1))
+            self.assertEqual(pp.publish_logos(tg, ["aaa"], {}), (0, 1))
         self.assertEqual(tg.adds, [])
 
 
@@ -214,7 +217,7 @@ class TheCanonicalMapIsRereadUnderTheLock(VerifiedPublish):
 
     def _racing_lock(self, concurrent: dict | None = None):
         """The other tool's map update lands as this run takes the lock."""
-        real = fp.canonical_map_lock
+        real = pp.canonical_map_lock
         landed = self.CONCURRENT if concurrent is None else concurrent
 
         @contextlib.contextmanager
@@ -225,13 +228,13 @@ class TheCanonicalMapIsRereadUnderTheLock(VerifiedPublish):
                 ps.write_json_atomic(self.ids, current)
                 yield beat
 
-        return mock.patch.object(fp, "canonical_map_lock", racing)
+        return mock.patch.object(pp, "canonical_map_lock", racing)
 
     def test_neither_writers_ids_are_lost(self):
         tg = FakeTelegram(existing=2)
         stale = json.loads(self.ids.read_text("utf-8"))   # loaded before the lock
         with self._racing_lock():
-            self.assertEqual(fp.publish_logos(tg, ["aaa"], stale), (1, 0))
+            self.assertEqual(pp.publish_logos(tg, ["aaa"], stale), (1, 0))
         saved = json.loads(self.ids.read_text("utf-8"))
         self.assertEqual(saved["btc"], "c-btc", "the pre-existing id is gone")
         self.assertEqual(saved["zzz"], self.CONCURRENT["zzz"],
@@ -253,7 +256,7 @@ class TheCanonicalMapIsRereadUnderTheLock(VerifiedPublish):
         tg = FakeTelegram(existing=2)
         stale = json.loads(self.ids.read_text("utf-8"))   # loaded before the lock
         with self._racing_lock({"aaa": "c-from-the-other-provider"}):
-            self.assertEqual(fp.publish_logos(tg, ["aaa"], stale), (0, 0))
+            self.assertEqual(pp.publish_logos(tg, ["aaa"], stale), (0, 0))
         self.assertEqual(tg.adds, [], "the coin is already live in the pack")
         self.assertEqual(len(tg.sets[SET]), 2, "no second copy may be added")
         saved = json.loads(self.ids.read_text("utf-8"))
@@ -268,7 +271,7 @@ class TheCanonicalMapIsRereadUnderTheLock(VerifiedPublish):
         (self.emoji / "bbb.png").write_bytes((self.emoji / "aaa.png").read_bytes())
         stale = json.loads(self.ids.read_text("utf-8"))
         with self._racing_lock({"aaa": "c-from-the-other-provider"}):
-            self.assertEqual(fp.publish_logos(tg, ["aaa", "bbb"], stale), (1, 0))
+            self.assertEqual(pp.publish_logos(tg, ["aaa", "bbb"], stale), (1, 0))
         self.assertEqual([a[1] for a in tg.adds], ["bbb"])
         self.assertEqual(stale["bbb"], tg.sets[SET][-1]["custom_emoji_id"])
 
@@ -276,7 +279,7 @@ class TheCanonicalMapIsRereadUnderTheLock(VerifiedPublish):
         """Proof the publisher takes the map lock at all, in the right order."""
         tg = FakeTelegram(existing=2)
         with ps.canonical_map_lock():
-            self.assertEqual(fp.publish_logos(tg, ["aaa"], {}), (0, 1))
+            self.assertEqual(pp.publish_logos(tg, ["aaa"], {}), (0, 1))
         self.assertEqual(tg.adds, [], "no sticker may be added without it")
         # Not stranded means the next run can TAKE it. The lock file is never
         # unlinked -- an unlinked inode is a lock nobody else can see, and
@@ -289,15 +292,15 @@ class OnePackFamilyOneLock(unittest.TestCase):
     """One live pack family must mean one lock name, whatever the tool."""
 
     def test_every_coin_tool_locks_on_the_pack_base(self):
-        family = ps.pack_family_lock_path(fp.SET_BASE)
-        self.assertEqual(fp.PACK_LOCK, family)
+        family = ps.pack_family_lock_path(pp.SET_BASE)
+        self.assertEqual(pp.PACK_LOCK, family)
         self.assertEqual(cfg.LOCK, family,
                          "the rebuild appends to the very same sets")
-        self.assertEqual(cfg.BASE, fp.SET_BASE)
+        self.assertEqual(cfg.BASE, pp.SET_BASE)
 
 
-class CommandExitCodes(unittest.TestCase):
-    """A run whose adds all failed must not look like a clean one."""
+class _ProviderRun(unittest.TestCase):
+    """A fetch_paprika main() run against temp files. Owns no test itself."""
 
     INVENTORY = ("## AAA - Alpha Coin\n"
                  "  ticker: aaa\n"
@@ -319,17 +322,26 @@ class CommandExitCodes(unittest.TestCase):
         self.inv = self.dir / "inv.md"
         self.inv.write_text(self.INVENTORY, encoding="utf-8")
 
+        # main() reads the map and inventory paths from fetch_paprika; the
+        # publisher reads its own from _provider_publish. Both are redirected.
         self.patch = mock.patch.multiple(
-            fp, EMOJI=self.emoji, STATE=self.state, TICKER_IDS=self.ids,
-            CACHE=self.cache, INV=self.inv, OUT_INV=self.dir / "out.md",
+            pp, EMOJI=self.emoji, STATE=self.state, TICKER_IDS=self.ids,
             PACK_LOCK=self.dir / "pack_cryptoemoji.lock",
             KEYWORDS_CSV=self.dir / "none.csv", USER_ID=1)
         self.patch.start()
-        self.sleep = mock.patch.object(fp.time, "sleep", lambda s: None)
+        self.fp_patch = mock.patch.multiple(
+            fp, TICKER_IDS=self.ids, CACHE=self.cache, INV=self.inv,
+            OUT_INV=self.dir / "out.md",
+            # A real setup_logging configures the test process's root logger
+            # and writes a file into logs/.
+            setup_logging=lambda *a, **k: None)
+        self.fp_patch.start()
+        self.sleep = mock.patch.object(pp.time, "sleep", lambda s: None)
         self.sleep.start()
 
     def tearDown(self):
         self.sleep.stop()
+        self.fp_patch.stop()
         self.patch.stop()
         self.tmp.cleanup()
 
@@ -337,11 +349,15 @@ class CommandExitCodes(unittest.TestCase):
         argv = ["fetch_paprika.py"]
         with mock.patch.object(sys, "argv", argv), \
              mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "x"}, clear=False), \
-             mock.patch.object(fp, "resolve_phase", return_value=False), \
+             mock.patch.object(fp, "resolve_phase", return_value=(False, 0)), \
              mock.patch.object(fp, "http_bytes",
                                return_value=_png_bytes(_gradient())), \
              mock.patch.object(fp, "Telegram", return_value=tg):
             return fp.main()
+
+
+class CommandExitCodes(_ProviderRun):
+    """A run whose adds all failed must not look like a clean one."""
 
     def test_a_failed_add_exits_nonzero(self):
         tg = FakeTelegram(existing=2)
@@ -355,7 +371,7 @@ class CommandExitCodes(unittest.TestCase):
             with mock.patch.object(sys, "argv", ["fetch_paprika.py"]), \
                  mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "x"},
                                  clear=False), \
-                 mock.patch.object(fp, "resolve_phase", return_value=False), \
+                 mock.patch.object(fp, "resolve_phase", return_value=(False, 0)), \
                  mock.patch.object(fp, "Telegram", return_value=tg):
                 self.assertEqual(fp.main(), bp.EXIT_FAILED)
         self.assertEqual(tg.adds, [], "a blank logo must never reach Telegram")
@@ -368,7 +384,40 @@ class CommandExitCodes(unittest.TestCase):
 
     def test_both_fetchers_publish_through_the_same_helper(self):
         """Two copies of the add loop is how they drifted apart in the first place."""
-        self.assertIs(fetch_cmc.publish_logos, fp.publish_logos)
+        self.assertIs(fetch_cmc.publish_logos, pp.publish_logos)
+
+
+class AnOutageIsNotNoMatch(_ProviderRun):
+    """Unknown is not false: an unanswered search must not be cached as a miss.
+
+    A cached ``{"id": None}`` is skipped by every later run, so one bad hour at
+    the provider used to mark each coin searched during it unresolvable for
+    good -- and the run still exited 0.
+    """
+
+    def setUp(self):
+        super().setUp()
+        ps.write_json_atomic(self.cache, {})
+
+    def test_an_unreachable_provider_leaves_the_cache_alone_and_exits_partial(self):
+        with mock.patch.object(_http, "get", return_value=None), \
+             mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "x"}), \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(fp.main([]), bp.EXIT_PARTIAL)
+        self.assertEqual(json.loads(self.cache.read_text("utf-8")), {},
+                         "an outage was cached as 'no match'")
+
+    def test_retry_unmatched_searches_a_cached_miss_again(self):
+        cache = {"aaa": {"id": None, "conf": "no-results", "name": "Alpha Coin"}}
+        missing = [("Alpha Coin", "aaa")]
+        with mock.patch.object(fp, "search_match",
+                               return_value=("alpha-coin", "symbol")) as search, \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(fp.resolve_phase(missing, dict(cache)), (False, 0))
+            search.assert_not_called()
+            self.assertEqual(fp.resolve_phase(missing, cache, True), (False, 0))
+        search.assert_called_once_with("Alpha Coin", "aaa")
+        self.assertEqual(cache["aaa"]["id"], "alpha-coin")
 
 
 class TheProvidersAndTheRebuildShareOneStateFile(unittest.TestCase):
@@ -383,13 +432,13 @@ class TheProvidersAndTheRebuildShareOneStateFile(unittest.TestCase):
     """
 
     def test_both_tools_name_the_same_state_file(self):
-        self.assertEqual(fp.STATE, cfg.STATE)
-        self.assertNotEqual(fp.STATE, cfg.OLD_STATE,
+        self.assertEqual(pp.STATE, cfg.STATE)
+        self.assertNotEqual(pp.STATE, cfg.OLD_STATE,
                             "the providers must not use the pack list the "
                             "rebuild deletes")
-        # fetch_cmc publishes through fetch_paprika's publisher, so it inherits
+        # fetch_cmc publishes through the shared publisher, so it inherits
         # this rather than carrying a second copy to drift.
-        self.assertIs(fetch_cmc.publish_logos, fp.publish_logos)
+        self.assertIs(fetch_cmc.publish_logos, pp.publish_logos)
 
     def test_every_set_record_the_providers_write_carries_live(self):
         """One file, two writers -- and only one of them filled in `live`.
@@ -404,14 +453,14 @@ class TheProvidersAndTheRebuildShareOneStateFile(unittest.TestCase):
         # A set record is a dict literal keyed by "index" -- one is appended
         # directly, the other is built as `last` and then appended, so scanning
         # for the append alone would miss half of them.
-        src = Path(fp.__file__).read_text(encoding="utf-8")
+        src = Path(pp.__file__).read_text(encoding="utf-8")
         records = src.split('{"index":')[1:]
         self.assertEqual(len(records), 2,
                          "the set-record writers moved; re-check this test")
         for i, block in enumerate(records, 1):
             record = block[:block.index("}")]
             self.assertIn('"live"', record,
-                          f'set record #{i} in fetch_paprika omits "live"')
+                          f'set record #{i} in _provider_publish omits "live"')
         # And a record shaped like theirs must satisfy the rebuild's validator.
         state = {"sets": [{"index": 1, "name": "s1", "title": "T", "live": 1}],
                  "order": [], "cursor": 0, "in_flight": None}
@@ -425,17 +474,17 @@ class TheProvidersAndTheRebuildShareOneStateFile(unittest.TestCase):
         that key makes the rebuild refuse to start, citing a plan entry that has
         nothing to do with it.
         """
-        self.assertNotEqual(fp.INTENT_KEY, "in_flight")
+        self.assertNotEqual(pp.INTENT_KEY, "in_flight")
         intent = {"key": "aaa", "operation": "add", "set_name": "s1",
                   "set_index": 1, "expected_before": 0}
         shared = {"sets": [{"index": 1, "name": "s1", "title": "T"}],
                   "order": [], "cursor": 0, "in_flight": None,
-                  fp.INTENT_KEY: intent}
+                  pp.INTENT_KEY: intent}
         # The rebuild must accept a state carrying the provider's intent...
         self.assertEqual(cfg._state_problem(shared, None), "")
         # ...and must reject it if it were put under its own key instead.
         collided = dict(shared)
-        collided.pop(fp.INTENT_KEY)
+        collided.pop(pp.INTENT_KEY)
         collided["in_flight"] = intent
         self.assertNotEqual(
             cfg._state_problem(collided, [{"rep": "zzz"}]), "",
@@ -451,7 +500,7 @@ class TheProvidersAndTheRebuildShareOneStateFile(unittest.TestCase):
         """
         state = {"sets": [{"index": 1, "name": "s1", "title": "T"}],
                  "order": ["plan-a", "plan-b"], "cursor": 2, "in_flight": None}
-        fp._record_provider_add(state, "newcoin")
+        pp._record_provider_add(state, "newcoin")
         self.assertEqual(state["provider_added"], ["newcoin"])
         # 3 live = 2 recorded by the rebuild + 1 topped up by a provider.
         self.assertEqual(
@@ -465,7 +514,7 @@ class TheProvidersAndTheRebuildShareOneStateFile(unittest.TestCase):
         exactly the drift it exists to catch.
         """
         state = {"provider_added": ["aaa"]}
-        fp._record_provider_add(state, "aaa")
+        pp._record_provider_add(state, "aaa")
         self.assertEqual(state["provider_added"], ["aaa"])
         self.assertIn("repeats", cfg._state_problem(
             {"sets": [], "order": [], "cursor": 0,
@@ -473,4 +522,6 @@ class TheProvidersAndTheRebuildShareOneStateFile(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # A direct run skips tests/__init__.py, the credential scrub and socket
+    # block that exist because a test once changed a live pack.
+    raise SystemExit("Run this suite as: python -m unittest tests.test_coin_providers -v")

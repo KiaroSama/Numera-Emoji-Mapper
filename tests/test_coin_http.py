@@ -123,11 +123,29 @@ class SharedHttpClient(unittest.TestCase):
                     coins_cmc.cmc_json("https://cmc.test/map?symbol=zzz", {}))
                 self.assertEqual(len(sess.calls), 1)
 
-    def test_a_transient_failure_is_retried_and_then_reported_as_None(self):
-        """None, not QUOTA_EXHAUSTED: a 500 is not a spent quota."""
+    def test_a_rejected_cmc_key_stops_the_run_and_names_the_key(self):
+        """401/403 are not "no match": a dead key used to look like a clean run."""
+        for code in (401, 403):
+            with self.subTest(code=code):
+                sess = self._session(StubResponse(code))
+                with self.assertRaises(SystemExit) as cm:
+                    coins_cmc.cmc_json("https://cmc.test/map?symbol=zzz", {})
+                self.assertIn("CMC_API_KEY", str(cm.exception.code))
+                self.assertEqual(len(sess.calls), 1)
+
+    def test_an_unanswered_cmc_lookup_is_unknown_not_no_match(self):
+        self._session(StubResponse(500))
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertIs(coins_cmc.cmc_json("https://cmc.test/map?symbol=zzz", {}),
+                          coins_cmc.TRANSIENT)
+
+    def test_a_transient_failure_is_retried_and_then_reported_as_TRANSIENT(self):
+        """TRANSIENT, not QUOTA_EXHAUSTED or None: a 500 is neither a spent
+        quota nor an empty search result."""
         sess = self._session(StubResponse(500))
         with contextlib.redirect_stdout(io.StringIO()):
-            self.assertIsNone(coins_fp.http_json("https://paprika.test/x"))
+            self.assertIs(coins_fp.http_json("https://paprika.test/x"),
+                          coins_fp.TRANSIENT)
         self.assertEqual(len(sess.calls), 4)     # the caller's retries=4
         self.assertEqual(len(self.slept), 3,     # no pointless wait after the last
                          "the run slept once more than it had attempts left")
@@ -186,4 +204,6 @@ class PagingDelay(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # A direct run skips tests/__init__.py, the credential scrub and socket
+    # block that exist because a test once changed a live pack.
+    raise SystemExit("Run this suite as: python -m unittest tests.test_coin_http -v")

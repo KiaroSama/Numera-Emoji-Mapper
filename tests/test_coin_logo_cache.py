@@ -87,7 +87,8 @@ class FetchLogosCacheValidation(unittest.TestCase):
         with mock.patch.multiple(self.mod, _get=fake_get, MAX_PAGES=1,
                                  PAGE_DELAY=0, IMG_DELAY=0,
                                  PNG_DIR=self.png_dir, SVG_DIR=self.tmp / "svg",
-                                 KEYWORDS_CSV=self.tmp / "keywords.csv"), \
+                                 KEYWORDS_CSV=self.tmp / "keywords.csv",
+                                 setup_logging=lambda *a, **k: None), \
                 contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(self.mod.main([]), 0)
 
@@ -109,7 +110,8 @@ class FetchLogosCacheValidation(unittest.TestCase):
         with mock.patch.multiple(self.mod, _get=fake_get, MAX_PAGES=1,
                                  PAGE_DELAY=0, IMG_DELAY=0,
                                  PNG_DIR=self.png_dir, SVG_DIR=self.tmp / "svg",
-                                 KEYWORDS_CSV=self.tmp / "keywords.csv"), \
+                                 KEYWORDS_CSV=self.tmp / "keywords.csv",
+                                 setup_logging=lambda *a, **k: None), \
                 contextlib.redirect_stdout(io.StringIO()):
             self.mod.main([])
 
@@ -136,7 +138,8 @@ class FetchLogosCacheValidation(unittest.TestCase):
         with mock.patch.multiple(self.mod, _get=fake_get, MAX_PAGES=1,
                                  PAGE_DELAY=0, IMG_DELAY=0,
                                  PNG_DIR=self.png_dir, SVG_DIR=self.tmp / "svg",
-                                 KEYWORDS_CSV=self.tmp / "keywords.csv"), \
+                                 KEYWORDS_CSV=self.tmp / "keywords.csv",
+                                 setup_logging=lambda *a, **k: None), \
                 contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(self.mod.main([]), 0)
 

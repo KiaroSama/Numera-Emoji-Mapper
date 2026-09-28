@@ -8,15 +8,19 @@ importing it into several modules cannot inflate the count.
 from __future__ import annotations
 
 import io
+import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+import requests  # noqa: E402
 from PIL import Image  # noqa: E402
 
 from emojikit import telegram_api as tg_api  # noqa: E402
+from emojikit.packstate import (LockBusy, canonical_map_lock, exclusive_lock,  # noqa: E402
+                                write_json_atomic)
 
 SET = "cryptoemoji1_by_bot"
 
@@ -101,3 +105,123 @@ class FakeTelegram:
     def download_file(self, file_id: str, dest: Path) -> Path:
         Path(dest).write_bytes(self.blobs[file_id])
         return dest
+
+
+# --------------------------------------------------------------------------- #
+# The live-set fakes remap_ids and check_all_packs read from. Named apart from
+# FakeTelegram above, which stands in for the providers' publishing surface.
+# --------------------------------------------------------------------------- #
+def _png(color, size=100) -> bytes:
+    """A PNG with a solid block of ``color`` on transparent background."""
+    im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    im.paste(color, (20, 20, 80, 80))
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def _blank_png(size=100) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGBA", (size, size), (0, 0, 0, 0)).save(buf, "PNG")
+    return buf.getvalue()
+
+
+class FakeResponse:
+    def __init__(self, content: bytes, status: int = 200):
+        self.content = content
+        self.status_code = status
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            # The real message embeds the URL (and therefore the bot token).
+            raise requests.HTTPError(f"{self.status_code} Server Error for TOKEN123")
+
+
+class FakeSession:
+    """Serves file bodies by file_path; ``fail`` names always return 500."""
+
+    def __init__(self, blobs: dict[str, bytes], fail: set[str] = frozenset()):
+        self.blobs = blobs
+        self.fail = set(fail)
+        self.fetched: list[str] = []
+
+    def get(self, url, timeout=None):
+        fid = url.rsplit("/", 1)[1].removesuffix(".png")
+        self.fetched.append(fid)
+        if fid in self.fail:
+            return FakeResponse(b"{'ok':false}", status=500)
+        return FakeResponse(self.blobs[fid])
+
+
+class LiveSetsTelegram:
+    """Live packs: {set name: [{custom_emoji_id, file_unique_id, file_id}, ...]}."""
+
+    def __init__(self, sets: dict[str, list[dict]], on_read=None):
+        self.sets = sets
+        # Runs inside the live read -- the window a concurrent provider used to
+        # slip through between remap's read of the packs and its write.
+        self.on_read = on_read
+
+    def get_me(self):
+        return {"username": "coinbot"}
+
+    def get_sticker_set(self, name):
+        if self.on_read:
+            self.on_read()
+        return {"stickers": [dict(s) for s in self.sets[name]]}
+
+    def _call(self, method, data=None):
+        assert method == "getFile", method
+        return {"file_path": f"stickers/{data['file_id']}.png"}
+
+    def _safe(self, exc):
+        return str(exc).replace("TOKEN123", "[REDACTED]")
+
+
+class ThrottledTelegram(LiveSetsTelegram):
+    """Telegram that rate-limits the set LISTING, or dies during one.
+
+    ``fail_times`` is how many listings of a set answer 429 before it succeeds;
+    ``kill_on`` names a set whose listing kills the process outright, which is
+    what an interrupted run looks like from inside main().
+    """
+
+    def __init__(self, sets: dict[str, list[dict]], fail_times: dict | None = None,
+                 kill_on: str | None = None):
+        super().__init__(sets)
+        self.fail_times = dict(fail_times or {})
+        self.kill_on = kill_on
+        self.listings = 0
+
+    def get_sticker_set(self, name):
+        self.listings += 1
+        if name == self.kill_on:
+            raise KeyboardInterrupt("killed mid-run")
+        left = self.fail_times.get(name, 0)
+        if left:
+            self.fail_times[name] = left - 1
+            # The real message embeds the API URL, and therefore the bot token.
+            raise RuntimeError("429 Too Many Requests for TOKEN123")
+        return super().get_sticker_set(name)
+
+
+def _sticker(cid: str, fuid: str | None = None) -> dict:
+    return {"custom_emoji_id": cid, "file_unique_id": fuid or f"fu-{cid}",
+            "file_id": cid}
+
+
+def _provider_top_up(pack_lock: Path, out: Path, ticker: str, cid: str):
+    """A provider adding one sticker and its map entry, as fetch_paprika does.
+
+    Same locks in the same documented order (pack family first, canonical map
+    second). Returns the LockBusy it hit, or None when it got all the way
+    through -- which is the whole question this file's race tests ask.
+    """
+    try:
+        with exclusive_lock(pack_lock), canonical_map_lock():
+            mapping = json.loads(out.read_text("utf-8")) if out.is_file() else {}
+            mapping[ticker] = cid
+            write_json_atomic(out, mapping)
+    except LockBusy as exc:
+        return exc
+    return None

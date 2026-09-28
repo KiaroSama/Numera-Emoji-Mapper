@@ -79,6 +79,7 @@ class AliasMapAmbiguity(unittest.TestCase):
     def _run(self) -> tuple[dict, str, str]:
         buf = io.StringIO()
         with mock.patch.multiple(self.mod, ROOT=self.tmp,
+                                 KEYWORDS_CSV=self.tmp / "keywords.csv",
                                  INV=self.tmp / "inv.md",
                                  OUT_INV=self.tmp / "out.md"), \
                 contextlib.redirect_stdout(buf):
@@ -111,6 +112,7 @@ class AliasMapAmbiguity(unittest.TestCase):
         # this run uses it: failing it simulates dying just before publication.
         with mock.patch("os.replace", side_effect=OSError("interrupted")), \
                 mock.patch.multiple(self.mod, ROOT=self.tmp,
+                                    KEYWORDS_CSV=self.tmp / "keywords.csv",
                                     INV=self.tmp / "inv.md",
                                     OUT_INV=self.tmp / "out.md"), \
                 contextlib.redirect_stdout(io.StringIO()), \
@@ -172,6 +174,7 @@ class CanonicalMapWritersCannotLoseAnUpdate(unittest.TestCase):
             "ddd,Bar Labs,svg,logos/svg/ddd.svg,ddd\n", encoding="utf-8")
         (self.tmp / "inv.md").write_text(INVENTORY, encoding="utf-8")
         with mock.patch.multiple(mod, ROOT=self.tmp, INV=self.tmp / "inv.md",
+                                 KEYWORDS_CSV=self.tmp / "keywords.csv",
                                  OUT_INV=self.tmp / "out.md"), \
                 self._racing_lock(mod), \
                 contextlib.redirect_stdout(io.StringIO()):
@@ -336,4 +339,6 @@ class OneInventoryImplementation(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # A direct run skips tests/__init__.py, the credential scrub and socket
+    # block that exist because a test once changed a live pack.
+    raise SystemExit("Run this suite as: python -m unittest tests.test_coin_ticker_map -v")
