@@ -135,6 +135,17 @@ npx wrangler d1 execute numera-emoji-mapper-logs --remote \
 
 ## Setup
 
+First deploy for a new operator, in order:
+
+1. `npx wrangler login` — once per machine, for your Cloudflare account.
+2. `npx wrangler d1 create numera-emoji-mapper-logs`, then paste the printed
+   `database_id` into `wrangler.toml`. The id there is the original
+   installation's; a database belongs to one account.
+3. `npx wrangler d1 migrations apply numera-emoji-mapper-logs --remote`
+4. `.\scripts\put-secrets.ps1` — the secrets, straight from `.env` (below).
+5. `npx wrangler deploy`
+6. `.\scripts\set-webhooks.ps1 -BaseUrl https://<your-worker>.workers.dev`
+
 ```powershell
 cd worker
 npm install
@@ -167,6 +178,7 @@ wrangler secret put COIN_WEBHOOK_SECRET      # a DIFFERENT long random string
 wrangler secret put PUBLISH_SECRET           # bearer for /publish
 wrangler secret put ADMIN_USER_IDS           # e.g. 123456789,987654321
 wrangler secret put PACK_LINKS_CHAT_ID       # "@yourchannel" or "-100…"
+wrangler secret put BOT_ALLOWED_CHANNEL_IDS  # optional: "-100…,-100…"
 ```
 
 The channel is a secret rather than a `[vars]` entry — not because it is a
@@ -178,6 +190,12 @@ nothing.
 answer nobody. That is deliberate — a misconfiguration must not open the bots to
 everyone. Only plain positive integers are accepted, so `0x10`, `12.5` and `1e3`
 are ignored rather than silently coerced.
+
+`BOT_ALLOWED_CHANNEL_IDS` lists the channels whose posts the bots answer. A
+`channel_post` has no sender for `ADMIN_USER_IDS` to check, so without this list
+anyone who made a bot administrator of their own channel could make it message
+every admin. Unset or malformed means **no channel**. `put-secrets.ps1` does not
+push this key; set it by hand with the line above.
 
 Create the log database once, then deploy:
 
@@ -297,6 +315,11 @@ npm run typecheck     # tsc --noEmit
 npm test              # vitest, no network
 npm run dev           # wrangler dev
 ```
+
+A local Worker needs its secrets too, or its admin list is empty and it answers
+nobody. `.\scripts\put-secrets.ps1 -DevVars` writes the same keys from `.env` to
+`worker\.dev.vars` (git-ignored; the script refuses otherwise) for `npm run dev`
+to read, printing key names only.
 
 The tests stub `fetch`, so nothing in them can reach Telegram — the same rule
 the Python suite enforces, for the same reason: a test once reached live

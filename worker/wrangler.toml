@@ -26,7 +26,8 @@ enabled = true
 
 # Log store. A binding cannot be a secret, and a database_id is useless without
 # account credentials, so this one line is fine in a public file.
-# Created by `scripts\deploy.ps1`, which fills the id in and applies migrations.
+# Each operator has their own: `wrangler d1 create numera-emoji-mapper-logs`
+# prints the id; paste it here (see worker/README.md, first deploy).
 [[d1_databases]]
 binding = "DB"
 database_name = "numera-emoji-mapper-logs"
