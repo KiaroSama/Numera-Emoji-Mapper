@@ -10,8 +10,21 @@ const videoIO = window.IntersectionObserver ? new IntersectionObserver(es => {
   for (const e of es) attachVideo(e.target, e.isIntersecting);
 }, {root: null, rootMargin: '0px'}) : null;
 
+// Players are neither created nor torn down mid-scroll: each costs a 60-140 ms
+// frame, which is exactly the stutter a scroll is trying to avoid. A release
+// requested meanwhile is queued and done once the scroll settles.
+const pendingDetach = new Set();
+function releasePendingDetach(){
+  for (const v of pendingDetach) {
+    const r = v.getBoundingClientRect();
+    if (!v.isConnected || r.bottom <= 0 || r.top >= innerHeight) attachVideo(v, false);
+  }
+  pendingDetach.clear();
+}
+
 function attachVideo(v, on){
   on=on && ANIM_ON && !document.hidden;
+  if (scrollThaw !== null) { if (!on && v.getAttribute('src')) pendingDetach.add(v); return; }
   try {
     if (on) { if (!v.getAttribute('src')) v.src = v.dataset.src; }
     else if (v.getAttribute('src')) { v.pause(); v.removeAttribute('src'); v.load(); }
@@ -136,7 +149,7 @@ addEventListener('scroll', ()=>{
   if(!ANIM_ON) return;
   if(scrollThaw === null) freezeAll();
   else clearTimeout(scrollThaw);
-  scrollThaw = setTimeout(()=>{ scrollThaw = null; applyAnim(); }, 180);
+  scrollThaw = setTimeout(()=>{ scrollThaw = null; releasePendingDetach(); applyAnim(); }, 180);
 }, {passive:true});
 
 // Master switch. Off = every card holds frame 0 and nothing decodes at all,
@@ -173,3 +186,29 @@ function setAnimAll(on){
 }
 document.getElementById('animAll').onclick = () => { remember(); setAnimAll(!ANIM_ALL); };
 paintAnimAll();
+
+// "Real video": the original files in <video> players instead of the light
+// animated previews. Changing it rebuilds the mounted video cards, because the
+// element type itself changes -- but never under a drag, which holds references
+// to the cards it is carrying; that rebuild waits for the drag to end.
+let VIDEO_REAL = prefs.get('videoReal', '0') === '1';
+let videoRebuildPending = false;
+function paintVideoReal(){
+  document.getElementById('videoReal').setAttribute('aria-pressed', VIDEO_REAL ? 'true' : 'false');
+  document.getElementById('videoRealLabel').textContent = 'Real video: ' + (VIDEO_REAL ? 'On' : 'Off');
+}
+function rebuildVideoCards(){
+  if (dragKey !== null) { videoRebuildPending = true; return; }
+  videoRebuildPending = false;
+  for (const c of [...cards.values()]) if (c.classList.contains('fmt-video')) unmountCard(c);
+  relayout();
+}
+function setVideoReal(on){
+  const changed = VIDEO_REAL !== !!on;
+  VIDEO_REAL = !!on;
+  prefs.set('videoReal', VIDEO_REAL ? '1' : '0');
+  paintVideoReal();
+  if (changed) rebuildVideoCards();
+}
+document.getElementById('videoReal').onclick = () => { remember(); setVideoReal(!VIDEO_REAL); };
+paintVideoReal();

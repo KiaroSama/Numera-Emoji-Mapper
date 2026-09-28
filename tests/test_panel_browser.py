@@ -456,7 +456,9 @@ class F05AFreezeIsNeverUndone(PanelInABrowser):
 
     def test_F05_hover_under_reduced_motion_obeys_the_master_switch(self):
         """Hover is the reduced-motion exception, not a way round the switch."""
-        page = self.open(synth(12, fmt="video"), reduced_motion="reduce")
+        # The real player: video cards are preview images unless this is on.
+        page = self.open(synth(12, fmt="video"), reduced_motion="reduce",
+                         init="localStorage.setItem('videoReal','1')")
         page.click("#anim")                           # animation off
         page.locator("#grid .thumb").nth(0).hover()
         self.assertEqual(page.evaluate("__plays"), 0,
@@ -465,6 +467,29 @@ class F05AFreezeIsNeverUndone(PanelInABrowser):
         page.locator("#grid .thumb").nth(1).hover()
         self.assertGreater(page.evaluate("__plays"), 0,
                            "hover is the only way to play a video under reduced motion")
+
+    def test_F05_hover_moves_a_video_preview_under_reduced_motion(self):
+        page = self.open(synth(12, fmt="video"), reduced_motion="reduce")
+        moving = "n => n.getAttribute('src') === n.dataset.anim"
+        page.locator("#grid .thumb").nth(1).hover()
+        self.assertTrue(page.locator("#grid .fmt-video img[data-anim]").nth(1).evaluate(moving))
+        page.mouse.move(1, 1)
+        self.assertFalse(page.locator("#grid .fmt-video img[data-anim]").nth(1).evaluate(moving))
+
+
+class VideoCardsArePreviews(PanelInABrowser):
+    """A <video> per card costs a media player; previews cost an image decode."""
+
+    def test_video_cards_are_previews_by_default(self):
+        page = self.open(synth(12, fmt="video"))
+        self.assertEqual(page.locator("#grid video").count(), 0)
+        self.assertGreater(page.locator("#grid .fmt-video img[data-anim]").count(), 0)
+        page.click("#videoReal")
+        self.assertGreater(page.locator("#grid video").count(), 0)
+        self.assertEqual(page.locator("#grid .fmt-video img").count(), 0)
+        page.keyboard.press("Control+z")
+        self.assertEqual(page.locator("#grid video").count(), 0)
+        self.assertEqual(page.get_attribute("#videoReal", "aria-pressed"), "false")
 
 
 class F06ThePackCountMatchesTheGrid(PanelInABrowser):

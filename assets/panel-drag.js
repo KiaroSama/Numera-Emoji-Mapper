@@ -114,6 +114,7 @@ function endDrag(committed){
   stopEdgeScroll();
   // Anything still parked is outside the window now that nothing carries it.
   while(park.firstChild) unmountCard(park.firstChild);
+  if(videoRebuildPending) rebuildVideoCards();   // a Real video switch made mid-drag
 }
 
 // --- Auto-scroll while dragging near an edge ----------------------------

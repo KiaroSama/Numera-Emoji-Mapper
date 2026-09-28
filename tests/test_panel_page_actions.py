@@ -247,7 +247,7 @@ class UndoRedoAndFormatColours(unittest.TestCase):
         self.assertIn("freezeAll()", scroll)
         self.assertIn("applyAnim()", scroll, "it must thaw again when you stop")
         self.assertIn("scheduleRender()", scroll, "the window follows the scroll")
-        self.assertIn("passive", SCRIPT[SCRIPT.index("addEventListener('scroll'"):][:400],
+        self.assertIn("passive", SCRIPT[SCRIPT.index("addEventListener('scroll'"):][:600],
                       "a non-passive scroll listener blocks the scroll it watches")
         # The playback observer has NO margin: a band beyond the viewport
         # animated a row nobody was looking at, above AND below.
