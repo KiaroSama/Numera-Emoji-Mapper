@@ -10,6 +10,9 @@ never hard-coded in source:
 - `GENERAL_BOT_TOKEN` — general (non-coin) bot token
 - `CMC_API_KEY` — optional CoinMarketCap Pro API key
 - `PACK_OWNER_USER_ID` — numeric Telegram user id (pack owner)
+- `WORKER_PUBLISH_SECRET` — bearer the local build sends to the Worker's `/publish`
+- `GENERAL_WEBHOOK_SECRET`, `COIN_WEBHOOK_SECRET` — per-bot secrets Telegram
+  echoes on every webhook delivery, so the Worker can reject forged updates
 
 Rules:
 
@@ -28,6 +31,7 @@ Rules:
 
 ## Reporting a vulnerability
 
-If you find a security issue, please open a private report (or contact the
-maintainer) rather than filing a public issue. Include reproduction steps and
+If you find a security issue, please open a
+[private report](https://github.com/KiaroSama/Numera-Emoji-Mapper/security/advisories/new)
+(or contact the maintainer) rather than filing a public issue. Include reproduction steps and
 the affected file/command. Do not include real tokens in any report.
