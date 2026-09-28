@@ -1,0 +1,9 @@
+{
+  "bot": "coin",
+  "packs": [
+    {"name": "cryptoemoji1_by_YourEmojiBot", "title": "Crypto Emoji 1", "count": 200},
+    {"name": "cryptoemoji2_by_YourEmojiBot", "title": "Crypto Emoji 2", "count": 17}
+  ],
+  "style": "list",
+  "note": "All packs:"
+}
