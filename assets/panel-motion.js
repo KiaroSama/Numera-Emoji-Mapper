@@ -46,12 +46,55 @@ const animIO = window.IntersectionObserver ? new IntersectionObserver(es => {
     const t = e.target;
     const live = mayAnimate(t.isConnected && e.isIntersecting && e.boundingClientRect.bottom>headerH);
     if (t.dataset.play) { setPlaying(t, live); continue; }
-    const want = live ? t.dataset.anim : t.dataset.still;
-    t.style.willChange=live?'transform':'';
-    if (want && t.getAttribute('src') !== want) t.src = want;
+    // Images only report what is on screen; allocate() decides which of them
+    // may move, so a burst of callbacks costs one decision per frame.
+    if (t.isConnected && e.isIntersecting && e.boundingClientRect.bottom > headerH) inView.add(t);
+    else { inView.delete(t); showStill(t); }
+    scheduleAllocate();
   }
 }, {root: null, rootMargin: '0px'}) : null;   // see freezeAll(): a band
 // beyond the viewport animated a row nobody was looking at, above AND below.
+
+// Owner decision 2026-09-28: at most this many cards animate at once, chosen
+// nearest the centre of the screen. Every visible animated WebP decodes on the
+// main thread's budget, and at low zoom that was 128 of them per frame -- the
+// CPU jump the owner saw the moment Animation was switched on. "All visible"
+// lifts the cap for whoever wants the old behaviour.
+const ANIM_BUDGET = 24;
+let ANIM_ALL = prefs.get('animAll', '0') === '1';
+const inView = new Set();    // animated <img> intersecting the viewport
+const playing = new Set();   // <img> currently showing their animated source
+function showStill(n){ n.style.willChange = ''; playing.delete(n);
+  if (n.getAttribute('src') !== n.dataset.still) n.src = n.dataset.still; }
+function showMotion(n){ n.style.willChange = 'transform'; playing.add(n);
+  if (n.getAttribute('src') !== n.dataset.anim) n.src = n.dataset.anim; }
+function forgetNode(n){ inView.delete(n); playing.delete(n); }
+
+let allocRaf = null;
+function scheduleAllocate(){ if (allocRaf === null) allocRaf = requestAnimationFrame(allocate); }
+function allocate(){
+  allocRaf = null;
+  let live = [];
+  if (mayAnimate(true)) {
+    // Read every rectangle first, then write: one layout, not one per card.
+    // The rectangle is re-read here rather than trusted from the observer: a
+    // card that slid under the sticky header is still "intersecting".
+    const cx = innerWidth / 2, cy = headerH + (innerHeight - headerH) / 2;
+    const seen = [];
+    for (const n of inView) {
+      if (!n.isConnected) { forgetNode(n); continue; }
+      const r = n.getBoundingClientRect();
+      if (r.bottom <= headerH || r.top >= innerHeight) continue;
+      const dx = r.left + r.width / 2 - cx, dy = r.top + r.height / 2 - cy;
+      seen.push([dx * dx + dy * dy, n]);
+    }
+    if (!ANIM_ALL && seen.length > ANIM_BUDGET) seen.sort((a, b) => a[0] - b[0]).length = ANIM_BUDGET;
+    live = seen.map(p => p[1]);
+  }
+  const keep = new Set(live);
+  for (const n of [...playing]) if (!keep.has(n)) showStill(n);
+  for (const n of live) if (!playing.has(n)) showMotion(n);
+}
 
 // play() rejects when the element is detached or the browser refuses; that is
 // not an error worth surfacing, but it MUST be caught or it becomes an
@@ -65,18 +108,12 @@ function setPlaying(v, on){
   catch(_){}
 }
 
-function animatedNodes(){
-  return grid.querySelectorAll('img[data-anim], video[data-play]');
-}
-
 /** Hold every mounted card on frame 0. Costs no request: the still is the
  *  same immutable-cached URL the card was built with. */
 function freezeAll(){
   grid.querySelectorAll('video[data-play]').forEach(v => {setPlaying(v,false);if(document.hidden||!ANIM_ON)attachVideo(v,false);});
-  grid.querySelectorAll('img[data-anim]').forEach(img => {
-    img.style.willChange='';
-    if (img.getAttribute('src') !== img.dataset.still) img.src = img.dataset.still;
-  });
+  // Only what is playing needs stopping: the rest already shows its still.
+  for (const img of [...playing]) showStill(img);
 }
 
 // Switching to another tab or window used to change nothing: every visible
@@ -114,11 +151,25 @@ function applyAnim(){
   // Same predicate as the observer, so a thaw that arrives while the tab is
   // hidden cannot reach a different answer from the callback beside it.
   const may = mayAnimate(true);
-  animatedNodes().forEach(n => {
-    if (!may) {
-      if (n.dataset.play){setPlaying(n,false);if(!ANIM_ON||document.hidden)attachVideo(n,false);}
-      else {n.style.willChange='';if(n.getAttribute('src')!==n.dataset.still)n.src=n.dataset.still;}
-    } else if (animIO) { animIO.unobserve(n); animIO.observe(n); }  // re-evaluate
-    else if (n.dataset.play) setPlaying(n, true);   // no observer: play what is mounted
+  grid.querySelectorAll('video[data-play]').forEach(n => {
+    if (!may) { setPlaying(n,false); if(!ANIM_ON||document.hidden) attachVideo(n,false); }
+    else if (animIO) { animIO.unobserve(n); animIO.observe(n); }  // re-evaluate
+    else setPlaying(n, true);   // no observer: play what is mounted
   });
+  if (!may) { for (const n of [...playing]) showStill(n); }
+  else if (animIO) scheduleAllocate();
+  else grid.querySelectorAll('img[data-anim]').forEach(showMotion);  // no observer: all
 }
+
+function paintAnimAll(){
+  document.getElementById('animAll').setAttribute('aria-pressed', ANIM_ALL ? 'true' : 'false');
+  document.getElementById('animAllLabel').textContent = 'All visible: ' + (ANIM_ALL ? 'On' : 'Off');
+}
+function setAnimAll(on){
+  ANIM_ALL = !!on;
+  prefs.set('animAll', ANIM_ALL ? '1' : '0');
+  paintAnimAll();
+  scheduleAllocate();
+}
+document.getElementById('animAll').onclick = () => { remember(); setAnimAll(!ANIM_ALL); };
+paintAnimAll();

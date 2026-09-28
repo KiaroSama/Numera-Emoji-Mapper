@@ -262,7 +262,8 @@ class UndoRedoAndFormatColours(unittest.TestCase):
         self.assertIn('aria-pressed', PAGE)
         self.assertIn('.switch[aria-pressed="true"]  .knob{background:#22c55e}', PAGE)
         self.assertIn('.switch[aria-pressed="false"] .knob{background:#f43f5e}', PAGE)
-        for control in ('id="anim" class="switch"', 'id="selmode" class="switch"'):
+        for control in ('id="anim" class="switch"', 'id="animAll" class="switch"',
+                        'id="selmode" class="switch"'):
             self.assertIn(control, PAGE)
         self.assertIn("--btn:#34ebc6", PAGE)
 
@@ -277,7 +278,7 @@ class UndoRedoAndFormatColours(unittest.TestCase):
     def test_only_save_selection_sits_outside_the_centre_group(self):
         actions = block(PAGE, '<div class="actions">', "</div>")
         for btn in ("undo", "redo", "top", "bot", "zoomOut", "zoomReset", "zoomIn",
-                    "all", "none", "inv", "bg", "anim", "selmode"):
+                    "all", "none", "inv", "bg", "anim", "animAll", "selmode"):
             self.assertIn(f'id="{btn}"', actions, btn)
         self.assertNotIn('id="save"', actions, "Save writes; it stays out of the centre group")
         # The expanding toolbar must wrap rather than cover the title; the real
