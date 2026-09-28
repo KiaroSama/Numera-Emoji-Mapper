@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - dependencies on their latest releases
+
+- **Panel browser tests** run on playwright 1.63.0 (Chromium 153).
+- **urllib3 2.8.0**, which fixes two high-severity issues, under requests.
+- **numpy floor 2.4**: 2.4.6 on Python 3.11; newer Pythons get 2.5.
+- **Worker tooling**: wrangler 4.142, vitest 5.0.2, current workers-types.
+- **CI** tests Python 3.14 as well, runs the Worker on Node 24 LTS, and uses
+  actions/checkout v7.
+
 ### Fixed - renaming the project folder no longer breaks the catalog
 
 - **Media paths inside the data folder are stored relative to it.** They were
