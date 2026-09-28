@@ -1,0 +1,68 @@
+[
+  {
+    "name": "entities in appearance order, each id once, quotes and captions included",
+    "message": {
+      "text": "ab",
+      "entities": [
+        {"type": "custom_emoji", "offset": 0, "length": 2, "custom_emoji_id": "5893098741073715471"},
+        {"type": "bold", "offset": 0, "length": 1},
+        {"type": "custom_emoji", "offset": 2, "length": 2, "custom_emoji_id": "5893098741073715472"},
+        {"type": "custom_emoji", "offset": 4, "length": 2, "custom_emoji_id": "5893098741073715471"}
+      ],
+      "caption_entities": [
+        {"type": "custom_emoji", "offset": 0, "length": 2, "custom_emoji_id": "5893098741073715473"}
+      ],
+      "quote": {"entities": [
+        {"type": "custom_emoji", "offset": 0, "length": 2, "custom_emoji_id": "5893098741073715474"}
+      ]},
+      "external_reply": {"quote": {"entities": [
+        {"type": "custom_emoji", "offset": 0, "length": 2, "custom_emoji_id": "5893098741073715475"}
+      ]}}
+    },
+    "ids": ["5893098741073715471", "5893098741073715472", "5893098741073715473",
+            "5893098741073715474", "5893098741073715475"],
+    "typed": []
+  },
+  {
+    "name": "an id that is not decimal is dropped, never rendered",
+    "message": {
+      "text": "x",
+      "entities": [
+        {"type": "custom_emoji", "offset": 0, "length": 2, "custom_emoji_id": "12\"><b>"},
+        {"type": "custom_emoji", "offset": 2, "length": 2, "custom_emoji_id": "5893098741073715471"}
+      ]
+    },
+    "ids": ["5893098741073715471"],
+    "typed": []
+  },
+  {
+    "name": "ids typed one per line",
+    "message": {"text": "5893098741073715471\n5893098741073715472"},
+    "ids": [],
+    "typed": ["5893098741073715471", "5893098741073715472"]
+  },
+  {
+    "name": "ids typed with comma-space, repeats listed once",
+    "message": {"text": "5893098741073715471, 5893098741073715472, 5893098741073715471"},
+    "ids": [],
+    "typed": ["5893098741073715471", "5893098741073715472"]
+  },
+  {
+    "name": "ids typed with a semicolon and no space",
+    "message": {"text": " 5893098741073715471;5893098741073715472 "},
+    "ids": [],
+    "typed": ["5893098741073715471", "5893098741073715472"]
+  },
+  {
+    "name": "a long number inside prose is not a lookup",
+    "message": {"text": "call me at 5893098741073715471 please"},
+    "ids": [],
+    "typed": []
+  },
+  {
+    "name": "a short number is not a custom emoji id",
+    "message": {"text": "12345"},
+    "ids": [],
+    "typed": []
+  }
+]
