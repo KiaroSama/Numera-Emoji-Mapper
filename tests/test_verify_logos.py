@@ -71,16 +71,19 @@ class ReplaceSession:
 
     def __init__(self, before: list[str], after: list[str], *,
                  lose_reply: bool = False, lose_confirm: bool = False,
-                 source: Path | None = None, images: dict | None = None):
+                 source: Path | None = None, images: dict | None = None,
+                 uploaded: bytes | None = None):
         self.stickers = [{"custom_emoji_id": c, "file_id": f"fid-{c}"}
                          for c in before]
         self.after = [{"custom_emoji_id": c, "file_id": f"fid-{c}"} for c in after]
         self.lose_reply = lose_reply
         self.lose_confirm = lose_confirm
-        # Every sticker serves the CURRENT bytes of the prepared source unless
-        # `images` overrides it for a file_id.
+        # A sticker serves `images[file_id]` when given, else the bytes the
+        # replacement uploaded (carried into a restarted session by the test),
+        # else the CURRENT bytes of `source`.
         self.source = source
         self.images = dict(images or {})
+        self.uploaded = uploaded
         self.replaced = False
         self.calls: list[tuple[str, dict, dict]] = []
 
@@ -94,6 +97,7 @@ class ReplaceSession:
                 "name": data["name"], "stickers": self.stickers}})
         if method == "replaceStickerInSet":
             self.replaced = True
+            self.uploaded = files["file0"][1]
             self.stickers = list(self.after)          # Telegram applied it...
             if self.lose_reply:                       # ...and the reply vanished
                 raise requests.ConnectionError("connection reset by peer")
@@ -106,6 +110,8 @@ class ReplaceSession:
     def get(self, url, timeout=None):
         file_id = url.rsplit("/", 1)[-1]
         body = self.images.get(file_id)
+        if body is None:
+            body = self.uploaded
         if body is None and self.source is not None:
             body = self.source.read_bytes()
         return FakeDownload(body or b"")
@@ -160,6 +166,10 @@ class VerifyLogosFix(unittest.TestCase):
         self.emoji.mkdir()
         Image.new("RGBA", (48, 48), (10, 200, 40, 255)).save(self.emoji / "btc.png")
         self.src = self.emoji / "btc.png"
+        (self.tmp / "png").mkdir()
+        (self.tmp / "png" / "btc.png").write_bytes(self.src.read_bytes())
+        self.old_oracle = self.oracle()
+        self.live: bytes | None = None      # what the pack holds after a replace
         # Two tickers share one custom emoji: BOTH must be repointed, and only
         # at an identity we can prove.
         self.map_path = self.tmp / "ticker_to_id.json"
@@ -186,12 +196,22 @@ class VerifyLogosFix(unittest.TestCase):
     def mapping(self) -> dict:
         return json.loads(self.map_path.read_text(encoding="utf-8"))
 
+    def oracle(self) -> tuple[bytes, bytes]:
+        """The identity oracle's two files for btc: emoji/ and png/."""
+        return ((self.emoji / "btc.png").read_bytes(),
+                (self.tmp / "png" / "btc.png").read_bytes())
+
+    def assert_oracle_untouched(self):
+        self.assertEqual(self.oracle(), self.old_oracle,
+                         "the oracle shows art that is not live")
+
     def intent(self) -> dict | None:
         path = self.mod._intent_path()
         return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
     def _session(self, before, after, **kw):
-        session = ReplaceSession(before, after, source=self.src, **kw)
+        session = ReplaceSession(before, after, source=self.src,
+                                 uploaded=self.live, **kw)
         tg = tg_api.Telegram("unit-test-token")
         tg.s = session
         return tg, session
@@ -200,6 +220,7 @@ class VerifyLogosFix(unittest.TestCase):
         tg, session = self._session(before, after, **kw)
         ok = self.mod.fix_one(tg, 42, self.sets, self.map_path, self.emoji,
                               "btc", state_path)
+        self.live = session.uploaded
         return ok, session
 
     def test_timeout_after_apply_is_verified_not_resent(self):
@@ -227,6 +248,27 @@ class VerifyLogosFix(unittest.TestCase):
         self.assertEqual(self.mapping(), {"btc": NEW_CID, "wbtc": NEW_CID,
                                           "eth": "cid-eth"})
         self.assertIsNone(self.intent(), "a settled replacement leaves no intent")
+        emoji, png = self.oracle()
+        self.assertEqual(emoji, self.live, "the oracle must show the live art")
+        self.assertEqual(png, _noise_png_bytes("official-btc"))
+        self.assertEqual(list((self.tmp / ".incoming").iterdir()), [],
+                         "a settled replacement leaves no staging behind")
+
+    def test_a_definite_failure_leaves_the_oracle_untouched(self):
+        tg, _ = self._session(["a", OLD_CID, "c"], ["a", NEW_CID, "c"])
+        real = tg._call
+
+        def reject(method, *a, **kw):
+            # _call raises RuntimeError only once the change is verified NOT applied.
+            if method == "replaceStickerInSet":
+                raise RuntimeError("replaceStickerInSet failed: STICKER_INVALID")
+            return real(method, *a, **kw)
+
+        with mock.patch.object(tg, "_call", reject):
+            self.assertFalse(self.mod.fix_one(tg, 42, self.sets, self.map_path,
+                                              self.emoji, "btc"))
+        self.assert_oracle_untouched()
+        self.assertIsNone(self.intent())
 
     def test_a_shifted_set_is_not_trusted_as_the_replacement(self):
         """Someone deleted an earlier sticker while we replaced ours.
@@ -238,12 +280,14 @@ class VerifyLogosFix(unittest.TestCase):
         ok, _ = self._fix(["a", OLD_CID, "c"], [NEW_CID, "c"])
         self.assertFalse(ok)
         self.assertEqual(self.mapping(), before)
+        self.assert_oracle_untouched()
 
     def test_an_unchanged_set_is_not_trusted_either(self):
         before = self.mapping()
         ok, _ = self._fix(["a", OLD_CID, "c"], ["a", OLD_CID, "c"])
         self.assertFalse(ok)
         self.assertEqual(self.mapping(), before)
+        self.assert_oracle_untouched()
         self.assertIsNone(self.intent(),
                           "nothing was applied, so nothing is pending")
 
@@ -258,6 +302,7 @@ class VerifyLogosFix(unittest.TestCase):
                           images={f"fid-{NEW_CID}": _noise_png_bytes("stranger")})
         self.assertFalse(ok)
         self.assertEqual(self.mapping(), before)
+        self.assert_oracle_untouched()
 
     def test_a_lost_confirmation_read_leaves_a_recoverable_intent(self):
         """Telegram applied the replacement; the postcondition read never came.
@@ -281,12 +326,18 @@ class VerifyLogosFix(unittest.TestCase):
 
     def test_the_next_run_recovers_the_replacement_from_the_intent(self):
         self._fix(["a", OLD_CID, "c"], ["a", NEW_CID, "c"], lose_confirm=True)
+        self.assert_oracle_untouched()      # unproven: nothing promoted yet
+        stage = Path(self.intent()["stage"])
+        self.assertTrue(stage.is_dir(), "the pending intent needs its staging")
         # Restart: the pack is in its post-replacement state and readable again.
         tg, _ = self._session(["a", NEW_CID, "c"], ["a", NEW_CID, "c"])
         self.assertTrue(self.mod.reconcile_intent(tg, self.map_path))
         self.assertEqual(self.mapping(), {"btc": NEW_CID, "wbtc": NEW_CID,
                                           "eth": "cid-eth"})
         self.assertIsNone(self.intent(), "a recovered intent must be cleared")
+        self.assertEqual(self.oracle()[0], self.live,
+                         "the recovered replacement's staged art is promoted")
+        self.assertFalse(stage.exists())
 
     def test_recovery_refuses_when_the_live_image_is_not_ours(self):
         self._fix(["a", OLD_CID, "c"], ["a", NEW_CID, "c"], lose_confirm=True)
@@ -297,6 +348,7 @@ class VerifyLogosFix(unittest.TestCase):
         self.assertEqual(self.mapping(), before)
         self.assertIsNotNone(self.intent(),
                              "an unresolved intent must survive for review")
+        self.assert_oracle_untouched()
 
     def test_recovery_is_idempotent_after_the_map_was_already_repointed(self):
         """Crashed after the map write, before the intent was cleared."""
@@ -579,4 +631,6 @@ class VerifyLogosMainContracts(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # A direct run skips tests/__init__.py, the credential scrub and socket
+    # block that exist because a test once changed a live pack.
+    raise SystemExit("Run this suite as: python -m unittest tests.test_verify_logos -v")

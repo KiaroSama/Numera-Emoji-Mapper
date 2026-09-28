@@ -23,6 +23,7 @@ from PIL import Image  # noqa: E402
 from emojikit import telegram_api as tg_api  # noqa: E402
 from emojikit import packstate as ps  # noqa: E402
 from coins import fetch_paprika as fp  # noqa: E402
+from coins import _provider_publish as pp  # noqa: E402
 
 SET = "cryptoemoji1_by_bot"
 
@@ -51,11 +52,11 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         self.ids = self.dir / "ticker_to_id.json"
         ps.write_json_atomic(self.ids, {})
         self.patch = mock.patch.multiple(
-            fp, EMOJI=self.emoji, STATE=self.state, TICKER_IDS=self.ids,
+            pp, EMOJI=self.emoji, STATE=self.state, TICKER_IDS=self.ids,
             PACK_LOCK=self.dir / "pack.lock", KEYWORDS_CSV=self.dir / "none.csv",
             USER_ID=1)
         self.patch.start()
-        self.sleep = mock.patch.object(fp.time, "sleep", lambda s: None)
+        self.sleep = mock.patch.object(pp.time, "sleep", lambda s: None)
         self.sleep.start()
 
     def tearDown(self):
@@ -84,12 +85,12 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         self._blind_after_apply(tg)
         mapping: dict[str, str] = {}
 
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (0, 1))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (0, 1))
         self.assertNotIn("aaa", mapping, "the id was never verified")
-        intent = json.loads(self.state.read_text("utf-8")).get(fp.INTENT_KEY)
+        intent = json.loads(self.state.read_text("utf-8")).get(pp.INTENT_KEY)
 
         tg.unreadable.clear()                  # the next run, Telegram is back
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (1, 0))
         self.assertEqual(len(tg.adds), 1,
                          "the image was already live; adding it again is the "
                          "duplicate this ledger exists to prevent")
@@ -97,7 +98,7 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         self.assertEqual(mapping["aaa"], tg.sets[SET][-1]["custom_emoji_id"])
         self.assertEqual(json.loads(self.ids.read_text("utf-8"))["aaa"],
                          mapping["aaa"])
-        self.assertIsNone(json.loads(self.state.read_text("utf-8"))[fp.INTENT_KEY])
+        self.assertIsNone(json.loads(self.state.read_text("utf-8"))[pp.INTENT_KEY])
         # ...and the record that made the recovery possible.
         self.assertEqual((intent or {}).get("key"), "aaa")
         self.assertEqual((intent or {}).get("operation"), "add")
@@ -117,7 +118,7 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         tg = FakeTelegram(existing=2)
         self._blind_after_apply(tg)
         mapping: dict[str, str] = {}
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (0, 1))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (0, 1))
         live_before = len(tg.sets[SET])
 
         # Between the runs, the ticker is resolved again and the shared path is
@@ -125,7 +126,7 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         _gradient(reverse=True).save(self.emoji / "aaa.png", "PNG")
 
         tg.unreadable.clear()
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (1, 0))
         self.assertEqual(len(tg.sets[SET]), live_before,
                          "the already-live upload was sent a second time")
         self.assertEqual(len(tg.adds), 1)
@@ -145,16 +146,16 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
 
         # (a) SKIPPED: another tool published this coin while we waited, so the
         #     map already names ITS sticker. Our download must stay in staging.
-        fp.to_emoji_png(fresh, fp.incoming_dir() / "aaa.png")
+        fp.to_emoji_png(fresh, pp.incoming_dir() / "aaa.png")
         current = json.loads(self.ids.read_text("utf-8"))
         ps.write_json_atomic(self.ids, {**current, "aaa": "c-the-other-tools"})
-        self.assertEqual(fp.publish_logos(FakeTelegram(existing=2), ["aaa"], {}),
+        self.assertEqual(pp.publish_logos(FakeTelegram(existing=2), ["aaa"], {}),
                          (0, 0))
         self.assertEqual((self.emoji / "aaa.png").read_bytes(), published,
                          "a skipped upload replaced the identity oracle for a "
                          "sticker it did not publish")
 
-        self.assertFalse((fp.incoming_dir() / "aaa.png").exists(),
+        self.assertFalse((pp.incoming_dir() / "aaa.png").exists(),
                          "an unpublished download must not survive the run that "
                          "declined to publish it")
 
@@ -162,13 +163,13 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         #     become the oracle -- otherwise the map names a sticker the other
         #     tools cannot recognize, which is the same breakage from the other
         #     direction.
-        fp.to_emoji_png(fresh, fp.incoming_dir() / "aaa.png")
+        fp.to_emoji_png(fresh, pp.incoming_dir() / "aaa.png")
         ps.write_json_atomic(self.ids, current)
         tg = FakeTelegram(existing=2)
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], {}), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], {}), (1, 0))
         self.assertNotEqual((self.emoji / "aaa.png").read_bytes(), published,
                             "the published art never became the oracle")
-        self.assertFalse((fp.incoming_dir() / "aaa.png").exists(),
+        self.assertFalse((pp.incoming_dir() / "aaa.png").exists(),
                          "staging must not keep a copy after promotion")
 
     def test_another_process_cannot_swap_the_image_mid_upload(self):
@@ -185,26 +186,26 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         """
         tg = FakeTelegram(existing=2)
         mine = _png_bytes(_gradient())
-        fp.to_emoji_png(mine, fp.incoming_dir() / "aaa.png")
+        fp.to_emoji_png(mine, pp.incoming_dir() / "aaa.png")
         theirs = _png_bytes(_gradient(reverse=True))
         real_add = tg.add_sticker
 
         def add_then_someone_else_downloads(*a, **kw):
             out = real_add(*a, **kw)
             # A concurrent fetcher, mid-run, resolving the SAME ticker.
-            fp.to_emoji_png(theirs, fp.EMOJI.parent / ".incoming" / "aaa.png")
-            fp.to_emoji_png(theirs, fp.EMOJI / "aaa.png")
+            fp.to_emoji_png(theirs, pp.EMOJI.parent / ".incoming" / "aaa.png")
+            fp.to_emoji_png(theirs, pp.EMOJI / "aaa.png")
             return out
 
         tg.add_sticker = add_then_someone_else_downloads
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], {}), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], {}), (1, 0))
         self.assertEqual(len(tg.adds), 1, "the upload was sent more than once")
         # The oracle describes what WE uploaded, not what landed in the shared
         # location afterwards.
         published = (self.emoji / "aaa.png").read_bytes()
         self.assertEqual(
-            fp._dhash(Image.open(io.BytesIO(published)).convert("RGBA")),
-            fp._dhash(Image.open(io.BytesIO(mine)).convert("RGBA")),
+            pp._dhash(Image.open(io.BytesIO(published)).convert("RGBA")),
+            pp._dhash(Image.open(io.BytesIO(mine)).convert("RGBA")),
             "the promoted oracle is the other process's image")
 
     def test_an_unresolved_upload_keeps_its_source_for_the_next_run(self):
@@ -225,11 +226,11 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
 
         # --- run A: uploads A, then live state goes dark before confirmation --
         tg = FakeTelegram(existing=2)
-        fp.to_emoji_png(art_a, fp.incoming_dir() / "aaa.png")
+        fp.to_emoji_png(art_a, pp.incoming_dir() / "aaa.png")
         self._blind_after_apply(tg)
         mapping: dict[str, str] = {}
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (0, 1))
-        intent = json.loads(self.state.read_text("utf-8"))[fp.INTENT_KEY]
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (0, 1))
+        intent = json.loads(self.state.read_text("utf-8"))[pp.INTENT_KEY]
         self.assertIsNotNone(intent, "the unresolved upload was not recorded")
         live_after_a = len(tg.sets[SET])
 
@@ -245,12 +246,12 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         # Capture BEFORE overwriting: registering the cleanup afterwards restores
         # "run-b" onto itself, so every later test in the process keeps this
         # ticker's staging path and per-run isolation is silently switched off.
-        self.addCleanup(setattr, fp, "_RUN_TOKEN", fp._RUN_TOKEN)
-        fp._RUN_TOKEN = "run-b"                      # a second process's staging
-        fp.to_emoji_png(art_b, fp.incoming_dir() / "aaa.png")
+        self.addCleanup(setattr, pp, "_RUN_TOKEN", pp._RUN_TOKEN)
+        pp._RUN_TOKEN = "run-b"                      # a second process's staging
+        fp.to_emoji_png(art_b, pp.incoming_dir() / "aaa.png")
         tg.unreadable.clear()
         # (1, 0): the ticker is accounted for by the recovery, not by a new send.
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (1, 0))
 
         self.assertEqual(len(tg.sets[SET]), live_after_a,
                          "the already-live upload was sent a second time")
@@ -259,12 +260,12 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         self.assertEqual(mapping["aaa"], tg.sets[SET][-1]["custom_emoji_id"])
         # ...and the oracle must be run A's image, never run B's.
         oracle = (self.emoji / "aaa.png").read_bytes()
-        self.assertEqual(fp._dhash(Image.open(io.BytesIO(oracle)).convert("RGBA")),
-                         fp._dhash(Image.open(io.BytesIO(art_a)).convert("RGBA")),
+        self.assertEqual(pp._dhash(Image.open(io.BytesIO(oracle)).convert("RGBA")),
+                         pp._dhash(Image.open(io.BytesIO(art_a)).convert("RGBA")),
                          "the local logo is the other run's image, so the map "
                          "and the oracle now describe different pictures")
         # Only now may the intent be gone.
-        self.assertIsNone(json.loads(self.state.read_text("utf-8"))[fp.INTENT_KEY])
+        self.assertIsNone(json.loads(self.state.read_text("utf-8"))[pp.INTENT_KEY])
 
     def test_recovery_never_promotes_an_image_it_cannot_prove(self):
         """The retained source can still be lost -- a wiped temp, another machine.
@@ -280,22 +281,22 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         published_before = (self.emoji / "aaa.png").read_bytes()
 
         tg = FakeTelegram(existing=2)
-        fp.to_emoji_png(art_a, fp.incoming_dir() / "aaa.png")
+        fp.to_emoji_png(art_a, pp.incoming_dir() / "aaa.png")
         self._blind_after_apply(tg)
         mapping: dict[str, str] = {}
-        fp.publish_logos(tg, ["aaa"], mapping)
-        intent = json.loads(self.state.read_text("utf-8"))[fp.INTENT_KEY]
+        pp.publish_logos(tg, ["aaa"], mapping)
+        intent = json.loads(self.state.read_text("utf-8"))[pp.INTENT_KEY]
 
         # The retained source is gone anyway, and run B staged its own art.
         Path(intent["source_path"]).unlink()
-        self.addCleanup(setattr, fp, "_RUN_TOKEN", fp._RUN_TOKEN)  # before, not after
-        fp._RUN_TOKEN = "run-b"
-        fp.to_emoji_png(art_b, fp.incoming_dir() / "aaa.png")
+        self.addCleanup(setattr, pp, "_RUN_TOKEN", pp._RUN_TOKEN)  # before, not after
+        pp._RUN_TOKEN = "run-b"
+        fp.to_emoji_png(art_b, pp.incoming_dir() / "aaa.png")
         tg.unreadable.clear()
 
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            fp.publish_logos(tg, ["aaa"], mapping)
+            pp.publish_logos(tg, ["aaa"], mapping)
 
         # The live sticker is still identified from the recorded hash...
         self.assertEqual(mapping["aaa"], tg.sets[SET][-1]["custom_emoji_id"])
@@ -316,11 +317,11 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
 
         tg.add_sticker = blind
         mapping: dict[str, str] = {}
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (0, 1))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (0, 1))
 
         tg.add_sticker = real_add
         tg.unreadable.clear()
-        self.assertEqual(fp.publish_logos(tg, ["aaa"], mapping), (1, 0))
+        self.assertEqual(pp.publish_logos(tg, ["aaa"], mapping), (1, 0))
         self.assertEqual(len(tg.sets[SET]), 3)
         self.assertEqual(mapping["aaa"], tg.sets[SET][-1]["custom_emoji_id"])
 
@@ -334,9 +335,32 @@ class UnverifiedUploadIsRecovered(unittest.TestCase):
         for tk in ("bbb", "ccc"):
             (self.emoji / f"{tk}.png").write_bytes(ours)
 
-        self.assertEqual(fp.publish_logos(tg, ["aaa", "bbb", "ccc"], {}),
+        self.assertEqual(pp.publish_logos(tg, ["aaa", "bbb", "ccc"], {}),
                          (0, 3))
         self.assertEqual([a[1] for a in tg.adds], ["aaa"],
                          "a later add would overwrite the unresolved intent")
         self.assertEqual(
-            json.loads(self.state.read_text("utf-8"))[fp.INTENT_KEY]["key"], "aaa")
+            json.loads(self.state.read_text("utf-8"))[pp.INTENT_KEY]["key"], "aaa")
+
+    def test_an_unexpected_add_failure_keeps_the_intent_and_stops(self):
+        """Only a RuntimeError from _call is a verified "not applied".
+
+        Every other exception was treated as one too: the intent was cleared,
+        so an add Telegram may have applied was re-sent by the next run.
+        """
+        tg = FakeTelegram(existing=2)
+        tg.fail_add = OSError("connection dropped mid-request")
+        (self.emoji / "bbb.png").write_bytes((self.emoji / "aaa.png").read_bytes())
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(pp.publish_logos(tg, ["aaa", "bbb"], {}), (0, 2))
+        self.assertEqual([a[1] for a in tg.adds], ["aaa"],
+                         "no further mutation may follow an unknown outcome")
+        self.assertEqual(
+            json.loads(self.state.read_text("utf-8"))[pp.INTENT_KEY]["key"], "aaa")
+
+    def test_a_definitive_rejection_still_clears_the_intent(self):
+        tg = FakeTelegram(existing=2)
+        tg.fail_add = RuntimeError("addStickerToSet failed: STICKER_PNG_NOPNG")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(pp.publish_logos(tg, ["aaa"], {}), (0, 1))
+        self.assertIsNone(json.loads(self.state.read_text("utf-8"))[pp.INTENT_KEY])

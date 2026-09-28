@@ -14,11 +14,13 @@ import sys as _bootstrap_sys
 _bootstrap_sys.path.insert(0, _bootstrap_os.path.dirname(
     _bootstrap_os.path.dirname(_bootstrap_os.path.abspath(__file__))))
 
-import csv
 import time
 from pathlib import Path
 
 from coins import _http
+from coins._keywords import write_keywords_csv
+from emojikit.cli_env import EXIT_PARTIAL
+from emojikit.logsetup import setup_logging
 
 ROOT = Path(__file__).resolve().parent
 SVG_DIR = ROOT / "logos" / "svg"
@@ -39,13 +41,14 @@ def _get_json(url: str, *, retries: int = 6):
     return resp.json()
 
 
-def fetch_canonical_names() -> dict[str, str]:
-    """ticker(lower) -> canonical coin name.
+def fetch_canonical_names() -> tuple[dict[str, str], bool]:
+    """(ticker(lower) -> canonical coin name, whether every lookup answered).
 
     Prefers market-cap order (the most prominent coin for each ticker), then
     fills the long tail from the full /coins/list.
     """
     names: dict[str, str] = {}
+    complete = True
     # 1) Market-cap order first (highest cap wins per ticker -> canonical name).
     for page in range(1, MARKETS_PAGES + 1):
         url = (f"{MARKETS_URL}?vs_currency=usd&order=market_cap_desc&per_page=250"
@@ -54,6 +57,7 @@ def fetch_canonical_names() -> dict[str, str]:
             data = _get_json(url)
         except RuntimeError as exc:
             print(f"  markets page {page} unavailable: {exc}", flush=True)
+            complete = False
             break
         if not isinstance(data, list) or not data:
             break
@@ -73,12 +77,14 @@ def fetch_canonical_names() -> dict[str, str]:
                 names[sym] = name
     except RuntimeError as exc:
         print(f"  coins/list unavailable: {exc}", flush=True)
+        complete = False
     print(f"name map: {len(names)} entries.", flush=True)
-    return names
+    return names, complete
 
 
 def main() -> int:
-    names = fetch_canonical_names()
+    setup_logging("build_keywords")
+    names, complete = fetch_canonical_names()
     rows: dict[str, dict] = {}
     for p in sorted(SVG_DIR.glob("*.svg")):
         t = p.stem.lower()
@@ -87,20 +93,21 @@ def main() -> int:
     for p in sorted(PNG_DIR.glob("*.png")):
         t = p.stem.lower()
         rows.setdefault(t, {"ticker": t, "name": names.get(t, ""), "format": "png",
-                            "file": f"logos/png/{t}.png"})
+                            "file": f"logos/png/{t}.png", "path": p})
 
-    with open(OUT, "w", encoding="utf-8", newline="") as fh:
-        w = csv.writer(fh)
-        w.writerow(["ticker", "name", "format", "file", "keywords"])
-        for r in sorted(rows.values(), key=lambda x: x["ticker"]):
-            kw = r["ticker"] if not r["name"] else f"{r['ticker']}, {r['name']}"
-            w.writerow([r["ticker"], r["name"], r["format"], r["file"], kw])
+    # The shared writer drops PNGs that do not decode -- the fetch_logos fix
+    # this script used to undo -- and keeps names this run could not look up.
+    write_keywords_csv(rows, OUT)
 
     svg = sum(1 for r in rows.values() if r["format"] == "svg")
     png = sum(1 for r in rows.values() if r["format"] == "png")
     named = sum(1 for r in rows.values() if r["name"])
     print(f"keywords.csv written: {len(rows)} logos ({svg} svg, {png} png), {named} with names.",
           flush=True)
+    if not complete:
+        print("INCOMPLETE: a name lookup failed; earlier names were kept. "
+              "Re-run to refresh them.", flush=True)
+        return EXIT_PARTIAL
     return 0
 
 

@@ -40,6 +40,7 @@ from PIL import Image
 from emojikit.build_pack import (EXIT_FAILED, EXIT_USAGE, ingest_exit_code, load_env)
 from emojikit.packstate import (write_json_atomic)
 from emojikit.telegram_api import (Telegram, api_base)
+from emojikit.logsetup import setup_logging
 # The pipeline's single definition of "this image is effectively empty" -- this
 # module used to carry its own copy of the rule and its two constants.
 from emojikit.media import is_blank_image
@@ -74,6 +75,7 @@ def main() -> int:
     if not token:
         print("TELEGRAM_BOT_TOKEN not set.", flush=True)
         return EXIT_USAGE
+    setup_logging("check_all_packs")
     tg = Telegram(token)
     sess = requests.Session()
     state = json.loads(STATE.read_text("utf-8"))

@@ -21,6 +21,8 @@ from pathlib import Path
 from emojikit.build_pack import (EXIT_FAILED)
 from emojikit.packstate import (LockBusy, canonical_map_lock, write_json_atomic)
 from coins._inventory import parse_missing, refill_inventory
+# The one shared path of the keywords file, not a second hard-coded copy.
+from coins._dedup_plan import KEYWORDS_CSV
 
 ROOT = Path(__file__).resolve().parent
 INV = ROOT / "currency-emoji-inventory.md"
@@ -59,7 +61,7 @@ def main() -> int:
             # same key and keeping whichever the CSV listed first silently
             # invented a wrong alias.
             name_to_logos: dict[str, set[str]] = {}
-            with open(ROOT / "keywords.csv", encoding="utf-8") as fh:
+            with open(KEYWORDS_CSV, encoding="utf-8") as fh:
                 for row in csv.DictReader(fh):
                     t = row["ticker"].lower()
                     if t in have:

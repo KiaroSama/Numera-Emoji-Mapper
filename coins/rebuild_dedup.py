@@ -33,7 +33,6 @@ _bootstrap_sys.path.insert(0, _bootstrap_os.path.dirname(
 
 import argparse
 import json
-import os
 import tempfile
 import time
 from pathlib import Path
@@ -46,9 +45,11 @@ from emojikit.packstate import (exclusive_lock)
 from emojikit.telegram_api import (AmbiguousUploadError, LiveStateUnknown, SetState, Telegram)
 from emojikit.identity import _dhash, hamming
 from emojikit import operator_config
+from emojikit.logsetup import redact, setup_logging
 
 from coins._dedup_map import map_and_fill, send_final_links
 from coins import _dedup_plan as cfg
+from coins._env import require_token
 from coins._dedup_plan import (_stop_retryable, is_blank, load_plan, load_state, save_state)
 
 def _is_permanent_media_error(exc: BaseException) -> bool:
@@ -85,7 +86,8 @@ def notify(tg: Telegram, state: dict, name: str, title: str) -> None:
         save_state(state)
         print(f"  sent link for {name} to {dest}", flush=True)
     except Exception as exc:  # noqa: BLE001
-        print(f"  notify failed {name}: {exc}", flush=True)
+        # Redacted: a transport error can carry the request URL, token and all.
+        print(f"  notify failed {name}: {redact(str(exc))}", flush=True)
 
 
 def delete_old_packs(tg: Telegram, state: dict) -> bool:
@@ -348,13 +350,18 @@ def _build(tg: Telegram, bot: str) -> None:
         g = plan[plan_i]
         png = cfg.EMOJI / f"{g['rep']}.png"
         # Permanent skips: deterministic, so simply advancing past them is safe.
+        # Saved at once: a skip only in memory left the on-disk cursor short
+        # of the plan whenever the LAST entries were skips, so `build` reported
+        # "partial" forever and the restart loop never finished.
         if not png.is_file() or png.stat().st_size == 0:
             print(f"  skip {g['rep']}: missing/empty", flush=True)
             state["cursor"] = plan_i + 1
+            save_state(state)
             continue
         if is_blank(png):
             print(f"  skip {g['rep']}: blank image (no blank emoji)", flush=True)
             state["cursor"] = plan_i + 1
+            save_state(state)
             continue
         kw = g["kw"]
         state["cursor"] = plan_i + 1
@@ -419,9 +426,38 @@ def _build(tg: Telegram, bot: str) -> None:
             in_set = 0
         time.sleep(0.1)
 
+    save_state(state)
     if state["sets"]:
         last = state["sets"][-1]
         notify(tg, state, last["name"], last["title"])
+
+
+def build_command(tg: Telegram, bot: str) -> int:
+    """`build`: upload only. EXIT_OK once the whole plan is walked, else partial.
+
+    Partial lets an external restart loop resume (build is resumable and
+    duplicate-proof). A stop inside build() raises SystemExit with its own
+    retryable code and skips this checkpoint on purpose.
+    """
+    import traceback
+    plan = load_plan()
+    raised = False
+    try:
+        build(tg, bot)
+    except Exception:  # noqa: BLE001 - log full cause, let the loop resume
+        traceback.print_exc()
+        raised = True
+    state = load_state()
+    cursor = state.get("cursor", 0)
+    print(f"buildonly checkpoint: plan position {cursor}/{len(plan)}",
+          flush=True)
+    # Done means "walked the whole plan", NOT "live count reached the plan
+    # length": permanently skipped entries never become stickers, so a
+    # live-count gate could never be satisfied. But a walked cursor is not done
+    # either while an upload is unresolved -- a crash on the LAST upload moved
+    # the cursor to the end before the request went out.
+    done = cursor >= len(plan) and not state.get("in_flight") and not raised
+    return EXIT_OK if done else EXIT_PARTIAL
 
 
 
@@ -440,7 +476,8 @@ if __name__ == "__main__":
 
     load_env()
     operator_config.stop_unless("COIN_PACK_BASE", "COIN_PACK_TITLE")
-    _tg = Telegram(os.environ["TELEGRAM_BOT_TOKEN"])
+    setup_logging("rebuild_dedup")
+    _tg = Telegram(require_token("TELEGRAM_BOT_TOKEN"))
     _bot = _tg.get_me()["username"]
     arg = _args.command
     if arg == "map":
@@ -448,24 +485,7 @@ if __name__ == "__main__":
     elif arg == "links":
         send_final_links(_tg)
     elif arg == "build":
-        # Build only. Exit 0 when ALL plan images are live, else exit 3 so an
-        # external restart loop can resume (build is resumable + duplicate-proof).
-        import traceback
-        plan = load_plan()
-        try:
-            build(_tg, _bot)
-        except Exception:  # noqa: BLE001 - log full cause, let the loop resume
-            traceback.print_exc()
-        # A stop inside build() raises SystemExit with its own retryable code and
-        # skips this checkpoint on purpose.
-        cursor = load_state().get("cursor", 0)
-        print(f"buildonly checkpoint: plan position {cursor}/{len(plan)}",
-              flush=True)
-        # Done means "walked the whole plan", NOT "live count reached the plan
-        # length". Entries that are permanently skipped (missing/blank image)
-        # never become stickers, so a live-count gate can never be satisfied and
-        # the restart loop keeps re-running forever, adding duplicates.
-        raise SystemExit(EXIT_OK if cursor >= len(plan) else EXIT_PARTIAL)
+        raise SystemExit(build_command(_tg, _bot))
     else:
         build(_tg, _bot)
         map_and_fill(_tg)

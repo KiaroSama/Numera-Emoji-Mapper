@@ -1,8 +1,8 @@
 """Shared fakes for the coins/rebuild_dedup test modules.
 
-`test_rebuild_dedup_state` (the pack-mutation walk) and
-`test_rebuild_dedup_map` (the canonical map phase) both need the same fake
-Telegram and the same temp-directory redirection. One copy, because a
+The pack-mutation walk (`test_rebuild_dedup_state`, `_resume`, `_plan`,
+`_locks`) and the canonical map phase (`test_rebuild_dedup_map`) all need the
+same fake Telegram and the same temp-directory redirection. One copy, because a
 duplicated fake drifts apart from the thing it stands in for.
 
 Not named `test_*` on purpose -- `unittest discover -p "test_*.py"` would
@@ -29,7 +29,6 @@ from emojikit import telegram_api as tg_api  # noqa: E402
 from emojikit import packstate as ps  # noqa: E402
 from coins import rebuild_dedup as rd  # noqa: E402
 from coins import _dedup_plan as cfg  # noqa: E402
-from coins import _dedup_map as dmap  # noqa: E402
 
 
 def _image(key: str) -> Image.Image:
@@ -198,7 +197,6 @@ class RebuildCase(unittest.TestCase):
             mock.patch.object(cfg, "INV", self.inv),
             mock.patch.object(cfg, "OUT_INV", self.dir / "inventory.filled.md"),
             mock.patch.object(cfg, "TICKER_IDS", self.dir / "ticker_to_id.json"),
-            mock.patch.object(dmap, "BACKUP_IDS", self.dir / "ticker_to_id.bak.json"),
             mock.patch.object(cfg, "KEYWORDS_CSV", self.dir / "keywords.csv"),
             mock.patch.object(cfg, "LOCK", self.dir / "state.json.lock"),
             mock.patch.object(cfg, "USER_ID", 42),

@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT))
 from emojikit import packstate as ps  # noqa: E402
 from coins import _dedup_plan as cfg  # noqa: E402
 from coins import _dedup_map as dmap  # noqa: E402
-from tests._rebuild_fixtures import FakeTelegram, RebuildCase, _png_bytes  # noqa: E402
+from tests._rebuild_fixtures import FakeTelegram, RebuildCase, _png, _png_bytes  # noqa: E402
 
 
 class MapIsResolvedByImageIdentity(RebuildCase):
@@ -163,6 +163,52 @@ class MapIsResolvedByImageIdentity(RebuildCase):
                          "the map was rebuilt from live sets a concurrent "
                          "build was still appending to")
 
+    def test_a_provider_top_up_is_mapped_from_its_own_image(self):
+        """The providers record their uploads in `provider_added`, not `order`.
+
+        Their stickers matched no recorded upload, so `map` stopped with
+        "identity unproven" after any top-up and the final links never went out.
+        """
+        _png(self.emoji / "ddd.png")
+        self.tg.append("s1", (self.emoji / "ddd.png").read_bytes())
+        state = self.saved()
+        state["provider_added"] = ["ddd"]
+        ps.write_json_atomic(self.state, state)
+        dmap.map_and_fill(self.tg)
+        self.assertEqual(self.mapping()["ddd"], "s1-3")
+        self.assertEqual(self.mapping()["aaa"], "s1-0")
+
+    def test_a_provider_top_up_without_its_image_still_refuses(self):
+        """Unknown is not false: no oracle image means no proof."""
+        self.tg.append("s1", _png_bytes("ddd"))
+        state = self.saved()
+        state["provider_added"] = ["ddd"]
+        ps.write_json_atomic(self.state, state)
+        with self.assertRaises(SystemExit):
+            dmap.map_and_fill(self.tg)
+        self.assertFalse(self.map.exists())
+
+    def test_aliases_in_the_current_map_survive_the_rebuild(self):
+        """An alias shares its base coin's id and has no image of its own.
+
+        They were re-applied from a backup file nothing writes, so every
+        successful map dropped every alias.
+        """
+        ps.write_json_atomic(self.map, {"aaa": "old-a", "aaabsc": "old-a",
+                                        "bbb": "old-b", "ccc": "old-c"})
+        dmap.map_and_fill(self.tg)
+        self.assertEqual(self.mapping(), {"aaa": "s1-0", "aaabsc": "s1-0",
+                                          "bbb": "s1-1", "ccc": "s1-2"})
+
+    def test_an_alias_that_cannot_be_reapplied_stops_the_write(self):
+        before = {"aaa": "old-a", "zzz": "old-z", "zzzbsc": "old-z"}
+        ps.write_json_atomic(self.map, before)
+        with self.assertRaises(SystemExit) as caught:
+            dmap.map_and_fill(self.tg)
+        self.assertIn("zzzbsc", str(caught.exception.code))
+        self.assertEqual(self.mapping(), before,
+                         "a map without its aliases must not be written")
+
 
 class SharedLogoGuard(unittest.TestCase):
     """The detector that would have caught the 129-ticker collision."""
@@ -204,4 +250,6 @@ class SharedLogoGuard(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # A direct run skips tests/__init__.py, the credential scrub and socket
+    # block that exist because a test once changed a live pack.
+    raise SystemExit("Run this suite as: python -m unittest tests.test_rebuild_dedup_map -v")

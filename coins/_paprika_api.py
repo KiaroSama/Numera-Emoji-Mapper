@@ -34,13 +34,17 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (logo-fetcher; local)"}
 SIZE = 100
 SLEEP = 2.5  # seconds between metered /search calls
 QUOTA_EXHAUSTED = object()  # sentinel returned by http_json on HTTP 402
+# Sentinel for "the provider did not answer after every retry". Unknown is not
+# "no results": treating it as an empty search cached a whole outage's worth of
+# coins as unresolvable, and every later run skipped them forever.
+TRANSIENT = object()
 
 
 def http_json(url: str, retries: int = 4):
-    """GET JSON. Returns dict, None (transient failure), or QUOTA_EXHAUSTED on 402."""
+    """GET JSON. Returns the decoded body, TRANSIENT, or QUOTA_EXHAUSTED on 402."""
     r = _http.get(url, headers=HEADERS, retries=retries, stop_on=(402,))
     if r is None:
-        return None
+        return TRANSIENT
     if r.status_code == 402:
         return QUOTA_EXHAUSTED  # free quota gone; do not retry
     return r.json()
@@ -98,13 +102,19 @@ def classify(cands: list[dict], name: str, ticker: str):
 
 
 def search_match(name: str, ticker: str):
-    """Up to two metered /search calls. Returns (id, conf) | (None, reason) | QUOTA."""
+    """Up to two metered /search calls.
+
+    Returns (id, conf) | (None, reason) | QUOTA_EXHAUSTED | TRANSIENT. TRANSIENT
+    means a search did not answer and nothing confident was found without it:
+    the coin is unknown, and the caller must not record it as "no match".
+    """
     q1 = re.sub(r"\(.*?\)", "", name).strip()
     res = http_json(SEARCH + urllib.parse.quote(q1))
     if res is QUOTA_EXHAUSTED:
         return QUOTA_EXHAUSTED
     time.sleep(SLEEP)
-    cands = (res or {}).get("currencies", [])
+    transient = res is TRANSIENT
+    cands = [] if transient else (res or {}).get("currencies", [])
     cid, conf = classify(cands, name, ticker)
     if cid:
         return cid, conf
@@ -114,10 +124,13 @@ def search_match(name: str, ticker: str):
         if res2 is QUOTA_EXHAUSTED:
             return QUOTA_EXHAUSTED
         time.sleep(SLEEP)
-        cands2 = (res2 or {}).get("currencies", [])
+        transient = transient or res2 is TRANSIENT
+        cands2 = [] if res2 is TRANSIENT else (res2 or {}).get("currencies", [])
         cid2, conf2 = classify(cands2, name, ticker)
         if cid2:
             return cid2, conf2
+        if transient:
+            return TRANSIENT
         return None, conf2 if cands2 else conf
     return None, conf
 

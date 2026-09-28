@@ -32,25 +32,25 @@ from coins import _dedup_plan as cfg
 from coins._dedup_plan import (load_plan, load_state, save_state)
 
 
-BACKUP_IDS = cfg.ROOT / "ticker_to_id.bak.json"
-
-
-def reapply_aliases(new_map: dict[str, str]) -> int:
+def reapply_aliases(new_map: dict[str, str], current: dict[str, str]) -> list[str]:
     """Re-apply chain/name aliases that have no own PNG (e.g. bnbbsc->bnb).
 
-    The old ticker_to_id (backup) recorded these aliases by pointing the alias
-    ticker at the SAME cid as its base coin. After the rebuild the base coin gets
-    a NEW cid; map every PNG-less alias onto a sibling that IS in the new map.
+    ``current`` is the canonical map as it stands, read under the held locks.
+    It records an alias by pointing the alias ticker at the SAME cid as its
+    base coin. After the rebuild the base coin gets a NEW cid; map every
+    PNG-less alias onto a sibling that IS in the new map.
+
+    This used to read a ".bak" copy of the map that nothing writes, so every
+    successful map silently dropped every alias. Returns the aliases that could
+    NOT be re-applied (a ticker sharing its cid with another one in
+    ``current`` and still absent from ``new_map``); the caller refuses to write
+    a map without them.
     """
-    if not BACKUP_IDS.is_file():
-        print("  no backup map; skipping alias re-apply.", flush=True)
-        return 0
-    old = json.loads(BACKUP_IDS.read_text(encoding="utf-8"))
     old_groups: dict[str, list[str]] = defaultdict(list)
-    for t, c in old.items():
+    for t, c in current.items():
         old_groups[str(c)].append(t)
     added = 0
-    for t, c in old.items():
+    for t, c in current.items():
         if t in new_map:
             continue
         for sib in old_groups.get(str(c), []):
@@ -58,8 +58,9 @@ def reapply_aliases(new_map: dict[str, str]) -> int:
                 new_map[t] = new_map[sib]
                 added += 1
                 break
-    print(f"  re-applied {added} aliases from backup.", flush=True)
-    return added
+    print(f"  re-applied {added} aliases from the current map.", flush=True)
+    return sorted(t for t, c in current.items()
+                  if t not in new_map and len(old_groups[str(c)]) > 1)
 
 
 def approved_shared_tickers() -> set[str]:
@@ -189,8 +190,13 @@ def _map_and_fill(tg: Telegram) -> None:
             f"       Rebuild identities from image content with "
             f"coins/remap_ids.py. Details: {candidate.name}")
 
+    # The providers top the family up with coins the plan never had, and
+    # record each one by ticker in `provider_added`. Their stickers are just as
+    # live, so they are proven the same way -- from their own oracle image --
+    # instead of making every top-up read as "identity unproven".
+    provider = [str(t) for t in state.get("provider_added") or []]
     try:
-        rep_to_cid = resolve_by_image(tg, live, order)
+        rep_to_cid = resolve_by_image(tg, live, list(dict.fromkeys(order + provider)))
     except MapIdentityUnproven as exc:
         write_json_atomic(candidate, {
             "error": str(exc), "recorded_uploads": len(order),
@@ -211,9 +217,20 @@ def _map_and_fill(tg: Telegram) -> None:
             continue
         for t in g["tickers"]:
             ticker_to_id[t] = cid
+    for tk in provider:
+        ticker_to_id.setdefault(tk, rep_to_cid[tk])
     print(f"mapped by verified image identity ({len(live)} stickers)", flush=True)
 
-    reapply_aliases(ticker_to_id)
+    current = (json.loads(cfg.TICKER_IDS.read_text(encoding="utf-8"))
+               if cfg.TICKER_IDS.is_file() else {})
+    lost = reapply_aliases(ticker_to_id, current)
+    if lost:
+        write_json_atomic(candidate, ticker_to_id)
+        raise SystemExit(
+            f"ERROR: {len(lost)} alias(es) in {cfg.TICKER_IDS.name} have no "
+            f"sibling in the rebuilt map (e.g. {lost[:6]}).\n"
+            f"       Refusing to write a map that drops them; review "
+            f"{candidate.name} and the plan.")
 
     bad = unapproved_shared_groups(ticker_to_id)
     oversized = {cid: ts for cid, ts in bad.items() if len(ts) > cfg.SHARED_GROUP_LIMIT}

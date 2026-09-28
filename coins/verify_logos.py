@@ -28,6 +28,7 @@ import io
 import json
 import logging
 import os
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -72,6 +73,66 @@ def _intent_path() -> Path:
     checkout redirects it with the rest of this module's paths.
     """
     return ROOT / "verify_logos_intent.json"
+
+
+@contextlib.contextmanager
+def _staging(emoji_dir: Path):
+    """A private folder for one replacement's files, beside the oracle.
+
+    ``emoji/`` and ``png/`` are the identity oracle: remap_ids and
+    rebuild_dedup map decide which live sticker is which coin by comparing
+    against them. Writing the download there BEFORE the replace meant every
+    refusal below left art in the oracle that is not live. Beside the oracle so
+    promotion stays on one volume; removed on exit unless a pending intent
+    still needs it.
+    """
+    root = emoji_dir.parent / ".incoming"
+    root.mkdir(parents=True, exist_ok=True)
+    stage = Path(tempfile.mkdtemp(prefix="verify-", dir=root))
+    try:
+        yield stage
+    finally:
+        _drop_stage(stage)
+
+
+def _drop_stage(stage) -> None:
+    """Remove a staging folder unless the pending intent still points at it."""
+    if not stage:
+        return
+    stage = Path(stage)
+    if stage.parent.name != ".incoming":
+        return              # never delete a folder an odd intent happens to name
+    path = _intent_path()
+    if path.is_file():
+        try:
+            if json.loads(path.read_text(encoding="utf-8")).get("stage") == str(stage):
+                return
+        except (OSError, ValueError, AttributeError):
+            return          # cannot tell whether it is needed: keep it
+    shutil.rmtree(stage, ignore_errors=True)
+
+
+def _promote(intent: dict) -> bool:
+    """Copy a PROVEN replacement's staged files over the oracle.
+
+    Copy, not move: a crash between this and the map write leaves an intent
+    the next run promotes again, from the same staged files. An intent without
+    ``promote`` predates staging; that code wrote the oracle before uploading,
+    so there is nothing left to copy.
+    """
+    ok = True
+    for staged, dest in intent.get("promote") or []:
+        staged, dest = Path(staged), Path(dest)
+        if not staged.is_file():
+            log.warning("%s is gone, so %s was NOT updated; re-run --fix for "
+                        "this ticker to refresh it.", staged, dest)
+            ok = False
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name(dest.name + ".tmp")
+        shutil.copyfile(staged, tmp)
+        os.replace(tmp, dest)
+    return ok
 
 
 def _run_targets(map_path, state_path=None) -> dict:
@@ -343,6 +404,7 @@ def reconcile_intent(tg: Telegram, map_path: Path, state_path=None) -> bool:
         log.info("pending replacement of %s never applied; nothing to recover.",
                  old_cid)
         path.unlink(missing_ok=True)
+        _drop_stage(intent.get("stage"))
         return True
 
     new_cid = verified_new_cid(before, after, pos)
@@ -352,8 +414,11 @@ def reconcile_intent(tg: Telegram, map_path: Path, state_path=None) -> bool:
                   "map, then delete %s.", old_cid, sname, map_path.name,
                   path.name)
         return False
+    # Proven live: only now may the staged art become the oracle.
+    _promote(intent)
     changed = repoint(map_path, old_cid, new_cid)
     path.unlink(missing_ok=True)
+    _drop_stage(intent.get("stage"))
     log.info("recovered pending replacement %s -> %s (%d map entries)",
              old_cid, new_cid, changed)
     return True
@@ -387,7 +452,7 @@ def fix_one(tg: Telegram, uid: int, sets: list[dict], map_path: Path,
     # duration anyway -- so the only tools this can delay are the other
     # hand-run map editors, which fail fast with LockBusy and are re-run.
     # PACK_LOCK first, canonical_map_lock() second: the project-wide order.
-    with canonical_map_lock():
+    with canonical_map_lock(), _staging(emoji_dir) as stage:
         try:
             old_cid = str(json.loads(map_path.read_text(encoding="utf-8")).get(sym, ""))
         except (OSError, ValueError) as exc:
@@ -399,15 +464,13 @@ def fix_one(tg: Telegram, uid: int, sets: list[dict], map_path: Path,
             return False
         sname, pos, old_fid, before = loc
 
-        # Update local source files (full-res + 100x100) and upload the replacement.
-        png_dir = emoji_dir.parent / "png"
-        png_dir.mkdir(exist_ok=True)
-        (png_dir / f"{sym}.png").write_bytes(data)
-        tmp = ROOT / "_vtmp.png"
-        tmp.write_bytes(data)
-        src = emoji_dir / f"{sym}.png"
-        media.to_static_png(tmp, src)
-        tmp.unlink(missing_ok=True)
+        # Stage the full-res and 100x100 files and upload from the stage; the
+        # oracle (png/, emoji/) changes only once the replacement is proven.
+        raw = stage / "png" / f"{sym}.png"
+        raw.parent.mkdir()
+        raw.write_bytes(data)
+        src = stage / f"{sym}.png"
+        media.to_static_png(raw, src)
 
         # Record WHAT is about to change, and everything needed to prove
         # afterwards what it became, BEFORE the mutation. Written first because
@@ -419,6 +482,11 @@ def fix_one(tg: Telegram, uid: int, sets: list[dict], map_path: Path,
                              set_index=pos, expected_before=len(before))
         intent.update({"old_cid": old_cid, "before": before,
                        "source": str(src), "source_dhash": dh(Image.open(src)),
+                       # Where the staged files go once proven, so a recovery
+                       # run promotes exactly what was uploaded.
+                       "stage": str(stage),
+                       "promote": [[str(raw), str(emoji_dir.parent / "png" / f"{sym}.png")],
+                                   [str(src), str(emoji_dir / f"{sym}.png")]],
                        # Which map/state this replacement belongs to. The intent
                        # file's own path is fixed; its target is not.
                        **_run_targets(map_path, state_path)})
@@ -467,10 +535,13 @@ def fix_one(tg: Telegram, uid: int, sets: list[dict], map_path: Path,
                       "left untouched -- check the pack, then re-run.",
                       sym, old_cid, sname, pos)
             return False
-        # Repoint first, clear second: a crash in between leaves an intent whose
-        # reconcile finds nothing left to move and simply clears it.
+        # Promote, repoint, clear -- in that order: a crash in between leaves
+        # an intent whose reconcile promotes again (idempotent), finds nothing
+        # left to move and simply clears it.
+        _promote(intent)
         changed = _repoint_locked(map_path, old_cid, new_cid)
     _intent_path().unlink(missing_ok=True)
+    _drop_stage(stage)
     log.info("fixed %s: %s -> %s (%d map entries)", sym, old_cid, new_cid, changed)
     return True
 

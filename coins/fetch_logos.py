@@ -28,14 +28,14 @@ _bootstrap_sys.path.insert(0, _bootstrap_os.path.dirname(
     _bootstrap_os.path.dirname(_bootstrap_os.path.abspath(__file__))))
 
 import argparse
-import csv
 import re
 import time
 from pathlib import Path
 
-from PIL import Image
-
 from coins import _http
+from coins._keywords import _valid_image, write_keywords_csv
+from emojikit.cli_env import EXIT_PARTIAL
+from emojikit.logsetup import setup_logging
 
 ROOT = Path(__file__).resolve().parent
 SVG_DIR = ROOT / "logos" / "svg"
@@ -71,22 +71,6 @@ def _get(url: str, *, binary: bool = False, retries: int = 6):
     return resp.content if binary else resp.json()
 
 
-def _valid_image(path: Path) -> bool:
-    """True if ``path`` decodes completely and has visible pixels.
-
-    ``exists()`` proves nothing here: a rate-limit HTML body, a redirect page or
-    a run killed mid-write all leave a file that the resume check would treat as
-    a finished logo forever.
-    """
-    try:
-        with Image.open(path) as im:
-            im.verify()                     # full decode: catches truncation
-        with Image.open(path) as im:        # verify() leaves the file unusable
-            return im.convert("RGBA").getchannel("A").getbbox() is not None
-    except Exception:  # noqa: BLE001 - anything unreadable is simply not a logo
-        return False
-
-
 def fetch_logo(url: str, dest: Path) -> bool:
     """Download ``url`` and publish it as ``dest`` only if it is a real image.
 
@@ -118,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"market-data pages of {PER_PAGE} coins "
                          f"(default {MAX_PAGES}).")
     args = ap.parse_args(argv)
+    setup_logging("fetch_logos")
     if args.pages is not None and args.pages < 1:
         ap.error("pages must be at least 1")
     # MAX_PAGES stays the default rather than the value: the tests patch it, and
@@ -132,6 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     png_new = 0
     png_resumed = 0
     coins_seen = 0
+    complete = True
 
     for page in range(1, pages + 1):
         url = (f"{API}?vs_currency=usd&order=market_cap_desc&per_page={PER_PAGE}"
@@ -141,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
             data = _get(url)
         except RuntimeError as exc:
             print(f"  stopping paging: {exc}", flush=True)
+            complete = False
             break
         if not isinstance(data, list) or not data:
             print("  no more coins; done paging.", flush=True)
@@ -167,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
                     dest.unlink(missing_ok=True)
                 if dest.exists():  # resume: keep what we already downloaded
                     rows[ticker] = {"ticker": ticker, "name": name, "format": "png",
-                                    "file": f"logos/png/{ticker}.png"}
+                                    "file": f"logos/png/{ticker}.png", "path": dest}
                     png_resumed += 1
                     continue
                 if not img or not str(img).startswith("http"):
@@ -176,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  skip {ticker}: download was not a usable image", flush=True)
                     continue
                 rows[ticker] = {"ticker": ticker, "name": name, "format": "png",
-                                "file": f"logos/png/{ticker}.png"}
+                                "file": f"logos/png/{ticker}.png", "path": dest}
                 png_new += 1
                 time.sleep(IMG_DELAY)
             except Exception as exc:  # noqa: BLE001 - never abort the whole run
@@ -204,20 +191,20 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  skip cached {p.name}: not a usable image", flush=True)
             continue
         rows[t] = {"ticker": t, "name": "", "format": "png",
-                   "file": f"logos/png/{t}.png"}
+                   "file": f"logos/png/{t}.png", "path": p}
 
-    with open(KEYWORDS_CSV, "w", encoding="utf-8", newline="") as fh:
-        w = csv.writer(fh)
-        w.writerow(["ticker", "name", "format", "file", "keywords"])
-        for r in sorted(rows.values(), key=lambda x: x["ticker"]):
-            kw = r["ticker"] if not r["name"] else f"{r['ticker']}, {r['name']}"
-            w.writerow([r["ticker"], r["name"], r["format"], r["file"], kw])
+    write_keywords_csv(rows, KEYWORDS_CSV)
 
     total_png = len({r["ticker"] for r in rows.values() if r["format"] == "png"})
     print("", flush=True)
     print(f"DONE: {len(svg_tickers)} SVG + {total_png} PNG = {len(svg_tickers) + total_png} "
           f"logos. (new png this run: {png_new}, resumed: {png_resumed}). keywords.csv written.",
           flush=True)
+    if not complete:
+        # The file is still written (merged, old names kept); the exit code says
+        # the market pages behind it were not all read.
+        print("INCOMPLETE: market paging stopped early; re-run to finish.", flush=True)
+        return EXIT_PARTIAL
     return 0
 
 

@@ -23,7 +23,8 @@ from pathlib import Path
 
 from emojikit.build_pack import (load_env)
 from emojikit.telegram_api import (Telegram)
-from emojikit.logsetup import setup_logging
+from emojikit.logsetup import register_secret, setup_logging
+from coins._env import require_token
 
 ROOT = Path(__file__).resolve().parent
 log = logging.getLogger("write_manifests")
@@ -38,8 +39,10 @@ def main() -> int:
     ap.add_argument("--state", default=str(ROOT / "rebuild_dedup_state.json"))
     ap.add_argument("--map", default=str(ROOT / "ticker_to_id.json"))
     args = ap.parse_args()
+    # --token-env can name any variable, not only the ones logsetup masks by name.
+    register_secret(os.environ.get(args.token_env))
 
-    tg = Telegram(os.environ[args.token_env])
+    tg = Telegram(require_token(args.token_env))
     sets = sorted(json.loads(Path(args.state).read_text(encoding="utf-8"))["sets"],
                   key=lambda s: s["index"])
     t2id = json.loads(Path(args.map).read_text(encoding="utf-8"))
