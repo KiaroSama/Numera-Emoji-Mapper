@@ -175,7 +175,7 @@ class UndoRedoAndFormatColours(unittest.TestCase):
         """
         for label, marker, end, mutation, call in (
             ("select all / invert", "function setAll(fn){", "// Reduced motion", "setIncluded(it, fn(it))", "remember()"),
-            ("card toggle", "grid.addEventListener('click'", "// --- Losing the server", "setIncluded(ITEMS[i], !ITEMS[i].included)", "remember()"),
+            ("card toggle", "grid.addEventListener('click'", "// Plain document scrolling", "setIncluded(ITEMS[i], !ITEMS[i].included)", "remember()"),
             ("drag reorder", "function commitDrag(){", "function endDrag", "saveOrder();", "remember(dragSnap)"),
         ):
             body = block(SCRIPT, marker, end)
@@ -335,7 +335,7 @@ class SelectionModeCarriesARun(unittest.TestCase):
         PICKS instead -- it used to do nothing at all, which left the 1.7em box
         as the only way to select on a 140px card -- and either way a click
         while arranging must never quietly drop an emoji from the pack."""
-        body = block(SCRIPT, "grid.addEventListener('click'", "// --- Losing the server")
+        body = block(SCRIPT, "grid.addEventListener('click'", "// Plain document scrolling")
         self.assertIn("if(selMode){", body)
         self.assertIn("pickCardAt(i, e.shiftKey);", body)
         self.assertLess(body.index("if(selMode){"), body.index("remember();"),
@@ -345,7 +345,7 @@ class SelectionModeCarriesARun(unittest.TestCase):
         """Its `pointerdown` has already toggled. Acting on the click as well
         would toggle twice and net to zero -- the same double-toggle that made
         the tray's fix a replacement rather than an addition."""
-        body = block(SCRIPT, "grid.addEventListener('click'", "// --- Losing the server")
+        body = block(SCRIPT, "grid.addEventListener('click'", "// Plain document scrolling")
         self.assertIn("if(!e.target.closest('.pick')) pickCardAt", body)
 
     def test_a_picked_card_is_marked_by_a_moving_ring_on_both_surfaces(self):

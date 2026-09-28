@@ -5,6 +5,7 @@ import io
 import logging
 import unittest
 
+from emojikit import panel, panel_logging
 from emojikit.panel_logging import ClientEventLog
 
 
@@ -31,6 +32,16 @@ class UILogContract(unittest.TestCase):
         self.assertEqual(stream.getvalue(), good)
         with self.assertRaises(ValueError):
             sink.record({"events": [{"event": "hold"}] * 33})
+
+
+class EveryScriptMayReportErrors(unittest.TestCase):
+    def test_every_served_script_is_an_accepted_log_source(self):
+        # A script missing here has its errors refused as "invalid UI source",
+        # so a crash in a newly split-out file would never reach the log.
+        self.assertLessEqual(set(panel.SCRIPT_FILES), panel_logging.SOURCES)
+        holding = (panel.ASSET_DIR / "panel-holding.js").read_text(encoding="utf-8")
+        for name in panel.SCRIPT_FILES:
+            self.assertIn(f"'{name}'", holding, f"{name} missing from panel-holding.js known[]")
 
 
 if __name__ == "__main__":

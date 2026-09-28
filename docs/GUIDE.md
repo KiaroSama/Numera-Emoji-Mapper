@@ -2137,7 +2137,7 @@ Front-end:
   Holding four entries from a full pack changes `#1–#200` to `#1–#196`, including
   when that pack is followed by other published packs. The same visible-index
   projection controls virtual rows, card positions and separator ranges.
-- **Save queues** (`assets/panel-actions.js`). Orders auto-save; inclusion
+- **Save queues** (`assets/panel-save.js`). Orders auto-save; inclusion
   waits for explicit Save. Each queue permits one request at a time and keeps
   its newest body. A 400/409 rejection blocks only that body; a newer body can
   progress and still retry a transient failure. Debounce, retry and heartbeat
@@ -2175,7 +2175,7 @@ Front-end:
   latter is silently inert on an `<input>`, which is exactly why the click
   handler that used to live there moved to `panel-holding.js` instead of
   growing in place.
-- **Drag edits the model as you drag** (`assets/panel-actions.js`). Each
+- **Drag edits the model as you drag** (`assets/panel-drag.js`). Each
   `dragover` that changes the target moves the carried items inside `ITEMS`
   and re-projects the grid, so the translucent tile IS where they land; the
   drop only records the snapshot taken at `dragstart` as history and saves; a
