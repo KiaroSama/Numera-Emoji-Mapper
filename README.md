@@ -361,11 +361,17 @@ Numera Emoji Mapper/                  # the whole project
     operator_config.py        # your identities from .env (no defaults)
     packstate.py              # state-file shape + atomic write + pack lock
     announce.py               # announce finished packs (Worker, or direct)
+    cli_env.py                # .env loading, safe_int_env, the shared exit codes
+    repaint_gate.py           # --repaintable: ask before ingesting repaintable emoji
     collection_state.py       # its plan/resume state + the brand logo
     collection_reconcile.py   # what is live in a set, and whose key it is
     collection_preflight.py   # --preflight: ask Telegram to validate the queue
+    collection_notify.py      # announce a finished pack + write its manifest
+    collection_names.py       # pack base / name-length / --formats checks
+    collection_media_check.py # a queued file is readable and not blank
     collection_migrate.py     # move EVERY reference to a content key, as one change
     panel_view.py             # the panel's view model (build_view, ordering)
+    panel_save.py             # the panel's Save: validate the scope, then apply it
     pack_gallery.py           # self-contained pack gallery rendering
     ingest.py                 # verified dedup and collision-safe media storage
     panel_preview.py          # bounded, sized thumbnail cache

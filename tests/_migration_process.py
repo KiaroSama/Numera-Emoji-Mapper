@@ -56,7 +56,7 @@ def main():
         import threading
         from http.server import ThreadingHTTPServer
         from urllib import request
-        from emojikit import panel
+        from emojikit import panel, panel_save
 
         def opening(*args, **kwargs):
             catalog = Catalog(*args, **kwargs)
@@ -68,7 +68,7 @@ def main():
         thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
         thread.start()
         try:
-            with mock.patch.object(panel, "Catalog", opening):
+            with mock.patch.object(panel_save, "Catalog", opening):
                 req = request.Request(f"http://127.0.0.1:{server.server_port}/api/save",
                     data=b'{"excluded":[],"known":[]}',
                     headers={"Content-Type": "application/json", "X-Panel-Token": "fixture-token"})
