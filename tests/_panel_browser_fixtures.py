@@ -13,6 +13,8 @@ questions.
 from __future__ import annotations
 
 from contextlib import closing
+from functools import lru_cache
+import io
 import os
 import re
 import sqlite3
@@ -195,8 +197,13 @@ class Harness:
             raise AssertionError("panel server thread leaked")
 
     def open(self, items=None, *, init=None, clock=False, on_error=None,
-             cleanup=None, **ctx_args):
-        """The served page, with an optional synthetic model."""
+             cleanup=None, media="png", **ctx_args):
+        """The served page, with an optional synthetic model.
+
+        ``media="animated"`` answers previews with a real 28-frame animated
+        WebP (stills with its first frame), so a test pays the decode cost a
+        real catalog does; the default single PNG decodes to nothing.
+        """
         ctx = self.browser.new_context(viewport=VIEWPORT, **ctx_args)
         if cleanup is not None:
             cleanup(ctx.close)
@@ -215,6 +222,11 @@ class Harness:
         for pattern in ("**/img/**", "**/preview/**"):
             page.route(pattern, lambda r: r.fulfill(
                 status=200, content_type="image/png", body=self.png))
+        if media == "animated":
+            moving, still = animated_webp()
+            page.route("**/preview/**", lambda r: r.fulfill(
+                status=200, content_type="image/webp",
+                body=still if "still=1" in r.request.url else moving))
         page.goto(self.url, wait_until="load", timeout=30_000)
         return page
 
@@ -239,6 +251,22 @@ class Harness:
     def excluded_in_db(self):
         with closing(sqlite3.connect(self.db.as_uri() + "?mode=ro", uri=True)) as con:
             return {r[0] for r in con.execute("SELECT content_key FROM items WHERE included=0")}
+
+
+@lru_cache(maxsize=1)
+def animated_webp() -> tuple[bytes, bytes]:
+    """A 104 px animated WebP (28 frames, 66 ms each) and its first frame alone."""
+    frames = []
+    for i in range(28):
+        im = Image.new("RGBA", (104, 104), (0, 0, 0, 0))
+        x = 4 + i * 3
+        im.paste((40, 160, 255, 255), (x, 36, x + 32, 68))
+        frames.append(im)
+    moving, still = io.BytesIO(), io.BytesIO()
+    frames[0].save(moving, "WEBP", save_all=True, append_images=frames[1:],
+                   duration=66, loop=0, quality=60, method=4)
+    frames[0].save(still, "WEBP", quality=60, method=4)
+    return moving.getvalue(), still.getvalue()
 
 
 def synth(n, *, logo=False, fmt="static", packs=None, excluded=()):
