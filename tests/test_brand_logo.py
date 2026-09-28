@@ -10,6 +10,7 @@ Covers:
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
@@ -24,6 +25,9 @@ from emojikit import build_collection as bc  # noqa: E402
 from emojikit import collection_state as cs  # noqa: E402
 from emojikit import identity, media  # noqa: E402
 from emojikit.catalog import Catalog  # noqa: E402
+from emojikit.cli_env import EXIT_USAGE  # noqa: E402
+from unittest import mock  # noqa: E402
+from tests._bc_fixtures import FakeTG, _CatalogFixture, _main  # noqa: E402
 
 
 def _make_png(path: Path, color=(200, 30, 30, 255)) -> None:
@@ -112,6 +116,44 @@ class BrandLogoPrepare(unittest.TestCase):
         logo = cs.BrandLogo(str(self.data / "nope.png"), self.data)
         self.assertFalse(logo.available())
         self.assertIsNone(logo.static_png())
+
+    def test_a_corrupt_logo_raises(self):
+        bad = self.data / "corrupt.png"
+        bad.write_bytes(b"not an image")
+        with self.assertRaises((OSError, media.MediaError)):
+            cs.BrandLogo(str(bad), self.data).static_png()
+
+    def test_a_blank_logo_raises(self):
+        blank = self.data / "blank.png"
+        Image.new("RGBA", (100, 100), (0, 0, 0, 0)).save(blank, "PNG")
+        with self.assertRaises(media.MediaError):
+            cs.BrandLogo(str(blank), self.data).static_png()
+
+    def test_a_truncated_cache_is_rendered_again(self):
+        out = cs.BrandLogo(str(self.png), self.data).static_png()
+        out.write_bytes(out.read_bytes()[:10])
+        again = cs.BrandLogo(str(self.png), self.data).static_png()
+        self.assertEqual(again, out)
+        with Image.open(again) as im:
+            im.load()
+            self.assertEqual(im.size, (media.SIZE, media.SIZE))
+
+
+class AnUnusableLogoStopsThePublish(_CatalogFixture):
+    """A pack's first slot belongs to the logo and cannot be fixed afterwards."""
+
+    def test_a_corrupt_logo_stops_before_any_set_is_created(self):
+        bad = self.data / "corrupt.png"
+        bad.write_bytes(b"not an image")
+        tg = FakeTG()
+        with mock.patch.object(bc, "Telegram", lambda token: tg),                 mock.patch.dict(os.environ, {"GENERAL_BOT_TOKEN": "x", "PACK_LINKS_CHAT_ID": "",
+                                             "BRAND_LOGO_BOTS": "YourEmojiBot"}),                 self.assertLogs("build_collection", "ERROR") as logs:
+            code = _main("--base", "pk", "--title", "Pack", "--formats", "static",
+                         "--user-id", "7", "--brand-logo", str(bad),
+                         "--data-dir", str(self.data))
+        self.assertEqual(code, EXIT_USAGE)
+        self.assertEqual(tg.sets, {})
+        self.assertIn("cannot be used", " ".join(logs.output))
 
 
 class PublishFormatLogoFirst(unittest.TestCase):

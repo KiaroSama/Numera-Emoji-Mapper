@@ -608,6 +608,15 @@ def _publish(args, *, base: str, formats: list[str], data_dir: Path, db: Path,
         logo = None
         if bot.lower() in args.logo_bots:
             logo = BrandLogo(args.brand_logo, data_dir)
+            # Prepared HERE, before the first set is touched: a logo that fails
+            # only when a set is created leaves that pack with an ordinary
+            # emoji in the slot the logo owns, and no later run can fix that.
+            try:
+                logo.static_png()
+            except Exception as exc:  # noqa: BLE001 - any failure means "do not publish"
+                log.error("brand logo %s cannot be used: %s. Nothing was published.",
+                          args.brand_logo, exc)
+                return EXIT_USAGE
             log.info("brand logo enabled (first emoji of every set): %s", args.brand_logo)
 
         ok = failed = 0
