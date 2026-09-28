@@ -49,12 +49,18 @@ Numera Emoji Mapper/
     telegram_api.py           the Bot API client, its errors and Telegram's caps
     packstate.py              state-file shape + atomic write + pack-family lock
     announce.py               announce finished packs (Worker, or direct)
+    cli_env.py                .env loading, safe_int_env, the shared exit codes
+    repaint_gate.py           --repaintable: ask before ingesting repaintable emoji
     collection_state.py       publisher plan/resume state + brand logo
     operator_config.py        the operator's identities from .env; unset = stop, no default
     collection_reconcile.py   what is live in a set, and whose key each sticker is
     collection_migrate.py     a content-key migration as ONE versioned change
     collection_preflight.py   --preflight only: ask Telegram to validate the queue
+    collection_notify.py      announce a finished pack + write its manifest
+    collection_names.py       pack base, name-length and --formats checks
+    collection_media_check.py a queued file is readable and not blank
     panel_view.py             the same panel's view model (build_view, ordering)
+    panel_save.py             the panel's Save: validate its scope, then apply it
     pack_gallery.py           self-contained pack gallery rendering
     ingest.py                 verified dedup and collision-safe media storage
     panel_preview.py          bounded, sized thumbnail cache

@@ -13,7 +13,7 @@ from unittest import mock
 
 from PIL import Image
 
-from emojikit import identity, panel
+from emojikit import identity, panel, panel_save
 from emojikit.catalog import Catalog
 from emojikit.maintenance import maintenance
 from emojikit.packstate import LockBusy
@@ -153,7 +153,7 @@ class PanelIntentPersistence(unittest.TestCase):
         self.assertEqual(self.load_plan()["moves"], old["moves"])
 
     def test_plan_write_keeps_catalog_lease_and_blocks_maintenance(self):
-        real = panel.write_plan
+        real = panel_save.write_plan
         observed = []
 
         def guarded(*args):
@@ -169,12 +169,12 @@ class PanelIntentPersistence(unittest.TestCase):
             self.assertFalse(process.is_alive())
             return real(*args)
 
-        with mock.patch.object(panel, "write_plan", guarded):
+        with mock.patch.object(panel_save, "write_plan", guarded):
             self.assertEqual(self.save()[0], 200)
         self.assertEqual(observed, ["blocked"])
 
     def test_plan_write_failure_is_not_acknowledged_and_exact_retry_completes(self):
-        with mock.patch.object(panel, "write_plan", side_effect=OSError("disk full")):
+        with mock.patch.object(panel_save, "write_plan", side_effect=OSError("disk full")):
             status, response = self.save(excluded=[self.keys[1]])
             self.assertEqual(status, 503)
             self.assertNotEqual(json.loads(response).get("ok"), True)
