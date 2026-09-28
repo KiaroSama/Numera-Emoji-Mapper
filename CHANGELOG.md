@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security - channel posts need an allowlist
+
+- **The bots answer a channel post only from a listed channel.** A channel post
+  has no sender to check, so any channel that made a bot its administrator could
+  make it message the operator under a title of its choosing. The new
+  `BOT_ALLOWED_CHANNEL_IDS` key (in `.env` and as a Worker secret) lists the
+  channels; empty means channel posts are ignored.
+
 ### Changed - dependencies on their latest releases
 
 - **Panel browser tests** run on playwright 1.63.0 (Chromium 153).

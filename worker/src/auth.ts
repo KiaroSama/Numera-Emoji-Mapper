@@ -65,6 +65,24 @@ export function parseAdmins(raw: string | undefined): Set<number> {
   return out;
 }
 
+/**
+ * Parse the channel allowlist (BOT_ALLOWED_CHANNEL_IDS).
+ *
+ * A channel_post has no sender to check against the admin list, so the
+ * channel itself has to be listed. Ids are negative ("-100..."), which the
+ * admin parser rightly rejects, and they are kept as strings: compared with
+ * `String(chat.id)`, so no digit of a long id is lost to float precision.
+ * Unset or malformed means "no channel", never "every channel".
+ */
+export function parseChannels(raw: string | undefined): Set<string> {
+  const out = new Set<string>();
+  for (const part of (raw ?? "").replace(/;/g, ",").split(",")) {
+    const t = part.trim();
+    if (/^-?\d+$/.test(t)) out.add(t);
+  }
+  return out;
+}
+
 export function isAdmin(userId: number | undefined, admins: Set<number>): boolean {
   return userId !== undefined && admins.has(userId);
 }

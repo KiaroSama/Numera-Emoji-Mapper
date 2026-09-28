@@ -508,18 +508,39 @@ describe("logging", () => {
     expect(runs).toHaveLength(0);
   });
 
-  it("still reads a normal channel's posts", async () => {
-    const calls = stubApi();
-    await worker.fetch(webhookReq("/tg/general", ENV.GENERAL_WEBHOOK_SECRET, {
+  /** A channel post carrying one custom emoji, from channel -100777. */
+  const channelPost = (env: Env) => worker.fetch(
+    webhookReq("/tg/general", ENV.GENERAL_WEBHOOK_SECRET, {
       update_id: 12,
       channel_post: {
         message_id: 1, chat: { id: -100777, type: "channel", title: "Real" },
         entities: [{ type: "custom_emoji", offset: 0, length: 2, custom_emoji_id: "456" }],
       },
-    }), { ...ENV, LOG_CHAT_ID: "-1002222222222" }, CTX);
+    }), { ...env, LOG_CHAT_ID: "-1002222222222" }, CTX);
+
+  it("still reads a listed channel's posts", async () => {
+    const calls = stubApi();
+    await channelPost({ ...ENV, BOT_ALLOWED_CHANNEL_IDS: "-100777" });
     await settle();
     expect(calls.length).toBeGreaterThan(0);
     expect(String(calls[0].body.text)).toContain("456");
+  });
+
+  it("ignores a channel that is not listed", async () => {
+    // A channel post has no sender to authorise. Answering any channel let a
+    // stranger who made the bot admin of their own channel message every
+    // operator admin under a title they chose.
+    const calls = stubApi();
+    await channelPost(ENV);
+    await settle();
+    expect(calls.filter((c) => c.method === "sendMessage")).toHaveLength(0);
+  });
+
+  it("a malformed channel list answers nobody", async () => {
+    const calls = stubApi();
+    await channelPost({ ...ENV, BOT_ALLOWED_CHANNEL_IDS: "abc,," });
+    await settle();
+    expect(calls.filter((c) => c.method === "sendMessage")).toHaveLength(0);
   });
 
   it("a handler failure IS broadcast, because nothing else reports it", async () => {

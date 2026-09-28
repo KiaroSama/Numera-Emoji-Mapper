@@ -124,7 +124,8 @@ async function replyToTypedIds(tg: Telegram, chatId: number | string,
  */
 export async function handleUpdate(tg: Telegram, update: TgUpdate,
                                    admins: Set<number>,
-                                   logChatId?: string): Promise<string> {
+                                   logChatId?: string,
+                                   channels: Set<string> = new Set()): Promise<string> {
   const msg: TgMessage | undefined = update.message ?? update.edited_message;
   if (msg) {
     const sender = msg.from?.id;
@@ -166,6 +167,11 @@ export async function handleUpdate(tg: Telegram, update: TgUpdate,
     // handling ever grows a path that logs an ERROR, that is a feedback loop
     // fed by its own output. Found by watching real traffic, not by reasoning.
     if (logChatId && String(post.chat.id) === logChatId.trim()) return LOG_ECHO;
+    // A channel post has no sender to authorise, so the channel itself must be
+    // listed. Answering ANY channel let whoever made the bot an admin of their
+    // own channel push messages, with a title they chose, to every operator
+    // admin. Unset means "no channel", never "every channel".
+    if (!channels.has(String(post.chat.id))) return "channel:not-allowed";
     const ids = extractCustomEmojiIds(post);
     if (ids.length === 0) return "channel:none";
     // Channel posts have no sender to authorise, so the answer goes to the

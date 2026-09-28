@@ -11,6 +11,11 @@ export interface Env {
   PUBLISH_SECRET: string;
   /** Comma-separated numeric Telegram user ids allowed to use the bots. */
   ADMIN_USER_IDS: string;
+  /**
+   * Comma-separated channel ids ("-100...") whose posts the bots answer.
+   * Optional: unset means channel posts are ignored, never "any channel".
+   */
+  BOT_ALLOWED_CHANNEL_IDS?: string;
   /** Channel the finished-pack announcements go to: "-100..." or "@name". */
   PACK_LINKS_CHAT_ID: string;
   /**

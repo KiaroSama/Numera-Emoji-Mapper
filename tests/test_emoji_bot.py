@@ -346,6 +346,35 @@ class TestAccessControl(unittest.TestCase):
         b.handle_update(self.tg, 42, upd, {42})
         self.assertEqual(self.sent, [], "must not reply into a group")
 
+    CHANNEL = -1001234567890
+
+    def _post(self):
+        return {"channel_post": {
+            "message_id": 1, "chat": {"id": self.CHANNEL, "type": "channel",
+                                      "title": "Somebody's channel"},
+            "entities": [{"type": "custom_emoji", "custom_emoji_id": "111111111"}]}}
+
+    def test_channel_list_parses_negative_ids_and_skips_junk(self):
+        with self._env(BOT_ALLOWED_CHANNEL_IDS=f"{self.CHANNEL}; abc,,-5"):
+            self.assertEqual(b.allowed_channel_ids(), {self.CHANNEL, -5})
+
+    def test_a_listed_channel_post_reaches_the_owner(self):
+        b.handle_update(self.tg, 42, self._post(), {42}, {self.CHANNEL})
+        chats = [kw["data"]["chat_id"] for m, kw in self.sent if m == "sendMessage"]
+        self.assertIn(42, chats)
+
+    def test_an_unlisted_channel_post_is_ignored(self):
+        """A channel post has no sender to authorise, so its channel must be
+        listed; whoever made the bot admin of their own channel could
+        otherwise message the owner under a title they chose."""
+        b.handle_update(self.tg, 42, self._post(), {42}, {-100777})
+        self.assertEqual(self.sent, [])
+
+    def test_no_channel_list_answers_no_channel(self):
+        with self._env(BOT_ALLOWED_CHANNEL_IDS=""):
+            b.handle_update(self.tg, 42, self._post(), {42})
+        self.assertEqual(self.sent, [])
+
 
 class TestMainWiring(unittest.TestCase):
     """main() must hand handle_update the NUMERIC allowlist.
@@ -390,7 +419,7 @@ class TestMainWiring(unittest.TestCase):
 
         tg._call.side_effect = _call
 
-        def _capture(tg_, owner, update, allowed):
+        def _capture(tg_, owner, update, allowed, channels=None):
             self.seen.append(allowed)
 
         env = {"GENERAL_BOT_TOKEN": "x", "PACK_OWNER_USER_ID": str(self.OWNER),
