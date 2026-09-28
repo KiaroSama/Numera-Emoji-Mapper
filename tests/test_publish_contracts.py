@@ -29,6 +29,7 @@ from emojikit import build_collection as bc  # noqa: E402
 from emojikit import collection_state as cs  # noqa: E402
 from emojikit import build_pack as bp  # noqa: E402
 from emojikit import announce  # noqa: E402
+from emojikit import collection_media_check, collection_notify, media  # noqa: E402
 from emojikit.announce import (announce_packs)  # noqa: E402
 from emojikit.catalog import Catalog  # noqa: E402
 
@@ -38,7 +39,7 @@ from tests._bc_fixtures import FakeTG, _make_png  # noqa: E402
 # M-04: a video is blank only if EVERY sampled frame is
 # --------------------------------------------------------------------------- #
 def _frame(visible: int) -> bytes:
-    px = bytearray(bc._FRAME_BYTES)
+    px = bytearray(collection_media_check._FRAME_BYTES)
     for i in range(visible):
         px[i * 4 + 3] = 255
     return bytes(px)
@@ -82,7 +83,7 @@ class VideoBlankCheck(unittest.TestCase):
     def _probe(self, raw: bytes, *, hang: bool = False):
         popen, seen = _fake_popen(raw, hang=hang)
         with mock.patch("subprocess.Popen", popen), \
-                mock.patch.object(bc.media, "ffmpeg_path", lambda: "ffmpeg"):
+                mock.patch.object(media, "ffmpeg_path", lambda: "ffmpeg"):
             return bc._media_ok(Path("clip.webm"), "video"), seen
 
     def _media_ok(self, raw: bytes) -> bool:
@@ -248,7 +249,7 @@ class EveryPublisherSharesOneAnnouncer(unittest.TestCase):
 
     def test_the_single_pack_build_and_the_coin_rebuild_both_import_it(self):
         import coins.rebuild_dedup as rd
-        for mod in (bc, bp, rd):
+        for mod in (collection_notify, bp, rd):
             self.assertIs(mod.announce_packs, announce_packs,
                           f"{mod.__name__} does not use the shared announcer")
 
@@ -311,7 +312,8 @@ class AFilledPackAnnouncesAgain(unittest.TestCase):
     """
 
     def _notify(self, state, *, full):
-        with tempfile.TemporaryDirectory() as tmp,                 mock.patch.object(bc, "announce_packs", return_value="test") as spy:
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(collection_notify, "announce_packs", return_value="test") as spy:
             bc.notify(None, 1, state, Path(tmp), "b", "pack1", "Pack 1", full=full)
         return spy.call_count
 
@@ -330,7 +332,8 @@ class AFilledPackAnnouncesAgain(unittest.TestCase):
     def test_a_failed_send_is_not_recorded_as_sent(self):
         """Otherwise one network blip silences that pack for good."""
         state = {"sent": [], "skipped": [], "sets": []}
-        with tempfile.TemporaryDirectory() as tmp,                 mock.patch.object(bc, "announce_packs", side_effect=RuntimeError("boom")):
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(collection_notify, "announce_packs", side_effect=RuntimeError("boom")):
             bc.notify(None, 1, state, Path(tmp), "b", "pack1", "Pack 1", full=True)
         self.assertEqual(state.get("sent_full", []), [])
 
