@@ -106,7 +106,7 @@ jobs:
       # tests/test_ci_coverage.py fails if a browser suite exists on disk and is
       # missing from this line.
       - name: Panel browser tests
-        run: python -m unittest tests.test_panel_browser tests.test_panel_queues tests.test_panel_curation -v
+        run: python -m unittest tests.test_panel_browser tests.test_panel_queues tests.test_panel_curation tests.test_panel_perf -v
 
   build:
     runs-on: ubuntu-latest
