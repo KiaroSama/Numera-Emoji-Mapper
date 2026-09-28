@@ -383,9 +383,9 @@ class LinksDestination(unittest.TestCase):
         The two collector-side modules deliberately do not import
         ``links_chat_id`` any more: what they cannot reach, they cannot misuse.
         """
-        from emojikit import build_collection
+        from emojikit import build_collection, collection_notify
         import coins.rebuild_dedup as rd
-        for module in (bp, build_collection, rd):
+        for module in (bp, collection_notify, rd):
             self.assertIs(module.announce_packs, announce.announce_packs,
                           f"{module.__name__} must use the shared announcer")
         self.assertFalse(hasattr(build_collection, "links_chat_id"))

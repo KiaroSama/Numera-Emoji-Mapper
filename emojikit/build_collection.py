@@ -28,17 +28,14 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import re
 import time
 from pathlib import Path
 
 from emojikit import collection_preflight
 from emojikit.build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL, EXIT_USAGE, ingest_exit_code, load_env, safe_int_env)
-from emojikit.announce import (announce_packs)
 from emojikit.packstate import (LockBusy, exclusive_lock)
 from emojikit.maintenance import writer
 from emojikit.telegram_api import (AmbiguousUploadError, LiveStateUnknown, SetState, Telegram)
-from emojikit import media
 from emojikit.catalog import Catalog
 from emojikit.logsetup import record_exit_code, redact, setup_logging
 from emojikit.collection_reconcile import (_confirm_new_upload,
@@ -51,8 +48,13 @@ from emojikit.errors import OperatorConfigMissing
 from emojikit.collection_state import (BRAND_LOGO_EMOJI,
                               DEFAULT_EMOJI, FMT_TAG, MIXED, PER_SET, ROOT,
                               BrandLogo, SetDrift, StateError, _lock_path, _state_path,
-                              _static_is_blank, freeze_plan, load_state,
+                              freeze_plan, load_state,
                               save_json)
+
+# Re-exported: these used to live here.
+from emojikit.collection_media_check import _media_ok, _video_is_blank  # noqa: F401
+from emojikit.collection_names import check_name_length, parse_formats, valid_base
+from emojikit.collection_notify import notify, write_manifest
 
 log = logging.getLogger("build_collection")
 
@@ -67,105 +69,6 @@ def pending_keys(cat: Catalog, plan: dict, fmt: str, base: str,
     return [k for k in plan.get(fmt, [])
             if (it := cat.get(k)) and it.included
             and not cat.is_published(base, k) and k not in skipped]
-
-
-def notify(tg: Telegram, user_id: int, state: dict, data_dir: Path, base: str,
-           name: str, title: str, *, full: bool = False) -> None:
-    """Post a pack's add-link, at most once per milestone.
-
-    TWO milestones, not one: the pack first going up, and the pack FILLING.
-    ``sent`` alone conflated them, so a set announced while it was still
-    being built stayed silent when it reached ``per_set`` -- and "the pack is
-    finished" is the message the channel is actually waiting for. Pack 2 was
-    announced at 96 emoji and said nothing at 200.
-    """
-    seen = state.setdefault("sent_full" if full else "sent", [])
-    if name in seen:
-        return
-    # With a Worker deployed, the BOT posts the announcement and this process
-    # never talks to the channel. `state["sent"]` still guards it, so which path
-    # sent it does not change whether a re-run announces twice.
-    try:
-        dest = announce_packs(tg, user_id, [{"name": name, "title": title}],
-                              bot="general")
-        seen.append(name)
-        save_json(_state_path(data_dir, base), state)
-        log.info("sent link for %s to %s", name, dest)
-    except Exception as exc:  # noqa: BLE001
-        log.warning("notify failed for %s: %s", name, redact(str(exc)))
-
-
-_FRAME_BYTES = 64 * 64 * 4          # one sampled RGBA frame
-
-
-def _video_is_blank(path: Path) -> bool:
-    """True only when EVERY sampled frame of a video is effectively empty.
-
-    The first frame alone is not evidence: any animation that fades in, or
-    simply starts on an empty canvas, has a transparent frame 0 -- and the
-    verdict is written to ``skipped``, so that emoji is never published again.
-    One ffmpeg pass samples the whole (<=3 s) clip.
-    """
-    cmd = [media.ffmpeg_path(), "-v", "error", "-t", str(media.WEBM_MAX_SECONDS),
-           "-i", str(path), "-an", "-vf", "fps=4,scale=64:64,format=rgba",
-           "-f", "rawvideo", "-"]
-    # Bounded child, like every other ffmpeg call in the project: media._run
-    # enforces the wall limit and kills the whole process tree on timeout. A
-    # bare subprocess.run had no timeout at all, so one corrupt clip could
-    # freeze the publish indefinitely -- exactly what that runner exists for.
-    raw = media._run(cmd, capture=True).stdout
-    if len(raw) < _FRAME_BYTES:
-        return False                # nothing decoded: let the upload decide
-    for start in range(0, len(raw) - _FRAME_BYTES + 1, _FRAME_BYTES):
-        alpha = raw[start + 3:start + _FRAME_BYTES:4]
-        # media's named thresholds, not a third copy of 10/8: this is the
-        # same "is it blank?" rule, applied to a raw frame instead of a
-        # decoded image, and a literal drifting here would disagree with
-        # every other producer about what ships.
-        if sum(v > media.VISIBLE_ALPHA for v in alpha) > media.BLANK_MAX_VISIBLE:
-            return False
-    return True
-
-
-def _media_ok(path: Path, fmt: str) -> bool:
-    """False if the media is effectively blank (guards against blank emoji)."""
-    if fmt == "static":
-        return not _static_is_blank(path)
-    if fmt == "video":
-        try:
-            return not _video_is_blank(path)
-        except Exception:  # noqa: BLE001 - probing failed; let the upload decide
-            return True
-    return True  # animated (.tgs) validity is enforced at creation time
-
-
-def write_manifest(data_dir: Path, cat: Catalog, s: dict, base: str) -> None:
-    """Write a per-pack manifest: emoji name (keywords) + custom_emoji_id."""
-    keys = s.get("keys") or []
-    if not keys:
-        return
-    md = data_dir / "manifests"
-    md.mkdir(parents=True, exist_ok=True)
-    # The brand logo is the set's first sticker but not a catalog item, so
-    # len(keys) is one short of what is actually in the pack. Reporting the
-    # short number here made the manifest say 199 for a 200-emoji pack, which
-    # is the internal row count and not what anyone opening this file wants.
-    logo = 1 if s.get("logo") else 0
-    lines = [f"# {s.get('title', s['name'])}", "",
-             f"Pack: https://t.me/addemoji/{s['name']}  |  format: {s['fmt']}"
-             f"  |  {len(keys) + logo} emoji",
-             "", "| # | Name | Emoji ID |", "|---|------|----------|"]
-    if logo:
-        lines.append("| 1 | brand logo | |")
-    for i, key in enumerate(keys, 1 + logo):
-        it = cat.get(key)
-        name = ", ".join(it.keywords[:2]) if it and it.keywords else (
-            it.sources[0] if it and it.sources else key)
-        cid = (cat.custom_emoji_id_for(base, key) if it else "") or ""
-        lines.append(f"| {i} | {name} | {cid} |")
-    (md / f"{s['name']}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    log.info("manifest written: manifests/%s.md (%d emoji)",
-             s["name"], len(keys) + logo)
 
 
 def publish_format(tg: Telegram, cat: Catalog, *, fmt: str, plan_keys: list[str],
@@ -530,55 +433,6 @@ def _record_cids(tg: Telegram, cat: Catalog, fmt_sets: list[dict], base: str,
 # "_by_<bot_username>", 1-64 characters. This validates the part we choose; the
 # "_by_<bot>" tail is appended for us and is not optional -- Telegram rejects a
 # name without it.
-_BASE_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)*")
-# The longest suffix a base can pick up: one format letter, a set index, and
-# "_by_" plus the bot username. Checked against the real username at publish
-# time; this is the static part.
-_NAME_MAX = 64
-
-
-def valid_base(base: str) -> str:
-    """The chosen part of a set name, checked against Telegram's rule.
-
-    Underscores are allowed -- this used to reject them, which is stricter than
-    Telegram and refuses a perfectly legal name like YourBrand_Emoji_Packs.
-    Consecutive underscores are not, and neither is a trailing one, because
-    "<base>_" + "1_by_..." is fine but "<base>_" + "_by_..." is not, and the
-    rule is easier to hold as "single underscores between parts".
-    """
-    if not _BASE_RE.fullmatch(base):
-        raise SystemExit(
-            "ERROR: --base must begin with a letter and contain only letters, "
-            "digits and single underscores between them (Telegram's rule for a "
-            "sticker-set name). Examples: 'mypack', 'YourBrand_Emoji_Packs'.")
-    return base
-
-
-def check_name_length(base: str, bot: str, tag: str = "") -> None:
-    """Refuse a base that cannot fit Telegram's 64-character set name.
-
-    Caught here rather than as a Bot API error on the first upload, which is
-    after the plan is frozen and the run has already started.
-    """
-    longest = f"{base}{tag}999_by_{bot}"
-    if len(longest) > _NAME_MAX:
-        raise SystemExit(
-            f"ERROR: --base '{base}' is too long: the set name would reach "
-            f"{len(longest)} characters ('{longest}') and Telegram allows "
-            f"{_NAME_MAX}. Shorten --base by {len(longest) - _NAME_MAX}.")
-
-
-def parse_formats(raw: str) -> list[str]:
-    """Validate --formats. Dropping unknown values silently made ``--formats
-    garbage`` a successful run that published nothing at all."""
-    parts = [f.strip() for f in raw.split(",")]
-    if any(f not in FMT_TAG for f in parts) or len(set(parts)) != len(parts):
-        raise ValueError(f"--formats must be a comma list of "
-                         f"{'/'.join(FMT_TAG)} with no duplicates or blanks; "
-                         f"got {raw!r}.")
-    return parts
-
-
 def main(argv: list[str] | None = None) -> int:
     load_env()
     setup_logging("build_collection")
