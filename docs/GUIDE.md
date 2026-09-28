@@ -2023,7 +2023,10 @@ both**: point a webhook at the Worker and this poller goes deaf on that token.
 
 Operational notes: run exactly one instance (two concurrent `getUpdates` cause
 **409 Conflict**). For groups the bot needs admin or privacy-mode off to see
-messages; for channels it must be an admin to receive `channel_post`.
+messages; for channels it must be an admin to receive `channel_post`, and the
+channel's id must be listed in `BOT_ALLOWED_CHANNEL_IDS` (in `.env`, and as a
+Worker secret). A channel post has no sender to check, so an unlisted channel is
+ignored; empty means the bots answer no channel at all.
 
 ---
 

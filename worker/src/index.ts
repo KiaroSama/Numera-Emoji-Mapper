@@ -18,7 +18,7 @@
  * or the other, and see worker/README.md for how to hand a token back.
  */
 
-import { parseAdmins, verifyBearer, verifyWebhook } from "./auth";
+import { parseAdmins, parseChannels, verifyBearer, verifyWebhook } from "./auth";
 import { announce, handleUpdate, LOG_ECHO } from "./handle";
 import { log } from "./logging";
 import { Telegram } from "./telegram";
@@ -78,7 +78,8 @@ async function onWebhook(request: Request, env: Env, ctx: ExecutionContext,
   const tg = new Telegram(token, env.TELEGRAM_API_BASE);
   const admins = parseAdmins(env.ADMIN_USER_IDS);
   try {
-    const outcome = await handleUpdate(tg, update, admins, env.LOG_CHAT_ID);
+    const outcome = await handleUpdate(tg, update, admins, env.LOG_CHAT_ID,
+                                       parseChannels(env.BOT_ALLOWED_CHANNEL_IDS));
     // Our own log line coming back from the channel. Recording it would log a
     // line about a line -- two of them, since both bots administer that channel.
     // A routine INFO line goes to console/Workers Logs only, never to D1.

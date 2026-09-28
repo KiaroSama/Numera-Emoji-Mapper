@@ -375,6 +375,27 @@ def allowed_user_ids() -> set[int]:
     return out
 
 
+def allowed_channel_ids() -> set[int]:
+    """Channel ids whose posts the bot answers (``BOT_ALLOWED_CHANNEL_IDS``).
+
+    A channel post has no sender to check against the user allowlist, so the
+    channel itself must be listed. Unset means "no channel", never "every
+    channel": answering any channel let whoever made the bot an admin of their
+    own channel send the owner messages under a title they chose.
+    """
+    out: set[int] = set()
+    raw = os.environ.get("BOT_ALLOWED_CHANNEL_IDS", "")
+    for part in raw.replace(";", ",").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if re.fullmatch(r"-?\d+", part):
+            out.add(int(part))
+        else:
+            log.warning("ignoring malformed entry in BOT_ALLOWED_CHANNEL_IDS: %r", part)
+    return out
+
+
 def answer_typed_ids(tg: Telegram, chat_id: int, ids: list[str], *,
                      reply_to: int | None = None) -> None:
     """Reverse lookup: the user typed ids, so show them the emoji.
@@ -404,7 +425,8 @@ def answer_typed_ids(tg: Telegram, chat_id: int, ids: list[str], *,
 
 
 def handle_update(tg: Telegram, owner_id: int, upd: dict,
-                  allowed: set[int] | None = None) -> None:
+                  allowed: set[int] | None = None,
+                  channels: set[int] | None = None) -> None:
     allowed = allowed_user_ids() if allowed is None else allowed
     # Menu / commands and private messages.
     msg = upd.get("message")
@@ -447,6 +469,11 @@ def handle_update(tg: Telegram, owner_id: int, upd: dict,
 
     post = upd.get("channel_post")
     if post:
+        channels = allowed_channel_ids() if channels is None else channels
+        if post.get("chat", {}).get("id") not in channels:
+            log.info("ignoring a post from unlisted channel %s",
+                     post.get("chat", {}).get("id"))
+            return
         ids = extract_custom_emoji_ids(post)
         if ids:
             title = html.escape(str(post.get("chat", {}).get("title", "")))
@@ -473,6 +500,8 @@ def main() -> int:
                   "PACK_OWNER_USER_ID. Refusing to run an open bot.")
         return 2
     log.info("access list: %d authorized user id(s)", len(allowed_users))
+    allowed_channels = allowed_channel_ids()
+    log.info("channel list: %d channel(s) answered", len(allowed_channels))
     tg = Telegram(token)
     me = tg.get_me()
     log.info("Numera Emoji Mapper bot @%s started (owner=%s)", me.get("username"), owner_id)
@@ -515,7 +544,7 @@ def main() -> int:
             continue
         for upd in updates or []:
             try:
-                handle_update(tg, owner_id, upd, allowed_users)
+                handle_update(tg, owner_id, upd, allowed_users, allowed_channels)
             except Exception as exc:  # noqa: BLE001 - one bad update must not stop the bot
                 # Explicitly dead-lettered: acknowledged so a poison update
                 # cannot wedge the queue, but recorded at error level rather
