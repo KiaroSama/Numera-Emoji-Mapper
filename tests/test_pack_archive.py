@@ -166,6 +166,83 @@ class TheNameCarriesTheSlot(unittest.TestCase):
         self.assertNotIn(pa.LOGO_NAME, man)
         self.assertIn("lock", man)
 
+    def test_only_slot_one_can_be_the_logo(self):
+        """An unknown sticker at slot 5 is unidentified, not a second logo."""
+        live = [{"custom_emoji_id": "logo-cid"}, {"custom_emoji_id": "1"},
+                {"custom_emoji_id": "x2"}, {"custom_emoji_id": "x3"},
+                {"custom_emoji_id": "stray"}]
+        items = {KEY: {"path": Path("x.webp"), "fmt": "static",
+                       "cid": "1", "set": "set1", "keywords": ["lock"]}}
+        with self.assertLogs(pa.log, "WARNING"):
+            rows = pa._rows({"name": "set1", "title": "Pack One"}, live, items, {"1": KEY})
+        self.assertEqual(rows[0]["file"], pa.LOGO_NAME)
+        self.assertEqual([r["file"] for r in rows[2:]], [None, None, None])
+        self.assertEqual(rows[4]["note"], "not in the catalog (unidentified)")
+        hist = pa.render_history_md({"name": "set1"}, rows)
+        self.assertEqual(hist.count(pa.LOGO_NAME), 1)
+        self.assertIn("`unidentified`", hist)
+
+
+class FolderNames(unittest.TestCase):
+    def test_reserved_characters_become_underscores(self):
+        self.assertEqual(pa._folder_name("A: B?"), "A_ B_")
+
+    def test_a_plain_title_is_unchanged(self):
+        """Existing archive folders must keep their names."""
+        self.assertEqual(pa._folder_name("Pack One"), "Pack One")
+
+
+class AMovedFileStaysRecorded(unittest.TestCase):
+    """A sync that fails half-way must not un-record the files it already moved."""
+
+    def test_a_missing_second_source_keeps_the_first_move(self):
+        keys = ["s:" + "a" * 32, "s:" + "b" * 32]
+        with ExitStack() as stack:
+            tmp = Path(stack.enter_context(tempfile.TemporaryDirectory()))
+            project = tmp / "collection"
+            (project / "media").mkdir(parents=True)
+            first = project / "media" / "a.webp"
+            first.write_bytes(b"a")
+            db = tmp / "catalog.db"
+            con = sqlite3.connect(db)
+            con.executescript(
+                "CREATE TABLE items(content_key TEXT, file_path TEXT, format TEXT, keywords TEXT);"
+                "CREATE TABLE publications(base TEXT, content_key TEXT, set_name TEXT, "
+                "custom_emoji_id TEXT);")
+            for i, (key, path) in enumerate(zip(keys, (first, project / "media" / "gone.webp"), strict=True)):
+                con.execute("INSERT INTO items VALUES(?,?,?,?)", (key, str(path), "static", "[]"))
+                con.execute("INSERT INTO publications VALUES(?,?,?,?)",
+                            (pa._base(), key, "set1", str(i + 1)))
+            con.commit()
+            con.close()
+            state = tmp / "state.json"
+            state.write_text(json.dumps({"sets": [{"name": "set1", "title": "Pack One",
+                                                   "index": 1, "live": pa.PER_SET}]}),
+                             encoding="utf-8")
+            logo = tmp / "logo.png"
+            logo.write_bytes(b"logo")
+            archive = tmp / "archive"
+
+            class TG:
+                def get_sticker_set(self, name):
+                    return {"stickers": [{"custom_emoji_id": "logo"},
+                                         {"custom_emoji_id": "1"}, {"custom_emoji_id": "2"}]}
+
+            for p in (patch.object(pa, "CATALOG", db), patch.object(pa, "DATA_DIR", project),
+                      patch.object(pa, "_state_file", lambda: state),
+                      patch.object(pa, "archive_root", lambda: archive),
+                      patch.object(pa.operator_config, "brand_logo_path", lambda: logo)):
+                stack.enter_context(p)
+            with self.assertLogs(pa.log, "ERROR"):
+                self.assertEqual(pa._sync(TG()), pa.EXIT_FAILED)
+            con = sqlite3.connect(db)
+            stored = dict(con.execute("SELECT content_key, file_path FROM items").fetchall())
+            con.close()
+            moved = archive / "Pack One" / pa.archive_name(2, "static", keys[0], ".webp")
+            self.assertEqual(stored[keys[0]], str(moved))
+            self.assertTrue(moved.is_file())
+            self.assertFalse(first.exists())
+
 
 if __name__ == "__main__":
     # A direct run skips tests/__init__.py, the credential scrub and socket
