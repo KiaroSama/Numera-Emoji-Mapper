@@ -25,9 +25,13 @@ class OffScreenCostsNothing(unittest.TestCase):
         # One flag decides both media kinds, and it is driven by intersection.
         self.assertIn("e.isIntersecting", io_block)
         self.assertIn("setPlaying(t, live)", io_block, "video must be paused when it scrolls away, not muted")
-        self.assertIn("t.dataset.still", io_block, "an animated image must fall back to its single frame")
+        self.assertIn("inView.delete(t)", io_block)
+        self.assertIn("showStill(t)", io_block, "an animated image must fall back to its single frame")
         # Coming back must restore it -- a one-way stop would leave a dead grid.
-        self.assertIn("t.dataset.anim", io_block)
+        self.assertIn("inView.add(t)", io_block)
+        allocate = block(SCRIPT, "function allocate(){", chr(10) + "}")
+        self.assertIn("showMotion(", allocate)
+        self.assertIn("ANIM_BUDGET", allocate, "the animation budget must bound what plays")
 
     def test_a_mounted_card_is_observed_and_an_unmounted_one_released(self):
         """mount() creates the nodes, so it is what must start observing; the
@@ -38,6 +42,7 @@ class OffScreenCostsNothing(unittest.TestCase):
         self.assertIn("videoIO.observe(n)", mount)
         unmount = block(SCRIPT, "function unmountCard(c){", "const videoIO")
         self.assertIn("animIO.unobserve(n)", unmount)
+        self.assertIn("forgetNode(n)", unmount, "an unmounted card must leave the budget's sets")
         self.assertIn("videoIO.unobserve(n)", unmount)
         self.assertIn("cards.delete(c.dataset.key);", unmount)
 

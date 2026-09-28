@@ -341,6 +341,7 @@ function unmountCard(c){
   cards.delete(c.dataset.key);
   for(const n of c.querySelectorAll('img[data-anim],video[data-play]')){
     if(animIO) animIO.unobserve(n);
+    forgetNode(n);
     // A detached <video> keeps its player, and its decoder, until the garbage
     // collector gets round to it. Release it now: fifty-six of them alive at
     // once is what the old page paid for on every load.

@@ -99,7 +99,56 @@ class AnimationCost(unittest.TestCase):
         return row
 
     def test_a_scroll_gesture_reports_its_cost_at_compact_zoom(self):
-        self._scroll_scenario(0.4)
+        row = self._scroll_scenario(0.4)
+        # Owner decision 2026-09-28: the 24 nearest the centre, not every card.
+        self.assertLessEqual(row["playing"], 24)
+        self.assertLessEqual(row["swaps"], 48, "a scroll must touch only what was playing")
+
+    def _compact(self):
+        page = self.open()
+        page.evaluate("setZoom(0.4)")
+        self.settle(page)
+        return page
+
+    def test_light_mode_animates_at_most_the_budget(self):
+        page = self._compact()
+        visible = page.evaluate("window.__visibleAnimated()")
+        self.assertGreater(visible, 24, "the scenario must have more on screen than the budget")
+        self.assertEqual(page.evaluate("window.__animating()"), min(24, visible))
+
+    def test_the_budget_goes_to_the_cards_nearest_the_centre(self):
+        page = self._compact()
+        far_playing, near_idle = page.evaluate("""(() => {
+            const cx = innerWidth / 2, cy = headerH + (innerHeight - headerH) / 2;
+            const d = n => { const r = n.getBoundingClientRect();
+                             const x = r.left + r.width / 2 - cx, y = r.top + r.height / 2 - cy;
+                             return x * x + y * y; };
+            const vis = [...document.querySelectorAll('#grid img[data-anim]')].filter(n => {
+                const r = n.getBoundingClientRect(); return r.bottom > headerH && r.top < innerHeight; });
+            const on = vis.filter(n => n.getAttribute('src') === n.dataset.anim).map(d);
+            const off = vis.filter(n => n.getAttribute('src') !== n.dataset.anim).map(d);
+            return [Math.max(...on), Math.min(...off)];
+        })()""")
+        # Ties at the boundary are equally near, so only "no idle card is nearer".
+        self.assertLessEqual(far_playing, near_idle + 1)
+
+    def test_all_visible_brings_back_every_animation(self):
+        page = self._compact()
+        page.click("#animAll")
+        self.settle(page)
+        visible = page.evaluate("window.__visibleAnimated()")
+        self.assertEqual(page.evaluate("window.__animating()"), visible)
+        self.assertGreater(visible, 24)
+        page.click("#animAll")
+        self.settle(page)
+        self.assertLessEqual(page.evaluate("window.__animating()"), 24)
+
+    def test_undo_restores_the_all_visible_switch(self):
+        page = self._compact()
+        page.click("#animAll")
+        self.assertEqual(page.get_attribute("#animAll", "aria-pressed"), "true")
+        page.keyboard.press("Control+z")
+        self.assertEqual(page.get_attribute("#animAll", "aria-pressed"), "false")
 
     def test_a_scroll_gesture_reports_its_cost_at_full_zoom(self):
         self._scroll_scenario(1)
