@@ -10,7 +10,7 @@ function snapshot(){
   return {order: ITEMS.map(x=>x.key), included: ITEMS.filter(x=>x.included).map(x=>x.key),
     packs: ITEMS.filter(x=>x.pack!=null).map(x=>[x.key,x.pack]),
     picked: [...picked], selMode, lastPick, lastIdx, holds: [...holdOrigins],
-    zoom, anim: ANIM_ON, animAll: ANIM_ALL, bg: BGS.find(x=>document.body.classList.contains('bg-'+x)) || 'checker'};
+    zoom, anim: ANIM_ON, animAll: ANIM_ALL, videoReal: VIDEO_REAL, bg: BGS.find(x=>document.body.classList.contains('bg-'+x)) || 'checker'};
 }
 function remember(snap){
   if(restoring) return;
@@ -50,6 +50,7 @@ function applySnapshot(snap, persist=true){
     paintSelLabel();
     ANIM_ON=snap.anim; prefs.set('animOn',ANIM_ON?'1':'0');
     if('animAll' in snap) setAnimAll(snap.animAll);
+    if('videoReal' in snap) setVideoReal(snap.videoReal);
     setZoom(snap.zoom); applyBg(snap.bg);
     relayout(); updateCount(); applyAnim(); markSelDirty();
     if(persist && before !== ITEMS.filter(x=>!x.isLogo).map(x=>x.key).join('\0')) saveOrder();
@@ -417,7 +418,7 @@ async function flushUILog(){
   finally{clearTimeout(deadline);uiLogFlight=false;}
 }
 const loggedButtons={toHold:'hold',unholdAll:'unhold',undo:'undo',redo:'redo',resetAll:'reset',
-  selmode:'selection',all:'selection',none:'selection',inv:'selection',anim:'animation',animAll:'animation',
+  selmode:'selection',all:'selection',none:'selection',inv:'selection',anim:'animation',animAll:'animation',videoReal:'animation',
   bg:'backdrop',zoomIn:'zoom',zoomOut:'zoom',zoomReset:'zoom'};
 document.addEventListener('click',e=>{
   const button=e.target.closest('button');

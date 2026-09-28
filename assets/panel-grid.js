@@ -83,7 +83,16 @@ function previewSources(img,key){
 function makeThumb(it){
   const box = el('div','thumb');
   const src = '/img/' + encodeURIComponent(it.key);
-  if(it.fmt === 'video'){
+  if(it.fmt === 'video' && !VIDEO_REAL){
+    // By default a video emoji is an animated preview image, decoded off the
+    // main thread and inside the animation budget; "Real video" brings back
+    // the player below for whoever needs the original file.
+    const img = el('img');
+    img.decoding = 'async';
+    img.alt = it.label || '';
+    previewSources(img, encodeURIComponent(it.key));
+    box.appendChild(img);
+  } else if(it.fmt === 'video'){
     const v = el('video');
     v.muted = true; v.loop = true; v.playsInline = true;
     // Plays on its own, like the animated cards. Hover-only was rejected: a

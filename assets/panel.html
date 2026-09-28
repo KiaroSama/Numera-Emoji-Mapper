@@ -63,7 +63,7 @@ h1 .dot{color:var(--neon)}
 #zoomReset{font-variant-numeric:tabular-nums;min-width:64px}
 /* A switch, not a label that happens to say On. The pill on the left is the
    state: green when animations run, red when they are frozen. */
-#anim,#animAll{--btn:#34ebc6;--btnLine:#14584c;display:flex;align-items:center;gap:8px}
+#anim,#animAll,#videoReal{--btn:#34ebc6;--btnLine:#14584c;display:flex;align-items:center;gap:8px}
 .switch .knob{width:26px;height:14px;border-radius:8px;flex:none;position:relative;
   background:#3a4657;transition:background .18s}
 .switch .knob::after{content:"";position:absolute;top:2px;left:2px;width:10px;
@@ -324,6 +324,7 @@ body.compact .glyph,body.compact .lbl,body.compact .sub{display:none}
     <button id="bg" title="Switch preview backdrop so black / hollow / faint emoji are visible">Backdrop: Checker</button>
     <button id="anim" class="switch" aria-pressed="true" title="Freeze every animation on their first frame. The lightest the panel gets -- nothing is decoding."><span class="knob"></span><span id="animLabel">Animation: On</span></button>
     <button id="animAll" class="switch" aria-pressed="false" title="Animate every visible card instead of the 24 nearest the centre. Heavier."><span class="knob"></span><span id="animAllLabel">All visible: Off</span></button>
+    <button id="videoReal" class="switch" aria-pressed="false" title="Play the original video files instead of light previews. Heavier."><span class="knob"></span><span id="videoRealLabel">Real video: Off</span></button>
     <button id="selmode" class="switch" aria-pressed="false" title="Pick several emoji and move them together. Drag from a pick box to select a run; drag a picked card to carry the whole set."><span class="knob"></span><span id="selLabel">Selection: Off</span></button>
     <button id="toHold" title="Move every picked emoji to the holding area (excluded from the next publish, kept for later)">&#8594; Hold</button>
   </div>

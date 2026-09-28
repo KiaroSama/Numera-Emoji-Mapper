@@ -50,7 +50,9 @@ class OffScreenCostsNothing(unittest.TestCase):
         """A <video> costs a media player from the moment it has a source, and
         creating or tearing one down was the 60-140 ms frame that survived the
         virtual grid. The card carries the URL; the observer attaches it."""
-        video = block(SCRIPT, "if(it.fmt === 'video'){", "} else if(it.fmt === 'animated'){")
+        preview = block(SCRIPT, "if(it.fmt === 'video' && !VIDEO_REAL){", "} else if(it.fmt === 'video'){")
+        self.assertIn("previewSources(", preview, "by default a video card is a preview image")
+        video = block(SCRIPT, "} else if(it.fmt === 'video'){", "} else if(it.fmt === 'animated'){")
         self.assertIn("v.dataset.src = src", video)
         self.assertNotIn("v.src =", video, "a mounted card must not create a player by itself")
         attach = block(SCRIPT, "function attachVideo(v, on){", "function setPlaying")

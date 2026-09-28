@@ -75,7 +75,12 @@ def preview_bytes(key: str, src: Path, db_path: Path, fps: int,
             and legacy.parent.resolve() == cache.resolve() and legacy.is_file()):
         return legacy.read_bytes()
     name = hashlib.sha256(key.encode("utf-8")).hexdigest()
-    dest = cache / f"{name}@{'still' if still else fps}-{size}.webp"
+    video = src.suffix.lower() == ".webm"
+    # A moving video preview gets its own name: older runs wrote a single frame
+    # under `@<fps>-<size>` for a video, and that file must not be served as
+    # the animation.
+    tier = "still" if still else (f"v{fps}" if video else str(fps))
+    dest = cache / f"{name}@{tier}-{size}.webp"
     if dest.is_file():
         return dest.read_bytes()
     with _guard:
@@ -90,7 +95,10 @@ def preview_bytes(key: str, src: Path, db_path: Path, fps: int,
                         media.lottie_preview_webp(src, dest, fps=fps, size=size)
                 else:
                     cache.mkdir(parents=True, exist_ok=True)
-                    if src.suffix.lower() == ".webm":
+                    if video and not still:
+                        _write(dest, _video_animation(src, fps, size))
+                        return dest.read_bytes()
+                    if video:
                         cmd = [media.ffmpeg_path(), "-v", "error", *video_decode.decoder_args(src),
                                "-i", str(src), "-frames:v", "1", "-an", "-threads", "1",
                                "-vf", f"scale={size}:{size},format=rgba", "-f", "rawvideo", "-"]
@@ -103,7 +111,43 @@ def preview_bytes(key: str, src: Path, db_path: Path, fps: int,
                     with frame:
                         buf = io.BytesIO()
                         frame.save(buf, "WEBP", lossless=True, exact=True)
-                    tmp = dest.with_suffix(".tmp.webp")
-                    tmp.write_bytes(buf.getvalue())
-                    tmp.replace(dest)
+                    _write(dest, buf.getvalue())
         return dest.read_bytes()
+
+
+def _write(dest: Path, data: bytes) -> None:
+    tmp = dest.with_suffix(".tmp.webp")
+    tmp.write_bytes(data)
+    tmp.replace(dest)
+
+
+# 90 frames = 3 s at 30 fps, Telegram's limit for a video emoji, so a valid
+# sticker is never cut short while a broken one cannot run the decode forever.
+_MAX_VIDEO_FRAMES = 90
+
+
+def _video_animation(src: Path, fps: int, size: int) -> bytes:
+    """A video emoji as an animated WebP: the same decode path as its still.
+
+    A grid of `<video>` elements costs a media player per card, and creating or
+    tearing one down was the 60-140 ms frames left after the grid went virtual.
+    An animated image decodes off the main thread and joins the animation budget.
+    The decoder is the one `video_decode` chooses, so the alpha layer survives.
+    """
+    cmd = [media.ffmpeg_path(), "-v", "error", *video_decode.decoder_args(src),
+           "-i", str(src), "-frames:v", str(_MAX_VIDEO_FRAMES), "-an", "-threads", "1",
+           "-vf", f"fps={fps},scale={size}:{size},format=rgba", "-f", "rawvideo", "-"]
+    raw = media._run(cmd, capture=True).stdout
+    step = size * size * 4
+    frames = [Image.frombytes("RGBA", (size, size), raw[i:i + step])
+              for i in range(0, len(raw) - step + 1, step)]
+    if not frames:
+        raise media.MediaError(f"{src.name}: no frames decoded")
+    buf = io.BytesIO()
+    if len(frames) == 1:
+        frames[0].save(buf, "WEBP", lossless=True, exact=True)
+    else:
+        frames[0].save(buf, "WEBP", save_all=True, append_images=frames[1:],
+                       duration=round(1000 / fps), loop=0, lossless=False,
+                       quality=media.PREVIEW_QUALITY, method=4)
+    return buf.getvalue()

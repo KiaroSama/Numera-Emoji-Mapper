@@ -80,6 +80,29 @@ class PreviewResponses(unittest.TestCase):
             get("animated?fps=1000&size=10000")
         self.assertEqual(refused.exception.code, 400)
 
+    def test_a_video_preview_moves_and_keeps_its_alpha(self):
+        """Video cards are animated images by default, so the preview must move."""
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        data = Path(temp.name)
+        for i in range(10):
+            with Image.new("RGBA", (100, 100), (25 * i, 200 - 15 * i, 90, 128)) as img:
+                img.save(data / f"f{i:02d}.png", "PNG")
+        video = data / "clip.webm"
+        subprocess.run([media.ffmpeg_path(), "-v", "error", "-y", "-framerate", "10",
+                        "-i", str(data / "f%02d.png"), "-c:v", "libvpx-vp9",
+                        "-pix_fmt", "yuva420p", "-threads", "1", "-auto-alt-ref", "0", str(video)],
+                       check=True, timeout=20, stdin=subprocess.DEVNULL, capture_output=True)
+        db = data / "catalog.db"
+        first = panel_preview.preview_bytes("v:clip", video, db, 10, still=False, size=72)
+        with Image.open(io.BytesIO(first)) as img:
+            self.assertEqual(img.size, (72, 72))
+            self.assertGreater(img.n_frames, 1, "a video preview must animate")
+            self.assertLess(img.convert("RGBA").getextrema()[3][1], 200,
+                            "the video decoder silently dropped alpha")
+        self.assertEqual(panel_preview.preview_bytes("v:clip", video, db, 10, still=False, size=72), first)
+        self.assertTrue(any("@v10-72" in p.name for p in (data / "preview").iterdir()))
+
 
 class TheWarmUpRendersBeforeTheScroll(unittest.TestCase):
     """Every preview miss used to be paid at scroll time, behind a bound of 2.
