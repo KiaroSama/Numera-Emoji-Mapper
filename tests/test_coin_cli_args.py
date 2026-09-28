@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -81,6 +82,26 @@ class AnUnrecognisedArgumentCannotSelectTheLiveBranch(unittest.TestCase):
                 self.assertTrue(ap_seen.get("reached"),
                                 "--dry must be accepted, not rejected as unknown")
 
+    def test_an_unset_token_stops_a_live_run_before_any_download(self):
+        """The token was read only after minutes of searching and downloading,
+        and then as os.environ[...] -- a bare KeyError traceback."""
+        def no_network(*_a, **_k):
+            raise AssertionError("the network was reached before the token check")
+
+        for name, mod in self._mods().items():
+            if name == "fetch_logos":
+                continue
+            with self.subTest(module=name):
+                with mock.patch.dict("os.environ", {"CMC_API_KEY": "k"}), \
+                        mock.patch.object(mod, "load_env", lambda: None), \
+                        mock.patch("coins._http.get", no_network), \
+                        contextlib.redirect_stderr(io.StringIO()) as err, \
+                        self.assertRaises(SystemExit) as caught:
+                    os.environ.pop("TELEGRAM_BOT_TOKEN", None)
+                    mod.main([])
+                self.assertEqual(caught.exception.code, 2)
+                self.assertIn("TELEGRAM_BOT_TOKEN is not set", err.getvalue())
+
     def test_fetch_logos_page_count_is_not_read_at_import(self):
         """`fetch_logos.py --help` used to raise ValueError from int(sys.argv[1]).
 
@@ -106,4 +127,6 @@ class AnUnrecognisedArgumentCannotSelectTheLiveBranch(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # A direct run skips tests/__init__.py, the credential scrub and socket
+    # block that exist because a test once changed a live pack.
+    raise SystemExit("Run this suite as: python -m unittest tests.test_coin_cli_args -v")

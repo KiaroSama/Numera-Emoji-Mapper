@@ -301,7 +301,9 @@ class AHangingRequestDoesNotWedgeTheQueue(PanelQueueCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # A direct run skips tests/__init__.py, the credential scrub and socket
+    # block that exist because a test once changed a live pack.
+    raise SystemExit("Run this suite as: python -m unittest tests.test_panel_queues -v")
 
 
 class CompleteSaveSnapshots(PanelQueueCase):

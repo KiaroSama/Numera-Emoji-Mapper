@@ -73,10 +73,14 @@ def _under_a_test_runner() -> bool:
     of the process entry point, so an ordinary CLI run cannot trip it -- and a
     false positive would only mean .env is not auto-loaded, with explicit
     environment variables still working. It fails safe in both directions.
+    A direct `python tests/test_x.py` run has no `__spec__`, and every test
+    module imports `unittest` while no entry point does, so its presence is the
+    reliable signal for that case.
     """
     spec = getattr(sys.modules.get("__main__"), "__spec__", None)
     entry = getattr(spec, "name", "") or ""
-    return entry.split(".")[0] in {"unittest", "pytest"} or "pytest" in sys.modules
+    return (entry.split(".")[0] in {"unittest", "pytest"}
+            or "pytest" in sys.modules or "unittest" in sys.modules)
 
 
 def load_env() -> None:

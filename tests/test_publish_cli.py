@@ -10,7 +10,6 @@ import io
 import json
 import os
 import sys
-import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
@@ -605,4 +604,6 @@ class PublishThroughMain(_CatalogFixture):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # A direct run skips tests/__init__.py, the credential scrub and socket
+    # block that exist because a test once changed a live pack.
+    raise SystemExit("Run this suite as: python -m unittest tests.test_publish_cli -v")

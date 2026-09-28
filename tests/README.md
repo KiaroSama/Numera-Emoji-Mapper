@@ -9,6 +9,8 @@ Run from the repository root:
 **`-t .` is required.** Without it the tests directory becomes the top-level,
 modules load as `test_x` instead of `tests.test_x`, and `tests/__init__.py`
 never runs — which disables the guard described below.
+One module: `python -m unittest tests.test_x -v` — never `python tests/test_x.py`,
+which skips the guard and now refuses to start.
 `SuiteIsHermetic.test_the_guard_was_installed_before_the_test_modules` fails
 loudly if the suite is started without it, and names the correct command.
 
