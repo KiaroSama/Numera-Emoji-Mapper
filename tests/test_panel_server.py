@@ -175,6 +175,76 @@ class OnlyOnePanelPerPort(unittest.TestCase):
             self.assertEqual(response.status, 200)
 
 
+class ConnectionsAreReused(unittest.TestCase):
+    """HTTP/1.1 keep-alive: one connection per browser slot, not per thumbnail."""
+
+    TOKEN = "keep-alive-token"
+
+    def setUp(self):
+        import http.client
+        import threading
+        from http.server import ThreadingHTTPServer
+
+        self.http = http.client
+        self.accepted = 0
+        outer = self
+
+        class Counting(ThreadingHTTPServer):
+            def get_request(self):
+                outer.accepted += 1
+                return super().get_request()
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        db = Path(tmp.name) / "catalog.db"
+        Catalog(db).close()
+        server = Counting(("127.0.0.1", 0), p.make_handler([], {}, db, self.TOKEN))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+
+        def stop():
+            server.shutdown()
+            thread.join(timeout=10)
+            server.server_close()
+            self.assertFalse(thread.is_alive())
+
+        self.addCleanup(stop)
+        self.conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=10)
+        self.addCleanup(self.conn.close)
+
+    def _post(self, path, body: bytes, length: str | None = None):
+        headers = {"X-Panel-Token": self.TOKEN, "Content-Type": "application/json",
+                   "Content-Length": length or str(len(body))}
+        self.conn.request("POST", path, body=body, headers=headers)
+        return self.conn.getresponse()
+
+    def test_two_requests_share_one_connection(self):
+        for _ in range(2):
+            self.conn.request("GET", "/api/ping")
+            response = self.conn.getresponse()
+            response.read()
+            self.assertEqual(response.status, 200)
+        self.assertEqual(self.accepted, 1)
+
+    def test_an_oversized_body_closes_the_connection(self):
+        response = self._post("/api/save", b"", length="99999999")
+        response.read()
+        self.assertEqual(response.status, 413)
+        self.assertEqual(response.getheader("Connection"), "close",
+                         "the unread body must never be parsed as the next request")
+
+    def test_an_empty_answer_keeps_the_connection_usable(self):
+        response = self._post("/api/client-log", b'{"events": [{"event": "ready"}]}')
+        self.assertEqual(response.read(), b"")
+        self.assertEqual(response.status, 204)
+        self.assertIsNone(response.getheader("Content-Length"), "RFC 9110 8.6: none on a 204")
+        self.conn.request("GET", "/api/ping")
+        again = self.conn.getresponse()
+        again.read()
+        self.assertEqual(again.status, 200)
+        self.assertEqual(self.accepted, 1)
+
+
 if __name__ == "__main__":
     # A direct run skips tests/__init__.py, the credential scrub and socket
     # block that exist because a test once changed a live pack.

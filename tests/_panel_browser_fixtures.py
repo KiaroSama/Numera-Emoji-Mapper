@@ -144,6 +144,14 @@ Object.defineProperty(window, 'localStorage', {configurable: true, get: boom});
 """
 
 
+class _Server(ThreadingHTTPServer):
+    # The panel's own server listens with the same backlog. The stdlib's 5
+    # refused connections while a page opened its seven scripts and a screen of
+    # previews at once, and a refused script surfaced as "snapshot is not
+    # defined" in whichever test happened to be running on a busy machine.
+    request_queue_size = 64
+
+
 class Harness:
     """One browser, one served panel, for the life of a test class."""
 
@@ -178,7 +186,7 @@ class Harness:
             view, by_key, hidden = panel.build_view(cat, "")
         self.png = (self.data / "media" / "static" / "i0.png").read_bytes()
         handler = panel.make_handler(view, by_key, self.db, TOKEN, hidden=hidden)
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        self.httpd = _Server(("127.0.0.1", 0), handler)
         self.url = f"http://127.0.0.1:{self.httpd.server_address[1]}/"
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()

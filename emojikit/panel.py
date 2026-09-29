@@ -121,6 +121,16 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
         hidden_now[0] = fresh_hidden
 
     class Handler(BaseHTTPRequestHandler):
+        # Keep-alive: the default HTTP/1.0 opened a new connection (and a new
+        # handler thread) for every thumbnail, and a browser allows six per host.
+        # It requires an accurate Content-Length on every response; _send() is
+        # the only writer and always sends one.
+        protocol_version = "HTTP/1.1"
+        # Small responses otherwise wait on the peer's delayed ACK.
+        disable_nagle_algorithm = True
+        # An idle kept-alive connection must not hold its thread forever.
+        timeout = 30
+
         def log_message(self, *a):  # quiet default logging
             pass
 
@@ -132,7 +142,12 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
             try:
                 self.send_response(code)
                 self.send_header("Content-Type", ctype)
-                self.send_header("Content-Length", str(len(body)))
+                # RFC 9110 8.6: a 204 carries no body and no Content-Length;
+                # every other response needs an accurate one for keep-alive.
+                if code != 204:
+                    self.send_header("Content-Length", str(len(body)))
+                if self.close_connection:
+                    self.send_header("Connection", "close")
                 if cache:
                     self.send_header("Cache-Control", cache)
                 self.end_headers()
@@ -275,9 +290,13 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
             try:
                 n = int(self.headers.get("Content-Length"))
             except (TypeError, ValueError):
+                # The body was never read, so what follows on this connection is
+                # not a request: close it instead of parsing a body as one.
+                self.close_connection = True
                 self._send(411, b'{"error":"Content-Length required"}')
                 return None
             if n < 0 or n > MAX_BODY:
+                self.close_connection = True
                 self._send(413, b'{"error":"body too large"}')
                 return None
             return n
@@ -312,6 +331,7 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
             # 403 explaining what was wrong.
             raw = self._read_body(n)
             if raw is None:
+                self.close_connection = True
                 return
 
             why = self._mutation_allowed()
@@ -369,13 +389,17 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
                     if ok:
                         cat = Catalog(db_path)
                         try:
-                            if not set(keys) <= {it.content_key for it in cat.all_items()}:
-                                self._send(409, b'{"error":"catalog identities changed; export the draft and reload"}')
-                                return
-                            cat.set_order(keys)
-                            cat.set_meta("order_seeded", "1")
+                            changed = not set(keys) <= {it.content_key for it in cat.all_items()}
+                            if not changed:
+                                cat.set_order(keys)
+                                cat.set_meta("order_seeded", "1")
                         finally:
                             cat.close()
+                        # Answered only after the catalog is closed: a client that
+                        # acts on the reply must not find its files still held.
+                        if changed:
+                            self._send(409, b'{"error":"catalog identities changed; export the draft and reload"}')
+                            return
                         # Reorder the in-memory view to match (logo stays first).
                         pos = {k: i for i, k in enumerate(keys)}
                         view.sort(key=lambda v: (not v.get("isLogo"), pos.get(v["key"], 1 << 30)))
@@ -540,6 +564,9 @@ def main(argv: list[str] | None = None, *, reuse_existing: bool = True) -> int:
         # nothing and only closing the launcher -- which kills every instance --
         # made a change show up.
         allow_reuse_address = False
+        # The stdlib backlog of 5 refused connections while a page opened its
+        # scripts and a screenful of thumbnails at once.
+        request_queue_size = 64
 
         # Don't dump a traceback when a browser simply drops a connection
         # (very common while scrolling a media-heavy grid on Windows).
