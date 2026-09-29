@@ -48,11 +48,11 @@ class CheckAllPacksTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def _main(self, tg, session):
+        tg.session = session
         with mock.patch.object(cap, "STATE", self.dir / "state.json"), \
                 mock.patch.object(cap, "AUDIT", self.audit), \
                 mock.patch.object(cap, "REPORT", self.report), \
                 mock.patch.object(cap, "Telegram", lambda token: tg), \
-                mock.patch.object(cap.requests, "Session", lambda: session), \
                 mock.patch.object(cap, "load_env", lambda: None), \
                 mock.patch.object(cap, "setup_logging", lambda *a, **k: None), \
                 mock.patch.object(cap.time, "sleep", lambda s: None), \
@@ -143,12 +143,12 @@ class CheckAllPacksListingRetry(unittest.TestCase):
         return path
 
     def _main(self, tg, session, state):
+        tg.session = session
         self.out = io.StringIO()
         with mock.patch.object(cap, "STATE", state), \
                 mock.patch.object(cap, "AUDIT", self.audit), \
                 mock.patch.object(cap, "REPORT", self.report), \
                 mock.patch.object(cap, "Telegram", lambda token: tg), \
-                mock.patch.object(cap.requests, "Session", lambda: session), \
                 mock.patch.object(cap, "load_env", lambda: None), \
                 mock.patch.object(cap, "setup_logging", lambda *a, **k: None), \
                 mock.patch.object(cap.time, "sleep", lambda s: None), \

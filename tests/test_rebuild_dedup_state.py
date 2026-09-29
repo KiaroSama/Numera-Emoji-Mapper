@@ -91,14 +91,14 @@ class OldPackDeletionMustBeConfirmed(RebuildCase):
 
     def test_partial_deletion_records_only_what_is_gone(self):
         tg = FakeTelegram(live={"old1": 5, "old2": 5})
-        real_call = tg._call
+        real_call = tg.call
 
         def only_first(method, *, data=None, **kw):
             if method == "deleteStickerSet" and data["name"] == "old2":
                 raise RuntimeError("deleteStickerSet failed: BOT_ACCESS_DENIED")
             return real_call(method, data=data, **kw)
 
-        tg._call = only_first
+        tg.call = only_first
         with self.assertRaises(SystemExit) as caught:
             rd.build(tg, "bot")
         self.assertEqual(caught.exception.code, bp.EXIT_PARTIAL)

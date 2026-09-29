@@ -32,6 +32,34 @@ def _make_png(path: Path, color, size=(80, 60), fmt="PNG") -> Path:
     return path
 
 
+def make_png(path: Path, color=(200, 30, 30, 255), *, size: int = 100,
+             inset: int = 20) -> Path:
+    """A transparent square canvas with one opaque block, `inset` px from each edge.
+
+    The publisher suites each carried a copy of this; a solid block on
+    transparency is what an emoji looks like to every check that reads alpha.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    im.paste(color, (inset, inset, size - inset, size - inset))
+    im.save(path, "PNG")
+    return path
+
+
+def encode_vp9(frames_dir: Path, out: Path, *, pattern: str = "%03d.png",
+               fps: int = 30, codec: str = "libvpx-vp9") -> Path:
+    """Encode a directory of numbered RGBA frames into a WebM that keeps alpha.
+
+    `-auto-alt-ref 0` because VP8 refuses to encode transparency with alt-ref
+    frames enabled.
+    """
+    media._run([media.ffmpeg_path(), "-y", "-v", "error", "-framerate", str(fps),
+                "-i", str(frames_dir / pattern), "-c:v", codec,
+                "-pix_fmt", "yuva420p", "-auto-alt-ref", "0", str(out)],
+               capture=True)
+    return out
+
+
 def _make_anim_gif(path: Path, size=(64, 64), frames=6) -> Path:
     imgs = []
     for i in range(frames):

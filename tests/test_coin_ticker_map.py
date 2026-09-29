@@ -211,7 +211,7 @@ class CanonicalMapWritersCannotLoseAnUpdate(unittest.TestCase):
         (self.tmp / "state.json").write_text(
             json.dumps({"sets": [{"index": 1, "name": "s1"}]}), encoding="utf-8")
 
-        def cached(tg, token, sets, cache, cache_path):
+        def cached(tg, sets, cache, cache_path):
             """Skip the download phase: one live signature, already analysed."""
             sig = mod.signature(Image.open(emoji / "btc.png"))
             cache["sigs"]["live-btc"] = mod.base64.b64encode(

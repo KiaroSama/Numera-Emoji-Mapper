@@ -131,7 +131,7 @@ class MapIsResolvedByImageIdentity(RebuildCase):
         the lock from the first live read to the write prevents it.
         """
         attempts: list[BaseException | None] = []
-        real_call = self.tg._call
+        real_call = self.tg.call
 
         def a_provider_runs_mid_read(method, *, data=None, **kw):
             if method == "getStickerSet" and not attempts:
@@ -143,7 +143,7 @@ class MapIsResolvedByImageIdentity(RebuildCase):
                     attempts.append(exc)
             return real_call(method, data=data, **kw)
 
-        self.tg._call = a_provider_runs_mid_read
+        self.tg.call = a_provider_runs_mid_read
         dmap.map_and_fill(self.tg)
         self.assertIsInstance(
             attempts[0], ps.LockBusy,
@@ -237,10 +237,14 @@ class SharedLogoGuard(unittest.TestCase):
             self.assertEqual(self.dmap.unapproved_shared_groups(mapping), {})
 
     def test_the_real_committed_map_is_checked_against_the_real_groups(self):
-        """The shipped map must not regain an unreviewed collision."""
+        """The operator's map must not regain an unreviewed collision.
+
+        Local-only: coins/ticker_to_id.json is git-ignored, so CI always skips
+        this and it guards only a machine that has the real map.
+        """
         ids = ROOT / "coins" / "ticker_to_id.json"
         if not ids.is_file():
-            self.skipTest("no committed ticker map")
+            self.skipTest("local-only: coins/ticker_to_id.json is not tracked")
         mapping = json.loads(ids.read_text(encoding="utf-8"))
         bad = self.dmap.unapproved_shared_groups(mapping)
         biggest = max((len(v) for v in bad.values()), default=0)

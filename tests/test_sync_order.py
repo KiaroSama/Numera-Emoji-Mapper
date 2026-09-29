@@ -101,9 +101,16 @@ class TheRecordedOrderFollowsTheLiveOne(unittest.TestCase):
         return {"name": name, "logo": True,
                 "stickers": _live("logo", *live_cids)}
 
+    # No stub for desired_order: the fake catalog lists items in panel order,
+    # so the REAL function is what these tests exercise. The old stubs were
+    # assigned and never restored, hiding it from every later test too.
+    def test_desired_order_is_the_panel_order_of_the_live_ids(self):
+        cat = self._Cat([("b", "s:b"), (None, "s:unpublished"), ("x", "s:x"),
+                         ("a", "s:a")])
+        self.assertEqual(so.desired_order(cat, {"a", "b"}), ["b", "a"])
+
     def test_a_reorder_rewrites_the_recorded_keys(self):
         cat = self._Cat([("a", "s:a"), ("b", "s:b"), ("c", "s:c")])
-        so.desired_order = lambda _c, live: [c for c in ("a", "b", "c") if c in live]
         tg = self._tg()
         tg.get_sticker_set.return_value = {"stickers": _live("logo", "c", "a", "b")}
         rec = {"name": "pk1_by_bot", "logo": True, "keys": ["s:c", "s:a", "s:b"]}
@@ -118,7 +125,6 @@ class TheRecordedOrderFollowsTheLiveOne(unittest.TestCase):
         cannot be gated on there being moves to make.
         """
         cat = self._Cat([("a", "s:a"), ("b", "s:b")])
-        so.desired_order = lambda _c, live: [c for c in ("a", "b") if c in live]
         tg = self._tg()
         tg.get_sticker_set.return_value = {"stickers": _live("logo", "a", "b")}
         rec = {"name": "pk1_by_bot", "logo": True, "keys": ["s:b", "s:a"]}
@@ -128,7 +134,6 @@ class TheRecordedOrderFollowsTheLiveOne(unittest.TestCase):
 
     def test_a_report_only_run_leaves_the_record_alone(self):
         cat = self._Cat([("a", "s:a"), ("b", "s:b")])
-        so.desired_order = lambda _c, live: [c for c in ("a", "b") if c in live]
         tg = self._tg()
         tg.get_sticker_set.return_value = {"stickers": _live("logo", "b", "a")}
         rec = {"name": "pk1_by_bot", "logo": True, "keys": ["s:b", "s:a"]}

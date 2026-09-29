@@ -143,7 +143,7 @@ class FakeTelegram:
     # bug the retry test exists to catch.
     send_message = tg_api.Telegram.send_message
 
-    def _call(self, method, *, data=None, **kw):
+    def call(self, method, *, data=None, **kw):
         if method == "deleteStickerSet":
             self.deleted.append(data["name"])
             if self.delete_error:
@@ -165,6 +165,9 @@ class FakeTelegram:
                 raise RuntimeError("getStickerSet failed: STICKERSET_INVALID")
             return sset
         raise AssertionError(f"unexpected API call {method}")
+
+    # The bound real send_message goes through the private name.
+    _call = call
 
     @property
     def mutations(self) -> int:
