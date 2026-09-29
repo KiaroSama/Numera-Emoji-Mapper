@@ -72,8 +72,12 @@ function selectionBody(){
           known: real.map(x=>x.key),
           packs: real.filter(x=>x.pack!=null).map(x=>[x.key,x.pack])};
 }
+// The page never gains or loses a key -- a reorder keeps the same set -- so the
+// sorted scope is computed once instead of on every click that marks the page dirty.
+const KNOWN_SORTED = ITEMS.filter(x=>!x.isLogo).map(x=>x.key).sort();
 function selectionSig(body){
-  return JSON.stringify([body.known.slice().sort(), body.excluded.slice().sort(),
+  const known = body.known.length === KNOWN_SORTED.length ? KNOWN_SORTED : body.known.slice().sort();
+  return JSON.stringify([known, body.excluded.slice().sort(),
     body.packs.map(p=>p.slice()).sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0)]);
 }
 let ackedSel = selectionSig(selectionBody());

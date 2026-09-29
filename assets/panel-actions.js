@@ -226,3 +226,4 @@ relayout();
 updateCount();
 markSelDirty();   // the page loads showing exactly what the server has
 applyAnim();
+observeLayout();  // after everything render() needs has loaded

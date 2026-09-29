@@ -143,6 +143,28 @@ class AnimationCost(unittest.TestCase):
         self.settle(page)
         self.assertLessEqual(page.evaluate("window.__animating()"), 24)
 
+    def test_a_drag_storm_writes_no_unchanged_css_variable(self):
+        """A drag relayouts on every step; each --var write restyled every card."""
+        counter = """
+            window.__varWrites = 0;
+            const _set = CSSStyleDeclaration.prototype.setProperty;
+            CSSStyleDeclaration.prototype.setProperty = function(name) {
+              if (String(name).startsWith('--')) window.__varWrites++;
+              return _set.apply(this, arguments);
+            };"""
+        self.errors = []
+        page = H.open(fx.synth(300), init=counter, on_error=self.errors.append,
+                      cleanup=self.addCleanup)
+        self.addCleanup(lambda: self.assertEqual(self.errors, []))
+        page.evaluate("window.__varWrites = 0")
+        ms = page.evaluate("""(() => { const t = performance.now();
+            for (let i = 0; i < 30; i++) window.__reorder(i, i + 5);
+            return performance.now() - t; })()""")
+        print("PANEL_PERF " + json.dumps({"scenario": "reorder-30", "ms": round(ms, 1),
+                                          "var_writes": page.evaluate("window.__varWrites")}),
+              flush=True)
+        self.assertEqual(page.evaluate("window.__varWrites"), 0)
+
     def test_undo_restores_the_all_visible_switch(self):
         page = self._compact()
         page.click("#animAll")
