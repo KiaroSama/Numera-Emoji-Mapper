@@ -142,6 +142,66 @@ function originFor(it){
   return {index,pack,slot:ITEMS.slice(start,index).filter(x=>x.included||x.isLogo).length,
           anchor:ITEMS[start]?.key};
 }
+// Every item's origin as the ONE current state gives it (holdKeys: the picks
+// leave together, so none of them sees the others gone). One packStarts() for
+// the batch instead of two per item.
+function originsFor(items){
+  const want=new Set(items), starts=packStarts().starts, out=new Map();
+  let run=-1, slot=0, before=0;
+  for(let i=0;i<ITEMS.length;i++){
+    const it=ITEMS[i];
+    if(run+1<starts.length&&starts[run+1].index===i){run++;slot=0;}
+    if(want.has(it)){
+      const r=run>=0?starts[run]:null;
+      out.set(it.key,{index:i,pack:it.pack ?? (r ? (r.pack ?? 'new:'+run) : 'new:0'),
+                      slot:r?slot:before,anchor:ITEMS[r?r.index:0]?.key});
+    }
+    if(it.included||it.isLogo){slot++;before++;}
+  }
+  return out;
+}
+
+// setIncluded() for a whole batch, in ITEMS order, with exactly its sequential
+// meaning: each origin is taken with every EARLIER item of the batch already
+// toggled and every later one not yet. It walks ITEMS once, carrying both of
+// packStarts()'s ways of drawing runs, instead of two packStarts() and a slice
+// per item -- the difference between ~60 ms and a few for "Deselect all" on
+// a thousand cards. tests/test_panel_perf.py BulkHoldEquivalence holds it to
+// the item-by-item result.
+function setIncludedMany(pairs){
+  const on=new Map();
+  for(const [it,v] of pairs) if(!it.isLogo && it.included!==v) on.set(it,v);
+  if(!on.size) return;
+  const logo=ITEMS.find(x=>x.isLogo), capacity=PER_SET-(logo?1:0);
+  let members=ITEMS.filter(x=>x.pack!=null&&x.included).length;
+  const M={n:0,last:null,cur:undefined,slot:0}, C={n:0,last:null,inPack:0,slot:0};
+  let before=0;
+  const stepM=(s,it,inc,i)=>{ if(inc&&it.pack!=null&&(!s.n||it.pack!==s.cur)){
+    s.n++;s.cur=it.pack;s.last={index:i,pack:it.pack};s.slot=0;} };
+  const stepC=(s,it,inc,i)=>{ if(!it.isLogo&&inc){
+    if(s.inPack===0){s.n++;s.last={index:i,pack:null};s.slot=0;}
+    s.inPack++; if(s.inPack>=capacity) s.inPack=0; } };
+  for(let i=0;i<ITEMS.length;i++){
+    const it=ITEMS[i];
+    const next=on.has(it)?on.get(it):it.included;
+    if(on.has(it)&&!next){
+      // Its origin, with the item itself still included, as originFor() sees it.
+      const m={...M}, c={...C};
+      stepM(m,it,true,i); stepC(c,it,true,i);
+      const s=members>0?m:c, r=s.last;
+      holdOrigins.set(it.key,{index:i,
+        pack:it.pack ?? (r ? (r.pack ?? 'new:'+(s.n-1)) : 'new:0'),
+        slot:r?(r.index===i?0:s.slot):before, anchor:ITEMS[r?r.index:0]?.key});
+    } else if(on.has(it)) holdOrigins.delete(it.key);
+    if(on.has(it)){
+      if(it.pack!=null) members+=next?1:-1;
+      it.included=next; setCard(it);
+    }
+    stepM(M,it,it.included,i); stepC(C,it,it.included,i);
+    if(it.included||it.isLogo){M.slot++;C.slot++;before++;}
+  }
+}
+
 function setIncluded(it,on){
   if(it.isLogo || it.included===on) return;
   if(!on) holdOrigins.set(it.key,originFor(it));
@@ -299,7 +359,7 @@ function holdKeys(keys,snap){
   const items=ITEMS.filter(x=>keys.has(x.key)&&!x.isLogo&&x.included);
   if(!items.length)return;
   remember(snap);
-  const origins=new Map(items.map(it=>[it.key,originFor(it)]));
+  const origins=originsFor(items);
   for(const it of items){setIncluded(it,false);holdOrigins.set(it.key,origins.get(it.key));}
   clearPicked();relayout();updateCount();markSelDirty();
 }

@@ -7,7 +7,7 @@
 let lastIdx = null;
 
 function setAll(fn){ remember();
-  for(const it of ITEMS){ if(it.isLogo) continue; setIncluded(it, fn(it)); }
+  setIncludedMany(ITEMS.filter(it=>!it.isLogo).map(it=>[it, fn(it)]));
   // relayout() too, not just the counter: unticking moves the pack splits.
   relayout(); updateCount(); markSelDirty(); }
 
