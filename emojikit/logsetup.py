@@ -38,7 +38,7 @@ import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
-from emojikit.build_pack import safe_int_env
+from emojikit.cli_env import safe_int_env   # the leaf, not build_pack: it imports this module
 
 # Project root = parent of this package directory.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -63,10 +63,14 @@ def log_retention_days() -> int:
 
 # Env vars whose *values* are secrets and must be masked wherever they appear.
 SECRET_ENV_KEYS = ("TELEGRAM_BOT_TOKEN", "GENERAL_BOT_TOKEN", "CMC_API_KEY",
-                   "BOT_TOKEN", "API_KEY", "TOKEN")
+                   "BOT_TOKEN", "API_KEY", "TOKEN", "WORKER_PUBLISH_SECRET",
+                   "GENERAL_WEBHOOK_SECRET", "COIN_WEBHOOK_SECRET")
 
 # Token-shaped patterns (catch secrets even if not registered as a value).
-_TOKEN_RE = re.compile(r"\b\d{6,}:[A-Za-z0-9_-]{20,}\b")
+# No \b: a token reaches us as ".../bot123456:AAH...", and `t` and `1` are both
+# word characters, so a word boundary is exactly what is NOT there in the one
+# position that matters. The Worker's redactor learned the same thing.
+_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9_-])(?:bot)?\d{6,}:[A-Za-z0-9_-]{20,}")
 _BOT_URL_RE = re.compile(r"/bot\d{6,}:[A-Za-z0-9_-]{20,}/")
 
 # Registered literal secret values (longest-first matching is applied).
