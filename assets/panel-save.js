@@ -265,7 +265,7 @@ function saveOrder(){
 setInterval(async ()=>{
   try{
     const r = await fetch('/api/ping', {cache:'no-store'});
-    if(!r.ok) throw new Error(r.status);
+    if(!r.ok) throw new Error(String(r.status));
     // Through the SAME schedule the timers use. Calling flushOrder directly
     // from here walked past the backoff entirely, so a refusal that had earned
     // a 30-second wait was re-sent every five seconds instead.

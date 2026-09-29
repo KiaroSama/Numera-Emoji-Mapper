@@ -50,7 +50,7 @@ function importDraft(text){
   return true;
 }
 
-const draftFile=document.getElementById('draftFile');
+const draftFile=/** @type {HTMLInputElement} */ (document.getElementById('draftFile'));
 document.getElementById('importDraft').onclick=()=>draftFile.click();
 draftFile.addEventListener('change',()=>{
   const file=draftFile.files&&draftFile.files[0];
