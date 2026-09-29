@@ -233,6 +233,22 @@ class ConnectionsAreReused(unittest.TestCase):
         self.assertEqual(response.getheader("Connection"), "close",
                          "the unread body must never be parsed as the next request")
 
+    def test_the_page_refuses_framing_and_sniffing(self):
+        self.conn.request("GET", "/")
+        page = self.conn.getresponse()
+        page.read()
+        self.assertEqual(page.status, 200)
+        self.assertEqual(page.getheader("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(page.getheader("Referrer-Policy"), "no-referrer")
+        self.assertEqual(page.getheader("X-Frame-Options"), "DENY")
+        self.assertEqual(page.getheader("Content-Security-Policy"), "frame-ancestors 'none'")
+        self.conn.request("GET", f"/static/panel-grid.js?v={p.ASSET_VER}")
+        script = self.conn.getresponse()
+        script.read()
+        self.assertEqual(script.status, 200)
+        self.assertEqual(script.getheader("X-Content-Type-Options"), "nosniff")
+        self.assertIsNone(script.getheader("X-Frame-Options"), "only documents need it")
+
     def test_an_empty_answer_keeps_the_connection_usable(self):
         response = self._post("/api/client-log", b'{"events": [{"event": "ready"}]}')
         self.assertEqual(response.read(), b"")
