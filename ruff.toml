@@ -1,7 +1,7 @@
 # Linting for Numera Emoji Mapper.
 #
 # The rule set is not a preference -- it is the one this codebase already
-# assumes. 122 `# noqa` comments were written against a linter that was never
+# assumes. The `# noqa` comments were written against a linter that was never
 # configured, so nobody could tell whether they were accurate or superstition.
 # Enabling exactly the codes they name (E402, BLE001) makes every one of them
 # load-bearing, and RUF100 fails the moment one stops being needed.
@@ -12,10 +12,10 @@ exclude = ["collection_archive", ".claude", "graphify-out"]
 [lint]
 select = [
     "E4", "E7", "E9", "F",  # ruff's default: real errors, not style opinions
-    "E402",    # import not at top -- 62 deliberate noqas guard the
-               # sys.path.insert() that every entry point needs before it can
-               # import the package it lives beside
-    "BLE001",  # blind `except Exception` -- 60 deliberate noqas, each one
+    "E402",    # import not at top -- each noqa marks an import that must
+               # follow setup code (a path for a standalone script, an
+               # environment variable a test sets before the import)
+    "BLE001",  # blind `except Exception` -- every noqa
                # marking a place where swallowing really is the right answer
                # (optional labels, log housekeeping). An unmarked one is a bug.
     "B",       # bugbear: mutable defaults, loop-variable capture, and

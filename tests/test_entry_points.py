@@ -5,9 +5,9 @@ the script died with ImportError before main() ever ran -- and nothing noticed,
 because no test imported it. This discovers the entry points instead of listing
 them, so a new tool is covered the moment it is added.
 
-It is a TEST rather than a CI step on purpose: GitHub Actions for this
-repository is currently blocked before its first step by an account billing
-condition, so a CI-only guard would protect nothing today.
+It is a TEST rather than a separate CI step on purpose: the same guard then
+runs locally and in every job of CI's Python matrix, instead of in one place
+that a local check would never see.
 """
 
 from __future__ import annotations
