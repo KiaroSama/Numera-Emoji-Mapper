@@ -171,7 +171,7 @@ def _map_and_fill(tg: Telegram) -> None:
     sets = sorted(state["sets"], key=lambda x: x["index"])
     live: list[tuple[str, str]] = []
     for s in sets:
-        for st in tg._call("getStickerSet",
+        for st in tg.call("getStickerSet",
                            data={"name": s["name"]}).get("stickers", []):
             live.append((str(st.get("custom_emoji_id", "")),
                          str(st.get("file_id", ""))))

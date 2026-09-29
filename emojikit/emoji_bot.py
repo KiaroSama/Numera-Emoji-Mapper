@@ -294,7 +294,7 @@ def enrich_labels(tg: Telegram, ids: list[str]) -> dict[str, str]:
     out: dict[str, str] = {}
     try:
         for i in range(0, len(ids), 200):
-            res = tg._call("getCustomEmojiStickers",
+            res = tg.call("getCustomEmojiStickers",
                            data={"custom_emoji_ids": json.dumps(ids[i:i + 200])})
             for st in res or []:
                 cid = str(st.get("custom_emoji_id"))
@@ -327,7 +327,7 @@ def send_reply(tg: Telegram, chat_id: int, ids: list[str], *, reply_to: int | No
             # a timeout AFTER Telegram accepted the message is indistinguishable
             # from one before it. Retrying turns one outage into several
             # identical replies.
-            tg._call("sendMessage", retries=1, data=_data(text))
+            tg.call("sendMessage", retries=1, data=_data(text))
         except BotApiError as exc:
             # Telegram answered and REJECTED this message -- typically an id the
             # bot cannot render as <tg-emoji>. It definitely did not arrive, so
@@ -336,7 +336,7 @@ def send_reply(tg: Telegram, chat_id: int, ids: list[str], *, reply_to: int | No
                         redact(str(exc)))
             if plain is None:
                 plain = build_payloads(ids, labels, rich=False)
-            tg._call("sendMessage", retries=1, data=_data(plain[i][0]))
+            tg.call("sendMessage", retries=1, data=_data(plain[i][0]))
         except Exception as exc:  # noqa: BLE001
             # No answer from Telegram: the rich message MAY have arrived. Sending
             # the fallback here is what posted the same reply twice. Report and
@@ -421,7 +421,7 @@ def answer_typed_ids(tg: Telegram, chat_id: int, ids: list[str], *,
             "parse_mode": "HTML", "disable_web_page_preview": True}
     if reply_to:
         data["reply_to_message_id"] = reply_to
-    tg._call("sendMessage", retries=1, data=data)
+    tg.call("sendMessage", retries=1, data=data)
 
 
 def handle_update(tg: Telegram, owner_id: int, upd: dict,
@@ -441,14 +441,14 @@ def handle_update(tg: Telegram, owner_id: int, upd: dict,
                      sender, chat.get("type"))
             if chat.get("type") == "private":
                 try:
-                    tg._call("sendMessage",
+                    tg.call("sendMessage",
                              data={"chat_id": chat_id, "text": DENIED_TEXT})
                 except Exception as exc:  # noqa: BLE001 - denial is best-effort
                     log.debug("could not send denial: %s", redact(str(exc)))
             return
         text = msg.get("text", "") or ""
         if text.startswith("/start") or text.startswith("/help") or text.startswith("/menu"):
-            tg._call("sendMessage", data={"chat_id": chat_id, "text": START_TEXT,
+            tg.call("sendMessage", data={"chat_id": chat_id, "text": START_TEXT,
                                           "parse_mode": "HTML"})
             return
         typed = parse_id_list(text)
@@ -504,9 +504,10 @@ def main() -> int:
     log.info("channel list: %d channel(s) answered", len(allowed_channels))
     tg = Telegram(token)
     me = tg.get_me()
-    log.info("Numera Emoji Mapper bot @%s started (owner=%s)", me.get("username"), owner_id)
+    # The owner id is personal data; the log says it is set, not what it is.
+    log.info("Numera Emoji Mapper bot @%s started (owner id set)", me.get("username"))
     try:
-        tg._call("setMyCommands", data={"commands": json.dumps([
+        tg.call("setMyCommands", data={"commands": json.dumps([
             {"command": "start", "description": "How to use the bot"},
             {"command": "help", "description": "Show help / menu"},
         ])})
@@ -527,7 +528,7 @@ def main() -> int:
     allowed_update_types = ["message", "channel_post", "my_chat_member"]
     while True:
         try:
-            updates = tg._call("getUpdates", data={
+            updates = tg.call("getUpdates", data={
                 "offset": offset, "timeout": 50,
                 "allowed_updates": json.dumps(allowed_update_types),
             })

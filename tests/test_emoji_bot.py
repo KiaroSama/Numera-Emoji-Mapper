@@ -272,7 +272,7 @@ class TestIdsTypedAsText(unittest.TestCase):
                 return [{"custom_emoji_id": self.A, "emoji": "✅"}]
             return {"message_id": 1}
 
-        tg._call.side_effect = fake
+        tg.call.side_effect = fake
         b.answer_typed_ids(tg, 900, [self.A, self.B])
         sent = " ".join(str(kw) for m, kw in calls if m == "sendMessage")
         self.assertIn("does not know", sent, "the unresolved id must be reported")
@@ -282,7 +282,7 @@ class TestIdsTypedAsText(unittest.TestCase):
     def test_when_nothing_resolves_it_says_so_once(self):
         tg = mock.Mock()
         calls = []
-        tg._call.side_effect = lambda m, **kw: (
+        tg.call.side_effect = lambda m, **kw: (
             calls.append((m, kw)) or ([] if m == "getCustomEmojiStickers" else {}))
         b.answer_typed_ids(tg, 900, [self.A])
         sends = [kw for m, kw in calls if m == "sendMessage"]
@@ -296,7 +296,7 @@ class TestAccessControl(unittest.TestCase):
     def setUp(self):
         self.sent = []
         self.tg = mock.Mock()
-        self.tg._call.side_effect = lambda m, **kw: self.sent.append((m, kw))
+        self.tg.call.side_effect = lambda m, **kw: self.sent.append((m, kw))
 
     def _msg(self, uid, text="hi", chat_type="private"):
         return {"message": {"message_id": 1, "text": text,
@@ -417,7 +417,7 @@ class TestMainWiring(unittest.TestCase):
                 return [upd]
             return []
 
-        tg._call.side_effect = _call
+        tg.call.side_effect = _call
 
         def _capture(tg_, owner, update, allowed, channels=None):
             self.seen.append(allowed)

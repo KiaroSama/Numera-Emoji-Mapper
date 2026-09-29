@@ -49,7 +49,6 @@ import time
 from collections import Counter
 from pathlib import Path
 
-import requests
 from PIL import Image
 
 # numpy is used ONLY here, by nearest()'s blocked distance matrix -- nothing
@@ -64,7 +63,7 @@ except ImportError as exc:
 
 from emojikit.build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL, EXIT_USAGE, load_env)
 from emojikit.packstate import (LockBusy, canonical_map_lock, exclusive_lock, pack_family_lock_path, write_json_atomic)
-from emojikit.telegram_api import (Telegram, api_base)
+from emojikit.telegram_api import Telegram
 from emojikit.logsetup import setup_logging
 from emojikit import operator_config
 
@@ -158,7 +157,7 @@ def save_cache(path: Path, cache: dict) -> None:
     write_json_atomic(path, cache)
 
 
-def download_live(tg: Telegram, token: str, sets: list[dict], cache: dict,
+def download_live(tg: Telegram, sets: list[dict], cache: dict,
                   cache_path: Path) -> list[str]:
     """Cache one signature per live sticker (resumable).
 
@@ -168,7 +167,6 @@ def download_live(tg: Telegram, token: str, sets: list[dict], cache: dict,
     downloaded and analysed; marking it done regardless let a set be cached as
     finished with zero usable signatures.
     """
-    sess = requests.Session()
     live_cids: set[str] = set()
     incomplete: list[str] = []
     for s in sets:
@@ -185,16 +183,15 @@ def download_live(tg: Telegram, token: str, sets: list[dict], cache: dict,
             if cid in cache["sigs"]:
                 continue
             try:
-                fp = tg._call("getFile", data={"file_id": st["file_id"]})["file_path"]
-                r = sess.get(f"{api_base()}/file/bot{token}/{fp}", timeout=40)
-                r.raise_for_status()  # an error page is not an image
-                sig = signature(Image.open(io.BytesIO(r.content)))
+                # Through the client: it owns the token-bearing file URL, the
+                # retries and the check that an error page is not an image.
+                sig = signature(Image.open(io.BytesIO(tg.download_bytes(st["file_id"]))))
                 cache["sigs"][cid] = base64.b64encode(sig.astype(np.uint8).tobytes()).decode()
                 cache["errors"].pop(cid, None)
             except Exception as exc:  # noqa: BLE001
-                # The file URL embeds the bot token, and requests puts the URL
-                # in its exception text -- never store that raw.
-                cache["errors"][cid] = tg._safe(exc)
+                # Redacted all the same: a transport error can carry a URL,
+                # and this text is stored in the cache file.
+                cache["errors"][cid] = tg.safe(exc)
                 log.warning("set %s pos %d cid %s failed: %s",
                             s["name"], pos, cid, cache["errors"][cid])
             time.sleep(0.02)
@@ -334,7 +331,7 @@ def _remap(args: argparse.Namespace, token: str) -> int:
 
     cache_path = Path(args.cache)
     cache = load_cache(cache_path)
-    incomplete = download_live(tg, token, sets, cache, cache_path)
+    incomplete = download_live(tg, sets, cache, cache_path)
 
     cids = list(cache["sigs"].keys())
     tickers, local = build_local(Path(args.emoji_dir))

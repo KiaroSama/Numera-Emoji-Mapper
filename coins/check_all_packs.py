@@ -34,12 +34,11 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
-import requests
 from PIL import Image
 
 from emojikit.build_pack import (EXIT_FAILED, EXIT_USAGE, ingest_exit_code, load_env)
 from emojikit.packstate import (write_json_atomic)
-from emojikit.telegram_api import (Telegram, api_base)
+from emojikit.telegram_api import Telegram
 from emojikit.logsetup import setup_logging
 # The pipeline's single definition of "this image is effectively empty" -- this
 # module used to carry its own copy of the rule and its two constants.
@@ -77,7 +76,6 @@ def main() -> int:
         return EXIT_USAGE
     setup_logging("check_all_packs")
     tg = Telegram(token)
-    sess = requests.Session()
     state = json.loads(STATE.read_text("utf-8"))
     sets = sorted(state["sets"], key=lambda x: x["index"])
 
@@ -96,7 +94,7 @@ def main() -> int:
                 sticks = tg.get_sticker_set(name).get("stickers", [])
                 break
             except Exception as exc:  # noqa: BLE001
-                print(f"  retry {attempt} set{s['index']} listing: {tg._safe(exc)}",
+                print(f"  retry {attempt} set{s['index']} listing: {tg.safe(exc)}",
                       flush=True)
                 time.sleep(2 * attempt)
         if sticks is None:
@@ -117,22 +115,17 @@ def main() -> int:
             if cached and not cached.get("error"):
                 continue          # only a successful analysis is final
             data, err = None, ""
-            for attempt in range(1, 5):
-                try:
-                    fp = tg._call("getFile", data={"file_id": st["file_id"]})["file_path"]
-                    r = sess.get(f"{api_base()}/file/bot{token}/{fp}", timeout=40)
-                    r.raise_for_status()  # an error page is not an image
-                    data = r.content
-                    break
-                except Exception as exc:  # noqa: BLE001
-                    # _safe strips the bot token that the file URL embeds.
-                    err = tg._safe(exc)
-                    print(f"  retry {attempt} set{s['index']} pos{pos}: {err}", flush=True)
-                    time.sleep(2 * attempt)
+            try:
+                # Through the client: it owns the token-bearing file URL, the
+                # retries and the check that an error page is not an image.
+                data = tg.download_bytes(st["file_id"])
+            except Exception as exc:  # noqa: BLE001 - recorded as an error, retried next run
+                err = tg.safe(exc)
+                print(f"  download failed set{s['index']} pos{pos}: {err}", flush=True)
             try:
                 h, blank = analyze(data) if data else ("", None)
             except Exception as exc:  # noqa: BLE001
-                err = tg._safe(exc)
+                err = tg.safe(exc)
                 print(f"  ANALYZE FAILED set{s['index']} pos{pos}: {err}", flush=True)
                 h, blank = "", None
             if blank is None:
