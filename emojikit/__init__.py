@@ -16,4 +16,6 @@ State, API, migration, gallery and panel implementations share this package.
 
 from __future__ import annotations
 
+__version__ = "2.0.0"
+
 __all__ = ["logsetup", "media", "catalog"]
