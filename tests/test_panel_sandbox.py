@@ -145,6 +145,35 @@ class TheCloneSharesNothingWithTheSource(SandboxFixture):
                                 (b.stat().st_dev, b.stat().st_ino))
             self.assertEqual(a.read_bytes(), b.read_bytes(), "content must still match")
 
+    def test_the_preview_cache_is_copied_not_shared(self):
+        self.fill()
+        (self.source / "preview").mkdir()
+        cached = self.media(self.source / "preview", "a.webp", b"RIFF-preview")
+        dest = self.dest()
+        sandbox_clone.clone_catalog(self.source, dest)
+        copy = dest / "preview" / "a.webp"
+        self.assertEqual(copy.read_bytes(), cached.read_bytes())
+        self.assertNotEqual((cached.stat().st_dev, cached.stat().st_ino),
+                            (copy.stat().st_dev, copy.stat().st_ino))
+
+    def test_a_failed_preview_copy_does_not_refuse_the_clone(self):
+        """Previews are derived: without them the sandbox renders on demand."""
+        self.fill()
+        (self.source / "preview").mkdir()
+        self.media(self.source / "preview", "a.webp", b"RIFF-preview")
+        real = shutil.copyfile
+
+        def picky(src, dst, *a, **k):
+            if Path(src).parent.name == "preview":
+                raise OSError("disk full")
+            return real(src, dst, *a, **k)
+
+        dest = self.dest()
+        with mock.patch.object(sandbox_clone.shutil, "copyfile", picky), \
+                self.assertLogs("panel_sandbox", "WARNING"):
+            self.assertEqual(sandbox_clone.clone_catalog(self.source, dest), 1)
+        self.assertTrue((dest / "catalog.db").is_file())
+
     def test_a_media_file_outside_the_source_is_copied_in_not_referenced(self):
         """The old code hit `except ValueError: continue` for these, leaving the
         sandbox serving -- and able to write over -- the owner's real archive."""

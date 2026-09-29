@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib
 import json
+import logging
 import os
 import shutil
 import sqlite3
@@ -20,6 +21,8 @@ from emojikit import media_paths, sqlite_snapshot
 from emojikit.maintenance import writer
 from emojikit.packstate import LockBusy, exclusive_lock, write_json_atomic
 from emojikit.state_artifacts import state_files
+
+log = logging.getLogger("panel_sandbox")
 
 TMP_PREFIX = "panel-sandbox-"
 MARKER_NAME = ".sandbox-owner.json"
@@ -186,6 +189,7 @@ def _owned_clone(source: Path, dest: Path, *, project_root: Path | None, discard
                     shutil.copyfile(state, dest / state.name)
                 count = _rebase_media(con, source, dest, root)
                 con.commit()
+            _copy_previews(source, dest)
             # Source ownership ends here; the served clone owns no production lease.
             write_marker(dest)
             ready = True
@@ -195,6 +199,26 @@ def _owned_clone(source: Path, dest: Path, *, project_root: Path | None, discard
                 # Remove only this invocation's directory while still owning its
                 # external lease. Preserve the lease tombstone itself forever.
                 shutil.rmtree(dest)
+
+
+def _copy_previews(source: Path, dest: Path) -> None:
+    """Carry the preview cache over, so a sandbox does not re-render it all.
+
+    A cold clone spent minutes rendering what the real catalog already had.
+    Previews are derived data, so unlike media a failed copy never refuses the
+    clone -- the sandbox just renders those on demand. Real copies, never links:
+    the clone shares no storage with its source.
+    """
+    try:
+        files = [p for p in (source / "preview").glob("*.webp")
+                 if p.is_file() and not p.is_symlink()]
+        if files:
+            (dest / "preview").mkdir(exist_ok=True)
+        for p in files:
+            shutil.copyfile(p, dest / "preview" / p.name)
+    except OSError as exc:
+        log.warning("preview cache not copied into the sandbox (%s); "
+                    "previews render on demand instead", exc)
 
 
 def clone_catalog(source: Path, dest: Path, *, project_root: Path | None = None) -> int:
