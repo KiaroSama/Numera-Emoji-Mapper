@@ -497,7 +497,7 @@ def fix_one(tg: Telegram, uid: int, sets: list[dict], map_path: Path,
         # silently uploaded an empty body. The applied_check makes those retries
         # safe at all.
         try:
-            tg._call("replaceStickerInSet", data={
+            tg.call("replaceStickerInSet", data={
                 "user_id": uid, "name": sname, "old_sticker": old_fid,
                 "sticker": json.dumps(_input_sticker("static", ["\U0001FA99"],
                                                      [sym, str(coin.get("name", "")).lower()])),

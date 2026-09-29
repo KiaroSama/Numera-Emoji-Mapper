@@ -24,10 +24,24 @@ from pathlib import Path
 from emojikit.build_pack import (load_env)
 from emojikit.telegram_api import (Telegram)
 from emojikit.logsetup import register_secret, setup_logging
+from emojikit.pack_rows import markdown_table
 from coins._env import require_token
 
 ROOT = Path(__file__).resolve().parent
 log = logging.getLogger("write_manifests")
+
+
+def render_pack_md(s: dict, sticks: list[dict], cid_to_tickers: dict) -> str:
+    """One coin pack's manifest: position, the ticker(s) on each id, the id."""
+    rows = []
+    for pos, st in enumerate(sticks, 1):
+        cid = str(st.get("custom_emoji_id"))
+        rows.append({"n": pos, "cid": cid,
+                     "tickers": ", ".join(sorted(cid_to_tickers.get(cid, []))) or "(unmapped)"})
+    head = [f"# {s.get('title', s['name'])}", "",
+            f"Pack: https://t.me/addemoji/{s['name']}  |  {len(sticks)} stickers", ""]
+    table = markdown_table(rows, [("n", "#"), ("tickers", "Ticker(s)"), ("cid", "Emoji ID")])
+    return "\n".join(head) + "\n" + table + "\n"
 
 
 def main() -> int:
@@ -58,14 +72,8 @@ def main() -> int:
     for s in sets:
         sticks = tg.get_sticker_set(s["name"]).get("stickers", [])
         grand += len(sticks)
-        lines = [f"# {s.get('title', s['name'])}", "",
-                 f"Pack: https://t.me/addemoji/{s['name']}  |  {len(sticks)} stickers",
-                 "", "| # | Ticker(s) | Emoji ID |", "|---|-----------|----------|"]
-        for pos, st in enumerate(sticks, 1):
-            cid = str(st.get("custom_emoji_id"))
-            tickers = ", ".join(sorted(cid_to_tickers.get(cid, []))) or "(unmapped)"
-            lines.append(f"| {pos} | {tickers} | {cid} |")
-        (md_dir / f"{s['name']}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        (md_dir / f"{s['name']}.md").write_text(render_pack_md(s, sticks, cid_to_tickers),
+                                                encoding="utf-8")
         index.append(f"| {s['name']} | {len(sticks)} | https://t.me/addemoji/{s['name']} |")
         log.info("wrote manifests/%s.md (%d stickers)", s["name"], len(sticks))
     index.append("")

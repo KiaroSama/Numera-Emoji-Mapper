@@ -31,7 +31,9 @@ log = logging.getLogger("build_pack")
 
 # Custom emoji must be 100x100 PNG; build_pack uploads the prepared PNGs.
 _MIME = {".png": "image/png", ".webp": "image/webp"}
-DEFAULT_EMOJI = "\U0001FA99"  # ߞ coin
+# Named for what it is: collection_state.DEFAULT_EMOJI is a different glyph
+# (a grinning face), and two same-named constants were easy to mix up.
+COIN_DEFAULT_EMOJI = "\U0001FA99"  # ߞ coin
 # Telegram's hard cap for a custom-emoji set. See
 # https://core.telegram.org/bots/api#addstickertoset -- "Emoji sticker sets can
 # have up to 200 stickers." Exceeding it only produces STICKERS_TOO_MUCH at
@@ -150,6 +152,13 @@ class Telegram:
                     # other network error instead of escaping raw.
                     raise requests.exceptions.InvalidJSONError(
                         f"non-JSON response (HTTP {r.status_code})") from exc
+                if not isinstance(payload, dict):
+                    # Valid JSON, but not a Bot API reply ([] or "ok" from a
+                    # proxy): the same transport failure as the case above.
+                    # payload.get() on it raised AttributeError past the retry
+                    # loop and past the applied-check.
+                    raise requests.exceptions.InvalidJSONError(
+                        f"non-object JSON response (HTTP {r.status_code})")
                 if payload.get("ok"):
                     return payload["result"]
                 desc = str(payload.get("description", ""))
@@ -196,6 +205,13 @@ class Telegram:
                             attempt, retries, method, self._safe(exc), wait)
                 time.sleep(wait)
         raise RuntimeError(f"{method} failed after {retries} attempts")
+
+    # Public names for the two methods every tool outside this class uses.
+    # Private by name while 17 call sites reached for them, they were invisible
+    # to the fake-contract guard and to readers. The underscored names stay as
+    # aliases for anything that still uses them.
+    call = _call
+    safe = _safe
 
     def probe_sticker_set(self, name: str) -> tuple[bool, dict | None]:
         """Single, non-retrying live probe of a sticker set.
@@ -556,15 +572,25 @@ class Telegram:
 
     def download_file(self, file_id: str, dest: Path, retries: int = 5) -> Path:
         """Download a Telegram file (by file_id) to ``dest`` (with retries)."""
+        data = self.download_bytes(file_id, retries)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+        return dest
+
+    def download_bytes(self, file_id: str, retries: int = 5) -> bytes:
+        """A Telegram file's bytes, with retries; an error page is not a file.
+
+        The ONE place the file URL is built: it embeds the bot token, so a tool
+        that rebuilt it with its own session also had its own redaction to get
+        right -- and its own retry rules to drift.
+        """
         info = self._call("getFile", data={"file_id": file_id})
         url = f"{api_base()}/file/bot{self.token}/{info['file_path']}"
         for attempt in range(1, retries + 1):
             try:
                 r = self.s.get(url, timeout=60)
                 r.raise_for_status()
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes(r.content)
-                return dest
+                return r.content
             except requests.RequestException as exc:
                 if attempt >= retries:
                     break
@@ -651,7 +677,7 @@ def _trim_keywords(keywords: list[str]) -> list[str]:
 
 def _input_sticker(fmt: str, emoji_list: list[str], keywords: list[str]) -> dict:
     """Build a Bot API InputSticker for any custom-emoji format (uploaded as file0)."""
-    emojis = [e for e in (emoji_list or []) if e][:20] or [DEFAULT_EMOJI]
+    emojis = [e for e in (emoji_list or []) if e][:20] or [COIN_DEFAULT_EMOJI]
     return {"sticker": "attach://file0", "format": fmt,
             "emoji_list": emojis, "keywords": _trim_keywords(keywords)}
 

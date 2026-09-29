@@ -424,6 +424,7 @@ class BookkeepingFollowsLiveState(unittest.TestCase):
                 "--source-dir", str(self.src), "--token-env", "FAKE_TOKEN",
                 "--state", str(self.state)]
         with mock.patch.object(sys, "argv", argv), \
+             mock.patch.object(bp, "setup_logging", lambda *a, **k: None), \
              mock.patch.dict("os.environ", {"FAKE_TOKEN": "x"}, clear=False), \
              mock.patch.object(bp, "Telegram", return_value=self._tg(server)), \
              mock.patch.object(bp.time, "sleep", lambda s: None):
@@ -452,7 +453,7 @@ class BookkeepingFollowsLiveState(unittest.TestCase):
         tg = self._tg(srv)
         with self.assertRaises(tg_api.AmbiguousUploadError):
             tg.add_sticker(1, "t1_by_bot", self.src / "b.png",
-                           tg_api.DEFAULT_EMOJI, "kw", expected_before=1)
+                           tg_api.COIN_DEFAULT_EMOJI, "kw", expected_before=1)
         self.assertEqual(srv.adds, 2, "the add landed; it must not be re-sent")
 
     def test_a_foreign_sticker_alone_does_not_certify_the_size(self):
@@ -470,7 +471,7 @@ class BookkeepingFollowsLiveState(unittest.TestCase):
         with mock.patch.object(bp.time, "sleep", lambda s: None):
             with self.assertRaises(tg_api.AmbiguousUploadError):
                 tg.add_sticker(1, "t1_by_bot", self.src / "b.png",
-                               tg_api.DEFAULT_EMOJI, "kw", expected_before=1)
+                               tg_api.COIN_DEFAULT_EMOJI, "kw", expected_before=1)
         self.assertEqual(srv.adds, 2, "the add landed; it must not be re-sent")
         self.assertEqual(len(srv.stickers), 3,
                          "ours really is live -- only the read back lagged, "
@@ -482,7 +483,7 @@ class BookkeepingFollowsLiveState(unittest.TestCase):
         srv.adds = 1                      # skip the foreign-writer attempt
         tg = self._tg(srv)
         live = tg.add_sticker(1, "t1_by_bot", self.src / "b.png",
-                              tg_api.DEFAULT_EMOJI, "kw", expected_before=1)
+                              tg_api.COIN_DEFAULT_EMOJI, "kw", expected_before=1)
         self.assertIsNone(live, "a clean add stays at the assumed +1")
         self.assertEqual(srv.probes, 1, "only the pre-add identity snapshot")
 

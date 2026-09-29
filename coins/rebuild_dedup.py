@@ -107,7 +107,7 @@ def delete_old_packs(tg: Telegram, state: dict) -> bool:
         if name in gone:
             continue
         try:
-            tg._call("deleteStickerSet", data={"name": name})
+            tg.call("deleteStickerSet", data={"name": name})
         except Exception as exc:  # noqa: BLE001 - the probe below is the verdict
             print(f"  (old pack {name}: {exc})", flush=True)
         # Only live state proves a delete: the call can fail after applying it,

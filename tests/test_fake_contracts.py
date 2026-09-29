@@ -34,11 +34,18 @@ from emojikit.telegram_api import Telegram  # noqa: E402
 TESTS = Path(__file__).resolve().parent
 
 
+# Private, but the most-faked methods of all: every caller that bypasses a
+# wrapper goes through _call, and skipping underscores left its fakes unchecked
+# (one took `data` positionally and had no `retries`).
+_PRIVATE_BUT_FAKED = {"_call", "_safe"}
+
+
 def _real_methods() -> dict[str, inspect.Signature]:
-    """The public surface a fake could plausibly be standing in for."""
+    """The surface a fake could plausibly be standing in for."""
     out = {}
     for name, fn in vars(Telegram).items():
-        if name.startswith("_") or not callable(fn):
+        if not callable(fn) or (name.startswith("_")
+                                and name not in _PRIVATE_BUT_FAKED):
             continue
         out[name] = inspect.signature(fn)
     return out
@@ -52,6 +59,10 @@ def _fakes() -> list[tuple[Path, str, str, ast.arguments]]:
         tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
         for cls in ast.walk(tree):
             if not isinstance(cls, ast.ClassDef):
+                continue
+            # A TestCase is not a stand-in for the client: a helper named
+            # `call` on one (an HTTP request to the panel) is not Telegram.call.
+            if any("TestCase" in ast.unparse(b) for b in cls.bases):
                 continue
             for fn in cls.body:
                 if isinstance(fn, ast.FunctionDef) and fn.name in real:
