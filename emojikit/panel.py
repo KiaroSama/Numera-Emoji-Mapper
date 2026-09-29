@@ -163,6 +163,14 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
                     self.send_header("Connection", "close")
                 if cache:
                     self.send_header("Cache-Control", cache)
+                # A page on another origin can frame this loopback page and
+                # its requests still pass the Host check, so framing is refused;
+                # nosniff keeps a thumbnail from ever being run as a script.
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Referrer-Policy", "no-referrer")
+                if ctype.startswith("text/html"):
+                    self.send_header("X-Frame-Options", "DENY")
+                    self.send_header("Content-Security-Policy", "frame-ancestors 'none'")
                 self.end_headers()
                 self.wfile.write(body)
             except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
