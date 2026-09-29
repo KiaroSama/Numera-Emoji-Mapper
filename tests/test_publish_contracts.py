@@ -33,7 +33,10 @@ from emojikit import collection_media_check, collection_notify, media  # noqa: E
 from emojikit.announce import (announce_packs)  # noqa: E402
 from emojikit.catalog import Catalog  # noqa: E402
 
-from tests._bc_fixtures import FakeTG, _make_png  # noqa: E402
+import io  # noqa: E402
+from contextlib import redirect_stdout  # noqa: E402
+
+from tests._bc_fixtures import FakeTG, _CatalogFixture, _main, _make_png  # noqa: E402
 
 # --------------------------------------------------------------------------- #
 # M-04: a video is blank only if EVERY sampled frame is
@@ -411,6 +414,35 @@ class AnnouncementRoutesThroughTheWorker(unittest.TestCase):
             self._notify(tg)
         worker.assert_not_called()
         tg.send_message.assert_not_called()
+
+
+class ThePublishFollowsThePanelOrderNow(_CatalogFixture):
+    """The first run -- a dry run included -- froze the plan in that moment's
+    order, and every later run published in it. Rearranging the next pack's
+    candidates in the panel changed nothing."""
+
+    def _run(self, tg, *extra: str) -> int:
+        with mock.patch.object(bc, "Telegram", lambda token: tg), \
+                mock.patch.object(bc.time, "sleep", lambda s: None), \
+                mock.patch.dict(os.environ, {"GENERAL_BOT_TOKEN": "x",
+                                             "PACK_LINKS_CHAT_ID": ""}), \
+                redirect_stdout(io.StringIO()):
+            return _main("--base", "pk", "--title", "Pack", "--formats", "static",
+                         "--user-id", "7", "--no-brand-logo",
+                         "--data-dir", str(self.data), *extra)
+
+    def test_a_reorder_after_the_plan_was_frozen_is_what_gets_uploaded(self):
+        with Catalog(self.data / "catalog.db") as cat:
+            cs.freeze_plan(cat, self.data, "pk", ["static"])      # an earlier run
+            cat.set_order(list(reversed(self.keys)))
+        tg = FakeTG()
+        self.assertEqual(self._run(tg), bc.EXIT_OK)
+        self.assertEqual(tg.uploaded, ["item1", "item0"])
+
+    def test_a_dry_run_writes_no_plan(self):
+        self.assertEqual(self._run(FakeTG(), "--dry-run"), bc.EXIT_OK)
+        self.assertFalse(cs._plan_path(self.data, "pk").exists(),
+                         "a dry run must change nothing")
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ from emojikit.catalog import Catalog
 from emojikit.collection_state import _state_path, save_json
 from emojikit.logsetup import redact
 from emojikit.telegram_api import Telegram
+from emojikit.pack_rows import keyword_cell, markdown_table
 
 log = logging.getLogger("build_collection")
 
@@ -55,18 +56,20 @@ def write_manifest(data_dir: Path, cat: Catalog, s: dict, base: str) -> None:
     # short number here made the manifest say 199 for a 200-emoji pack, which
     # is the internal row count and not what anyone opening this file wants.
     logo = 1 if s.get("logo") else 0
-    lines = [f"# {s.get('title', s['name'])}", "",
-             f"Pack: https://t.me/addemoji/{s['name']}  |  format: {s['fmt']}"
-             f"  |  {len(keys) + logo} emoji",
-             "", "| # | Name | Emoji ID |", "|---|------|----------|"]
-    if logo:
-        lines.append("| 1 | brand logo | |")
+    rows = [{"n": 1, "name": "brand logo", "cid": ""}] if logo else []
     for i, key in enumerate(keys, 1 + logo):
         it = cat.get(key)
-        name = ", ".join(it.keywords[:2]) if it and it.keywords else (
+        # Every keyword: the list used to stop at two, so the manifest
+        # disagreed with the other pack lists about the same emoji.
+        name = keyword_cell(it.keywords) if it and it.keywords else (
             it.sources[0] if it and it.sources else key)
         cid = (cat.custom_emoji_id_for(base, key) if it else "") or ""
-        lines.append(f"| {i} | {name} | {cid} |")
-    (md / f"{s['name']}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        rows.append({"n": i, "name": name, "cid": cid})
+    head = [f"# {s.get('title', s['name'])}", "",
+            f"Pack: https://t.me/addemoji/{s['name']}  |  format: {s['fmt']}"
+            f"  |  {len(keys) + logo} emoji", ""]
+    table = markdown_table(rows, [("n", "#"), ("name", "Name"), ("cid", "Emoji ID")])
+    (md / f"{s['name']}.md").write_text("\n".join(head) + "\n" + table + "\n",
+                                        encoding="utf-8")
     log.info("manifest written: manifests/%s.md (%d emoji)",
              s["name"], len(keys) + logo)

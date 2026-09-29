@@ -34,13 +34,7 @@ from emojikit import identity  # noqa: E402
 from emojikit.catalog import Catalog  # noqa: E402
 
 
-def _make_png(path: Path, color=(200, 30, 30, 255)) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    im = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
-    for x in range(20, 80):
-        for y in range(20, 80):
-            im.putpixel((x, y), color)
-    im.save(path, "PNG")
+from tests._media_fixtures import make_png as _make_png  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
