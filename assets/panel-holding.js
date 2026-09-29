@@ -209,13 +209,34 @@ function setIncluded(it,on){
   it.included=on; setCard(it);
 }
 
+// The tray is windowed like the grid: a thousand held emoji used to be a
+// thousand cards and a thousand images in the header. Only the held cards near
+// the tray's visible stretch are mounted; two spacers stand in for the rest.
+// Card pitch is arithmetic -- 64 px wide plus the 6 px gap (.hcard / .hcards).
+const TRAY_PITCH=70, TRAY_GAP=6, TRAY_BUFFER=10;
+const trayCards=new Map();    // key -> mounted tray card
+const trayLead=el('div','hspacer'), trayTail=el('div','hspacer');
+function traySpacer(node,cards){
+  if(cards>0){node.style.width=(cards*TRAY_PITCH-TRAY_GAP)+'px';node.style.display='';}
+  else node.style.display='none';
+}
+function trayWindow(n){
+  const off=holdCards.getBoundingClientRect().left-holding.getBoundingClientRect().left+holding.scrollLeft;
+  const lo=Math.max(0,Math.floor((holding.scrollLeft-off)/TRAY_PITCH)-TRAY_BUFFER);
+  const hi=Math.min(n-1,Math.ceil((holding.scrollLeft-off+holding.clientWidth)/TRAY_PITCH)+TRAY_BUFFER);
+  return [lo,hi];
+}
 function renderHolding(){
   const held=ITEMS.filter(x=>!x.isLogo&&!x.included);
   holdCount.textContent=held.length;
   document.getElementById('unholdAll').disabled=!held.length;
-  const existing=new Map([...holdCards.querySelectorAll('.hcard')].map(n=>[n.dataset.key,n]));
+  // Never re-window under a drag: the source card must stay in the document,
+  // and the drop re-renders the tray anyway.
+  if(dragKey!==null)return;
+  const [lo,hi]=held.length?trayWindow(held.length):[0,-1];
+  const existing=trayCards;
   const desired=[];
-  for(const it of held){
+  for(const it of held.slice(lo,hi+1)){
     let c=existing.get(it.key);
     if(!c){
       c=el('div','hcard'); c.draggable=true; c.dataset.key=it.key;
@@ -236,16 +257,16 @@ function renderHolding(){
       c.append(img,pick,button);
     }
     c.classList.toggle('picked',picked.has(it.key));
-    desired.push(c); existing.delete(it.key);
+    desired.push(c);
   }
-  for(const c of existing.values()){
-    const video=c.querySelector('video');
-    if(video){if(videoIO)videoIO.unobserve(video);attachVideo(video,false);}
-    c.remove();
-  }
+  const keep=new Set(desired);
+  for(const [k,c] of [...existing]) if(!keep.has(c)){ c.remove(); existing.delete(k); }
+  for(const c of desired) existing.set(c.dataset.key,c);
+  traySpacer(trayLead,lo); traySpacer(trayTail,held.length?held.length-1-hi:0);
   // Reuse thumbnails. Rebuilding every image on a pick or undo discarded their decoders.
+  const order=[trayLead,...desired,trayTail];
   let cursor=holdCards.firstChild;
-  for(const c of desired){
+  for(const c of order){
     if(c===cursor)cursor=cursor.nextSibling;else holdCards.insertBefore(c,cursor);
   }
   while(cursor){const n=cursor;cursor=cursor.nextSibling;n.remove();}
@@ -255,6 +276,10 @@ function renderHolding(){
 }
 const originalUpdateCount=updateCount;
 updateCount=function(){originalUpdateCount();renderHolding();};
+let trayRaf=null;
+holding.addEventListener('scroll',()=>{
+  if(trayRaf===null) trayRaf=requestAnimationFrame(()=>{trayRaf=null;renderHolding();});
+},{passive:true});
 
 // --- The tray joins selection mode ---------------------------------------
 // Held emoji were pickable nowhere: the pick box lives on a grid card, and a
@@ -265,8 +290,7 @@ function heldPicked(){return heldOrder().filter(k=>picked.has(k));}
 const originalMarkPicked=markPicked;
 markPicked=function(key,on){
   originalMarkPicked(key,on);
-  for(const c of holdCards.children)
-    if(c.dataset&&c.dataset.key===key)c.classList.toggle('picked',on);
+  trayCards.get(key)?.classList.toggle('picked',on);   // unmounted: set on mount
 };
 // CLICK, on the whole card -- and click is what makes this safe rather than a
 // gesture conflict. A drag emits dragstart/drop/dragend and NO click, measured,
