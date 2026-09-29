@@ -276,6 +276,37 @@ class CatalogUnavailable(unittest.TestCase):
         self.assertEqual(code, 503)
         self.assertIn("catalog unavailable", body["error"])
 
+    def test_a_page_served_from_a_busy_catalog_says_so(self):
+        with request.urlopen(f"http://127.0.0.1:{self.port}/", timeout=10) as r:
+            page = r.read().decode("utf-8")
+        self.assertRegex(page, r'const STALE = "\d\d:\d\d";',
+                         "a view the refresh could not update must be marked as old")
+
+
+class TheMediaMapIsNeverEmpty(unittest.TestCase):
+    def test_a_reader_never_misses_a_key_both_maps_hold(self):
+        from emojikit.panel_save import replace_map
+        shared = {f"k{i}": i for i in range(200)}
+        fresh = {f"k{i}": -i for i in range(100, 300)}
+        missed, done = [], threading.Event()
+
+        def read():
+            while not done.is_set():
+                for k in ("k100", "k150", "k199"):
+                    if k not in shared:
+                        missed.append(k)
+
+        reader = threading.Thread(target=read)
+        reader.start()
+        try:
+            for _ in range(1000):
+                replace_map(shared, fresh)
+                replace_map(shared, {f"k{i}": i for i in range(200)})
+        finally:
+            done.set()
+            reader.join(10)
+        self.assertEqual(missed, [])
+
 
 class SavingFromAFilteredGridKeepsHiddenChoices(unittest.TestCase):
     """A view that hides things cannot speak for what it hides.

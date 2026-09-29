@@ -39,7 +39,7 @@ from emojikit.panel_instance import reopen_existing, session_identity
 from emojikit.media import PREVIEW_FPS
 from emojikit.panel_preview import (page_tiers as preview_tiers, parameters as preview_parameters,
                                     preview_bytes as _preview_bytes, warm as preview_warm)
-from emojikit.panel_save import handle_save
+from emojikit.panel_save import handle_save, replace_map
 from emojikit.panel_view import build_view, packs_named
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -83,6 +83,10 @@ def _is_loopback(netloc: str) -> bool:
     return host in LOOPBACK_HOSTS
 
 
+def _utc_hhmm() -> str:
+    return time.strftime("%H:%M", time.gmtime())
+
+
 def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
                  preview_fps: int = PREVIEW_FPS, bot_username: str | list = "",
                  show_published: bool = False, hidden: int = 0,
@@ -97,6 +101,8 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
     # The same holder for the bot name: main() looks it up in the background,
     # and the page load after the answer arrives shows the logo card.
     bot_name = bot_username if isinstance(bot_username, list) else [bot_username]
+    view_time = [_utc_hhmm()]   # when the served view was read from the catalog
+    stale_now = [""]            # that time, while a refresh cannot reach the catalog
 
     def _reload_view() -> None:
         """Refresh ``view``/``by_key`` from the catalog, IN PLACE.
@@ -117,11 +123,15 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
                 cat.close()
         except Exception as exc:  # noqa: BLE001 - a page load must not 500
             log.warning("could not refresh from the catalog: %s", exc)
+            # Said on the page, not only in the log: otherwise a busy catalog
+            # (a publish holding it) looks exactly like a catalog with no news.
+            stale_now[0] = view_time[0]
             return
         view[:] = fresh
-        by_key.clear()
-        by_key.update(fresh_by_key)
+        replace_map(by_key, fresh_by_key)
         hidden_now[0] = fresh_hidden
+        view_time[0] = _utc_hhmm()
+        stale_now[0] = ""
 
     class Handler(BaseHTTPRequestHandler):
         # Keep-alive: the default HTTP/1.0 opened a new connection (and a new
@@ -228,6 +238,7 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
                             .replace("__PREVIEW_TIERS__", _json_for_script(preview_tiers(preview_fps)))
                             .replace("__PER_SET__", str(PER_SET))
                             .replace("__HIDDEN__", str(hidden_now[0]))
+                            .replace("__STALE__", _json_for_script(stale_now[0]))
                             .replace("__ASSET_VER__", ASSET_VER)
                             .replace("__ICON_VER__", ICON_VER))
                 self._send(200, page.encode("utf-8"), "text/html; charset=utf-8",

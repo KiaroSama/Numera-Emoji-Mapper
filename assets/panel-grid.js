@@ -569,6 +569,12 @@ function updateCount(){
       ? `· ${HIDDEN} in finished packs (hidden — panel.py --all shows them)`
       : '';
   }
+  const stale = document.getElementById('staleNote');
+  if (stale) {
+    stale.textContent = STALE
+      ? `· catalog busy (a publish may be running) — showing the view from ${STALE} UTC; reload later`
+      : '';
+  }
   document.getElementById('selCount').textContent = included;
   document.getElementById('totCount').textContent = real.length + logo;
   // The number of packs is the number of runs the GRID draws, read from the

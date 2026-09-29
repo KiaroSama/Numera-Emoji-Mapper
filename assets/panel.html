@@ -331,6 +331,7 @@ body.compact .glyph,body.compact .lbl,body.compact .sub{display:none}
   <div class="status count"><b id="selCount">0</b>&nbsp;/ <span id="totCount">0</span> selected
     <span class="hint">· click = toggle · drag = reorder · click the id = copy · Ctrl+wheel = zoom</span>
     <span id="hiddenNote" class="hint"></span>
+    <span id="staleNote" class="warn"></span>
     <span id="capWarn" class="warn" style="display:none"></span></div>
   <div id="holding">
     <span class="htitle">Holding (<b id="holdCount">0</b>) — drag an emoji here to park it; drag a parked one out to place it in a pack</span>
@@ -353,6 +354,7 @@ body.compact .glyph,body.compact .lbl,body.compact .sub{display:none}
 const TOKEN = "__TOKEN__";
 const PREVIEW_TIERS = __PREVIEW_TIERS__;
 const HIDDEN = __HIDDEN__;   // already live in a pack, kept out of the grid
+const STALE = __STALE__;     // UTC time of the view served while the catalog is busy, else ""
 const PER_SET = __PER_SET__;
 </script>
 <script src="/static/panel-grid.js?v=__ASSET_VER__"></script>

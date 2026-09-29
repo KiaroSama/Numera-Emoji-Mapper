@@ -16,6 +16,18 @@ from emojikit.panel_plan import merge_plan, read_plan, target_map, write_plan
 from emojikit.panel_view import build_view
 
 
+def replace_map(target: dict, fresh: dict) -> None:
+    """Make ``target`` equal ``fresh`` without ever emptying it.
+
+    Update first, prune second: a thumbnail request served between the two
+    steps of clear()+update() found the map empty and answered 404, which the
+    page showed as a broken image until the next reload.
+    """
+    target.update(fresh)
+    for stale in [k for k in target if k not in fresh]:
+        del target[stale]
+
+
 def handle_save(payload: dict, *, lock, db_path, view: list, by_key: dict,
                 hidden_now: list, bot_username: str, show_published: bool,
                 keep_sets) -> tuple[int, bytes]:
@@ -100,8 +112,7 @@ def handle_save(payload: dict, *, lock, db_path, view: list, by_key: dict,
             # The same scoped request is safe to retry under this lease.
             write_plan(db_path.parent, plan)
         view[:] = staged
-        by_key.clear()
-        by_key.update(fresh_by_key)
+        replace_map(by_key, fresh_by_key)
         hidden_now[0] = fresh_hidden
     body = {"ok": True, "included": inc, "excluded": exc}
     if plan is not None:
