@@ -88,7 +88,7 @@ function Action-CoinRebuild ($py) {
         $yn = Ask-YesNo "Run coins/rebuild_dedup.py now? (duplicate-proof: build + map + links)"
     }
     if ($yn -is [string] -or -not $yn) { return }   # back or no -> return to menu
-    Invoke-PyReport $py @($script) "Coin pack rebuild"
+    Invoke-PyReport $py @('-m', 'coins.rebuild_dedup') "Coin pack rebuild"   # run.ps1 works from the project root
 }
 
 function Action-CollectPacks ($py) {
