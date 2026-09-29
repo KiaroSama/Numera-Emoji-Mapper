@@ -27,7 +27,6 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-sys.path.insert(0, str(ROOT))
 
 import panel_sandbox  # noqa: E402 - needs the paths above
 from emojikit import sandbox_clone  # noqa: E402

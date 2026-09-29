@@ -34,7 +34,6 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from emojikit import collection_migrate as cm  # noqa: E402
 from emojikit import packstate  # noqa: E402

@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import cli_env  # noqa: E402
+from emojikit import cli_env
 
 
 class ADotEnvWithAByteOrderMark(unittest.TestCase):

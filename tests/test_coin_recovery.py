@@ -9,21 +9,18 @@ from __future__ import annotations
 import contextlib
 import io
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from emojikit import telegram_api as tg_api  # noqa: E402
-from emojikit import packstate as ps  # noqa: E402
-from coins import fetch_paprika as fp  # noqa: E402
-from coins import _provider_publish as pp  # noqa: E402
+from emojikit import telegram_api as tg_api
+from emojikit import packstate as ps
+from coins import fetch_paprika as fp
+from coins import _provider_publish as pp
 
 SET = "cryptoemoji1_by_bot"
 

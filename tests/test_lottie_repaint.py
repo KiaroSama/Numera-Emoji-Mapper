@@ -20,14 +20,11 @@ import copy
 import gzip
 import io
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from tests._panel_fixtures import ROOT
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import media, repaint
 

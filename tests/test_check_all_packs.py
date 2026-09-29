@@ -21,7 +21,6 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "coins"))
 
 from emojikit.build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL)  # noqa: E402

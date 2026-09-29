@@ -11,18 +11,15 @@ import contextlib
 import io
 import json
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import fetch_pack  # noqa: E402
-from emojikit.build_pack import EXIT_OK, EXIT_PARTIAL  # noqa: E402
-from tests.test_fetch_pack_limit import _png_bytes  # noqa: E402
+from emojikit import fetch_pack
+from emojikit.build_pack import EXIT_OK, EXIT_PARTIAL
+from tests.test_fetch_pack_limit import _png_bytes
 
 KNOWN = {"5000000000000000001": "alpha_by_bot", "5000000000000000002": "alpha_by_bot",
          "5000000000000000003": "beta_by_bot"}

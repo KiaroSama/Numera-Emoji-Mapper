@@ -19,16 +19,13 @@ stay distinct from "this is a stranger".
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from PIL import Image
 
-from tests._panel_fixtures import ROOT
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import collection_reconcile as cr
 from emojikit import identity

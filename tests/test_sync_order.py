@@ -10,17 +10,14 @@ from __future__ import annotations
 import contextlib
 import io
 import tempfile
-import sys
 import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import collection_state as cs  # noqa: E402
-from emojikit import sync_order as so  # noqa: E402
+from emojikit import collection_state as cs
+from emojikit import sync_order as so
 
 
 def _live(*cids: str) -> list[dict]:

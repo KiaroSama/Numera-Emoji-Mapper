@@ -13,13 +13,11 @@ from __future__ import annotations
 import contextlib
 import io
 import os
-import sys
 import unittest
 from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from tests._cli_fixtures import _load_standalone  # noqa: E402
 

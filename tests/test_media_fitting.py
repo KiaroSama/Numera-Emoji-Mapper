@@ -13,16 +13,13 @@ exercised here through their own public entry points.
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from PIL import Image
 
-from tests._panel_fixtures import ROOT
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import make_emoji_pngs as mp
 from emojikit import media

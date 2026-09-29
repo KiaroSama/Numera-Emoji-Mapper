@@ -14,14 +14,12 @@ from __future__ import annotations
 import io
 import json
 import random
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from PIL import Image  # noqa: E402
 

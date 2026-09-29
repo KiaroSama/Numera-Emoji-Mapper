@@ -10,15 +10,12 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from emojikit import media  # noqa: E402
+from emojikit import media
 
 # Generating a 2-second clip takes well under a second; anything near this bound
 # means ffmpeg is stuck, and an unbounded child can hang the whole suite.

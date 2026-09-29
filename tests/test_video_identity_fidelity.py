@@ -21,7 +21,6 @@ a real alpha layer; a synthetic byte string would prove nothing about it.
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import threading
 import unittest
@@ -30,14 +29,12 @@ from unittest import mock
 
 from tests._media_fixtures import HAS_FFMPEG
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from emojikit import identity, media, video_decode  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
-from emojikit.errors import UndecodableVideo  # noqa: E402
+from emojikit import identity, media, video_decode
+from emojikit.catalog import Catalog
+from emojikit.errors import UndecodableVideo
 
 
 def _encode(tmp: Path, name: str, alpha: int, codec: str = "libvpx-vp9") -> Path:

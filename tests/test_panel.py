@@ -14,7 +14,6 @@ test_panel_guard.py and the process/port behaviour in test_panel_server.py.
 from __future__ import annotations
 
 import json
-import sys
 import tempfile
 import threading
 import unittest
@@ -23,9 +22,8 @@ from pathlib import Path
 from unittest import mock
 from urllib import error, request
 
-from tests._panel_fixtures import ROOT, _make_png
+from tests._panel_fixtures import _make_png
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import panel as p
 from emojikit.catalog import Catalog

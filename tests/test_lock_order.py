@@ -22,12 +22,10 @@ never runs in the suite just as well as code that does.
 from __future__ import annotations
 
 import ast
-import sys
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 MAP_LOCK = "canonical_map_lock"
 PACK_LOCK = "exclusive_lock"

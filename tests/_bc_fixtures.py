@@ -9,18 +9,15 @@ importer.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import telegram_api as tg_api  # noqa: E402
-from emojikit.telegram_api import (SetState)  # noqa: E402
+from emojikit import telegram_api as tg_api
+from emojikit.telegram_api import (SetState)
 
 # One builder for every publisher suite (tests/_media_fixtures.py).
-from tests._media_fixtures import make_png as _make_png  # noqa: E402
+from tests._media_fixtures import make_png as _make_png
 
 
 class FakeTG:

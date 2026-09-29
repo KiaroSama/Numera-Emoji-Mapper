@@ -11,21 +11,18 @@ import gzip
 import json
 import shutil
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 # Allow running from the repository root.
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from emojikit import identity, media, video_decode  # noqa: E402
+from emojikit import identity, media, video_decode
 
-from tests._media_fixtures import (FFMPEG_TIMEOUT, HAS_FFMPEG,  # noqa: E402
+from tests._media_fixtures import (FFMPEG_TIMEOUT, HAS_FFMPEG,
                                    _clear_pixels, _ffmpeg_calls,
                                    _make_anim_gif, _make_png)
 

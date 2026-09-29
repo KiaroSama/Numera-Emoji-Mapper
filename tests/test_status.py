@@ -5,16 +5,13 @@ from __future__ import annotations
 import contextlib
 import io
 import sqlite3
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import pack_archive, pack_manifest, status  # noqa: E402
+from emojikit import pack_archive, pack_manifest, status
 
 
 class TheStatusCommand(unittest.TestCase):

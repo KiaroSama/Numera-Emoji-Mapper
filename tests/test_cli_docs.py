@@ -12,12 +12,10 @@ work when handed `--help` (emoji_bot starts polling, alias_map rewrites the map)
 from __future__ import annotations
 
 import re
-import sys
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from tests._cli_fixtures import cli_help  # noqa: E402
 

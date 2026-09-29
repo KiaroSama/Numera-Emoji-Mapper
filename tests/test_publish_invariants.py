@@ -18,16 +18,14 @@ for everything -- in exactly the layout this project publishes with.
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from PIL import Image
 
-from tests._bc_fixtures import ROOT, FakeTG, _make_png, _sticker
+from tests._bc_fixtures import FakeTG, _make_png, _sticker
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import build_collection as bc
 from emojikit.collection_state import MIXED, SetDrift

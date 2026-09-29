@@ -6,11 +6,8 @@ No test classes live here, so importing it never runs a test twice.
 
 from __future__ import annotations
 
-import sys
 
-from tests._panel_fixtures import ROOT
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import panel as p
 

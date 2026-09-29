@@ -18,18 +18,14 @@ from __future__ import annotations
 import contextlib
 import io
 import json
-import sys
-from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import build_pack as bp  # noqa: E402
-from emojikit import packstate as ps  # noqa: E402
-from coins import rebuild_dedup as rd  # noqa: E402
-from coins import _dedup_plan as cfg  # noqa: E402
-from tests._rebuild_fixtures import FakeTelegram, RebuildCase, _png  # noqa: E402
+from emojikit import build_pack as bp
+from emojikit import packstate as ps
+from coins import rebuild_dedup as rd
+from coins import _dedup_plan as cfg
+from tests._rebuild_fixtures import FakeTelegram, RebuildCase, _png
 
 
 class BuildFinishesWhenThePlanIsWalked(RebuildCase):

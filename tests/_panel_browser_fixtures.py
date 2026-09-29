@@ -18,7 +18,6 @@ import io
 import os
 import re
 import sqlite3
-import sys
 import tempfile
 import threading
 import unittest
@@ -29,7 +28,6 @@ from PIL import Image
 
 from tests._panel_fixtures import ROOT
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import panel
 from emojikit import panel_view

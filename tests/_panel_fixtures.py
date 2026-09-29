@@ -8,13 +8,12 @@ count -- unlike a fixture that owns tests, which multiplies with every importer.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from PIL import Image
 
+# The repository root, for the modules that read assets or run tools from it.
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 
 def _make_png(path: Path) -> None:
