@@ -13,7 +13,8 @@ EVENTS = frozenset({"ready", "hold", "unhold", "undo", "redo", "reset", "selecti
                     "animation", "zoom", "backdrop", "error"})
 NUMBERS = frozenset({"count", "revision", "status", "duration_ms", "line", "column", "zoom"})
 SOURCES = frozenset({"panel-grid.js", "panel-motion.js", "panel-save.js", "panel-drag.js",
-                     "panel-actions.js", "panel-holding.js", "window", "promise"})
+                     "panel-actions.js", "panel-holding.js", "panel-draft.js",
+                     "window", "promise"})
 
 
 class ClientEventLog:

@@ -475,12 +475,6 @@ function acceptDrop(){
 }
 holdCards.addEventListener('dragend',()=>{holdDragKeys=null;});
 
-function exportDraft(){
-  const blob=new Blob([JSON.stringify({version:1,snapshot:snapshot()},null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob), a=el('a');
-  a.href=url;a.download='numera-emoji-mapper-draft.json';a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
 for(const it of ITEMS)if(!it.included&&!it.isLogo)holdOrigins.set(it.key,originFor(it));
 renderHolding();
 savedSnapshot=snapshot();
@@ -516,7 +510,7 @@ document.addEventListener('click',e=>{
 });
 addEventListener('error',e=>{
   const source=String(e.filename||'').split('/').pop().split('?')[0];
-  const known=['panel-grid.js','panel-motion.js','panel-save.js','panel-drag.js','panel-actions.js','panel-holding.js'];
+  const known=['panel-grid.js','panel-motion.js','panel-save.js','panel-drag.js','panel-actions.js','panel-holding.js','panel-draft.js'];
   const name=e.error&&/^[A-Za-z]{0,30}Error$/.test(e.error.name)?e.error.name:'Error';
   logUI('error',{name,source:known.includes(source)?source:'window',line:e.lineno||0,column:e.colno||0});
 });

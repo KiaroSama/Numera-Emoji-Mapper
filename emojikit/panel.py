@@ -449,7 +449,7 @@ PAGE = (ASSET_DIR / "panel.html").read_text(encoding="utf-8")
 # immutable-cached: without a version in the URL an edited script would keep
 # being served stale from the browser cache. The version IS the content.
 SCRIPT_FILES = ("panel-grid.js", "panel-motion.js", "panel-save.js", "panel-drag.js",
-                "panel-actions.js", "panel-holding.js")
+                "panel-actions.js", "panel-holding.js", "panel-draft.js")
 SCRIPT = "\n".join((ASSET_DIR / f).read_text(encoding="utf-8") for f in SCRIPT_FILES)
 ASSET_VER = hashlib.sha1(SCRIPT.encode("utf-8")).hexdigest()[:12]
 # The icon is immutable-cached too: unversioned, a replaced logo kept showing the

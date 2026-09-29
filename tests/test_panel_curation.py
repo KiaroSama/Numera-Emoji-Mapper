@@ -402,6 +402,35 @@ class ALargeTrayIsWindowed(PanelPage, unittest.TestCase):
         self.assertEqual(calls[0], 300, "each card is marked once as the stroke reaches it")
 
 
+class AnExportedDraftComesBack(PanelPage, unittest.TestCase):
+    """"Export the draft and reload" is only a recovery if the draft can be read back."""
+
+    def _import(self, page, doc):
+        page.set_input_files("#draftFile", files=[{
+            "name": "numera-emoji-mapper-draft.json", "mimeType": "application/json",
+            "buffer": json.dumps(doc).encode("utf-8")}])
+
+    def test_a_draft_is_applied_without_saving_and_can_be_undone(self):
+        page = self.open(fx.synth(6))
+        before = page.evaluate("ITEMS.map(x => x.key)")
+        snap = page.evaluate("snapshot()")
+        snap["order"] = list(reversed(snap["order"])) + ["x:gone"]
+        self._import(page, {"version": 1, "snapshot": snap})
+        page.wait_for_function("ITEMS[0].key !== %s" % json.dumps(before[0]))
+        self.assertEqual(page.evaluate("ITEMS.map(x => x.key)"), list(reversed(before)))
+        self.assertIsNone(page.evaluate("pendingOrder"), "an import must not post by itself")
+        self.assertIn("1 not in this catalog", page.evaluate("document.getElementById('toast').textContent"))
+        page.click("#undo")
+        self.assertEqual(page.evaluate("ITEMS.map(x => x.key)"), before)
+
+    def test_an_unknown_version_is_refused(self):
+        page = self.open(fx.synth(6))
+        before = page.evaluate("ITEMS.map(x => x.key)")
+        self._import(page, {"version": 2, "snapshot": {"order": list(reversed(before))}})
+        page.wait_for_function("document.getElementById('toast').textContent.includes('Not a draft')")
+        self.assertEqual(page.evaluate("ITEMS.map(x => x.key)"), before)
+
+
 class ADroppedEmojiJoinsThePackItWasAimedAt(PanelPage, unittest.TestCase):
     """Where a card comes to REST is not where the owner aimed.
 
