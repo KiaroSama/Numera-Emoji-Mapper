@@ -452,7 +452,8 @@ def main(argv: list[str] | None = None) -> int:
     load_env()
     setup_logging("build_collection")
     ap = argparse.ArgumentParser(description="Publish the catalog into new emoji packs.")
-    ap.add_argument("--base", required=True, help="Set-name base (letters/digits).")
+    ap.add_argument("--base", required=True,
+                    help="Set-name base: a letter, then letters/digits, single underscores between.")
     ap.add_argument("--title", required=True, help="Human-readable set title.")
     ap.add_argument("--token-env", default="GENERAL_BOT_TOKEN")
     ap.add_argument("--user-id", type=int,
