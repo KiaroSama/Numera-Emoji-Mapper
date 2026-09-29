@@ -85,7 +85,8 @@ class TheGridIsVirtual(unittest.TestCase):
 
     def test_only_rows_near_the_viewport_are_in_the_document(self):
         render = block(SCRIPT, "function render(){", "function retire")
-        self.assertIn("const pad = innerHeight / 2;", render)
+        self.assertIn("const pad = Math.min(innerHeight / 2, BUFFER_ROWS * (G.cardH + G.gap));", render)
+        self.assertIn("const BUFFER_ROWS = 3;", SCRIPT)
         self.assertIn("let first = rowAt(viewTop - pad);", render)
         # Two spacers carry the height of everything above and below, so the
         # scrollbar and the jump buttons see the whole grid.

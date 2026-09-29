@@ -30,6 +30,7 @@ const carried = new Set();    // keys the drag in progress is moving
 // large is dead space in every row. Re-measure them after any change to the
 // card's CSS: `card.style.height = 'auto'` and read `offsetHeight`.
 const BASE = {cardW: 140, cardH: 262, cardHCompact: 190, sepH: 40, gap: 14};
+const BUFFER_ROWS = 3;       // rows mounted beyond the viewport, each side (at most)
 const COMPACT_BELOW = 0.75;   // under this zoom the text rows are dropped
 const ZOOM_MIN = 0.4, ZOOM_MAX = 2.4, ZOOM_STEP = 1.15;
 let zoom = 1;
@@ -156,6 +157,9 @@ function makeCard(it){
   // The glyph the sticker carries. Telegram never shows it -- a custom emoji
   // renders as its picture -- so this grid is the only place it can be checked
   // against the art it is supposed to describe.
+  // A compact card shows only its header and thumbnail; the text rows used to
+  // be built and hidden with CSS, three nodes per card nobody could see.
+  if(zoom < COMPACT_BELOW) return card;
   const gl = el('div','glyph', it.emoji || '—');
   gl.title = it.emoji ? 'Glyph carried by this emoji: ' + it.emoji
                       : 'This emoji carries no glyph';
@@ -236,7 +240,14 @@ let innerW = 0;
 
 function layoutRows(){
   const compact = zoom < COMPACT_BELOW;
+  const wasCompact = document.body.classList.contains('compact');
   document.body.classList.toggle('compact', compact);
+  // Crossing the line changes a card's shape, so the mounted ones are rebuilt --
+  // except under a drag, which holds the cards it carries; they catch up on the
+  // next zoom.
+  if(wasCompact !== compact && dragKey === null){
+    for(const c of [...cards.values()]) if(!carried.has(c.dataset.key)) unmountCard(c);
+  }
   G.gap  = Math.round(BASE.gap * zoom);
   G.cardH = Math.round((compact ? BASE.cardHCompact : BASE.cardH) * zoom);
   G.sepH = Math.round(BASE.sepH * zoom);
@@ -391,8 +402,11 @@ function render(){
   }
   // Half a screen of buffer each side: enough that a flick lands on rows that
   // already exist, small enough that a drag step re-lays-out ~100 cards.
+  // Capped at BUFFER_ROWS: at 100 % three rows are more than half a screen, so
+  // nothing changes there, but at 40 % half a screen was five and more rows of
+  // cards each side, all mounted and all decoding their stills.
   const viewTop = scrollY - gridTop;
-  const pad = innerHeight / 2;
+  const pad = Math.min(innerHeight / 2, BUFFER_ROWS * (G.cardH + G.gap));
   let first = rowAt(viewTop - pad);
   let last = Math.max(first, rowBefore(viewTop + innerHeight + pad));
   // Scrolling within the same rows changes nothing; this runs once per frame

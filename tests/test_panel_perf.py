@@ -165,6 +165,28 @@ class AnimationCost(unittest.TestCase):
               flush=True)
         self.assertEqual(page.evaluate("window.__varWrites"), 0)
 
+    def test_zoomed_out_mounts_a_bounded_window_of_slim_cards(self):
+        self.errors = []
+        page = H.open(fx.synth(1000), init=PROBE, on_error=self.errors.append,
+                      cleanup=self.addCleanup)
+        self.addCleanup(lambda: self.assertEqual(self.errors, []))
+        count = """(() => { const cards = [...document.querySelectorAll('#grid .card')];
+            const seen = cards.filter(c => { const r = c.getBoundingClientRect();
+                                             return r.bottom > headerH && r.top < innerHeight; });
+            return [cards.length, seen.length, G.cols,
+                    document.querySelectorAll('#grid .card .lbl').length]; })()"""
+        full = page.evaluate(count)
+        page.evaluate("setZoom(0.4)")
+        self.settle(page)
+        mounted, seen, cols, labels = page.evaluate(count)
+        print("PANEL_PERF " + json.dumps({"scenario": "mounted", "zoom1": full[0],
+                                          "zoom0.4": mounted, "visible0.4": seen}), flush=True)
+        self.assertLessEqual(mounted, seen + 6 * cols, "the buffer must be a few rows, not a screen")
+        self.assertEqual(labels, 0, "a compact card carries no hidden text rows")
+        page.evaluate("setZoom(1)")
+        self.settle(page)
+        self.assertGreater(page.evaluate(count)[3], 0, "normal cards keep their labels")
+
     def test_undo_restores_the_all_visible_switch(self):
         page = self._compact()
         page.click("#animAll")
