@@ -22,14 +22,11 @@ from __future__ import annotations
 
 import ast
 import inspect
-import sys
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit.telegram_api import Telegram  # noqa: E402
+from emojikit.telegram_api import Telegram
 
 TESTS = Path(__file__).resolve().parent
 

@@ -16,7 +16,6 @@ from __future__ import annotations
 import gzip
 import json
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,10 +25,8 @@ from PIL import Image, ImageDraw
 
 from tests._media_fixtures import FFMPEG_TIMEOUT, _make_png
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import identity, media  # noqa: E402
+from emojikit import identity, media
 
 
 class TestReencodeGivesUsOurOwnBytes(unittest.TestCase):

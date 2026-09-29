@@ -23,17 +23,14 @@ from __future__ import annotations
 import hashlib
 import shutil
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from tests._panel_fixtures import ROOT
 from tests._media_fixtures import encode_vp9
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import identity, media, video_decode
 

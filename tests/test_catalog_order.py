@@ -3,17 +3,14 @@ panel's drag-and-drop and by build_collection's publish order."""
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from emojikit.catalog import Catalog  # noqa: E402
+from emojikit.catalog import Catalog
 
 
 def _png(p: Path):

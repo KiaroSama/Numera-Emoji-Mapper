@@ -10,16 +10,14 @@ from __future__ import annotations
 import json
 import os
 import random
-import sys
 import tempfile
 import unittest
 from dataclasses import dataclass
 from pathlib import Path
 from unittest import mock
 
-from tests._panel_fixtures import ROOT, _make_png
+from tests._panel_fixtures import _make_png
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import panel as p
 from emojikit import panel_view as pv

@@ -18,7 +18,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 # Sampled WHILE THIS MODULE IS IMPORTED, which is the only moment that answers
 # "was the guard there before anything could read .env?". Reading it later is

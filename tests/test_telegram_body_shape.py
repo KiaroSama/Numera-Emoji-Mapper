@@ -8,15 +8,11 @@ add already landed.
 
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import telegram_api as tg_api  # noqa: E402
+from emojikit import telegram_api as tg_api
 
 
 class _Reply:

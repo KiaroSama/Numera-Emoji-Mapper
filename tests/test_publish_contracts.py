@@ -16,27 +16,24 @@ from __future__ import annotations
 
 import os
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import build_collection as bc  # noqa: E402
-from emojikit import collection_state as cs  # noqa: E402
-from emojikit import build_pack as bp  # noqa: E402
-from emojikit import announce  # noqa: E402
-from emojikit import collection_media_check, collection_notify, media  # noqa: E402
-from emojikit.announce import (announce_packs)  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
+from emojikit import build_collection as bc
+from emojikit import collection_state as cs
+from emojikit import build_pack as bp
+from emojikit import announce
+from emojikit import collection_media_check, collection_notify, media
+from emojikit.announce import (announce_packs)
+from emojikit.catalog import Catalog
 
-import io  # noqa: E402
-from contextlib import redirect_stdout  # noqa: E402
+import io
+from contextlib import redirect_stdout
 
-from tests._bc_fixtures import FakeTG, _CatalogFixture, _main, _make_png  # noqa: E402
+from tests._bc_fixtures import FakeTG, _CatalogFixture, _main, _make_png
 
 # --------------------------------------------------------------------------- #
 # M-04: a video is blank only if EVERY sampled frame is

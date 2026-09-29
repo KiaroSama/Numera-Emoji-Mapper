@@ -9,17 +9,14 @@ from __future__ import annotations
 
 import io
 import json
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-import requests  # noqa: E402
-from PIL import Image  # noqa: E402
+import requests
+from PIL import Image
 
-from emojikit import telegram_api as tg_api  # noqa: E402
-from emojikit.packstate import (LockBusy, canonical_map_lock, exclusive_lock,  # noqa: E402
+from emojikit import telegram_api as tg_api
+from emojikit.packstate import (LockBusy, canonical_map_lock, exclusive_lock,
                                 write_json_atomic)
 
 SET = "cryptoemoji1_by_bot"

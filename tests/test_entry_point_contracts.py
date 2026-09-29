@@ -28,7 +28,6 @@ from unittest import mock
 from urllib import error, request
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from PIL import Image  # noqa: E402
 

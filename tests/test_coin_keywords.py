@@ -11,18 +11,15 @@ import contextlib
 import csv
 import io
 import shutil
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from coins import _keywords  # noqa: E402
+from coins import _keywords
 
 OLD = ("ticker,name,format,file,keywords\n"
        "btc,Bitcoin,svg,logos/svg/btc.svg,\"btc, Bitcoin\"\n")

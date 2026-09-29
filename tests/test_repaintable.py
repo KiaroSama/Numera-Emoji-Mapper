@@ -23,16 +23,14 @@ import unittest
 from contextlib import redirect_stderr
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import build_pack as bp  # noqa: E402
-from emojikit import fetch_emoji_ids  # noqa: E402
-from emojikit import fetch_pack  # noqa: E402
-from emojikit import media, repaint  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
+from emojikit import build_pack as bp
+from emojikit import fetch_emoji_ids
+from emojikit import fetch_pack
+from emojikit import media, repaint
+from emojikit.catalog import Catalog
 
-from tests.test_fetch_pack_limit import FakeTelegram, _png_bytes  # noqa: E402
+from tests.test_fetch_pack_limit import FakeTelegram, _png_bytes
 
 
 class TheFlagIsOnTheStickerNotTheSet(unittest.TestCase):

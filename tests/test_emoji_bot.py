@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import emoji_bot as b  # noqa: E402
+from emojikit import emoji_bot as b
 
 
 def _msg(*cids):

@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-import sys
 import tempfile
 import threading
 import unittest
@@ -18,9 +17,8 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib import error, request
 
-from tests._panel_fixtures import ROOT, _make_png
+from tests._panel_fixtures import _make_png
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import panel as p
 from emojikit import panel as p_mod

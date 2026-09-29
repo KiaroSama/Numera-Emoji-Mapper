@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import shutil
 import sqlite3
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit.catalog import Catalog  # noqa: E402
+from emojikit.catalog import Catalog
 
 
 class TestCatalogIntegrity(unittest.TestCase):

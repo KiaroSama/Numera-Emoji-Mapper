@@ -7,18 +7,15 @@ import hashlib
 import io
 import json
 import os
-import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import pack_archive, pack_export, pack_manifest  # noqa: E402
-from tests._media_fixtures import make_png  # noqa: E402
+from emojikit import pack_archive, pack_export, pack_manifest
+from tests._media_fixtures import make_png
 
 KA = "s:" + "a" * 32
 KB = "v:" + "b" * 32

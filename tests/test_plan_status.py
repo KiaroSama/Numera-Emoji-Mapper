@@ -8,16 +8,13 @@ from __future__ import annotations
 import contextlib
 import io
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import plan_status  # noqa: E402
+from emojikit import plan_status
 
 STATE = {"sets": [{"index": 1, "name": "mine1_by_bot", "live": 4,
                    "keys": ["s:a", "s:b", "s:c"]},

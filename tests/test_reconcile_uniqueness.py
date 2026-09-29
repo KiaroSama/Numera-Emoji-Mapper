@@ -19,20 +19,17 @@ answer.
 from __future__ import annotations
 
 import sqlite3
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from emojikit import collection_reconcile as cr  # noqa: E402
-from emojikit import identity  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
+from emojikit import collection_reconcile as cr
+from emojikit import identity
+from emojikit.catalog import Catalog
 
 
 class UniqueRequiresExcludingEveryRival(unittest.TestCase):

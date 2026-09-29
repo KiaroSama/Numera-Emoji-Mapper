@@ -11,24 +11,21 @@ Covers:
 from __future__ import annotations
 
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from emojikit import build_collection as bc  # noqa: E402
-from emojikit import collection_state as cs  # noqa: E402
-from emojikit import identity, media  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
-from emojikit.cli_env import EXIT_USAGE  # noqa: E402
-from unittest import mock  # noqa: E402
-from tests._bc_fixtures import FakeTG, _CatalogFixture, _main  # noqa: E402
-from tests._media_fixtures import make_png  # noqa: E402
+from emojikit import build_collection as bc
+from emojikit import collection_state as cs
+from emojikit import identity, media
+from emojikit.catalog import Catalog
+from emojikit.cli_env import EXIT_USAGE
+from unittest import mock
+from tests._bc_fixtures import FakeTG, _CatalogFixture, _main
+from tests._media_fixtures import make_png
 
 
 def _make_png(path: Path, color=(200, 30, 30, 255)) -> Path:

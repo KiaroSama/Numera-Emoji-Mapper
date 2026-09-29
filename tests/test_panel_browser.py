@@ -18,14 +18,11 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 import time
 import unittest
 
 from tests import _panel_browser_fixtures as fx
-from tests._panel_fixtures import ROOT
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import panel
 from tests._panel_browser_fixtures import DENY_STORAGE, synth

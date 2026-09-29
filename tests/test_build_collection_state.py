@@ -30,22 +30,18 @@ from __future__ import annotations
 import io
 import json
 import os
-import sys
 from contextlib import redirect_stdout
-from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import build_collection as bc  # noqa: E402
-from emojikit import collection_state as cs  # noqa: E402
-from emojikit import collection_reconcile as cr  # noqa: E402
-from emojikit.build_pack import (EXIT_FAILED, EXIT_OK)  # noqa: E402
-from emojikit.telegram_api import (LiveStateUnknown)  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
+from emojikit import build_collection as bc
+from emojikit import collection_state as cs
+from emojikit import collection_reconcile as cr
+from emojikit.build_pack import (EXIT_FAILED, EXIT_OK)
+from emojikit.telegram_api import (LiveStateUnknown)
+from emojikit.catalog import Catalog
 
-from tests._bc_fixtures import (SET, SET2, DownloadingTG, FakeTG,  # noqa: E402
+from tests._bc_fixtures import (SET, SET2, DownloadingTG, FakeTG,
                                 _CatalogFixture, _main, _sticker)
 
 

@@ -16,25 +16,22 @@ Covers the three duplicate mechanisms:
 from __future__ import annotations
 
 import io
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-import requests  # noqa: E402
-from PIL import Image  # noqa: E402
+import requests
+from PIL import Image
 
-from emojikit import build_collection as bc  # noqa: E402
-from emojikit.telegram_api import (AmbiguousUploadError, Telegram)  # noqa: E402
-from emojikit import identity  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
+from emojikit import build_collection as bc
+from emojikit.telegram_api import (AmbiguousUploadError, Telegram)
+from emojikit import identity
+from emojikit.catalog import Catalog
 
 
-from tests._media_fixtures import make_png as _make_png  # noqa: E402
+from tests._media_fixtures import make_png as _make_png
 
 
 # --------------------------------------------------------------------------- #

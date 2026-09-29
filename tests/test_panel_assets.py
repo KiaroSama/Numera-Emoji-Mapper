@@ -10,7 +10,6 @@ snapshot. So the version IS the content, and the route has to accept it.
 from __future__ import annotations
 
 import hashlib
-import sys
 import tempfile
 import threading
 import unittest
@@ -20,7 +19,6 @@ from urllib import request
 
 from tests._panel_fixtures import ROOT, _make_png
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import panel as p
 from emojikit.catalog import Catalog

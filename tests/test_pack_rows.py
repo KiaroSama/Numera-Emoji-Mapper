@@ -8,18 +8,15 @@ column headers so sharing the renderer changed none of them.
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from emojikit import collection_notify, pack_archive, pack_manifest, pack_rows  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
-from coins import write_manifests  # noqa: E402
-from tests._media_fixtures import make_png  # noqa: E402
+from emojikit import collection_notify, pack_archive, pack_manifest, pack_rows
+from emojikit.catalog import Catalog
+from coins import write_manifests
+from tests._media_fixtures import make_png
 
 HOSTILE = "left|right\nnext line"
 ESCAPED = "left\\|right next line"

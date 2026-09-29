@@ -16,7 +16,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from emojikit import media_paths  # noqa: E402
 from emojikit.catalog import MEDIA_PATHS_DONE, Catalog  # noqa: E402

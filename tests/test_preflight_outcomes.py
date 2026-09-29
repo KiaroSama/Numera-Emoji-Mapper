@@ -17,14 +17,12 @@ stub records exactly what it was asked.
 
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from tests._panel_fixtures import ROOT, _make_png
+from tests._panel_fixtures import _make_png
 
-sys.path.insert(0, str(ROOT))
 
 from emojikit import collection_preflight as pf
 from emojikit.build_collection import pending_keys

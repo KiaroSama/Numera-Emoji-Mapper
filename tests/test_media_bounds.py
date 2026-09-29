@@ -27,10 +27,8 @@ from pathlib import Path
 from unittest import mock
 
 # Allow running from the repository root.
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
 # Killing a hung ffmpeg through a .bat grandchild is a Windows-only branch; only
 # the windows-safety job reaches it.

@@ -18,13 +18,11 @@ No network and no real sleeps: Telegram is a fake object.
 from __future__ import annotations
 
 import json
-import sys
 import unittest
 from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from emojikit import packstate as ps  # noqa: E402
 from coins import _dedup_plan as cfg  # noqa: E402
