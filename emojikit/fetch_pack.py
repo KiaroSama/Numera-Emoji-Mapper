@@ -20,8 +20,10 @@ PACK may be a bare set name (``coolpack_by_somebot``) or a full
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -35,6 +37,41 @@ from emojikit.logsetup import record_exit_code, redact, setup_logging
 
 ROOT = Path(__file__).resolve().parent.parent
 log = logging.getLogger("fetch_pack")
+
+
+# An emoji id, bare or as `premium-id:<digits>`. A set name can never look like
+# this: Telegram requires it to begin with a letter.
+_EMOJI_ID_ARG = re.compile(r"^(?:premium-id:)?(\d{5,})$")
+_IDS_PER_CALL = 200          # getCustomEmojiStickers' own limit
+
+
+def resolve_pack_args(tg: Telegram, args: list[str]) -> tuple[list[str], list[str]]:
+    """``(pack names, ids that name no pack)`` for a mix of names, links and ids.
+
+    Someone who likes an emoji usually has its id, not its pack's name; the
+    documented way to get from one to the other was a `python -c` one-liner
+    around the client's private call. Each pack appears once, in argument order.
+    """
+    names: list[str] = []
+    ids: list[str] = []
+    for raw in args:
+        m = _EMOJI_ID_ARG.match(raw.strip())
+        if m:
+            ids.append(m.group(1))
+        else:
+            names.append(pack_name(raw))
+    found: dict[str, str] = {}
+    unique = list(dict.fromkeys(ids))
+    for i in range(0, len(unique), _IDS_PER_CALL):
+        batch = unique[i:i + _IDS_PER_CALL]
+        for st in tg.call("getCustomEmojiStickers",
+                          data={"custom_emoji_ids": json.dumps(batch)}) or []:
+            if st.get("set_name"):
+                found[str(st.get("custom_emoji_id"))] = st["set_name"]
+    for cid in unique:
+        if cid in found:
+            names.append(found[cid])
+    return list(dict.fromkeys(names)), [cid for cid in unique if cid not in found]
 
 
 def pack_name(arg: str) -> str:
@@ -130,7 +167,10 @@ def main(argv: list[str] | None = None) -> int:
     load_env()
     setup_logging("fetch_pack")
     ap = argparse.ArgumentParser(description="Download Telegram emoji packs into the catalog.")
-    ap.add_argument("packs", nargs="+", help="Pack short names or addemoji links.")
+    ap.add_argument("packs", nargs="+",
+                    help="Pack short names, addemoji links, or emoji ids "
+                         "(digits or premium-id:<digits>) -- an id fetches the "
+                         "whole pack it belongs to.")
     ap.add_argument("--token-env", default="GENERAL_BOT_TOKEN",
                     help="Env var holding the bot token (default GENERAL_BOT_TOKEN).")
     ap.add_argument("--data-dir", default="collection", help="Catalog/media directory.")
@@ -173,13 +213,22 @@ def main(argv: list[str] | None = None) -> int:
         log.error("getMe failed: %s", redact(str(exc)))
         return 2
 
+    try:
+        packs, unknown = resolve_pack_args(tg, args.packs)
+    except Exception as exc:  # noqa: BLE001 - reported with the token redacted
+        log.error("could not look up the emoji ids: %s", redact(str(exc)))
+        return 2
+    for cid in unknown:
+        # Counted as a failed pack below: an id that names nothing must not
+        # let the run exit 0.
+        log.error("emoji id %s belongs to no pack Telegram knows (or is not an id)", cid)
+
     total = {"new": 0, "dedup": 0, "failed": 0, "repaintable": 0}
-    packs_failed = 0
+    packs_failed = len(unknown)
     with Catalog(data_dir / "catalog.db", phash_threshold=args.phash_threshold) as cat, \
             tempfile.TemporaryDirectory(prefix="pack-", dir=tmp_dir) as scratch:
         tmp_dir = Path(scratch)
-        for raw in args.packs:
-            name = pack_name(raw)
+        for name in packs:
             try:
                 c = fetch_one(tg, cat, name, data_dir, tmp_dir, args.limit,
                               args.repaintable)
