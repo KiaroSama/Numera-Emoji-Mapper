@@ -49,6 +49,7 @@ class UnresolvedMutationStopsTheRun(unittest.TestCase):
                 "--source-dir", str(self.src), "--token-env", "FAKE_TOKEN",
                 "--state", str(self.state)]
         with mock.patch.object(sys, "argv", argv), \
+             mock.patch.object(bp, "setup_logging", lambda *a, **k: None), \
              mock.patch.dict("os.environ", {"FAKE_TOKEN": "x"}, clear=False), \
              mock.patch.object(bp, "Telegram", return_value=tg), \
              mock.patch.object(bp.time, "sleep", lambda s: None):
@@ -215,6 +216,7 @@ class AmbiguousCreateForLaterSets(unittest.TestCase):
                 "--source-dir", str(self.src), "--token-env", "FAKE_TOKEN",
                 "--state", str(self.state), "--per-set", "1"]
         with mock.patch.object(sys, "argv", argv), \
+             mock.patch.object(bp, "setup_logging", lambda *a, **k: None), \
              mock.patch.dict("os.environ", {"FAKE_TOKEN": "x"}, clear=False), \
              mock.patch.object(bp, "Telegram", return_value=tg), \
              mock.patch.object(bp.time, "sleep", lambda s: None):
@@ -341,6 +343,7 @@ class RecordedSetIntegrity(unittest.TestCase):
                 "--source-dir", str(self.src), "--token-env", "FAKE_TOKEN",
                 "--state", str(self.state)]
         with mock.patch.object(sys, "argv", argv), \
+             mock.patch.object(bp, "setup_logging", lambda *a, **k: None), \
              mock.patch.dict("os.environ", {"FAKE_TOKEN": "x"}, clear=False), \
              mock.patch.object(bp, "Telegram", return_value=tg), \
              mock.patch.object(bp.time, "sleep", lambda s: None):

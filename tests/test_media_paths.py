@@ -19,7 +19,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from emojikit import media_paths  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
+from emojikit.catalog import MEDIA_PATHS_DONE, Catalog  # noqa: E402
+
+# Case-insensitive path containment is a Windows property; the Linux matrix
+# skips it, so the windows-safety job has to run this module.
+RUNS_ON_NATIVE_WINDOWS = True
 
 
 class MediaPathTests(unittest.TestCase):
@@ -123,13 +127,25 @@ class LegacyConversionTests(unittest.TestCase):
             flag = con.execute("SELECT value FROM meta WHERE key='media_paths'").fetchone()
         self.assertEqual(raw["s:a"], "./media/a.webp")
         self.assertTrue(Path(raw["s:p"]).is_absolute(), "outside the data folder: absolute")
-        self.assertEqual(flag, ("data-relative",))
+        self.assertEqual(flag, (MEDIA_PATHS_DONE,))
 
     def test_a_converted_catalog_is_not_converted_again(self):
         with Catalog(self.data / "catalog.db"):
             pass
         with Catalog(self.data / "catalog.db") as cat:
             self.assertEqual(cat.converted_media_paths, 0)
+
+    def test_a_catalog_marked_with_the_old_value_is_healed_on_open(self):
+        """An identity migration wrote absolute in-folder rows AFTER the
+        conversion had run and marked itself done, so nothing re-ran it."""
+        with sqlite3.connect(self.data / "catalog.db") as con:
+            con.execute("INSERT OR REPLACE INTO meta(key, value) "
+                        "VALUES('media_paths', 'data-relative')")
+        with Catalog(self.data / "catalog.db") as cat:
+            self.assertGreaterEqual(cat.converted_media_paths, 1)
+        with sqlite3.connect(self.data / "catalog.db") as con:
+            raw = dict(con.execute("SELECT content_key, file_path FROM items"))
+        self.assertEqual(raw["s:a"], "./media/a.webp")
 
     def test_a_legacy_relative_row_means_the_project_even_without_meta(self):
         """Each row says which rule it follows, so a lost meta record cannot flip it."""

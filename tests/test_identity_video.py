@@ -31,6 +31,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from tests._panel_fixtures import ROOT
+from tests._media_fixtures import encode_vp9
 
 sys.path.insert(0, str(ROOT))
 
@@ -65,13 +66,7 @@ def _encode(frames, out: Path, *, fps=30, codec="libvpx-vp9"):
     src.mkdir(parents=True, exist_ok=True)
     for i, im in enumerate(frames):
         im.save(src / f"{i:03d}.png")
-    subprocess.run(
-        [media.ffmpeg_path(), "-y", "-v", "error", "-framerate", str(fps),
-         "-i", str(src / "%03d.png"), "-c:v", codec, "-pix_fmt", "yuva420p",
-         # VP8 refuses to encode transparency with alt-ref frames enabled.
-         "-auto-alt-ref", "0", str(out)],
-        check=True, timeout=180)
-    return out
+    return encode_vp9(src, out, fps=fps, codec=codec)
 
 
 def setUpModule():

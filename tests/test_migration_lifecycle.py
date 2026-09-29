@@ -20,6 +20,7 @@ from unittest import mock
 from urllib import error, request
 
 from emojikit import collection_migrate as cm
+from emojikit import media_paths
 from emojikit import packstate
 from emojikit.collection_state import _lock_path
 from tests.test_identity_migration import MigrationCase
@@ -190,12 +191,14 @@ class MigrationCannotCertifyDamage(MigrationCase):
         with self.decode():
             self.assertEqual(self.cli("migrate-video-keys", "--apply"), ir.EXIT_OK)
         self.assertFalse(src.exists())
-        # Migration stores resolved paths. Windows TEMP may use RUNNER~1 while
-        # resolve() records its long runneradmin spelling; these name one file.
+        # Migration stores the data-relative form of the file it renamed, so
+        # a later folder rename keeps working (compared as files: Windows TEMP
+        # may be spelled RUNNER~1 or runneradmin).
         paths = self.cat.col("items", "file_path")
-        self.assertEqual(paths, [str(dest.resolve())])
-        self.assertTrue(Path(paths[0]).samefile(dest))
-        self.assertEqual(Path(paths[0]).read_bytes(), original)
+        self.assertEqual(paths, ["./" + dest.name])
+        stored = media_paths.resolve(self.data, paths[0])
+        self.assertTrue(stored.samefile(dest))
+        self.assertEqual(stored.read_bytes(), original)
 
     def test_partial_legacy_migration_requires_full_backup_coverage(self):
         src, dest = self.pending()
@@ -302,7 +305,8 @@ class MigrationCannotCertifyDamage(MigrationCase):
         self.assertEqual(replay.returncode, ir.EXIT_OK, replay.stdout + replay.stderr)
         self.assertFalse(cm.journal_path(self.data).exists())
         self.assertEqual(sorted(self.cat.col("items")), ["v:" + f"{i:02x}" * 16 for i in (16, 17, 18)])
-        self.assertTrue(all(Path(path).is_file() for path in self.cat.col("items", "file_path")))
+        self.assertTrue(all(media_paths.resolve(self.data, path).is_file()
+                            for path in self.cat.col("items", "file_path")))
 
 
 class ActualWriterOwnership(unittest.TestCase):
