@@ -40,6 +40,8 @@ from emojikit.media import PREVIEW_FPS
 from emojikit.panel_preview import (page_tiers as preview_tiers, parameters as preview_parameters,
                                     preview_bytes as _preview_bytes, warm as preview_warm)
 from emojikit.panel_save import handle_save, replace_map
+# One definition of the script-safe JSON, shared with the roster gallery.
+from emojikit.script_json import json_for_script as _json_for_script
 from emojikit.panel_view import build_view, packs_named
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,18 +58,6 @@ MAX_BODY = 4 * 1024 * 1024  # generous for an order list, small enough to bound
 # never change under a key -- immutable caching is safe and stops the browser
 # re-fetching every thumbnail while you scroll or re-sort.
 _IMMUTABLE = "public, max-age=31536000, immutable"
-
-
-def _json_for_script(value) -> str:
-    """JSON safe to embed in an inert <script type=application/json> block.
-
-    ``</script>`` inside a catalog label would otherwise close the block and
-    everything after it becomes markup. U+2028/U+2029 are escaped because they
-    are literal line terminators in JS string context.
-    """
-    return (json.dumps(value)
-            .replace("<", "\\u003c").replace(">", "\\u003e")
-            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
 
 
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]"}
