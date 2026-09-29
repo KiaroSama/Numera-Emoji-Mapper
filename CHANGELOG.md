@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-29
+
+### Breaking
+
+- **Renamed to Numera Emoji Mapper**: the environment switches are now
+  `NUMERA_EMOJI_MAPPER_*`; the old names are not read.
+- **Operator identities are required configuration**: brand-logo bots and
+  path, pack bases, the coin pack title and the archive folders come from `.env`
+  with no defaults; a tool that needs an unset one stops and names it.
+- **The Worker and its D1 log store are renamed**; each operator creates their
+  own D1 database (see `worker/README.md`, first deploy).
+- **Channel posts need `BOT_ALLOWED_CHANNEL_IDS`**: unset means the bots answer
+  no channel at all.
+- **Coin tools run as modules** from the repository root
+  (`python -m coins.<tool>`); running `coins\<tool>.py` by path no longer works.
+- **Publishing follows the panel's current order**; a dry run or a preflight no
+  longer writes the plan.
+- **A test file run directly refuses to start**; run suites with
+  `python -m unittest tests.<name>`.
+
 ### Changed - the curate panel stays light on a big catalog
 
 - **At most 24 cards animate**, the ones nearest the centre of the screen. The

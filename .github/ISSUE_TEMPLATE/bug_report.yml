@@ -22,7 +22,11 @@ body:
       options:
         - General emoji pack (GENERAL_BOT_TOKEN)
         - Crypto-coin pack (TELEGRAM_BOT_TOKEN)
-        - Image conversion only (make_emoji_pngs.py)
+        - Collector ingest (fetch_pack / fetch_emoji_ids / add_media)
+        - Curate panel (python -m emojikit.panel)
+        - Pack roster or archive (pack_manifest / pack_archive)
+        - Emoji-id bot or Worker
+        - Image conversion only (make_emoji_pngs)
         - Launcher (run.ps1)
         - Other
     validations:
@@ -41,6 +45,14 @@ body:
       label: Error output
       description: Full error / traceback (redact tokens).
       render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version (tag or commit)
+      description: "`git describe --tags --always` in the project folder."
+      placeholder: e.g. v2.0.0 or 16e5a7b
+    validations:
+      required: true
   - type: input
     id: python
     attributes:
