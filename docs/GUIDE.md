@@ -2404,6 +2404,7 @@ python -m emojikit.plan_apply --apply          # change the live packs, 20 chang
 | `--user-id` | `PACK_OWNER_USER_ID` | the owner id Telegram requires for adds |
 | `--apply` | off | without it nothing is written anywhere |
 | `--max-changes` | 20 | counted changes per run, 1..20 (the owner's cap) |
+| `--max-wait` | 300 | longest Telegram flood wait (seconds) one run sleeps out |
 
 Per run, in this order: **removals** (the outgoing half of each move), then
 **adds** in the panel's order (moves arriving, then never-published emoji the
@@ -2430,7 +2431,7 @@ target pack that is not an existing one or the next new one, an unreadable
 journal, a held lock. A set whose live state cannot be read stops the run
 (exit 1) and is reported as unknown. Exit codes: 0 nothing pending, 3 work
 remains, 2 refused, 1 stopped mid-run (the records and journal say what was
-done). A Telegram flood wait is honoured by the client as usual. Run
+done). A Telegram flood wait up to `--max-wait` seconds is slept out; a longer one ends the run with exit 3 (the refused call applied nothing, the state and journal are saved, a pending delete intent is cleared), and the next run continues. Run
 `pack_manifest --refresh` afterwards so the roster records the retired ids.
 
 The panel decides nothing on Telegram. It is where the owner says what the

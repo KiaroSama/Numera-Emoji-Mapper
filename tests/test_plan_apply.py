@@ -27,7 +27,8 @@ from emojikit.catalog import Catalog
 from emojikit.collection_state import _lock_path, _state_path, load_state, save_json
 from emojikit.packstate import exclusive_lock
 from emojikit.panel_plan import read_plan
-from emojikit.telegram_api import LiveStateUnknown, SetState
+from emojikit.errors import FloodWaitTooLong
+from emojikit.telegram_api import LiveStateUnknown, SetState, Telegram
 
 BASE, BOT = "cryptoemoji", "YourEmojiBot"
 
@@ -63,6 +64,7 @@ class FakeTelegram:
         self.writes: list[tuple[str, str]] = []
         self.unreadable: set[str] = set()
         self.crash_after_delete = False
+        self.flood_on: set[str] = set()   # ops refused once with a long retry_after
         self.n = 0
 
     def _sticker(self, path, fmt, emojis) -> dict:
@@ -101,6 +103,7 @@ class FakeTelegram:
 
     def add_emoji(self, user_id, name, path, fmt, emoji_list, keywords, *,
                   expected_before=None):
+        self._flood("add")
         self.writes.append(("add", name))
         self.sets[name].append(self._sticker(path, fmt, emoji_list))
 
@@ -114,6 +117,7 @@ class FakeTelegram:
 
     def call(self, method, *, data=None, files=None, retries=5, applied_check=None):
         assert method == "deleteStickerFromSet", method
+        self._flood("delete")
         self.writes.append(("delete", data["sticker"]))
         for stickers in self.sets.values():
             stickers[:] = [st for st in stickers if st["file_id"] != data["sticker"]]
@@ -124,6 +128,13 @@ class FakeTelegram:
 
     def send_message(self, chat_id, text, *, disable_preview=False):
         pass
+
+    def _flood(self, op: str) -> None:
+        # What the real client raises over its ceiling: the request was
+        # REFUSED with retry_after, so nothing was applied.
+        if op in self.flood_on:
+            self.flood_on.discard(op)
+            raise FloodWaitTooLong(op, 900)
 
 
 class Family:
@@ -380,6 +391,64 @@ class ApplyInBoundedRuns(_Case):
         self.assertEqual(fam.apply(), 0)
         self.assertEqual([w[0] for w in fam.tg.writes].count("delete"), 1)
         fam.assert_records_match_live(self)
+
+
+class LongFloodWaitEndsTheRunCleanly(_Case):
+    def _moved(self) -> Family:
+        fam = Family(self.data, {1: 2, 2: 1})
+        fam.plan({**fam.current(), fam.by_pack[1][0]: 2})
+        return fam
+
+    def test_on_a_delete_the_intent_is_cleared_and_nothing_is_recorded(self):
+        fam = self._moved()
+        fam.tg.flood_on.add("delete")
+        self.assertEqual(fam.apply(), plan_apply.EXIT_PENDING)
+        journal = json.loads((self.data / f"plan_apply_{BASE}.json").read_text(encoding="utf-8"))
+        self.assertEqual((journal["intent"], journal["retired"]), (None, []))
+        self.assertEqual(fam.tg.writes, [])
+        fam.assert_records_match_live(self)
+        self.assertEqual(fam.apply(), 0, "the next run does the work")
+        fam.assert_records_match_live(self)
+
+    def test_on_an_add_the_removal_stays_recorded_and_the_next_run_adds(self):
+        fam = self._moved()
+        fam.tg.flood_on.add("add")
+        self.assertEqual(fam.apply(), plan_apply.EXIT_PENDING)
+        self.assertEqual([w[0] for w in fam.tg.writes], ["delete"])
+        fam.assert_records_match_live(self)
+        self.assertEqual(fam.apply(), 0)
+        counted = [w[0] for w in fam.tg.writes if w[0] != "move"]   # reorder is not counted
+        self.assertEqual(counted, ["delete", "add"])
+        fam.assert_records_match_live(self)
+
+
+class ClientFloodCeiling(unittest.TestCase):
+    """Telegram.call: over the ceiling it raises instead of sleeping."""
+
+    def _client(self, retry_after: int, ceiling):
+        tg = Telegram("123:test")
+        tg.max_flood_wait = ceiling
+        answers = iter([{"ok": False, "description": f"Too Many Requests: retry after "
+                         f"{retry_after}", "parameters": {"retry_after": retry_after}},
+                        {"ok": True, "result": True}])
+        tg.s = mock.Mock(post=lambda *a, **k: mock.Mock(json=lambda: next(answers)))
+        return tg
+
+    def test_a_wait_over_the_ceiling_raises_without_sleeping(self):
+        tg = self._client(900, 300)
+        with mock.patch("emojikit.telegram_api.time.sleep") as sleep, \
+                contextlib.redirect_stdout(io.StringIO()), \
+                self.assertRaises(FloodWaitTooLong) as ctx:
+            tg.call("deleteStickerFromSet", data={"sticker": "x"})
+        self.assertEqual(ctx.exception.seconds, 900)
+        sleep.assert_not_called()
+
+    def test_a_wait_under_the_ceiling_is_still_honoured(self):
+        tg = self._client(20, 300)
+        with mock.patch("emojikit.telegram_api.time.sleep") as sleep, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertTrue(tg.call("deleteStickerFromSet", data={"sticker": "x"}))
+        sleep.assert_called_once_with(21)
 
 
 class RefuseBeforeTouchingAnything(_Case):

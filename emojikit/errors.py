@@ -40,3 +40,17 @@ class OperatorConfigMissing(RuntimeError):
     be somebody else's identity, published under yours. Unset is unknown, and
     the tool stops before changing anything instead of guessing.
     """
+
+
+class FloodWaitTooLong(Exception):
+    """Telegram refused a call with a retry_after longer than the caller allows.
+
+    Raised only when a caller set ``Telegram.max_flood_wait``. The request was
+    REFUSED, so nothing was applied. Not a RuntimeError on purpose: the
+    publisher treats a RuntimeError on an add as "retry that item later" and
+    carries on, which under a long flood wait hits the same wall on every item.
+    """
+
+    def __init__(self, method: str, seconds: int) -> None:
+        super().__init__(f"Telegram asks to wait {seconds}s before {method}")
+        self.method, self.seconds = method, seconds

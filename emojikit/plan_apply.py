@@ -40,7 +40,7 @@ from emojikit.collection_reconcile import _probe
 from emojikit.collection_state import (DEFAULT_EMOJI, MIXED, PER_SET, BrandLogo,
                                        SetDrift, StateError, _lock_path, _state_path,
                                        load_json, load_state, save_json)
-from emojikit.errors import OperatorConfigMissing
+from emojikit.errors import FloodWaitTooLong, OperatorConfigMissing
 from emojikit.logsetup import record_exit_code, redact, register_secret, setup_logging
 from emojikit.maintenance import writer
 from emojikit.packstate import LockBusy, exclusive_lock
@@ -50,6 +50,7 @@ from emojikit.telegram_api import BotApiError, LiveStateUnknown, SetState, Teleg
 
 ROOT = Path(__file__).resolve().parent.parent
 MAX_CHANGES = 20          # owner decision 3: counted changes per run
+MAX_WAIT = 300            # longest Telegram flood wait (s) one run sleeps out
 log = logging.getLogger("plan_apply")
 
 
@@ -300,7 +301,7 @@ def remove_one(tg, cat: Catalog, state: dict, journal: dict, *, data_dir: Path,
     try:
         tg.call("deleteStickerFromSet", data={"sticker": live[at]["file_id"]},
                 applied_check=gone)
-    except BotApiError:
+    except (BotApiError, FloodWaitTooLong):
         journal["intent"] = None          # a definite refusal: nothing happened
         save_json(_journal_path(data_dir, base), journal)
         raise
@@ -318,6 +319,23 @@ def apply_run(tg, cat: Catalog, *, plan: dict, state: dict, data_dir: Path, base
               user_id: int, bot: str, logo_bots: frozenset[str], logo_path: str | None,
               max_changes: int) -> int:
     """Removals, adds, reorder, within the cap. Returns the exit code."""
+    try:
+        return _run(tg, cat, plan=plan, state=state, data_dir=data_dir, base=base,
+                    user_id=user_id, bot=bot, logo_bots=logo_bots, logo_path=logo_path,
+                    max_changes=max_changes)
+    except FloodWaitTooLong as exc:
+        # Refused, so nothing half-applied: every change before it is already
+        # recorded item by item. Saved here because the publisher writes its
+        # state only every 20 items and at the end, which it never reached.
+        save_json(_state_path(data_dir, base), state)
+        print(f"{exc}; stopped cleanly. Run again after that.")
+        log.warning("stopped on a flood wait: %s", exc)
+        return EXIT_PENDING
+
+
+def _run(tg, cat: Catalog, *, plan: dict, state: dict, data_dir: Path, base: str,
+         user_id: int, bot: str, logo_bots: frozenset[str], logo_path: str | None,
+         max_changes: int) -> int:
     journal = load_journal(data_dir, base)
     settle_intent(tg, cat, state, journal, data_dir=data_dir, base=base)
     items, ids = read_catalog(cat.path, base)
@@ -378,6 +396,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="Change the live packs. Without it nothing is written anywhere.")
     ap.add_argument("--max-changes", type=int, default=MAX_CHANGES,
                     help=f"Counted changes (removals + adds) per run, 1..{MAX_CHANGES}.")
+    ap.add_argument("--max-wait", type=int, default=MAX_WAIT,
+                    help="Longest Telegram flood wait (s) to sleep out; a longer one ends "
+                         "the run with exit 3 and the next run continues.")
     args = ap.parse_args(argv)
     load_env()
     setup_logging("plan_apply")
@@ -423,6 +444,7 @@ def _apply(args, *, plan: dict, base: str, data_dir: Path, db: Path) -> int:
         items, ids = read_catalog(db, base)
         print(render(compute_steps(plan, state, items, ids), ids, args.max_changes))
         tg = Telegram(token)
+        tg.max_flood_wait = max(0, args.max_wait)
         with Catalog(db) as cat:
             try:
                 return apply_run(tg, cat, plan=plan, state=state, data_dir=data_dir,
