@@ -221,20 +221,31 @@ function packStarts(){
 // Rows are laid out in arithmetic: a separator row before each pack, then
 // card rows of `cols` items -- a separator always starts a fresh row, exactly
 // as CSS grid places a full-width item. Every offset is an integer.
+// A custom property on #grid restyles every card that reads it, and a drag
+// relayouts on each step: writing an unchanged value still invalidated them all.
+const cssVars = new Map();
+function setVar(name, value){
+  const v = String(value);
+  if (cssVars.get(name) === v) return;
+  cssVars.set(name, v);
+  grid.style.setProperty(name, v);
+}
+// The grid's content width, kept by measure() and a ResizeObserver so that
+// layoutRows() -- run on every drag step -- never forces a style read.
+let innerW = 0;
+
 function layoutRows(){
   const compact = zoom < COMPACT_BELOW;
   document.body.classList.toggle('compact', compact);
   G.gap  = Math.round(BASE.gap * zoom);
   G.cardH = Math.round((compact ? BASE.cardHCompact : BASE.cardH) * zoom);
   G.sepH = Math.round(BASE.sepH * zoom);
-  const cs = getComputedStyle(grid);
-  const inner = grid.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  G.cols = Math.max(1, Math.floor((inner + G.gap) / (BASE.cardW * zoom + G.gap)));
-  grid.style.setProperty('--cols', G.cols);
-  grid.style.setProperty('--gap', G.gap + 'px');
-  grid.style.setProperty('--cardH', G.cardH + 'px');
-  grid.style.setProperty('--sepH', G.sepH + 'px');
-  grid.style.setProperty('--z', zoom);
+  G.cols = Math.max(1, Math.floor((innerW + G.gap) / (BASE.cardW * zoom + G.gap)));
+  setVar('--cols', G.cols);
+  setVar('--gap', G.gap + 'px');
+  setVar('--cardH', G.cardH + 'px');
+  setVar('--sepH', G.sepH + 'px');
+  setVar('--z', zoom);
 
   const {starts, logo} = packStarts();
   const sepAt = new Map();           // item index -> the marker that precedes it
@@ -280,7 +291,9 @@ function layoutRows(){
 
 function measure(){
   const r = grid.getBoundingClientRect();
-  gridTop = r.top + scrollY + parseFloat(getComputedStyle(grid).paddingTop);
+  const cs = getComputedStyle(grid);
+  gridTop = r.top + scrollY + parseFloat(cs.paddingTop);
+  innerW = grid.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const alert = document.getElementById('alert');
   const header = document.querySelector('header').offsetHeight;
   alert.style.top = header + 'px';     // the banner sticks just under the header
@@ -514,6 +527,18 @@ function scheduleRender(){
   scrollRaf = requestAnimationFrame(()=>{ scrollRaf = null; render(); });
 }
 addEventListener('resize', ()=>{ measure(); relayout(); });
+// Only the grid's width can change the column count (its padding is fixed CSS),
+// and only the header -- holding tray included -- moves the grid's top.
+// Started by the boot block: an observer fires on its first layout, which can
+// land before the later scripts that render() depends on have loaded.
+function observeLayout(){
+  if (!window.ResizeObserver) return;
+  new ResizeObserver(es => {
+    const w = es[es.length - 1].contentRect.width;
+    if (w !== innerW) { innerW = w; relayout(); }
+  }).observe(grid);
+  new ResizeObserver(() => { measure(); render(); }).observe(document.querySelector('header'));
+}
 
 // ---- counters and per-card state ----------------------------------------
 function updateCount(){

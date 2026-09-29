@@ -3,6 +3,7 @@
 
 const HISTORY_MAX = 100;
 let past = [], future = [], restoring = false;
+let pastTopSig = null;   // JSON of past's last entry: compared, never re-serialised
 const holdOrigins = new Map();
 let savedSnapshot = null, pendingSaveSnapshot = null;
 
@@ -15,7 +16,8 @@ function snapshot(){
 function remember(snap){
   if(restoring) return;
   const state = snap || snapshot();
-  if(!past.length || JSON.stringify(past[past.length-1]) !== JSON.stringify(state)) past.push(state);
+  const sig = JSON.stringify(state);
+  if(!past.length || pastTopSig !== sig){ past.push(state); pastTopSig = sig; }
   if(past.length > HISTORY_MAX) past.shift();
   future.length = 0;
   updateHistoryButtons();
@@ -59,11 +61,13 @@ function applySnapshot(snap, persist=true){
 }
 function undo(){
   if(!past.length) return;
-  future.push(snapshot()); applySnapshot(past.pop()); toast('Undone');
+  future.push(snapshot()); applySnapshot(past.pop());
+  pastTopSig = past.length ? JSON.stringify(past[past.length-1]) : null; toast('Undone');
 }
 function redo(){
   if(!future.length) return;
-  past.push(snapshot()); applySnapshot(future.pop()); toast('Redone');
+  past.push(snapshot()); pastTopSig = JSON.stringify(past[past.length-1]);
+  applySnapshot(future.pop()); toast('Redone');
 }
 function updateHistoryButtons(){
   document.getElementById('undo').disabled=!past.length;
@@ -186,7 +190,8 @@ function renderHolding(){
   }
   while(cursor){const n=cursor;cursor=cursor.nextSibling;n.remove();}
   if(!held.length) holdCards.appendChild(el('span','hempty','Empty'));
-  measure(); render();
+  // No measure() here: the header's ResizeObserver (panel-grid.js) re-measures
+  // when the tray actually changes height, not on every count update.
 }
 const originalUpdateCount=updateCount;
 updateCount=function(){originalUpdateCount();renderHolding();};

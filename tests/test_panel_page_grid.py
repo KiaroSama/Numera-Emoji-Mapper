@@ -104,7 +104,7 @@ class TheGridIsVirtual(unittest.TestCase):
         layout = block(SCRIPT, "function layoutRows(){", "function measure")
         self.assertIn("Math.round(BASE.gap * zoom)", layout)
         self.assertIn("Math.round((compact ? BASE.cardHCompact : BASE.cardH) * zoom)", layout)
-        self.assertIn("grid.style.setProperty('--cardH', G.cardH + 'px');", layout)
+        self.assertIn("setVar('--cardH', G.cardH + 'px');", layout)
         card = block(PAGE, ".card{", "}")
         self.assertIn("height:var(--cardH", card)
         self.assertIn("overflow:hidden", card)
