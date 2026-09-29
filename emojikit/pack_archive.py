@@ -46,6 +46,7 @@ from emojikit.errors import OperatorConfigMissing
 from emojikit import logsetup
 from emojikit.packstate import LockBusy, write_json_atomic
 from emojikit.maintenance import writer
+from emojikit.pack_rows import keyword_cell, markdown_table
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "collection"
@@ -231,15 +232,13 @@ def render_history_md(rec: dict, rows: list[dict]) -> str:
 
 def render_manifest_md(rec: dict, rows: list[dict], items: dict[str, dict]) -> str:
     real = [r for r in rows if r["content_key"]]
-    out = [f"# {rec['title']}", "",
-           f"Pack: https://t.me/addemoji/{rec['name']}  |  format: {rec.get('fmt', 'mixed')}  "
-           f"|  {len(real)} emoji", "",
-           "| # | Name | Emoji ID |", "|---|------|----------|"]
-    for i, r in enumerate(real, start=1):
-        name = ", ".join(items[r["content_key"]]["keywords"]) or r["content_key"]
-        name = name.replace("|", "\\|")          # 3.11 f-strings reject a backslash inside {}
-        out.append(f"| {i} | {name} | {r['premium_id']} |")
-    return "\n".join(out) + "\n"
+    head = [f"# {rec['title']}", "",
+            f"Pack: https://t.me/addemoji/{rec['name']}  |  format: {rec.get('fmt', 'mixed')}  "
+            f"|  {len(real)} emoji", ""]
+    table = [{"n": i, "cid": r["premium_id"],
+              "name": keyword_cell(items[r["content_key"]]["keywords"]) or r["content_key"]}
+             for i, r in enumerate(real, start=1)]
+    return "\n".join(head) + "\n" + markdown_table(table, [("n", "#"), ("name", "Name"), ("cid", "Emoji ID")]) + "\n"
 
 
 # --------------------------------------------------------------------------- #
@@ -256,9 +255,6 @@ def _sync(tg) -> int:
     items, by_set = _catalog()
     ck_of = {v["cid"]: k for k, v in items.items() if v["cid"]}
     root = archive_root()
-    # Resolved before the first move: a missing logo must fail while nothing
-    # has been touched yet, not half-way through the first full pack.
-    logo_src = operator_config.brand_logo_path()
     db = sqlite3.connect(CATALOG)
     touched = moved = renamed = 0
     try:
@@ -271,6 +267,13 @@ def _sync(tg) -> int:
             live = tg.get_sticker_set(rec["name"])["stickers"]
             rows = _rows(rec, live, items, ck_of)
             folder.mkdir(parents=True, exist_ok=True)
+            # The logo is resolved before this pack's first move, and only when
+            # the folder needs one: a missing logo must stop the run while
+            # nothing of the pack has been touched, not half-way through it.
+            logo = folder / LOGO_NAME
+            older = sorted(folder.glob("001_logo*.png")) if not logo.is_file() else []
+            logo_src = (operator_config.brand_logo_path()
+                        if not logo.is_file() and not older else None)
 
             want = {r["file"]: r["content_key"] for r in rows if r["content_key"]}
             # Rename before moving: a file already here under a stale slot is the
@@ -301,11 +304,9 @@ def _sync(tg) -> int:
                     db.execute("UPDATE items SET file_path=? WHERE content_key=?",
                                (media_paths.store(DATA_DIR, dest), ck))
 
-            logo = folder / LOGO_NAME
             if not logo.is_file():
                 # A folder archived under an older logo name keeps its file,
                 # renamed; otherwise the operator's logo is copied, never moved.
-                older = sorted(folder.glob("001_logo*.png"))
                 if older:
                     os.replace(older[0], logo)
                 else:
@@ -340,12 +341,28 @@ def main(argv: list[str] | None = None) -> int:
                     help="report whether the archive still describes the packs (exit 3 = stale)")
     ap.add_argument("--sync", action="store_true",
                     help="archive every FULL pack and refresh its metadata")
+    ap.add_argument("--export", metavar="PACK",
+                    help="copy one pack (number or set name, full or not) into --zip, "
+                         "in slot order with its manifest; moves nothing")
+    ap.add_argument("--zip", metavar="PATH", help="the zip --export writes")
     args = ap.parse_args(argv)
-    if not (args.check or args.sync):
-        ap.error("give --check or --sync")
+    if sum(bool(x) for x in (args.check, args.sync, args.export)) != 1:
+        ap.error("give exactly one of --check, --sync or --export")
+    if bool(args.export) != bool(args.zip):
+        ap.error("--export and --zip go together")
 
     from emojikit.build_pack import load_env
     load_env()
+    if args.export:
+        # Needs the family, not the archive folder: a pack still being filled
+        # has none, and exporting it is the point.
+        try:
+            operator_config.require("COLLECTION_PACK_BASE")
+        except OperatorConfigMissing as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return EXIT_FAILED
+        from emojikit.pack_export import export
+        return export(args.export, Path(args.zip))
     try:
         operator_config.require("COLLECTION_PACK_BASE", ARCHIVE_ENV)
     except OperatorConfigMissing as exc:

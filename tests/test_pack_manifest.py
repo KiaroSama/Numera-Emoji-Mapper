@@ -188,6 +188,18 @@ class ThePageCarriesTheDataToo(unittest.TestCase):
         self.assertIn('data-custom-emoji-id="111"', page)
         self.assertIn('data-index="0"', page)
 
+    def test_a_label_cannot_close_the_roster_block(self):
+        """Labels come from downloaded packs. A plain json.dumps let
+        `</script>` end the data block, and what followed ran as script."""
+        doc = pm.build_pack(_FakeTG([_sticker("111", "✅")]),
+                            {"name": "s", "index": 1, "logo": True}, "general", {}, set())
+        doc["emoji"][0]["name"] = "</script><b>x"
+        with tempfile.TemporaryDirectory() as tmp:
+            page = pack_gallery.render(doc, lambda _e: None, Path(tmp) / "thumbs")
+        self.assertNotIn("</script><b>x", page)
+        blob = page.split('id="roster">', 1)[1].split("</script>", 1)[0]
+        self.assertEqual(json.loads(blob)["emoji"][0]["name"], "</script><b>x")
+
     def test_a_missing_art_file_leaves_a_hole_not_an_exception(self):
         """6600 emoji will always include one file this machine cannot open."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -255,6 +267,132 @@ class ThePageCarriesTheDataToo(unittest.TestCase):
         coin = pm._zero_note({"family": "coins"})
         self.assertIn("brand logo", gen)
         self.assertIn("no brand logo", coin)
+
+
+class EveryFormatGetsAThumbnail(unittest.TestCase):
+    """The gallery's thumbnail branches ran in no test: every resolver returned
+    None, and their `except Exception` would turn a regression into blank
+    cards that nothing noticed."""
+
+    FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+    def _art(self, tmp: Path) -> dict[str, Path]:
+        import gzip
+        from tests._media_fixtures import HAS_FFMPEG, encode_vp9, make_png
+        art = {"111": make_png(tmp / "static.png")}
+        lottie = (self.FIXTURES / "lottie" / "red_circle_512.json").read_bytes()
+        tgs = tmp / "anim.tgs"
+        with open(tgs, "wb") as fh, gzip.GzipFile(fileobj=fh, mode="wb", mtime=0) as gz:
+            gz.write(lottie)
+        art["222"] = tgs
+        if HAS_FFMPEG:
+            frames = tmp / "frames"
+            for i in range(3):
+                make_png(frames / f"{i:03d}.png", (40 * i, 90, 200, 255))
+            art["333"] = encode_vp9(frames, tmp / "clip.webm")
+        return art
+
+    def _render(self, tmp: Path, art: dict[str, Path], thumbs: Path) -> str:
+        doc = pm.build_pack(
+            _FakeTG([_sticker("111"), _sticker("222", animated=True),
+                     _sticker("333", video=True)]),
+            {"name": "s", "index": 1, "logo": False}, "general", {}, set())
+        return pack_gallery.render(doc, lambda e: art.get(e["custom_emoji_id"]),
+                                   thumbs)
+
+    def test_each_format_is_inlined_and_the_second_render_hits_the_cache(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            art, thumbs = self._art(tmp), tmp / "thumbs"
+            page = self._render(tmp, art, thumbs)
+            self.assertIn("data:image/webp;base64,", page)          # static + anim
+            self.assertTrue((thumbs / "222_still.webp").is_file(),
+                            "an animated card starts on a still frame")
+            if "333" in art:
+                self.assertIn("data:video/webm;base64,", page)
+            else:
+                self.skipTest("ffmpeg is not installed; the video branch was not run")
+            before = {p.name: p.stat().st_mtime_ns for p in thumbs.iterdir()}
+            again = self._render(tmp, art, thumbs)
+            after = {p.name: p.stat().st_mtime_ns for p in thumbs.iterdir()}
+        self.assertEqual(after, before, "a second render must reuse the cache")
+        self.assertNotIn("no preview", page)
+        self.assertEqual(again.count("data:"), page.count("data:"))
+
+
+class AOneFamilyRefreshKeepsTheOther(unittest.TestCase):
+    """`--refresh --family coins` rebuilt index.json from the coins alone.
+
+    The general packs and every id lookup into them vanished, and the result
+    still passed --check.
+    """
+
+    OLD = {
+        "packs": [{"set_name": "gen1_by_bot", "title": "G 1", "family": "general",
+                   "pack_index": 1, "link": "l", "count": 1},
+                  {"set_name": "coin1_by_bot", "title": "C 1", "family": "coins",
+                   "pack_index": 1, "link": "l", "count": 1}],
+        "by_current_id": {"g1": {"set": "gen1_by_bot", "slot": 0, "index": 0},
+                          "c-old": {"set": "coin1_by_bot", "slot": 0, "index": 0}},
+        "by_source_id": {"src-g": "g1", "src-c": "c-old"},
+        "by_previous_id": {"g0": "g1"},
+        "inputs": {"catalog.db": [1, 1], "publish_state.json": [2, 2],
+                   "rebuild_dedup_state.json": [3, 3], "ticker_to_id.json": [4, 4]},
+    }
+    NOW = {"catalog.db": [9, 9], "publish_state.json": [9, 9],
+           "rebuild_dedup_state.json": [5, 5], "ticker_to_id.json": [6, 6]}
+
+    def _doc(self, tg, rec, fam, prov, live_ids, prior=None):
+        return {"set_name": rec["name"], "title": "C 1", "family": fam,
+                "pack_index": 1, "link": "l", "count": 1,
+                "emoji": [{"custom_emoji_id": "c-new", "slot": 0, "index": 0,
+                           "source_emoji_ids": ["src-c"],
+                           "previous_custom_emoji_ids": []}]}
+
+    def _refresh(self, out: Path) -> dict:
+        import os
+        (out / "index.json").write_text(json.dumps(self.OLD), encoding="utf-8")
+        fakes = dict(OUT_DIR=out, THUMBS=out / ".thumbs",
+                     Telegram=lambda token: _FakeTG([]),
+                     _sets=lambda path: [{"name": "coin1_by_bot"}],
+                     general_state=lambda: Path("publish_state.json"),
+                     general_provenance=lambda ids: {}, coin_provenance=lambda: {},
+                     previous_ids=lambda: {}, general_art=lambda: {},
+                     coin_art_dir=lambda: None, build_pack=self._doc,
+                     render_markdown=lambda doc: "", fingerprint=lambda: dict(self.NOW))
+        with patch.multiple(pm, **fakes), \
+                patch.object(pm.pack_gallery, "render", lambda *a: ""), \
+                patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "x"}), \
+                patch("builtins.print"):
+            self.assertEqual(pm.refresh("coins"), pm.EXIT_OK)
+        return json.loads((out / "index.json").read_text(encoding="utf-8"))
+
+    def test_the_general_family_and_its_lookups_survive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            index = self._refresh(Path(tmp))
+        self.assertEqual(sorted(p["set_name"] for p in index["packs"]),
+                         ["coin1_by_bot", "gen1_by_bot"])
+        self.assertIn("g1", index["by_current_id"])
+        self.assertIn("c-new", index["by_current_id"])
+        self.assertNotIn("c-old", index["by_current_id"], "refreshed family is replaced")
+        self.assertEqual(index["by_source_id"], {"src-g": "g1", "src-c": "c-new"})
+        self.assertEqual(index["by_previous_id"], {"g0": "g1"})
+        self.assertEqual(index["pack_count"], 2)
+
+    def test_the_other_familys_inputs_keep_their_old_fingerprint(self):
+        """Or --check would call the general half fresh without reading it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            inputs = self._refresh(Path(tmp))["inputs"]
+        self.assertEqual(inputs["catalog.db"], [1, 1])
+        self.assertEqual(inputs["publish_state.json"], [2, 2])
+        self.assertEqual(inputs["rebuild_dedup_state.json"], [5, 5])
+
+    def test_check_with_a_family_is_a_usage_error(self):
+        with patch.object(pm, "setup_logging", lambda *a, **k: None), \
+                patch.object(pm, "load_env", lambda: None), \
+                patch("sys.stderr"), self.assertRaises(SystemExit) as caught:
+            pm.main(["--check", "--family", "coins"])
+        self.assertEqual(caught.exception.code, 2)
 
 
 if __name__ == "__main__":

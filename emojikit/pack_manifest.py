@@ -42,6 +42,7 @@ from pathlib import Path
 from emojikit import media_paths, pack_gallery
 from emojikit.build_pack import EXIT_FAILED, EXIT_OK, Telegram, load_env
 from emojikit import operator_config
+from emojikit.pack_rows import markdown_table
 from emojikit import media
 from emojikit.logsetup import record_exit_code, setup_logging
 from emojikit.packstate import write_json_atomic
@@ -293,18 +294,21 @@ def render_markdown(doc: dict) -> str:
         "ids it held in THIS estate earlier, oldest first: a replace mints a "
         "new id, and the dead one is what stale inventories still point at.",
         "",
-        "| # | slot | custom_emoji_id | ours before | glyph | format | name | was |",
-        "|--:|-----:|-----------------|-------------|-------|--------|------|-----|",
     ]
+    rows = []
     for e in doc["emoji"]:
         was = ", ".join(e["source_emoji_ids"])
         mine = " -> ".join(e.get("previous_custom_emoji_ids") or [])
-        nm = (e["name"] or "").replace("|", "\\|")
-        head.append(f"| {e['index']} | {e['slot']} | `{e['custom_emoji_id']}` | "
-                    f"{('`' + mine + '`') if mine else ''} | "
-                    f"{e['glyph'] or ''} | {e['format']} | {nm} | "
-                    f"{('`' + was + '`') if was else ''} |")
-    return "\n".join(head) + "\n"
+        rows.append({"index": e["index"], "slot": e["slot"],
+                     "cid": f"`{e['custom_emoji_id']}`",
+                     "mine": f"`{mine}`" if mine else "", "glyph": e["glyph"],
+                     "format": e["format"], "name": e["name"],
+                     "was": f"`{was}`" if was else ""})
+    table = markdown_table(rows, [
+        ("index", "#", "right"), ("slot", "slot", "right"), ("cid", "custom_emoji_id"),
+        ("mine", "ours before"), ("glyph", "glyph"), ("format", "format"),
+        ("name", "name"), ("was", "was")])
+    return "\n".join(head) + "\n" + table + "\n"
 
 
 def render_index_markdown(index: dict) -> str:
@@ -403,7 +407,9 @@ def refresh(family: str) -> int:
     for fam, rec, tg in jobs:
         try:
             ss = tg.get_sticker_set(rec["name"])
-        except Exception as exc:                      # noqa: BLE001 - one dead set must not lose the rest
+        except Exception as exc:                      # noqa: BLE001 - reported, then the run stops
+            # Stops the whole run: a roster missing one set would read as if
+            # that pack were gone, so nothing is written from a partial read.
             log.error("%s: cannot read the live set: %s", rec["name"], exc)
             return EXIT_FAILED
         fetched.append((fam, rec, ss))
@@ -455,6 +461,11 @@ def refresh(family: str) -> int:
                 by_previous[s] = e["custom_emoji_id"]
         log.info("%s: %d emoji", doc["set_name"], doc["count"])
 
+    inputs = fingerprint()
+    if family != "all":
+        inputs = _keep_other_family(family, packs, by_current, by_source,
+                                    by_previous, inputs)
+
     index = {
         "captured_utc": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "pack_count": len(packs),
@@ -466,7 +477,7 @@ def refresh(family: str) -> int:
         "id_changes": len(by_previous),
         # Written LAST and read by --check: the roster is only as fresh as the
         # inputs it was built from.
-        "inputs": fingerprint(),
+        "inputs": inputs,
     }
     write_json_atomic(OUT_DIR / "index.json", index)
     (OUT_DIR / "README.md").write_text(render_index_markdown(index), encoding="utf-8")
@@ -475,6 +486,41 @@ def refresh(family: str) -> int:
           f"{len(by_previous)} retired ids, "
           f"{len(list(THUMBS.glob('*'))) if THUMBS.is_dir() else 0} cached thumbnails")
     return EXIT_OK
+
+
+def _family_inputs(family: str) -> set[str]:
+    """The fingerprint keys whose files feed one family's roster."""
+    files = (CATALOG, general_state()) if family == "general" else (COINS_STATE, TICKER_MAP)
+    return {f.name for f in files}
+
+
+def _keep_other_family(family, packs, by_current, by_source, by_previous,
+                       inputs: dict) -> dict:
+    """Merge the untouched family from the existing index into this one.
+
+    A one-family refresh used to rebuild index.json from that family alone:
+    the other family's packs and every id lookup into them vanished, and the
+    result still passed --check. Their inputs keep the fingerprint they were
+    built from, so --check still sees a change to THEIR files.
+    """
+    try:
+        old = json.loads((OUT_DIR / "index.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return inputs              # nothing to keep: first roster, or unreadable
+    kept = [p for p in old.get("packs") or [] if p.get("family") != family]
+    kept_sets = {p["set_name"] for p in kept}
+    kept_ids = {cid: where for cid, where in (old.get("by_current_id") or {}).items()
+                if where.get("set") in kept_sets}
+    packs[:0] = kept
+    for cid, where in kept_ids.items():
+        by_current.setdefault(cid, where)
+    for name, table in (("by_source_id", by_source), ("by_previous_id", by_previous)):
+        for src, cid in (old.get(name) or {}).items():
+            if cid in kept_ids:
+                table.setdefault(src, cid)
+    mine = _family_inputs(family)
+    recorded = old.get("inputs") or {}
+    return {k: (v if k in mine else recorded.get(k)) for k, v in inputs.items()}
 
 
 class _Prefetched:
@@ -500,6 +546,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check == args.refresh:
         ap.error("pass exactly one of --refresh or --check")
+    if args.check and args.family != "all":
+        # --check reads the whole index; accepting a family it then ignores
+        # would claim a narrower answer than the one printed.
+        ap.error("--family applies to --refresh only")
     if args.check:
         stale, why = check_stale()
         print(("STALE: " if stale else "fresh: ") + why)
