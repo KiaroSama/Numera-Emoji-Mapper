@@ -23,6 +23,7 @@ import sqlite3
 import subprocess
 import sys
 import threading
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -36,7 +37,7 @@ from emojikit.logsetup import record_exit_code, setup_logging
 from emojikit.panel_logging import ClientEventLog
 from emojikit.panel_instance import reopen_existing, session_identity
 from emojikit.media import PREVIEW_FPS
-from emojikit.panel_preview import (parameters as preview_parameters,
+from emojikit.panel_preview import (page_tiers as preview_tiers, parameters as preview_parameters,
                                     preview_bytes as _preview_bytes, warm as preview_warm)
 from emojikit.panel_save import handle_save
 from emojikit.panel_view import build_view, packs_named
@@ -206,7 +207,7 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
                         self._send(409, str(exc).encode("utf-8"), "text/plain; charset=utf-8")
                         return
                 page = (PAGE.replace("__ITEMS__", items).replace("__TOKEN__", token)
-                            .replace("__PREVIEW_FPS__", str(preview_fps))
+                            .replace("__PREVIEW_TIERS__", _json_for_script(preview_tiers(preview_fps)))
                             .replace("__PER_SET__", str(PER_SET))
                             .replace("__HIDDEN__", str(hidden_now[0]))
                             .replace("__ASSET_VER__", ASSET_VER)
@@ -237,9 +238,12 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
                     return
                 key = unquote(path[len("/preview/"):])
                 it = by_key.get(key)
-                if not it or not it.is_file():
+                if not it:
                     self._send(404, b"not found", "text/plain")
                     return
+                # No source check first: a cached preview is served without
+                # touching the source, and a miss on a missing source raises
+                # inside _preview_bytes, which is logged and answered 404.
                 try:
                     body = _preview_bytes(key, it, db_path, fps, still, size)
                 except Exception as exc:  # noqa: BLE001 - one bad item must not 500 the grid
@@ -472,10 +476,8 @@ def main(argv: list[str] | None = None, *, reuse_existing: bool = True) -> int:
     ap.add_argument("--data-dir", default="collection")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
     ap.add_argument("--preview-fps", type=int, choices=range(1, 31), metavar="N", default=PREVIEW_FPS,
-                    help="Frame rate for animated previews. The grid can show "
-                         "60+ cards at once and the browser decodes every frame "
-                         "of each, so this is the main lever on how heavy the "
-                         "panel feels (default: %(default)s).")
+                    help="Maximum frame rate for animated previews. The grid uses at "
+                         "most 15, and 10 below 75 %% zoom (default: %(default)s).")
     ap.add_argument("--no-open", action="store_true", help="Don't auto-open the browser.")
     ap.add_argument("--bot-username", default="",
                     help="Known bot username for branding; avoids a Telegram lookup.")
@@ -572,11 +574,14 @@ def main(argv: list[str] | None = None, *, reuse_existing: bool = True) -> int:
     # owner is still looking at the first screen. A daemon thread: it shares the
     # render bound with live requests, and Ctrl+C must not wait for it.
     warming = threading.Event()
-    threading.Thread(
-        target=lambda: log.info("preview warm-up rendered %d file(s)",
-                                preview_warm(view, by_key, db_path, args.preview_fps,
-                                             stop=warming)),
-        name="preview-warm", daemon=True).start()
+    def _warm() -> None:
+        started = time.monotonic()
+        counts = preview_warm(view, by_key, db_path, args.preview_fps, stop=warming)
+        log.info("preview warm-up: rendered %d, already cached %d, failed %d in %.1fs",
+                 counts["rendered"], counts["cached"], counts["failed"],
+                 time.monotonic() - started)
+
+    threading.Thread(target=_warm, name="preview-warm", daemon=True).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -19,6 +19,22 @@ from emojikit import media
 from emojikit import panel_preview
 
 
+LOTTIE = {"v": "5.7.4", "w": 512, "h": 512, "fr": 30, "ip": 0, "op": 30,
+       "layers": [{"ty": 1, "ind": 1, "sw": 80, "sh": 80, "sc": "#ff0000",
+                   "ip": 0, "op": 30, "st": 0, "ks": {
+                       "o": {"a": 0, "k": 100}, "r": {"a": 0, "k": 0},
+                       "a": {"a": 0, "k": [0, 0, 0]},
+                       "s": {"a": 0, "k": [100, 100, 100]},
+                       "p": {"a": 1, "k": [
+                           {"t": 0, "s": [80, 200, 0], "e": [400, 200, 0],
+                            "i": {"x": 1, "y": 1}, "o": {"x": 0, "y": 0}},
+                           {"t": 30, "s": [400, 200, 0]}]}}}]}
+
+
+def _write_tgs(path: Path) -> None:
+    path.write_bytes(gzip.compress(json.dumps(LOTTIE).encode("utf-8"), mtime=0))
+
+
 class PreviewResponses(unittest.TestCase):
     def test_sized_motion_and_video_posters_are_real_cached_images(self):
         temp_root = Path(__file__).resolve().parent.parent / "logs" / "test-temp"
@@ -29,17 +45,7 @@ class PreviewResponses(unittest.TestCase):
         png, tgs, video = data / "source.png", data / "source.tgs", data / "source.webm"
         with Image.new("RGBA", (100, 100), (240, 20, 40, 128)) as img:
             img.save(png, "PNG")
-        doc = {"v": "5.7.4", "w": 512, "h": 512, "fr": 30, "ip": 0, "op": 30,
-               "layers": [{"ty": 1, "ind": 1, "sw": 80, "sh": 80, "sc": "#ff0000",
-                           "ip": 0, "op": 30, "st": 0, "ks": {
-                               "o": {"a": 0, "k": 100}, "r": {"a": 0, "k": 0},
-                               "a": {"a": 0, "k": [0, 0, 0]},
-                               "s": {"a": 0, "k": [100, 100, 100]},
-                               "p": {"a": 1, "k": [
-                                   {"t": 0, "s": [80, 200, 0], "e": [400, 200, 0],
-                                    "i": {"x": 1, "y": 1}, "o": {"x": 0, "y": 0}},
-                                   {"t": 30, "s": [400, 200, 0]}]}}}]}
-        tgs.write_bytes(gzip.compress(json.dumps(doc).encode("utf-8"), mtime=0))
+        _write_tgs(tgs)
         subprocess.run([media.ffmpeg_path(), "-v", "error", "-y", "-loop", "1", "-i", str(png),
                         "-t", "0.1", "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p",
                         "-threads", "1", "-auto-alt-ref", "0", str(video)],
@@ -113,52 +119,76 @@ class TheWarmUpRendersBeforeTheScroll(unittest.TestCase):
     about to ask for, in grid order, so the scroll meets a warm cache.
     """
 
-    def test_it_renders_grid_order_and_a_bad_file_cannot_stop_it(self):
-        temp_root = Path(__file__).resolve().parent.parent / "logs" / "test-temp"
-        temp_root.mkdir(parents=True, exist_ok=True)
-        temp = tempfile.TemporaryDirectory(dir=temp_root)
+    def _data(self) -> Path:
+        temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
-        data = Path(temp.name)
-        png, broken = data / "source.png", data / "broken.png"
+        return Path(temp.name)
+
+    def test_it_renders_grid_order_and_a_bad_file_cannot_stop_it(self):
+        data = self._data()
+        tgs, broken = data / "good.tgs", data / "broken.tgs"
+        _write_tgs(tgs)
+        broken.write_bytes(b"not a lottie at all")
+        view = [{"key": "l:logo", "fmt": "static", "isLogo": True, "included": True},
+                {"key": "a:bad", "fmt": "animated", "included": True},
+                {"key": "a:good", "fmt": "animated", "included": True}]
+        by_key = {"l:logo": tgs, "a:bad": broken, "a:good": tgs}
+
+        counts = panel_preview.warm(view, by_key, data / "catalog.db", 15)
+
+        # The unreadable file is skipped, the one after it is still rendered:
+        # a warm-up that dies on the first bad row warms nothing. Still and
+        # animation, at the full and the compact tier.
+        self.assertEqual(counts, {"rendered": 4, "cached": 0, "failed": 4})
+        # The logo is a preview-only card with no catalog media.
+        good = [n for n in (data / "preview").iterdir()]
+        self.assertEqual(len(good), 4, good)
+
+    def test_statics_are_skipped_except_the_holding_trays_still(self):
+        data = self._data()
+        png, tgs = data / "s.png", data / "a.tgs"
         with Image.new("RGBA", (100, 100), (10, 200, 90, 255)) as img:
             img.save(png, "PNG")
-        broken.write_bytes(b"not an image at all")
-        view = [{"key": "logo", "fmt": "static", "isLogo": True},
-                {"key": "bad", "fmt": "static"},
-                {"key": "good", "fmt": "static"}]
-        by_key = {"logo": png, "bad": broken, "good": png}
+        _write_tgs(tgs)
+        view = [{"key": "s:shown", "fmt": "static", "included": True},
+                {"key": "a:moving", "fmt": "animated", "included": True},
+                {"key": "s:held", "fmt": "static", "included": False}]
+        by_key = {"s:shown": png, "a:moving": tgs, "s:held": png}
+        db = data / "catalog.db"
 
-        rendered = panel_preview.warm(view, by_key, data / "catalog.db", 15)
+        first = panel_preview.warm(view, by_key, db, 30)
 
-        cached = sorted(p.name for p in (data / "preview").iterdir())
-        # The unreadable file is skipped, the one after it is still rendered:
-        # a warm-up that dies on the first bad row warms nothing.
-        self.assertEqual(rendered, 1, cached)
-        self.assertEqual(len(cached), 1, cached)
-        # The logo is a preview-only card with no catalog media; asking for it
-        # would 404 the same way the page never does.
-        self.assertNotIn("logo", "".join(cached))
+        self.assertEqual(first, {"rendered": 5, "cached": 0, "failed": 0})
+        self.assertIsNone(panel_preview.cached_path("s:shown", png, db, 15, True, 104),
+                          "the grid shows a static from /img/, never its preview")
+        self.assertIsNotNone(panel_preview.cached_path("s:held", png, db, 10, True, 72))
+        second = panel_preview.warm(view, by_key, db, 30)
+        self.assertEqual(second, {"rendered": 0, "cached": 5, "failed": 0})
+
+    def test_the_tiers_follow_the_frame_rate_cap(self):
+        self.assertEqual(panel_preview.page_tiers(30),
+                         {"full": {"size": 104, "fps": 15}, "compact": {"size": 72, "fps": 10}})
+        self.assertEqual(panel_preview.page_tiers(12)["full"]["fps"], 12)
+        self.assertEqual(panel_preview.page_tiers(12)["compact"]["fps"], 10)
+
+    def test_a_key_with_a_path_separator_is_refused(self):
+        with self.assertRaises(ValueError):
+            panel_preview.cached_path("a:../x", Path("x.tgs"), self._data() / "c.db", 15)
 
     def test_a_set_stop_event_ends_it_without_finishing_the_catalog(self):
-        temp_root = Path(__file__).resolve().parent.parent / "logs" / "test-temp"
-        temp_root.mkdir(parents=True, exist_ok=True)
-        temp = tempfile.TemporaryDirectory(dir=temp_root)
-        self.addCleanup(temp.cleanup)
-        data = Path(temp.name)
-        png = data / "source.png"
-        with Image.new("RGBA", (100, 100), (10, 200, 90, 255)) as img:
-            img.save(png, "PNG")
+        data = self._data()
+        tgs = data / "a.tgs"
+        _write_tgs(tgs)
         stop = threading.Event()
         stop.set()
 
         # Ctrl+C must not wait for a thousand renders to finish.
-        rendered = panel_preview.warm(
-            [{"key": f"k{i}", "fmt": "static"} for i in range(50)],
-            {f"k{i}": png for i in range(50)}, data / "catalog.db", 15, stop=stop)
+        counts = panel_preview.warm(
+            [{"key": f"a:k{i}", "fmt": "animated"} for i in range(50)],
+            {f"a:k{i}": tgs for i in range(50)}, data / "catalog.db", 15, stop=stop)
 
-        self.assertEqual(rendered, 0)
+        self.assertEqual(counts["rendered"], 0)
         self.assertFalse((data / "preview").exists())
-
 
 if __name__ == "__main__":
     # A direct run skips tests/__init__.py, the credential scrub and socket

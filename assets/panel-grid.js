@@ -71,8 +71,11 @@ function el(tag, cls, text){
 
 function previewSources(img,key){
   const compact=zoom<COMPACT_BELOW;
-  const size=compact && devicePixelRatio<=1 ? 72 : 104;
-  const fps=Math.min(PREVIEW_FPS,compact?10:15);
+  // The tiers come from the server (panel_preview.page_tiers), which warms
+  // exactly these files before the scroll asks for them.
+  const tier=compact?PREVIEW_TIERS.compact:PREVIEW_TIERS.full;
+  const size=compact && devicePixelRatio<=1 ? tier.size : PREVIEW_TIERS.full.size;
+  const fps=tier.fps;
   const wasPlaying=img.dataset.anim && img.getAttribute('src')===img.dataset.anim;
   img.dataset.anim='/preview/'+key+'?fps='+fps+'&size='+size;
   img.dataset.still='/preview/'+key+'?still=1&size='+size;
