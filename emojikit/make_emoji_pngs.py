@@ -15,8 +15,8 @@ Two modes:
 
 2. Legacy crypto-coin mode (default, no --in/--out):
      python -m emojikit.make_emoji_pngs
-   Reads ``logos/svg/<ticker>.svg`` and ``logos/png/<ticker>.png`` and writes
-   ``logos/emoji/<ticker>.png``.
+   Reads ``coins/logos/svg/<ticker>.svg`` and ``coins/logos/png/<ticker>.png`` and writes
+   ``coins/logos/emoji/<ticker>.png``.
 
 Exit codes are the shared ones from build_pack: 0 nothing failed, 2 bad
 arguments, 3 some sources failed, 4 every attempted source failed.
@@ -47,10 +47,13 @@ from emojikit.build_pack import EXIT_USAGE, ingest_exit_code
 from emojikit import media
 
 ROOT = Path(__file__).resolve().parent.parent
-# Legacy crypto-coin defaults (used when --in/--out are not provided).
-SVG_DIR = ROOT / "logos" / "svg"
-PNG_DIR = ROOT / "logos" / "png"
-OUT_DIR = ROOT / "logos" / "emoji"
+# Legacy crypto-coin defaults (used when --in/--out are not provided): the
+# folders the coin tools read and write, under coins/. <repo>/logos is gone, and
+# writing there produced emoji no coin tool ever looked at.
+COIN_LOGOS = ROOT / "coins" / "logos"
+SVG_DIR = COIN_LOGOS / "svg"
+PNG_DIR = COIN_LOGOS / "png"
+OUT_DIR = COIN_LOGOS / "emoji"
 SIZE = 100
 RENDER = 256
 # Explicit source priority: several files can share one output name (foo.svg and
@@ -236,8 +239,8 @@ def _run_general(in_dir: Path, out_dir: Path, limit: int) -> int:
 def _run_legacy(limit: int) -> int:
     """Original crypto-coin pipeline: logos/svg + logos/png -> logos/emoji."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    marker = ROOT / "logos" / ".svg_cur"
-    skip = ROOT / "logos" / ".svg_skip.txt"
+    marker = COIN_LOGOS / ".svg_cur"
+    skip = COIN_LOGOS / ".svg_skip.txt"
     quarantined = _load_skip(skip, marker)
     done: set[str] = set()
     # Failure is per OUTPUT STEM, not per source attempt -- exactly as general

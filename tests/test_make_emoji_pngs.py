@@ -190,6 +190,57 @@ class TestGeneralRun(unittest.TestCase):
         self.assertIn("REVIEW", buf.getvalue())  # never silent
 
 
+class CoinDefaultsPointAtTheCoinsFolder(unittest.TestCase):
+    """<repo>/logos and <repo>/keywords.csv are gone; the coin tools keep
+    their files under coins/. Defaults pointing at the old place made
+    `--keywords auto` load nothing and the legacy conversion write where no
+    coin tool reads."""
+
+    def test_the_legacy_conversion_reads_and_writes_under_coins(self):
+        for path in (m.SVG_DIR, m.PNG_DIR, m.OUT_DIR):
+            self.assertEqual(path.parent, ROOT / "coins" / "logos")
+
+    def _dry_run_keywords(self, source: Path, corpus: str = "") -> str:
+        from emojikit import build_pack as bp
+        argv = ["build_pack.py", "--base", "t", "--title", "T", "--user-id", "1",
+                "--source-dir", str(source), "--token-env", "FAKE_TOKEN",
+                "--dry-run"]
+        out = io.StringIO()
+        with mock.patch.object(sys, "argv", argv), \
+             mock.patch.dict(os.environ, {"FAKE_TOKEN": "x",
+                                          "COIN_EMOJI_DIR": corpus}), \
+             mock.patch.object(bp, "EMOJI_DIR", self.coin_emoji), \
+             mock.patch.object(bp, "KEYWORDS_CSV", self.csv), \
+             mock.patch.object(bp, "setup_logging", lambda *a, **k: None), \
+             contextlib.redirect_stdout(out):
+            self.assertEqual(bp.main(), 0)
+        return out.getvalue()
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.csv = self.tmp / "keywords.csv"
+        self.csv.write_text("ticker,name,format,file,keywords\n"
+                            "a,Alpha,png,logos/png/a.png,\"a, Alpha\"\n",
+                            encoding="utf-8")
+        self.coin_emoji = self.tmp / "coin_emoji"
+        self.corpus = self.tmp / "corpus"
+        self.other = self.tmp / "other"
+        for d in (self.coin_emoji, self.corpus, self.other):
+            d.mkdir()
+            Image.new("RGBA", (100, 100), RED).save(d / "a.png")
+
+    def test_auto_keywords_load_for_the_default_coin_source(self):
+        self.assertIn("keywords=1", self._dry_run_keywords(self.coin_emoji))
+
+    def test_auto_keywords_load_for_the_operators_coin_corpus(self):
+        self.assertIn("keywords=1",
+                      self._dry_run_keywords(self.corpus, str(self.corpus)))
+
+    def test_a_general_source_gets_no_coin_keywords(self):
+        self.assertIn("keywords=0", self._dry_run_keywords(self.other))
+
+
 if __name__ == "__main__":
     # A direct run skips tests/__init__.py, the credential scrub and socket
     # block that exist because a test once changed a live pack.

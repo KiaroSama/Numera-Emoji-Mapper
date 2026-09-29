@@ -43,6 +43,8 @@ from pathlib import Path
 
 
 from emojikit.announce import announce_packs
+from emojikit import operator_config
+from emojikit.logsetup import redact, register_secret, setup_logging
 # Re-exported: these used to live here, and many modules import them from here.
 from emojikit.cli_env import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL,  # noqa: F401
                               EXIT_USAGE, _under_a_test_runner, ingest_exit_code,
@@ -52,7 +54,7 @@ from emojikit.packstate import (LockBusy, StateInvalid, _intent_key,
                        exclusive_lock, make_intent,
                        pack_family_lock_path, validate_state_shape,
                        write_json_atomic)
-from emojikit.telegram_api import (DEFAULT_EMOJI, MAX_PER_SET, PER_SET,
+from emojikit.telegram_api import (COIN_DEFAULT_EMOJI, MAX_PER_SET, PER_SET,
                           AmbiguousUploadError, SetState, Telegram)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -62,8 +64,11 @@ log = logging.getLogger("build_pack")
 
 # Default source/keyword locations (crypto-coin workflow). Override per run with
 # --source-dir / --keywords so the same engine builds any kind of emoji pack.
-EMOJI_DIR = ROOT / "logos" / "emoji"
-KEYWORDS_CSV = ROOT / "keywords.csv"
+# Under coins/, where the coin tools keep them: <repo>/logos and
+# <repo>/keywords.csv no longer exist, so `--keywords auto` silently loaded
+# nothing.
+EMOJI_DIR = ROOT / "coins" / "logos" / "emoji"
+KEYWORDS_CSV = ROOT / "coins" / "keywords.csv"
 
 
 def load_keywords(path: Path = KEYWORDS_CSV) -> dict[str, str]:
@@ -76,6 +81,19 @@ def load_keywords(path: Path = KEYWORDS_CSV) -> dict[str, str]:
     return out
 
 
+def _is_coin_source(source_dir: Path) -> bool:
+    coin_dirs = [EMOJI_DIR]
+    corpus = operator_config.value("COIN_EMOJI_DIR")
+    if corpus:
+        coin_dirs.append(Path(corpus))
+    return any(source_dir.resolve() == d.resolve() for d in coin_dirs)
+
+
+def announcing_bot(token_env: str) -> str:
+    """The Worker bot name matching the token this build publishes with."""
+    return "coin" if token_env == "TELEGRAM_BOT_TOKEN" else "general"
+
+
 def main() -> int:
     load_env()
     ap = argparse.ArgumentParser()
@@ -83,21 +101,31 @@ def main() -> int:
     ap.add_argument("--title", required=True, help="Human-readable set title.")
     ap.add_argument("--user-id", type=int,
                     default=safe_int_env("PACK_OWNER_USER_ID", 0, minimum=0))
-    ap.add_argument("--emoji", default=DEFAULT_EMOJI, help="Associated standard emoji.")
+    ap.add_argument("--emoji", default=COIN_DEFAULT_EMOJI, help="Associated standard emoji.")
     ap.add_argument("--per-set", type=int, default=PER_SET)
     ap.add_argument("--limit", type=int, default=0, help="Max images to add (0=all).")
     ap.add_argument("--start", type=int, default=0, help="Skip this many images first.")
     ap.add_argument("--source-dir", default=str(EMOJI_DIR),
-                    help="Folder of 100x100 PNGs to upload (default: logos/emoji).")
+                    help="Folder of 100x100 PNGs to upload "
+                         "(default: coins/logos/emoji).")
     ap.add_argument("--keywords", default="auto",
                     help="keywords.csv (ticker->keywords). 'auto' uses keywords.csv "
                          "only for the default coin source; missing file is OK.")
+    # The token also decides which bot ANNOUNCES the finished packs: the coin
+    # bot's token (the default) announces as "coin", any other as "general".
+    # Hard-coding "general" made coin packs arrive from the wrong bot once a
+    # Worker was deployed, and the Worker and direct routes disagreed.
     ap.add_argument("--token-env", default="TELEGRAM_BOT_TOKEN",
-                    help="Env var holding the bot token (e.g. GENERAL_BOT_TOKEN).")
+                    help="Env var holding the bot token (e.g. GENERAL_BOT_TOKEN). "
+                         "TELEGRAM_BOT_TOKEN announces finished packs as the coin "
+                         "bot; any other variable as the general bot.")
     ap.add_argument("--state", default="",
                     help="Resume state file (default: state_<base>.json).")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
+    setup_logging("build_pack")
+    # --token-env can name any variable, not only the ones logsetup masks.
+    register_secret(os.environ.get(args.token_env))
 
     token = os.environ.get(args.token_env, "")
     if not token:
@@ -131,10 +159,11 @@ def main() -> int:
               file=sys.stderr)
         return 2
 
-    # 'auto' loads the coin keywords.csv only for the default coin source dir; a
-    # general pack uses no keywords unless --keywords points at a file.
+    # 'auto' loads the coin keywords.csv only for a coin source dir -- the
+    # default one or the operator's full corpus (COIN_EMOJI_DIR); a general
+    # pack uses no keywords unless --keywords points at a file.
     if args.keywords == "auto":
-        kw_path = KEYWORDS_CSV if source_dir.resolve() == EMOJI_DIR.resolve() else None
+        kw_path = KEYWORDS_CSV if _is_coin_source(source_dir) else None
     else:
         kw_path = Path(args.keywords)
     keywords = load_keywords(kw_path) if kw_path else {}
@@ -143,7 +172,8 @@ def main() -> int:
     if args.dry_run:
         total = len(sources)
         n_sets = (total + args.per_set - 1) // args.per_set
-        print(f"DRY RUN: token-env={args.token_env}  owner_user_id={args.user_id}  "
+        # The owner id is personal data: say that it is set, never what it is.
+        print(f"DRY RUN: token-env={args.token_env}  owner_user_id=[set]  "
               f"source={source_dir}  images={total}  keywords={len(keywords)}", flush=True)
         print(f"DRY RUN: {total} images -> {n_sets} set(s) of up to {args.per_set}, "
               f"named {args.base}1_by_<bot> ...  state={state_file.name}", flush=True)
@@ -411,7 +441,7 @@ def _run_build(args, token, state_file, sources, keywords) -> int:
                   file=sys.stderr)
             return EXIT_FAILED
 
-    print(f"Bot: @{bot_username}  owner_user_id={args.user_id}  "
+    print(f"Bot: @{bot_username}  owner_user_id=[set]  "
           f"images={len(sources)}  already_done={len(done)}  pending={len(pending)}", flush=True)
 
     def save_state() -> None:
@@ -428,11 +458,12 @@ def _run_build(args, token, state_file, sources, keywords) -> int:
             return
         try:
             dest = announce_packs(tg, args.user_id,
-                                  [{"name": name, "title": title}], bot="general")
+                                  [{"name": name, "title": title}],
+                                  bot=announcing_bot(args.token_env))
             sent.add(name)
             print(f"  sent link for {name} to {dest}", flush=True)
         except Exception as exc:  # noqa: BLE001 - never let notify break the build
-            print(f"  notify failed for {name}: {exc}", flush=True)
+            print(f"  notify failed for {name}: {redact(str(exc))}", flush=True)
 
     def notify_full_sets(final: bool = False) -> None:
         """Send links for finished packs, ALWAYS in ascending pack-number order.
