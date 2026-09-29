@@ -37,7 +37,7 @@ from emojikit.packstate import (LockBusy, exclusive_lock)
 from emojikit.maintenance import writer
 from emojikit.telegram_api import (AmbiguousUploadError, LiveStateUnknown, SetState, Telegram)
 from emojikit.catalog import Catalog
-from emojikit.logsetup import record_exit_code, redact, setup_logging
+from emojikit.logsetup import record_exit_code, redact, register_secret, setup_logging
 from emojikit.collection_reconcile import (_confirm_new_upload,
                                   _file_is_permanently_rejected,
                                   _live_index, _manifest_mismatch, _probe,
@@ -59,16 +59,30 @@ from emojikit.collection_notify import notify, write_manifest
 log = logging.getLogger("build_collection")
 
 
+def _by_position(cat: Catalog, keys: list[str]) -> list[str]:
+    """``keys`` in the catalog's CURRENT panel order (position, content_key).
+
+    Owner decision 2026-09-28: the publish follows the order the panel shows
+    at the moment you publish. The frozen plan stays the append-only record of
+    what is queued, but its order was fixed by the first run -- a dry run
+    included -- so rearranging the next pack's candidates changed nothing.
+    Resume safety does not rest on this order: each item is marked published
+    per family, and the upload order is recorded separately in the state file.
+    """
+    order = {it.content_key: i for i, it in enumerate(cat.all_items())}
+    return sorted(keys, key=lambda k: order.get(k, len(order)))
+
+
 def pending_keys(cat: Catalog, plan: dict, fmt: str, base: str,
                  skipped: set[str]) -> list[str]:
-    """The keys this run would actually upload for one format.
+    """The keys this run would actually upload for one format, in panel order.
 
     The publisher, the dry run and the preflight all have to agree on what is
     queued, or each reports a different number for the same catalog.
     """
-    return [k for k in plan.get(fmt, [])
-            if (it := cat.get(k)) and it.included
-            and not cat.is_published(base, k) and k not in skipped]
+    return _by_position(cat, [k for k in plan.get(fmt, [])
+                              if (it := cat.get(k)) and it.included
+                              and not cat.is_published(base, k) and k not in skipped])
 
 
 def publish_format(tg: Telegram, cat: Catalog, *, fmt: str, plan_keys: list[str],
@@ -158,9 +172,10 @@ def publish_format(tg: Telegram, cat: Catalog, *, fmt: str, plan_keys: list[str]
     # permanently skipped.
     # "Already uploaded" is per pack family: a global flag meant publishing to
     # one base marked the items done for every other base too.
-    pending = [k for k in plan_keys
-               if (it := cat.get(k)) and it.included
-               and not cat.is_published(base, k) and k not in skipped]
+    pending = _by_position(cat, [k for k in plan_keys
+                                 if (it := cat.get(k)) and it.included
+                                 and not cat.is_published(base, k)
+                                 and k not in skipped])
     log.info("[%s] %d sets, active in_set=%d, %d pending (of %d planned)",
              fmt, len(fmt_sets), in_set, len(pending), len(plan_keys))
 
@@ -478,6 +493,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="Ask Telegram to validate every queued file, "
                          "then stop. Publishes nothing.")
     args = ap.parse_args(argv)
+    # --token-env can name any variable, not only the ones logsetup masks.
+    register_secret(os.environ.get(args.token_env))
 
     base = valid_base(args.base)
     try:
@@ -560,7 +577,10 @@ def _publish(args, *, base: str, formats: list[str], data_dir: Path, db: Path,
         # item was uploaded", not to which base. The first base to publish
         # claims that history so it is not re-uploaded.
         cat.adopt_legacy_publication(base)
-        plan = freeze_plan(cat, data_dir, base, formats)
+        # A dry run or a preflight answers questions; it must not write the
+        # plan (the launcher always runs one first, so it used to freeze it).
+        plan = freeze_plan(cat, data_dir, base, formats,
+                           save=not (args.dry_run or args.preflight))
 
         if args.dry_run:
             print("DRY RUN: nothing uploaded.", flush=True)
@@ -590,7 +610,7 @@ def _publish(args, *, base: str, formats: list[str], data_dir: Path, db: Path,
 
         tg = Telegram(token)
         bot = tg.get_me()["username"]
-        log.info("Publishing as @%s, owner=%s", bot, args.user_id)
+        log.info("Publishing as @%s (owner id set)", bot)
         # Now that the real username is known, prove the names will fit before
         # the first upload freezes anything.
         for f in formats:

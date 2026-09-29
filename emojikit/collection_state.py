@@ -290,11 +290,14 @@ def _validate_state(state: dict, path: Path) -> None:
                       f"records {recorded}.")
 
 
-def freeze_plan(cat: Catalog, data_dir: Path, base: str, formats: list[str]) -> dict:
-    """Build/extend the frozen, append-only upload plan from the catalog.
+def freeze_plan(cat: Catalog, data_dir: Path, base: str, formats: list[str],
+                *, save: bool = True) -> dict:
+    """Build/extend the append-only record of what is queued, per format.
 
-    Existing order is preserved; only newly-catalogued keys are appended, so the
-    already-uploaded prefix of every format stays stable across runs.
+    Existing entries are preserved; only newly-catalogued keys are appended.
+    It decides membership, not order: the publisher takes the catalog's current
+    panel order (build_collection._by_position). ``save=False`` computes it
+    without writing, for a dry run or a preflight.
     """
     plan = load_plan(data_dir, base)
     for fmt in formats:
@@ -309,7 +312,8 @@ def freeze_plan(cat: Catalog, data_dir: Path, base: str, formats: list[str]) -> 
         if appended:
             log.info("plan[%s]: %d existing + %d new = %d", fmt, len(existing),
                      len(appended), len(plan[fmt]))
-    save_json(_plan_path(data_dir, base), plan)
+    if save:
+        save_json(_plan_path(data_dir, base), plan)
     return plan
 
 

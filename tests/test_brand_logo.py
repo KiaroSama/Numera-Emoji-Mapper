@@ -28,15 +28,12 @@ from emojikit.catalog import Catalog  # noqa: E402
 from emojikit.cli_env import EXIT_USAGE  # noqa: E402
 from unittest import mock  # noqa: E402
 from tests._bc_fixtures import FakeTG, _CatalogFixture, _main  # noqa: E402
+from tests._media_fixtures import make_png  # noqa: E402
 
 
-def _make_png(path: Path, color=(200, 30, 30, 255)) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    im = Image.new("RGBA", (120, 120), (0, 0, 0, 0))
-    for x in range(20, 100):
-        for y in range(20, 100):
-            im.putpixel((x, y), color)
-    im.save(path, "PNG")
+def _make_png(path: Path, color=(200, 30, 30, 255)) -> Path:
+    # Larger than an emoji on purpose: the logo is fitted down to 100x100.
+    return make_png(path, color, size=120)
 
 
 class FakeTelegram:

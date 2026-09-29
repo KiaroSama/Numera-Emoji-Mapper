@@ -12,7 +12,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -20,13 +19,8 @@ sys.path.insert(0, str(ROOT))
 from emojikit import telegram_api as tg_api  # noqa: E402
 from emojikit.telegram_api import (SetState)  # noqa: E402
 
-def _make_png(path: Path, color=(200, 30, 30, 255)) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    im = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
-    for x in range(20, 80):
-        for y in range(20, 80):
-            im.putpixel((x, y), color)
-    im.save(path, "PNG")
+# One builder for every publisher suite (tests/_media_fixtures.py).
+from tests._media_fixtures import make_png as _make_png  # noqa: E402
 
 
 class FakeTG:
