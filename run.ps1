@@ -174,6 +174,16 @@ function Ask-YesNo ($label) {
     return ([string]::IsNullOrWhiteSpace($t) -or $t -match '^(y|yes)$')
 }
 
+# Ask-YesNo for a question whose "yes" destroys something: Enter means NO.
+# Same return shape -- $true/$false, or 'back' -- so callers treat it alike.
+function Ask-YesNoDefaultNo ($label) {
+    $ans = Read-Host ("$label [y/N] " + (Nav-Hint))
+    $t = if ($null -ne $ans) { $ans.Trim() } else { '' }
+    if ($t -match '^(exit|quit)$') { throw 'NAV_QUIT' }
+    if ($t -eq '0') { return 'back' }
+    return ($t -match '^(y|yes)$')
+}
+
 # Step engine: run ordered step scriptblocks. Each returns 'ok' (advance),
 # 'back' (previous step), or 'stay' (re-ask this step). 'back' from the first
 # step returns $false (caller aborts to the menu) — i.e. back always moves ONE
@@ -234,6 +244,16 @@ function Get-PythonExe {
     return $null
 }
 
+# The project needs 3.11+ (hashlib.file_digest in the migration code, among
+# others). "Python 3.10.4" and friends answer --version happily, so the version
+# itself is checked rather than just whether the interpreter runs.
+function Test-PythonVersion ([string]$text) {
+    if ($text -match 'Python\s+(\d+)\.(\d+)') {
+        return ([int]$Matches[1] -gt 3) -or ([int]$Matches[1] -eq 3 -and [int]$Matches[2] -ge 11)
+    }
+    return $false
+}
+
 function Find-BasePython {
     foreach ($c in @(
         @{ Exe = 'py';     Args = @('-3.11') },
@@ -243,8 +263,8 @@ function Find-BasePython {
         $cmd = Get-Command $c.Exe -ErrorAction SilentlyContinue
         if ($cmd) {
             try {
-                & $cmd.Source @($c.Args + '--version') *> $null
-                if ($LASTEXITCODE -eq 0) { return $c }
+                $ver = (& $cmd.Source @($c.Args + '--version') 2>&1 | Out-String)
+                if ($LASTEXITCODE -eq 0 -and (Test-PythonVersion $ver)) { return $c }
             } catch { }
         }
     }
@@ -304,12 +324,48 @@ function Test-CoinDeps ($py) {
     return ($LASTEXITCODE -eq 0)
 }
 
-function Check-Env ($py) {
-    if (-not (Test-Path -LiteralPath (Join-Path $ScriptRoot '.env'))) {
+# KEY -> $true when it has a non-empty value. Only that boolean leaves this
+# function: a value is never stored, printed or logged.
+function Get-EnvKeyState ([string]$path) {
+    $state = @{}
+    foreach ($line in [System.IO.File]::ReadAllLines($path, [System.Text.Encoding]::UTF8)) {
+        $t = $line.Trim()
+        if (-not $t -or $t.StartsWith('#') -or -not $t.Contains('=')) { continue }
+        $k, $v = $t.Split('=', 2)
+        $state[$k.Trim()] = [bool]($v.Trim().Trim('"').Trim("'"))
+    }
+    return $state
+}
+
+function Check-Env ($py, [switch]$Keys) {
+    $envFile = Join-Path $ScriptRoot '.env'
+    if (-not (Test-Path -LiteralPath $envFile)) {
         Write-Warn ".env not found. Copy .env.example to .env and fill in tokens."
         return
     }
     Log-Ok ".env present."   # quiet: log only, keep the console clean
+    if (-not $Keys) { return }   # the doctor's report, not every launch
+    # Every key the template names, checked at once. Since operator identities
+    # became configuration with no defaults, a new operator otherwise met them
+    # one failing tool at a time. Warnings, not failures: not every workflow
+    # needs every key.
+    $template = Join-Path $ScriptRoot '.env.example'
+    if (-not (Test-Path -LiteralPath $template)) { return }
+    $have = Get-EnvKeyState $envFile
+    $what = @{}
+    try {
+        $json = & $py -c "from emojikit.operator_config import WHAT; import json; print(json.dumps(WHAT))" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $json) {
+            ($json | Out-String | ConvertFrom-Json).PSObject.Properties |
+                ForEach-Object { $what[$_.Name] = $_.Value }
+        }
+    } catch { }
+    foreach ($key in (Get-EnvKeyState $template).Keys | Sort-Object) {
+        if (-not $have[$key]) {
+            $why = if ($what.ContainsKey($key)) { " ($($what[$key]))" } else { '' }
+            Write-Warn "unset: $key$why"
+        }
+    }
 }
 
 function Test-Ffmpeg {
@@ -318,198 +374,10 @@ function Test-Ffmpeg {
 }
 
 # --- Actions --------------------------------------------------------------
-# Every input prompt supports {back=0, quit=exit}: 0 aborts to the menu, exit
-# quits. Each Python launch is logged (command + exit code) via Invoke-Py.
-function Action-BuildGeneral ($py) {
-    Write-Title "Build a general emoji pack (@YourEmojiBot)"
-    $st = @{ emoji = '😀' }
-    $steps = @(
-        { $v = Ask "Source image folder (e.g. input\myset)"; if ($v -eq '0') { return 'back' }
-          if ([string]::IsNullOrWhiteSpace($v) -or -not (Test-Path -LiteralPath $v)) {
-              Write-Err "Folder not found: $v"; return 'stay' }
-          $st.inDir = $v; 'ok' }.GetNewClosure(),
-        { $v = Ask "Pack base name (letters/digits/_), e.g. myset"; if ($v -eq '0') { return 'back' }
-          if ([string]::IsNullOrWhiteSpace($v)) { Write-Err "Base name required."; return 'stay' }
-          $st.base = $v; 'ok' }.GetNewClosure(),
-        { $v = Ask "Pack title, e.g. My Emojis"; if ($v -eq '0') { return 'back' }
-          if ([string]::IsNullOrWhiteSpace($v)) { Write-Err "Title required."; return 'stay' }
-          $st.title = $v; 'ok' }.GetNewClosure(),
-        { $v = Ask "Associated standard emoji (default 😀)"; if ($v -eq '0') { return 'back' }
-          if (-not [string]::IsNullOrWhiteSpace($v)) { $st.emoji = $v }; 'ok' }.GetNewClosure(),
-        { $yn = Ask-YesNo "Convert + dry-run + upload now?"; if ($yn -is [string]) { return 'back' }
-          if (-not $yn) { Write-Info "Cancelled."; return 'ok' }
-          $build = Join-Path 'build' $st.base
-          Write-Step "Converting images -> $build ..."
-          if ((Invoke-Py $py @('-m','emojikit.make_emoji_pngs','--in',$st.inDir,'--out',$build)) -ne 0) {
-              Write-Err "Conversion failed."; return 'ok' }
-          Write-Step "Dry-run preview ..."
-          if ((Invoke-Py $py @('-m','emojikit.build_pack','--base',$st.base,'--title',$st.title,'--source-dir',$build,
-                               '--token-env','GENERAL_BOT_TOKEN','--emoji',$st.emoji,'--dry-run')) -ne 0) {
-              Write-Err "Dry-run failed (check .env / source)."; return 'ok' }
-          if ((Invoke-Py $py @('-m','emojikit.build_pack','--base',$st.base,'--title',$st.title,'--source-dir',$build,
-                               '--token-env','GENERAL_BOT_TOKEN','--emoji',$st.emoji)) -eq 0) {
-              Write-Ok "Pack build finished." } else { Write-Err "Build failed." }
-          'ok' }.GetNewClosure()
-    )
-    Run-Wizard $steps | Out-Null
-}
-
-function Action-ConvertOnly ($py) {
-    Write-Title "Convert images to 100x100 PNGs"
-    $st = @{}
-    $steps = @(
-        { $v = Ask "Source image folder"; if ($v -eq '0') { return 'back' }
-          if (-not (Test-Path -LiteralPath $v)) { Write-Err "Folder not found."; return 'stay' }
-          $st.inDir = $v; 'ok' }.GetNewClosure(),
-        { $v = Ask "Output folder (blank = <folder>_emoji)"; if ($v -eq '0') { return 'back' }
-          $st.outDir = $v
-          $argv = @('-m','emojikit.make_emoji_pngs','--in',$st.inDir)
-          if (-not [string]::IsNullOrWhiteSpace($st.outDir)) { $argv += @('--out',$st.outDir) }
-          Invoke-PyReport $py $argv "Conversion"
-          'ok' }.GetNewClosure()
-    )
-    Run-Wizard $steps | Out-Null
-}
-
-function Action-CoinRebuild ($py) {
-    Write-Title "Crypto-coin pack rebuild (TELEGRAM_BOT_TOKEN)"
-    Write-Warn "This uses the crypto-coin bot and the coins/ component."
-    $script = Join-Path $ScriptRoot 'coins\rebuild_dedup.py'
-    if (-not (Test-Path -LiteralPath $script)) { Write-Err "coins\rebuild_dedup.py not found."; return }
-    $yn = Ask-YesNo "Run coins/rebuild_dedup.py now? (duplicate-proof: build + map + links)"
-    if ($yn -is [string] -or -not $yn) { return }   # back or no -> return to menu
-    Invoke-PyReport $py @($script) "Coin pack rebuild"
-}
-
-function Action-CollectPacks ($py) {
-    Write-Title "Collect emoji from existing Telegram packs"
-    Write-Info "Paste pack links/names (t.me/addemoji/...). Blank line to finish; 0 removes the last one."
-    $st = @{ packs = @() }
-    $steps = @(
-        { $line = Ask "Pack (blank = done)"
-          if ($line -eq '0') {
-              # Drop the last entry. 0..(Count-2) is wrong for a single entry:
-              # 0..-1 counts down and yields indices 0 and -1, i.e. that one entry twice.
-              if ($st.packs.Count -gt 0) { $st.packs = @($st.packs | Select-Object -SkipLast 1); Write-Info "Removed last." }
-              return 'stay' }                       # 0 = undo last entry (one step)
-          if ([string]::IsNullOrWhiteSpace($line)) {
-              if ($st.packs.Count -eq 0) { Write-Warn "No packs entered."; return 'back' }
-              return 'ok' }
-          $st.packs += $line.Trim(); return 'stay' }.GetNewClosure(),
-        { $v = Ask "Token env var (default GENERAL_BOT_TOKEN)"; if ($v -eq '0') { return 'back' }
-          $tokenEnv = if ([string]::IsNullOrWhiteSpace($v)) { 'GENERAL_BOT_TOKEN' } else { $v }
-          Invoke-PyReport $py (@('-m','emojikit.fetch_pack') + $st.packs + @('--token-env',$tokenEnv)) "Collect"
-          'ok' }.GetNewClosure()
-    )
-    Run-Wizard $steps | Out-Null
-}
-
-function Action-AddMedia ($py) {
-    Write-Title "Build emoji from scratch (folder of images/animations/videos)"
-    if (-not (Test-Ffmpeg)) {
-        Write-Warn "ffmpeg/ffprobe not found: video emoji (.webm) will fail."
-        Write-Warn "Install with: winget install Gyan.FFmpeg"
-    }
-    $st = @{ emoji = '😀' }
-    $steps = @(
-        { $v = Ask "Source folder"; if ($v -eq '0') { return 'back' }
-          if (-not (Test-Path -LiteralPath $v)) { Write-Err "Folder not found."; return 'stay' }
-          $st.inDir = $v; 'ok' }.GetNewClosure(),
-        { $v = Ask "Associated standard emoji (default 😀)"; if ($v -eq '0') { return 'back' }
-          if (-not [string]::IsNullOrWhiteSpace($v)) { $st.emoji = $v }
-          Invoke-PyReport $py @('-m','emojikit.add_media','--in',$st.inDir,'--emoji',$st.emoji) "Add media"
-          'ok' }.GetNewClosure()
-    )
-    Run-Wizard $steps | Out-Null
-}
-
-function Action-PublishCollection ($py) {
-    Write-Title "Publish the collection into new packs (multi-format)"
-    $st = @{}
-    $steps = @(
-        { $v = Ask "Pack base name (letters/digits only), e.g. mypack"; if ($v -eq '0') { return 'back' }
-          if ([string]::IsNullOrWhiteSpace($v)) { Write-Err "Base name required."; return 'stay' }
-          $st.base = $v; 'ok' }.GetNewClosure(),
-        { $v = Ask "Pack title, e.g. My Collection"; if ($v -eq '0') { return 'back' }
-          if ([string]::IsNullOrWhiteSpace($v)) { Write-Err "Title required."; return 'stay' }
-          $st.title = $v; 'ok' }.GetNewClosure(),
-        { $v = Ask "Token env var (default GENERAL_BOT_TOKEN)"; if ($v -eq '0') { return 'back' }
-          $st.tokenEnv = if ([string]::IsNullOrWhiteSpace($v)) { 'GENERAL_BOT_TOKEN' } else { $v }; 'ok' }.GetNewClosure(),
-        { $yn = Ask-YesNo "Dry-run then upload now?"; if ($yn -is [string]) { return 'back' }
-          if (-not $yn) { Write-Info "Cancelled."; return 'ok' }
-          Write-Step "Dry-run preview ..."
-          if ((Invoke-Py $py @('-m','emojikit.build_collection','--base',$st.base,'--title',$st.title,
-                               '--token-env',$st.tokenEnv,'--dry-run')) -ne 0) {
-              Write-Err "Dry-run failed (run a collect/add step first?)."; return 'ok' }
-          # Ask Telegram about every queued file BEFORE the upload starts. A
-          # single file it refuses used to surface at whatever minute of a
-          # 45-minute publish it happened to reach; this finds it in about one.
-          Write-Step "Preflight: asking Telegram to validate every queued file ..."
-          if ((Invoke-Py $py @('-m','emojikit.build_collection','--base',$st.base,'--title',$st.title,
-                               '--token-env',$st.tokenEnv,'--preflight')) -ne 0) {
-              Write-Err "Preflight refused a file. Nothing was published."; return 'ok' }
-          if ((Invoke-Py $py @('-m','emojikit.build_collection','--base',$st.base,'--title',$st.title,
-                               '--token-env',$st.tokenEnv)) -eq 0) {
-              Write-Ok "Collection published." } else { Write-Err "Publish failed." }
-          'ok' }.GetNewClosure()
-    )
-    Run-Wizard $steps | Out-Null
-}
-
-function Action-Panel ($py) {
-    Write-Title "Curate panel (pick which emoji go into the pack)"
-    # The panel hides emoji that are already live, so its default view shows the
-    # NEXT pack's candidates and nothing else. Arranging a published pack needs
-    # --with-pack per set, and opening the menu entry without it looked like the
-    # packs had vanished. Read the sets from the publisher's own state file.
-    $packs = @()
-    foreach ($state in (Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'collection') `
-                        -Filter 'publish_*.json' -File -ErrorAction SilentlyContinue)) {
-        try {
-            $doc = Get-Content -LiteralPath $state.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-            foreach ($set in $doc.sets) { if ($null -ne $set.index) { $packs += [int]$set.index } }
-        } catch { }
-    }
-    $packs = $packs | Sort-Object -Unique
-    $panelArgs = @('-m','emojikit.panel')
-    if ($packs.Count -gt 0) {
-        $answer = Ask-YesNo ("Also show the " + $packs.Count + " pack(s) already published, so they can be rearranged?")
-        # NOTE: compare by type, not -eq 'back' -- Ask-YesNo can return a bare
-        # [bool], and PowerShell's -eq coerces a string operand to match a bool
-        # LHS ('back' -> $true), so `$true -eq 'back'` is True. That made every
-        # "yes" answer here read as "back": the panel silently returned to the
-        # menu, and a "no" answer opened it without --with-pack (unexplained
-        # single-emoji view). Confirmed empirically; same fix applied to the
-        # three other Ask-YesNo call sites in this file.
-        if ($answer -is [string]) { return }
-        if ($answer) { foreach ($n in $packs) { $panelArgs += @('--with-pack', "$n") } }
-    }
-    Write-Info "Opening the curation panel in your browser..."
-    Invoke-PyReport $py $panelArgs "Web panel"
-}
-
-function Action-RunBot ($py) {
-    Write-Title "Run the Numera Emoji Mapper bot (premium-emoji ID extractor)"
-    Write-Info "Send the bot a premium emoji or a post with emoji, or add it to a channel/group."
-    Write-Info "Press Ctrl+C to stop the bot."
-    Invoke-PyReport $py @('-m','emojikit.emoji_bot') "Bot"
-}
-
-function Action-Check ($py) {
-    Write-Title "Run the project checks (byte-compile + unit tests)"
-    $script = Join-Path $ScriptRoot 'scripts\check.ps1'
-    if (-not (Test-Path -LiteralPath $script)) { Write-Err "scripts\check.ps1 not found."; return }
-    # Called with & so its `exit` ends the script, not the launcher, and its exit
-    # code lands in $LASTEXITCODE. -Python pins the interpreter the launcher
-    # already resolved, so the menu never checks a different environment than the
-    # one its other actions use.
-    Write-Log 'INFO' 'run: scripts\check.ps1'
-    & $script -Python $py
-    $code = [int]$LASTEXITCODE
-    Write-Log 'INFO' "exit $code (scripts\check.ps1)"
-    if ($code -eq 0) { Write-Ok "Project checks passed." }
-    else { Write-Err "Project checks failed (exit $code)." }
-}
+# The menu's actions live in scripts\run-actions.ps1, dot-sourced so they see
+# this script's helpers and $ScriptRoot. Split out to keep this file under the
+# project's size ceiling as the menu grows.
+. (Join-Path $ScriptRoot 'scripts\run-actions.ps1')
 
 # --- Menu -----------------------------------------------------------------
 # Each row: Key, Text, Action. Grouped by section; per-section numbering with a
@@ -526,16 +394,21 @@ function Show-Menu {
     Menu-Item $script:CKeyA 'A3' 'Crypto-coin pack rebuild    (coin bot)'
     Write-Host ''
     Write-Host (Paint $script:CColl 'Collection (multi-format, duplicate-proof)')
+    Menu-Item $script:CKeyB 'B0' 'Collect specific emoji by id (recommended start)'
     Menu-Item $script:CKeyB 'B1' 'Collect emoji from existing packs (download)'
     Menu-Item $script:CKeyB 'B2' 'Add media from a folder (build from scratch)'
     Menu-Item $script:CKeyB 'B3' 'Publish the collection into new packs'
     Menu-Item $script:CKeyB 'B4' 'Open web panel to pick & reorder emoji (browser)'
+    Menu-Item $script:CKeyB 'B5' 'Reorder a live pack to match the panel (report, then apply)'
     Write-Host ''
     Write-Host (Paint $script:CBot 'Bot')
     Menu-Item $script:CKeyC 'C1' 'Run the Numera Emoji Mapper bot (premium-emoji ID extractor)'
     Write-Host ''
     Write-Host (Paint $script:CMaint 'Maintenance')
     Menu-Item $script:CKeyD 'D1' 'Run the project checks (byte-compile + unit tests)'
+    Menu-Item $script:CKeyD 'D2' 'Status: is everything current? (offline)'
+    Menu-Item $script:CKeyD 'D3' 'Check / refresh the pack roster (packs/)'
+    Menu-Item $script:CKeyD 'D4' 'Check / sync the pack archive'
     Write-Host ''
 }
 
@@ -544,12 +417,17 @@ function Invoke-Choice ($choice, $py) {
         'a1' { Action-BuildGeneral $py }
         'a2' { Action-ConvertOnly $py }
         'a3' { Action-CoinRebuild $py }
+        'b0' { Action-CollectIds $py }
         'b1' { Action-CollectPacks $py }
         'b2' { Action-AddMedia $py }
         'b3' { Action-PublishCollection $py }
         'b4' { Action-Panel $py }
+        'b5' { Action-ReorderPack $py }
         'c1' { Action-RunBot $py }
         'd1' { Action-Check $py }
+        'd2' { Action-Status $py }
+        'd3' { Action-Roster $py }
+        'd4' { Action-Archive $py }
         { $_ -in @('q','quit','exit','0') } { return $false }
         default { Write-Warn "Unknown option: $choice  (use e.g. A1, B3, C1, D1, or exit)" }
     }
@@ -570,8 +448,14 @@ if ($Check) {
         Write-Log 'INFO' 'doctor: exit 1'
         exit 1
     }
-    Check-Env $py            # logs .env status (warns only if missing)
-    Log-Ok ("Python: " + (& $py --version))
+    $pyVersion = (& $py --version 2>&1 | Out-String).Trim()
+    if (-not (Test-PythonVersion $pyVersion)) {
+        Write-Err "$pyVersion in .venv; this project needs Python 3.11+. Recreate .venv with 3.11."
+        Write-Log 'INFO' 'doctor: exit 1'
+        exit 1
+    }
+    Check-Env $py -Keys      # names every template key that is unset (never a value)
+    Log-Ok ("Python: " + $pyVersion)
     if (Test-Ffmpeg) { Log-Ok "ffmpeg present (video emoji enabled)." }
     else { Write-Warn "ffmpeg not found: video emoji disabled (winget install Gyan.FFmpeg)." }
     if (-not (Test-Deps $py)) {
