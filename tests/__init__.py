@@ -92,3 +92,14 @@ def _guarded_connect_ex(self, address, *a, **kw):
 
 socket.socket.connect = _guarded_connect
 socket.socket.connect_ex = _guarded_connect_ex
+
+
+# --- 3. Deprecations in our own code fail loudly ---------------------------- #
+# A warning today is a removal tomorrow, and CI runs the newest Python first.
+# `module` is matched against the module that ISSUES the warning, so a
+# third-party library's own deprecations stay warnings.
+import warnings  # noqa: E402
+
+warnings.filterwarnings(
+    "error", category=DeprecationWarning,
+    module=r"(emojikit|coins|scripts|tests)(\.|$)")

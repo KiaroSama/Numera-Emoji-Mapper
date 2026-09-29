@@ -20,6 +20,6 @@
 # module would fail at launch rather than at install.
 playwright==1.63.0
 
-# The linter scripts\check.ps1 runs. Not a runtime dependency either; kept here
-# so `ruff check .` means the same thing locally as it does in CI.
-ruff>=0.16.9
+# The linter scripts\check.ps1 runs. Not a runtime dependency either; one pin,
+# shared with CI, so `ruff check .` means the same thing locally as it does there.
+-r requirements-lint.txt
