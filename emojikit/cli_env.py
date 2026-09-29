@@ -92,8 +92,22 @@ def load_env() -> None:
         return
     env = ROOT / ".env"
     if env.is_file():
-        for line in env.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+        for k, v in _parse_env_file(env).items():
+            os.environ.setdefault(k, v)
+
+
+def _parse_env_file(path: Path) -> dict[str, str]:
+    """KEY=VALUE lines, '#' comments, optional quotes.
+
+    utf-8-sig, not utf-8: a .env saved with a byte order mark (Windows
+    PowerShell 5.1 writes one) otherwise turns the first key into
+    "﻿KEY", so that setting silently reads as unset -- while the Worker's
+    put-secrets.ps1, which strips the mark, sees it fine.
+    """
+    out: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            out.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    return out
