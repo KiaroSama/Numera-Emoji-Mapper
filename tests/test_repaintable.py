@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT))
 from emojikit import build_pack as bp  # noqa: E402
 from emojikit import fetch_emoji_ids  # noqa: E402
 from emojikit import fetch_pack  # noqa: E402
-from emojikit import media  # noqa: E402
+from emojikit import media, repaint  # noqa: E402
 from emojikit.catalog import Catalog  # noqa: E402
 
 from tests.test_fetch_pack_limit import FakeTelegram, _png_bytes  # noqa: E402
@@ -242,13 +242,13 @@ class TintParsing(unittest.TestCase):
     def test_it_accepts_both_spellings(self):
         for text in ("#FF8800", "ff8800"):
             with self.subTest(text=text):
-                self.assertEqual(media.parse_tint(text), (255, 136, 0))
+                self.assertEqual(repaint.parse_tint(text), (255, 136, 0))
 
     def test_it_refuses_anything_else(self):
         for text in ("white", "#FFF", "#GGGGGG", "#FF88000", ""):
             with self.subTest(text=text):
                 with self.assertRaises(media.MediaError):
-                    media.parse_tint(text)
+                    repaint.parse_tint(text)
 
 
 def _tgs_bytes(doc: dict) -> bytes:
@@ -283,7 +283,7 @@ class BakingTheRepaintOurselves(unittest.TestCase):
             with Image.open(src) as im:
                 before = im.convert("RGBA").getchannel("A").tobytes()
 
-            self.assertTrue(media.repaint_in_place(src, "static", self.TINT))
+            self.assertTrue(repaint.repaint_in_place(src, "static", self.TINT))
 
             with Image.open(src) as im:
                 after = im.convert("RGBA")
@@ -298,7 +298,7 @@ class BakingTheRepaintOurselves(unittest.TestCase):
             src = Path(t) / "a.tgs"
             src.write_bytes(_tgs_bytes(_LOTTIE))
 
-            self.assertTrue(media.repaint_in_place(src, "animated", self.TINT))
+            self.assertTrue(repaint.repaint_in_place(src, "animated", self.TINT))
 
             doc = json.loads(gzip.decompress(src.read_bytes()).decode("utf-8"))
             items = doc["layers"][0]["shapes"][0]["it"]
@@ -317,7 +317,7 @@ class BakingTheRepaintOurselves(unittest.TestCase):
             src = Path(t) / "v.webm"
             src.write_bytes(b"not really a webm")
             before = src.read_bytes()
-            self.assertFalse(media.repaint_in_place(src, "video", self.TINT))
+            self.assertFalse(repaint.repaint_in_place(src, "video", self.TINT))
             self.assertEqual(src.read_bytes(), before)
 
 
