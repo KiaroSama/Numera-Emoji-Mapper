@@ -98,11 +98,13 @@ function applyStroke(j){
   const [a,b] = [Math.min(paintFrom,j), Math.max(paintFrom,j)];
   const span = [];
   for(let k=a;k<=b;k++){ if(!ITEMS[k].isLogo && ITEMS[k].included) span.push(k); }
-  const now = new Set(span);
+  const now = new Set(span), was = new Set(strokeSpan);
   for(const k of strokeSpan){                    // released by dragging back
     if(!now.has(k)) markPicked(ITEMS[k].key, strokeBase.has(ITEMS[k].key));
   }
-  for(const k of span) markPicked(ITEMS[k].key, paintTo);
+  // Only the keys that just entered: re-marking the whole span on every
+  // pointer move made a long stroke quadratic.
+  for(const k of span) if(!was.has(k)) markPicked(ITEMS[k].key, paintTo);
   strokeSpan = span;
   paintSelLabel();
 }

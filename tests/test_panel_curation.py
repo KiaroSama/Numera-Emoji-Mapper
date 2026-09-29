@@ -1,6 +1,7 @@
 """Curation controls operate on the visible plan and keep reversible history."""
 from __future__ import annotations
 
+import json
 import unittest
 
 from tests import _panel_browser_fixtures as fx
@@ -353,6 +354,52 @@ class TheHoldTrayIsSelectableByHand(PanelPage, unittest.TestCase):
         cards.nth(2).dispatch_event("dragstart", {"dataTransfer": transfer})
         page.wait_for_timeout(150)
         self.assertEqual(page.evaluate("holdDragKeys.size"), 1)
+
+
+class ALargeTrayIsWindowed(PanelPage, unittest.TestCase):
+    """600 held emoji must not be 600 cards and 600 images in the header."""
+
+    def _full_tray(self):
+        page = self.open(fx.synth(600))
+        page.click("#none")
+        self.assertEqual(page.evaluate("heldOrder().length"), 600)
+        return page
+
+    def _to_end(self, page):
+        page.evaluate("const h = document.getElementById('holding'); h.scrollLeft = h.scrollWidth")
+        last = page.evaluate("heldOrder()[599]")
+        page.wait_for_function(f"!!document.querySelector('#holdCards .hcard[data-key=\"{last}\"]')")
+        return last
+
+    def test_a_large_tray_mounts_only_what_is_in_view(self):
+        page = self._full_tray()
+        self.assertLessEqual(page.locator("#holdCards .hcard").count(), 60)
+        self._to_end(page)
+        self.assertLessEqual(page.locator("#holdCards .hcard").count(), 60)
+
+    def test_shift_range_picks_across_unmounted_tray_cards(self):
+        page = self._full_tray()
+        page.click("#selmode")
+        page.locator("#holdCards .hcard").first.click()
+        last = self._to_end(page)
+        page.locator(f'#holdCards .hcard[data-key="{last}"]').click(modifiers=["Shift"])
+        self.assertEqual(page.evaluate("heldPicked().length"), 600)
+
+    def test_picking_a_run_touches_each_card_once(self):
+        page = self.open(fx.synth(400))
+        page.click("#selmode")
+        calls = page.evaluate("""(() => {
+            let n = 0; const real = markPicked;
+            markPicked = function(){ n++; return real.apply(this, arguments); };
+            paintFrom = 0; paintTo = true; strokeSpan = []; strokeBase = new Set();
+            const t = performance.now();
+            for (let j = 0; j < 300; j++) applyStroke(j);
+            const ms = performance.now() - t;
+            markPicked = real;
+            return [n, ms]; })()""")
+        print("PANEL_PERF " + json.dumps({"scenario": "stroke-300", "mark_calls": calls[0],
+                                          "ms": round(calls[1], 1)}), flush=True)
+        self.assertEqual(calls[0], 300, "each card is marked once as the stroke reaches it")
 
 
 class ADroppedEmojiJoinsThePackItWasAimedAt(PanelPage, unittest.TestCase):

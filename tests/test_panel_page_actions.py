@@ -174,7 +174,7 @@ class UndoRedoAndFormatColours(unittest.TestCase):
         wrong state back, which is worse than having no undo at all.
         """
         for label, marker, end, mutation, call in (
-            ("select all / invert", "function setAll(fn){", "// Reduced motion", "setIncluded(it, fn(it))", "remember()"),
+            ("select all / invert", "function setAll(fn){", "// Reduced motion", "setIncludedMany(", "remember()"),
             ("card toggle", "grid.addEventListener('click'", "// Plain document scrolling", "setIncluded(ITEMS[i], !ITEMS[i].included)", "remember()"),
             ("drag reorder", "function commitDrag(){", "function endDrag", "saveOrder();", "remember(dragSnap)"),
         ):
