@@ -9,10 +9,6 @@ from __future__ import annotations
 
 # This script lives in coins/; allow importing the shared HTTP client whether it
 # is run as ``python coins/build_keywords.py`` or imported from the project root.
-import os as _bootstrap_os
-import sys as _bootstrap_sys
-_bootstrap_sys.path.insert(0, _bootstrap_os.path.dirname(
-    _bootstrap_os.path.dirname(_bootstrap_os.path.abspath(__file__))))
 
 import time
 from pathlib import Path

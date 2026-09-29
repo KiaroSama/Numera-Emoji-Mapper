@@ -9,10 +9,6 @@ from __future__ import annotations
 
 # This module lives in coins/; allow importing the shared engine from the
 # project root.
-import os as _bootstrap_os
-import sys as _bootstrap_sys
-_bootstrap_sys.path.insert(0, _bootstrap_os.path.dirname(
-    _bootstrap_os.path.dirname(_bootstrap_os.path.abspath(__file__))))
 
 import io
 import logging

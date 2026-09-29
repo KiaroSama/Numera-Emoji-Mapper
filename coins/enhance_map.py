@@ -8,10 +8,6 @@ network suffixes and reuse the base ticker's custom_emoji_id, then re-fill.
 from __future__ import annotations
 
 # This script lives in coins/; allow importing the shared engine from the root.
-import os as _bootstrap_os
-import sys as _bootstrap_sys
-_bootstrap_sys.path.insert(0, _bootstrap_os.path.dirname(
-    _bootstrap_os.path.dirname(_bootstrap_os.path.abspath(__file__))))
 
 import json
 import re

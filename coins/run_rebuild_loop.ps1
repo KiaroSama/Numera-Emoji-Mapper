@@ -13,6 +13,8 @@ $root = $PSScriptRoot
 $py = Join-Path $root "..\.venv\Scripts\python.exe"
 $log = Join-Path $root "rebuild_dedup_out.txt"
 $statePath = Join-Path $root "rebuild_dedup_state.json"
+# The tool runs as a module (python -m coins.rebuild_dedup), so from the project root.
+Set-Location -LiteralPath (Split-Path -Parent $root)
 
 function Write-Note ($text) { $text | Out-File -FilePath $log -Append -Encoding utf8 }
 
@@ -32,7 +34,7 @@ $code = 3
 while ($true) {
     $loop++
     Write-Note "=== build attempt $loop @ $(Get-Date -Format o) ==="
-    & $py (Join-Path $root "rebuild_dedup.py") build *>> $log
+    & $py -m coins.rebuild_dedup build *>> $log
     $code = $LASTEXITCODE
     Write-Note "=== build attempt $loop exited code=$code ==="
 
@@ -56,7 +58,7 @@ if ($code -ne 0) {
 }
 
 Write-Note "=== build complete; mapping + filling inventory ==="
-& $py (Join-Path $root "rebuild_dedup.py") map *>> $log
+& $py -m coins.rebuild_dedup map *>> $log
 $mapCode = $LASTEXITCODE
 if ($mapCode -ne 0) {
     Write-Note "=== map failed (exit $mapCode); links skipped ==="
@@ -64,7 +66,7 @@ if ($mapCode -ne 0) {
 }
 
 Write-Note "=== sending final combined links ==="
-& $py (Join-Path $root "rebuild_dedup.py") links *>> $log
+& $py -m coins.rebuild_dedup links *>> $log
 $linksCode = $LASTEXITCODE
 if ($linksCode -ne 0) {
     Write-Note "=== links failed (exit $linksCode) ==="
