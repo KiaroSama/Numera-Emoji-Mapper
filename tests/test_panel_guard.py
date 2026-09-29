@@ -245,8 +245,10 @@ class RefreshMustActuallyRefresh(MutationGuard):
         block = src[src.index("def _reload_view("):]
         block = block[:block.index("class Handler")]
         self.assertIn("view[:] = fresh", block)
-        self.assertIn("by_key.clear()", block)
+        # In place and never empty: replace_map updates, then prunes (plan 017).
+        self.assertIn("replace_map(by_key, fresh_by_key)", block)
         self.assertNotIn("view = fresh", block)
+        self.assertNotIn("by_key = ", block)
 
 
 if __name__ == "__main__":

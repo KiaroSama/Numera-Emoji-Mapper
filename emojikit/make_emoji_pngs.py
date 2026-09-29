@@ -239,8 +239,10 @@ def _run_general(in_dir: Path, out_dir: Path, limit: int) -> int:
 def _run_legacy(limit: int) -> int:
     """Original crypto-coin pipeline: logos/svg + logos/png -> logos/emoji."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    marker = COIN_LOGOS / ".svg_cur"
-    skip = COIN_LOGOS / ".svg_skip.txt"
+    # Beside the three folders (OUT_DIR's parent is the logos folder), not a
+    # second copy of that path: tests and callers move the folders together.
+    marker = OUT_DIR.parent / ".svg_cur"
+    skip = OUT_DIR.parent / ".svg_skip.txt"
     quarantined = _load_skip(skip, marker)
     done: set[str] = set()
     # Failure is per OUTPUT STEM, not per source attempt -- exactly as general
