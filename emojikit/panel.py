@@ -84,7 +84,7 @@ def _is_loopback(netloc: str) -> bool:
 
 
 def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
-                 preview_fps: int = PREVIEW_FPS, bot_username: str = "",
+                 preview_fps: int = PREVIEW_FPS, bot_username: str | list = "",
                  show_published: bool = False, hidden: int = 0,
                  keep_sets: set[str] | None = None, session_info: dict | None = None):
     lock = threading.Lock()
@@ -94,6 +94,9 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
     # would leave the handler reading the value from start-up forever -- the
     # same trap `view`/`by_key` are rebuilt in place to avoid.
     hidden_now = [hidden]
+    # The same holder for the bot name: main() looks it up in the background,
+    # and the page load after the answer arrives shows the logo card.
+    bot_name = bot_username if isinstance(bot_username, list) else [bot_username]
 
     def _reload_view() -> None:
         """Refresh ``view``/``by_key`` from the catalog, IN PLACE.
@@ -109,7 +112,7 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
             cat = Catalog(db_path)
             try:
                 fresh, fresh_by_key, fresh_hidden = build_view(
-                    cat, bot_username, show_published, keep_sets)
+                    cat, bot_name[0], show_published, keep_sets)
             finally:
                 cat.close()
         except Exception as exc:  # noqa: BLE001 - a page load must not 500
@@ -360,7 +363,7 @@ def make_handler(view: list[dict], by_key: dict, db_path: Path, token: str,
             if self.path == "/api/save":
                 code, answer = handle_save(
                     payload, lock=lock, db_path=db_path, view=view, by_key=by_key,
-                    hidden_now=hidden_now, bot_username=bot_username,
+                    hidden_now=hidden_now, bot_username=bot_name[0],
                     show_published=show_published, keep_sets=keep_sets)
                 self._send(code, answer)
                 return
@@ -436,7 +439,7 @@ ASSET_VER = hashlib.sha1(SCRIPT.encode("utf-8")).hexdigest()[:12]
 ICON_VER = hashlib.sha1((ASSET_DIR / "logo-128.png").read_bytes()).hexdigest()[:12]
 
 
-def _detect_bot_username() -> str:
+def _detect_bot_username(retries: int = 5) -> str:
     """Best-effort: which bot's token is configured, so the panel can preview
     the brand logo only when it would actually be added on publish (a bot in
     BRAND_LOGO_BOTS). Never raises -- on any error
@@ -449,7 +452,7 @@ def _detect_bot_username() -> str:
         token = os.environ.get("GENERAL_BOT_TOKEN", "")
         if not token:
             return ""
-        return Telegram(token).get_me().get("username", "")
+        return (Telegram(token)._call("getMe", retries=retries) or {}).get("username", "")
     except Exception as exc:  # noqa: BLE001 - preview-only, never fatal
         log.debug("bot username detection failed: %s", exc)
         return ""
@@ -528,7 +531,14 @@ def main(argv: list[str] | None = None, *, reuse_existing: bool = True) -> int:
     if existing is not None:
         return existing
 
-    bot_username = args.bot_username or _detect_bot_username()
+    # The bot name only decides whether the brand-logo preview card shows. It
+    # was fetched from Telegram before the panel even listened, so an
+    # unreachable Telegram held the whole start-up for five retries.
+    bot_name = [args.bot_username]
+    if not args.bot_username:
+        def _lookup() -> None:
+            bot_name[0] = _detect_bot_username(retries=1)
+        threading.Thread(target=_lookup, name="bot-name", daemon=True).start()
 
     keep_sets = packs_named(data_dir, set(args.with_pack)) if args.with_pack else {}
     if args.with_pack and not keep_sets:
@@ -542,7 +552,7 @@ def main(argv: list[str] | None = None, *, reuse_existing: bool = True) -> int:
 
     cat = Catalog(db_path)
     try:
-        view, by_key, hidden = build_view(cat, bot_username, args.all, keep_sets)
+        view, by_key, hidden = build_view(cat, bot_name[0], args.all, keep_sets)
     finally:
         cat.close()
     log.info("loaded %d emoji from %s", len(view), db_path)
@@ -552,7 +562,7 @@ def main(argv: list[str] | None = None, *, reuse_existing: bool = True) -> int:
     # catalog behind the user's back.
     token = secrets.token_urlsafe(24)
     handler = make_handler(view, by_key, db_path, token, args.preview_fps,
-                           bot_username, args.all, hidden, keep_sets, session_info)
+                           bot_name, args.all, hidden, keep_sets, session_info)
 
     class QuietServer(ThreadingHTTPServer):
         # SO_REUSEADDR OFF. socketserver turns it on by default, and on Windows
@@ -596,7 +606,9 @@ def main(argv: list[str] | None = None, *, reuse_existing: bool = True) -> int:
     log.info("Panel at %s  (Ctrl+C to stop)", url)
     print(f"Emoji curate panel: {url}", flush=True)
     if not args.no_open:
-        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+        # Straight away: the socket is listening, so the browser's connection
+        # queues until serve_forever() accepts it.
+        threading.Thread(target=webbrowser.open, args=(url,), daemon=True).start()
     # Warm the previews the page is about to request, in grid order, while the
     # owner is still looking at the first screen. A daemon thread: it shares the
     # render bound with live requests, and Ctrl+C must not wait for it.
