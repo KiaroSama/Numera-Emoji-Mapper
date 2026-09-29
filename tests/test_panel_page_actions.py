@@ -370,6 +370,11 @@ class SelectionModeCarriesARun(unittest.TestCase):
         reduced = block(PAGE, "@media (prefers-reduced-motion:reduce){", "}}")
         self.assertIn(".card.picked::before,.hcard.picked::before{animation:none", reduced)
 
+    def test_the_ring_pauses_while_the_page_moves(self):
+        self.assertIn("body.moving .card.picked::before,body.moving .hcard.picked::before"
+                      "{animation-play-state:paused}", PAGE)
+        self.assertIn("markMoving();", block(SCRIPT, "addEventListener('scroll'", "{passive:true});"))
+
     def test_dragging_a_picked_card_carries_the_whole_set_even_off_screen(self):
         """The carried set is read from ITEMS, not from the DOM: a picked card
         whose row is not mounted must still travel, or the run splits in two."""
