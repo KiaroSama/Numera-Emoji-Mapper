@@ -484,6 +484,19 @@ class Catalog:
         log.info("cleared %d publication record(s) for base %s", n, base)
         return n
 
+    def unpublish(self, base: str, content_key: str) -> bool:
+        """Forget ONE item's publication in ``base`` after it left the live set.
+
+        The plan applier deletes the sticker first and calls this second, so
+        the item becomes pending again and the publisher re-adds it wherever the
+        plan puts it. The legacy per-item columns stay: ingest progress counts
+        read them, and the next ``mark_uploaded`` overwrites the id anyway.
+        """
+        n = self.db.execute("DELETE FROM publications WHERE base=? AND content_key=?",
+                            (base, content_key)).rowcount
+        self.db.commit()
+        return bool(n)
+
     def pending(self, fmt: str | None = None, *, base: str | None = None) -> list[Item]:
         """Included items still to publish, in deterministic (frozen) order.
 

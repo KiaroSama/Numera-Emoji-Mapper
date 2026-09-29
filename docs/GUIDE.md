@@ -48,6 +48,7 @@ Numera Emoji Mapper/
     pack_rows.py             the one renderer for every pack-list table
     status.py                is the roster/archive current? offline (§12.5e)
     plan_status.py           what the panel's saved plan would change, read-only
+    plan_apply.py            apply that plan to the live packs (dry run unless --apply)
     script_json.py           JSON safe inside a <script> data block
     panel.py                 web "Curate" panel: the server, the page, the APIs
     emoji_bot.py             interactive bot: extract premium-emoji IDs (tap-to-copy)
@@ -2387,8 +2388,50 @@ offline.
 saved plan would change — per pack: target count and logo slot against the cap,
 emoji moving in and out, held emoji still live, never-published candidates — and
 every `custom_emoji_id` a move would retire. Exit 3 when the plan asks for work.
-Nothing applies it yet; the proposal and its open questions are in
-`docs/design/plan-applier.md`.
+
+`python -m emojikit.plan_apply` applies it (design: `docs/design/plan-applier.md`):
+
+```powershell
+python -m emojikit.plan_apply                  # dry run: what would change, writes nothing
+python -m emojikit.plan_apply --apply          # change the live packs, 20 changes per run
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--data-dir` | `collection` | catalog, plan, publisher state and apply journal |
+| `--base` | `COLLECTION_PACK_BASE` | the pack family; only `--mixed` families are supported |
+| `--token-env` | `GENERAL_BOT_TOKEN` | variable holding the bot token |
+| `--user-id` | `PACK_OWNER_USER_ID` | the owner id Telegram requires for adds |
+| `--apply` | off | without it nothing is written anywhere |
+| `--max-changes` | 20 | counted changes per run, 1..20 (the owner's cap) |
+
+Per run, in this order: **removals** (the outgoing half of each move), then
+**adds** in the panel's order (moves arriving, then never-published emoji the
+plan puts in a pack) through the publisher's own verified path, then a
+**reorder** of every pack whose order differs from the panel's. The Bot API has
+no move call, so a move is a delete plus a re-add and the emoji gets a **new
+`custom_emoji_id`**; the retired id is kept in `retired` of
+`<data-dir>/plan_apply_<base>.json`. Owner decisions of 2026-09-29:
+
+- a cross-pack move is allowed even though the id changes;
+- a **held** emoji that is still live is never removed — it stays until placed;
+- at most **20 counted changes** (removals and adds; creating the next pack with
+  its logo is one more) per run. Reordering keeps ids and is not counted.
+  Reaching the cap ends the run with exit 3; the next run continues.
+
+Safety: the run holds the same catalog lease and pack-family lock as the
+publisher. Each delete is journalled (`intent`) before it is sent, the sticker
+is found by its recorded `custom_emoji_id` at its recorded position, and the
+delete is confirmed by re-reading the set; a run that died after sending one is
+settled from the live set on the next start, never by re-sending. Refused
+before any change (exit 2): a plan over a pack's cap (held emoji keep their
+slot), a key the catalog no longer holds or has excluded, a per-format family, a
+target pack that is not an existing one or the next new one, an unreadable
+journal, a held lock. A set whose live state cannot be read stops the run
+(exit 1) and is reported as unknown. Exit codes: 0 nothing pending, 3 work
+remains, 2 refused, 1 stopped mid-run (the records and journal say what was
+done). A Telegram flood wait is honoured by the client as usual. Run
+`pack_manifest --refresh` afterwards so the roster records the retired ids.
 
 The panel decides nothing on Telegram. It is where the owner says what the
 layout **should** be; every save writes that decision to `pack_plan.json` beside

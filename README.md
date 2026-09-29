@@ -248,7 +248,9 @@ and dragging to the top or bottom edge scrolls the page so you can move an
 item across the whole catalog in one go. **Click the `premium-id:` label
 to copy that id** to the clipboard — it does not toggle the card. Visually similar emoji start out next
 to each other so look-alikes are quick to deselect. Click **Save**, then
-`emojikit/build_collection.py` only publishes the included items.
+`emojikit/build_collection.py` only publishes the included items, and
+`python -m emojikit.plan_apply` shows (and with `--apply` makes) the moves between
+packs the saved layout asks for, at most 20 Telegram changes per run.
 
 **The grid is virtual**: only the rows near the viewport exist in the page,
 whatever the catalog holds, so a thousand cards scroll and drag like a
@@ -370,6 +372,7 @@ Numera Emoji Mapper/                  # the whole project
     pack_rows.py                # the one renderer for every pack-list table
     status.py                   # is the roster/archive current? (offline)
     plan_status.py              # what the panel's saved plan would change (read-only)
+    plan_apply.py               # apply the saved plan to the live packs (--apply)
     script_json.py              # JSON safe inside a <script> data block
     panel.py                     # curate panel: the server, the page, the APIs
     emoji_bot.py                 # bot: extract premium-emoji ids (tap-to-copy)
