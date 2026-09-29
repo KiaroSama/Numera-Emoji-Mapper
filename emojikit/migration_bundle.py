@@ -204,7 +204,15 @@ def verify_current(data_dir, doc):
     validate_bundle(data_dir, doc)
     verify_files(doc["files"])
     verify_states(data_dir, doc["states"])
+    # A migrated row can hold either form of its destination: the absolute
+    # path an older apply_files wrote, or the data-relative one it writes now.
+    # Both are exactly what the migration itself would write, so both map back
+    # to the recorded source -- no other edit is excused by this.
+    base = Path(doc["catalog"]).parent
     files = [dict(f, source=f["stored_source"]) for f in doc["files"]]
+    files += [dict(f, source=f["stored_source"],
+                   destination=media_paths.store(base, Path(f["destination"])))
+              for f in doc["files"]]
     current = signature(Path(doc["catalog"]), files)
     if current not in (doc["before_signature"], doc["database_signature"]):
         raise RuntimeError("catalog changed outside the migration; refusing to overwrite later data")
@@ -220,8 +228,14 @@ def verify_applied(data_dir, doc):
         paths = dict(con.execute("SELECT content_key, file_path FROM items"))
     finally:
         con.close()
+    base = Path(doc["catalog"]).parent
     for intent in doc["files"]:
-        if paths.get(intent["key"]) != intent["destination"]:
+        # Compared as FILES, not strings: a bundle written before paths were
+        # stored data-relative records absolute destinations, and the row may
+        # now hold the relative form of the same file.
+        stored = paths.get(intent["key"])
+        if (stored is None or media_paths.resolve(base, stored).resolve()
+                != Path(intent["destination"]).resolve()):
             raise RuntimeError(f"migration path update is unresolved: {intent['key']}")
     for name, values in doc["states"].items():
         if json.loads((Path(data_dir) / name).read_text(encoding="utf-8")) != values["after"]:
@@ -249,13 +263,18 @@ def apply_files(db, files):
     for intent in files:
         src, dest = Path(intent["source"]), Path(intent["destination"])
         move_file(src, dest, intent["sha256"])
-        con = sqlite3.connect(db)
-        try:
-            with con:
-                con.execute("UPDATE items SET file_path=? WHERE content_key=?",
-                            (str(dest), intent["key"]))
-        finally:
-            con.close()
+        # The data-relative form, and only where something changed: writing
+        # every row back as an absolute path undid the folder-rename fix, and
+        # the catalog's one-time conversion never ran again to repair it.
+        new_stored = media_paths.store(Path(db).parent, dest)
+        if intent["key"] != intent["old_key"] or new_stored != intent["stored_source"]:
+            con = sqlite3.connect(db)
+            try:
+                with con:
+                    con.execute("UPDATE items SET file_path=? WHERE content_key=?",
+                                (new_stored, intent["key"]))
+            finally:
+                con.close()
         if src != dest:
             renamed.append(dest.name)
     return renamed

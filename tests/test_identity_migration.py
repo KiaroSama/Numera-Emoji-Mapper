@@ -190,7 +190,9 @@ class EveryDurableReferenceMoves(MigrationCase):
         want = self.data / "007_video_fedcba987654.webm"
         self.assertTrue(want.is_file(), "the archived file kept the old key")
         self.assertFalse(archived.is_file())
-        self.assertEqual(self.cat.col("items", "file_path"), [str(want)])
+        # Stored data-relative: the file is inside the catalog's folder.
+        self.assertEqual(self.cat.col("items", "file_path"),
+                         ["./007_video_fedcba987654.webm"])
 
     def test_a_second_migration_is_a_verified_no_op(self):
         m = self.media("clip.webm")
@@ -227,6 +229,63 @@ class EveryDurableReferenceMoves(MigrationCase):
         self.assertTrue(finished or err, "the migration ignored the family lock")
         if finished and not err:
             self.fail("the migration ran while the family lock was held")
+
+
+class MigratedPathsStayDataRelative(MigrationCase):
+    """The migration rewrote EVERY row's file_path as an absolute path.
+
+    That undid the folder-rename fix: the catalog's own conversion had already
+    marked itself done, so the next rename broke every row.
+    """
+
+    def _relative_rows(self):
+        moving = self.data / "007_video_0123456789ab.webm"
+        moving.write_bytes(b"\x1a\x45\xdf\xa3moving")
+        self.media("keep.webm")
+        con = sqlite3.connect(self.data / "catalog.db")
+        con.executemany("INSERT INTO items VALUES(?,?,?,?)", [
+            ("v:0123456789abcdef", "./007_video_0123456789ab.webm", "video", None),
+            ("v:keep", "./keep.webm", "video", None)])
+        con.commit()
+        con.close()
+        return self.fake_fingerprint({
+            "007_video_0123456789ab.webm": ("v:fedcba9876543210", None),
+            "keep.webm": ("v:keep", None)})
+
+    def paths(self) -> dict:
+        con = sqlite3.connect(self.data / "catalog.db")
+        try:
+            return dict(con.execute("SELECT content_key, file_path FROM items"))
+        finally:
+            con.close()
+
+    def test_unchanged_rows_stay_byte_identical_and_renames_stay_relative(self):
+        with self._relative_rows():
+            self.assertEqual(ir.migrate(self.data, apply=True), ir.EXIT_OK)
+        self.assertEqual(self.paths(), {
+            "v:keep": "./keep.webm",
+            "v:fedcba9876543210": "./007_video_fedcba987654.webm"})
+
+    def test_rows_written_absolute_by_the_old_code_still_verify(self):
+        """A journal begun by the old code is finished by the new one."""
+        from emojikit import migration_bundle
+
+        def old_apply_files(db, files):
+            for intent in files:
+                migration_bundle.move_file(Path(intent["source"]),
+                                           Path(intent["destination"]),
+                                           intent["sha256"])
+                con = sqlite3.connect(db)
+                with con:
+                    con.execute("UPDATE items SET file_path=? WHERE content_key=?",
+                                (intent["destination"], intent["key"]))
+                con.close()
+            return []
+
+        with self._relative_rows(), \
+                mock.patch.object(cm, "_apply_files", old_apply_files):
+            self.assertEqual(ir.migrate(self.data, apply=True), ir.EXIT_OK)
+        self.assertTrue(Path(self.paths()["v:keep"]).is_absolute())
 
 
 class NothingIsAppliedFromAnIncompletePicture(MigrationCase):

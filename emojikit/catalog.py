@@ -37,7 +37,10 @@ log = logging.getLogger("emojikit.catalog")
 SCHEMA_VERSION = 1
 # meta.media_paths once every in-folder row carries media_paths' `./` form. It only
 # saves the scan on later opens; each row says on its own which rule it follows.
-MEDIA_PATHS_DONE = "data-relative"
+# Bumped from "data-relative": an identity migration used to write every row
+# back as an absolute path after the conversion had run, and nothing re-ran it.
+# A new value re-runs the idempotent conversion once and heals those catalogs.
+MEDIA_PATHS_DONE = "data-relative-2"
 # Near-duplicate (perceptual) merging is OFF by default: faithfully copying a
 # pack must keep visually-similar-but-DISTINCT emoji. Dedup then relies on exact
 # content (normalized pixels) + file_unique_id only. Set a >=0 Hamming threshold

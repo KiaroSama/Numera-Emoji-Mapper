@@ -31,7 +31,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests._media_fixtures import HAS_FFMPEG
+from tests._media_fixtures import HAS_FFMPEG, encode_vp9
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -39,7 +39,7 @@ sys.path.insert(0, str(ROOT))
 from PIL import Image  # noqa: E402
 
 from emojikit import collection_reconcile as cr  # noqa: E402
-from emojikit import identity, media  # noqa: E402
+from emojikit import identity  # noqa: E402
 from emojikit.catalog import Catalog  # noqa: E402
 
 RED = (220, 20, 20, 255)
@@ -53,12 +53,7 @@ def _encode(tmp: Path, name: str, colours: list[tuple[int, int, int, int]]) -> P
     d.mkdir()
     for i, c in enumerate(colours):
         Image.new("RGBA", (100, 100), c).save(d / f"{i:04d}.png")
-    out = tmp / f"{name}.webm"
-    media._run([media.ffmpeg_path(), "-y", "-framerate", "30",
-                "-i", str(d / "%04d.png"), "-c:v", "libvpx-vp9",
-                "-pix_fmt", "yuva420p", "-auto-alt-ref", "0", str(out)],
-               capture=True)
-    return out
+    return encode_vp9(d, tmp / f"{name}.webm", pattern="%04d.png")
 
 
 @unittest.skipUnless(HAS_FFMPEG, "needs ffmpeg/ffprobe")
