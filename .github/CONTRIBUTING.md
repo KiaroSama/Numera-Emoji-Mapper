@@ -28,12 +28,16 @@ Do not file security issues publicly. Follow the process in
 
 ```powershell
 py -3.11 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt         # core deps
-.venv\Scripts\python.exe -m pip install -r requirements-coins.txt   # only for coins/remap_ids.py
-.venv\Scripts\python.exe -m pip install ruff                        # linter (not a runtime dep)
+# Everything the check gate needs, in one line (core, coins, ruff, playwright):
+.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt; .venv\Scripts\python.exe -m playwright install chromium
 .\run.ps1 -Check      # environment doctor (non-interactive)
 .\scripts\check.ps1   # byte-compile + ruff + full unit suite — what CI runs
+.\scripts\check.ps1 -Tests test_catalog,test_panel_plan -SkipCompile -SkipLint   # chosen suites only
 ```
+
+`check.ps1` names the one install command above and exits 2 if anything it
+needs is missing. `-Tests` runs suites as `tests.<name>`, so the test guard in
+`tests/__init__.py` still applies.
 
 Lint is `ruff check .` with no arguments; `ruff.toml` at the repo root owns the
 rule set and the exclusions. Do not pass `--select`/`--exclude` on the command

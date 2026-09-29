@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# A superseded push stops instead of running to completion: only the newest
+# commit on a ref is ever reported.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 # Jobs use ephemeral GitHub-HOSTED Ubuntu/Windows runners. This account's hosted
 # minutes are blocked for PRIVATE repositories, which is why CI used to run on
 # a self-hosted WSL runner; hosted minutes are free for PUBLIC ones, so the
@@ -100,6 +106,15 @@ jobs:
       # passwordless sudo and would have sat on a password prompt until the job
       # timeout; a hosted runner has it, and starts from a bare machine where
       # those libraries are genuinely absent.
+      # ~150 MB per run otherwise. Keyed on the pinned playwright version, so a
+      # bump downloads the matching browser once. `install --with-deps` still
+      # runs: it installs the system libraries and is fast on a cache hit.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements-dev.txt') }}
+
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
 
@@ -146,7 +161,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-coins.txt
-          pip install ruff
+          pip install -r requirements-lint.txt
 
       # INSTALLED here, not merely checked: a hosted runner is a fresh machine
       # with no ffmpeg, where the old self-hosted box had it in its global
@@ -208,9 +223,21 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      # run.ps1 and the other scripts are never executed in CI, so a syntax
+      # error would ship unnoticed. Parse every tracked one; fail on any error.
+      - name: Every PowerShell script parses
+        shell: pwsh
+        run: |
+          $bad = git ls-files '*.ps1' | ForEach-Object {
+            $e = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $_), [ref]$null, [ref]$e)
+            if ($e) { "$_"; $e }
+          }
+          if ($bad) { $bad; exit 1 }
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+          cache: pip
       - name: Install isolated test dependencies
         run: python -m pip install -r requirements.txt -r requirements-coins.txt
       - name: Require native Windows and FFmpeg
@@ -233,4 +260,5 @@ jobs:
           tests.test_state_artifacts tests.test_sqlite_snapshot
           tests.test_panel_intent_persistence tests.test_video_collision_ingest
           tests.test_entry_point_contracts tests.test_panel_sandbox
-          tests.test_sandbox_lifecycle tests.test_atomic_state_files -v
+          tests.test_sandbox_lifecycle tests.test_atomic_state_files
+          tests.test_media_paths tests.test_media_bounds -v

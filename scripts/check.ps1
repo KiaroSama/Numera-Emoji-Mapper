@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Run the project's own checks: byte-compile every source file, lint it, then
-    run the full unit suite. This is the single command CI and a developer both
+    run the full unit suite (or only the suites named with -Tests). This is the single command CI and a developer both
     run, so the two cannot drift.
 
 .DESCRIPTION
@@ -18,12 +18,31 @@
 
 .PARAMETER TimeoutSeconds
     Wall-clock ceiling for each step. Default 1800 (the suite takes ~75 s).
+
+.PARAMETER Tests
+    Run only these suites, e.g. -Tests test_panel_plan,test_catalog. They run as
+    package-qualified names (tests.<name>), so tests/__init__.py -- the
+    credential scrub and socket block -- still applies. An improvised
+    `unittest` command that drops `-t .` loses exactly that.
+
+.PARAMETER SkipCompile
+    Skip the byte-compile step (for a quick inner loop with -Tests).
+
+.PARAMETER SkipLint
+    Skip ruff (for a quick inner loop with -Tests).
+
+.EXAMPLE
+    .\scripts\check.ps1
+    .\scripts\check.ps1 -Tests test_panel_plan -SkipCompile -SkipLint
 #>
 
 [CmdletBinding()]
 param(
     [string]$Python = '',
-    [int]$TimeoutSeconds = 1800
+    [int]$TimeoutSeconds = 1800,
+    [string[]]$Tests = @(),
+    [switch]$SkipCompile,
+    [switch]$SkipLint
 )
 
 $ErrorActionPreference = 'Stop'
@@ -102,31 +121,56 @@ if (-not $py) {
 }
 Write-Host "Python: $py" -ForegroundColor DarkGray
 
-# Git's source list includes new unignored files and excludes runtime snapshots,
-# environments, private data and caches. Compiling '.' traversed all of them.
-$sources = @(& git -c core.quotePath=false -C $Root ls-files --cached --others --exclude-standard -- '*.py')
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-$sourceArgs = @($sources | Where-Object { Test-Path -LiteralPath (Join-Path $Root $_) } |
-    ForEach-Object { '"' + $_ + '"' })
-if (-not $sourceArgs.Count) { throw 'No Python source files were discovered.' }
-$code = Invoke-Step 'Byte-compile all sources' $py (@('-m', 'compileall', '-q') + $sourceArgs)
-if ($code -ne 0) { exit $code }
-
-# `ruff check .` and nothing else: ruff.toml at the repo root carries the rule
-# set and the exclusions. Passing --select/--exclude here is how CI and a local
-# run start linting two different things.
-$ruff = Resolve-Ruff
-if (-not $ruff) {
-    Write-Host "[X] ruff not found. Install it: python -m pip install ruff" -ForegroundColor Red
+# Everything the gate needs, checked up front and named in ONE line. Each
+# missing piece used to surface as its own red run -- numpy from a test module's
+# import, playwright from the browser suite, ruff from the lint step.
+$needed = @('numpy', 'ruff')
+if ($env:NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS -ne '1') { $needed += 'playwright' }
+$probe = "import importlib.util, sys; sys.exit(0 if all(importlib.util.find_spec(m) for m in sys.argv[1:]) else 1)"
+& $py -c $probe @needed
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[X] Missing check dependencies ($($needed -join ', ') required); install: & `"$py`" -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt; & `"$py`" -m playwright install chromium" -ForegroundColor Red
     exit 2
 }
-$code = Invoke-Step 'Lint (ruff)' $ruff @('check', '.')
-if ($code -ne 0) { exit $code }
 
-# -t . is REQUIRED, not cosmetic: without it the tests directory becomes the top
-# level, modules load as `test_x` instead of `tests.test_x`, and tests/__init__.py
-# -- which scrubs credentials and refuses non-loopback sockets -- never runs.
-$code = Invoke-Step 'Unit tests' $py @('-m', 'unittest', 'discover', '-s', 'tests', '-t', '.', '-p', 'test_*.py')
+if (-not $SkipCompile) {
+    # Git's source list includes new unignored files and excludes runtime snapshots,
+    # environments, private data and caches. Compiling '.' traversed all of them.
+    $sources = @(& git -c core.quotePath=false -C $Root ls-files --cached --others --exclude-standard -- '*.py')
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $sourceArgs = @($sources | Where-Object { Test-Path -LiteralPath (Join-Path $Root $_) } |
+        ForEach-Object { '"' + $_ + '"' })
+    if (-not $sourceArgs.Count) { throw 'No Python source files were discovered.' }
+    $code = Invoke-Step 'Byte-compile all sources' $py (@('-m', 'compileall', '-q') + $sourceArgs)
+    if ($code -ne 0) { exit $code }
+}
+
+if (-not $SkipLint) {
+    # `ruff check .` and nothing else: ruff.toml at the repo root carries the rule
+    # set and the exclusions. Passing --select/--exclude here is how CI and a local
+    # run start linting two different things.
+    $ruff = Resolve-Ruff
+    if (-not $ruff) {
+        Write-Host "[X] ruff not found. Install it: & `"$py`" -m pip install -r requirements-lint.txt" -ForegroundColor Red
+        exit 2
+    }
+    $code = Invoke-Step 'Lint (ruff)' $ruff @('check', '.')
+    if ($code -ne 0) { exit $code }
+}
+
+if ($Tests.Count) {
+    # Package-qualified (tests.<name>), never a bare module name: that is what
+    # keeps tests/__init__.py -- the credential scrub and socket block -- in
+    # effect. A comma list arrives as one string when called from cmd.exe.
+    $names = @($Tests | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } |
+        Where-Object { $_ } | ForEach-Object { 'tests.' + ($_ -replace '^tests\.', '' -replace '\.py$', '') })
+    $code = Invoke-Step "Unit tests ($($names -join ', '))" $py (@('-m', 'unittest') + $names + @('-v'))
+} else {
+    # -t . is REQUIRED, not cosmetic: without it the tests directory becomes the top
+    # level, modules load as `test_x` instead of `tests.test_x`, and tests/__init__.py
+    # -- which scrubs credentials and refuses non-loopback sockets -- never runs.
+    $code = Invoke-Step 'Unit tests' $py @('-m', 'unittest', 'discover', '-s', 'tests', '-t', '.', '-p', 'test_*.py')
+}
 if ($code -ne 0) { exit $code }
 
 Write-Host "[OK] All checks passed." -ForegroundColor Green

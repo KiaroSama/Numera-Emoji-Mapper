@@ -77,3 +77,36 @@ def _noise_png_bytes(key: str, size: int = 64) -> bytes:
     buf = io.BytesIO()
     img.save(buf, "PNG")
     return buf.getvalue()
+
+
+_HELP_RUNNER = """
+import runpy, sys
+import emojikit.logsetup as L
+# --help must leave nothing behind: most entry points configure logging BEFORE
+# parsing arguments, so a plain `--help` wrote a fresh file into logs/.
+L.setup_logging = lambda *a, **k: None
+target = sys.argv[1]
+sys.argv = [target, "--help"]
+if target.endswith(".py"):
+    runpy.run_path(target, run_name="__main__")
+else:
+    runpy.run_module(target, run_name="__main__", alter_sys=True)
+"""
+
+
+def cli_help(target: str, root: Path) -> str:
+    """`<target> --help` in a child process: a module name or a script path.
+
+    No .env (NUMERA_EMOJI_MAPPER_NO_DOTENV), no stdin, bounded, and no log file.
+    Raises AssertionError with the child's stderr when it does not exit 0.
+    """
+    import os
+    import subprocess
+    env = dict(os.environ, NUMERA_EMOJI_MAPPER_NO_DOTENV="1", PYTHONPATH=str(root))
+    proc = subprocess.run([sys.executable, "-c", _HELP_RUNNER, target], cwd=root,
+                          env=env, stdin=subprocess.DEVNULL, capture_output=True,
+                          text=True, encoding="utf-8", timeout=60)
+    if proc.returncode != 0:
+        raise AssertionError(f"{target} --help exited {proc.returncode}: "
+                             f"{proc.stderr[-500:]}")
+    return proc.stdout

@@ -85,6 +85,49 @@ def _windows_suites() -> list[str]:
             if _declares_windows(p)]
 
 
+def _browser_step(workflow: str) -> list[str]:
+    """Module names on the `Panel browser tests` run line, as whole tokens.
+
+    Tokens, not a substring search of the whole file: a mention anywhere --
+    a comment, another job -- used to satisfy the check.
+    """
+    head = workflow.find("name: Panel browser tests")
+    if head < 0:
+        return []
+    run = workflow.find("run:", head)
+    line = workflow[run:workflow.find("\n", run)] if run >= 0 else ""
+    return [w for w in line.split() if w.startswith("tests.test_")]
+
+
+# A module that skips unless it runs on Windows: the condition names the
+# platform and the test only runs there. Such a module runs nowhere unless the
+# native-Windows job claims it.
+_WINDOWS_ONLY = ("!= 'win32'", "!= 'nt'", "== 'win32'", "== 'nt'")
+
+# Modules allowed to skip off Windows without the marker. Each needs a reason.
+_WINDOWS_SKIP_ALLOWED: dict[str, str] = {}
+
+
+def _skips_unless_windows(path: Path) -> bool:
+    tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
+            cond = ast.unparse(node.test)
+            if any(s in cond for s in _WINDOWS_ONLY[:2]) and any(
+                    isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute)
+                    and c.func.attr == "skipTest"
+                    for b in node.body for c in ast.walk(b)):
+                return True
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.args):
+            cond = ast.unparse(node.args[0])
+            if node.func.attr == "skipUnless" and any(s in cond for s in _WINDOWS_ONLY[2:]):
+                return True
+            if node.func.attr == "skipIf" and any(s in cond for s in _WINDOWS_ONLY[:2]):
+                return True
+    return False
+
+
 def _windows_step(workflow: str) -> str:
     """Only the windows-safety job's own run block, so a name that appears in
     another job cannot make this guard pass."""
@@ -104,7 +147,8 @@ class EveryBrowserSuiteIsClaimedByCi(unittest.TestCase):
                                 "the browser-suite scan stopped finding them")
 
     def test_each_one_is_named_in_the_browser_job(self):
-        missing = [m for m in _browser_suites() if m not in self.workflow]
+        named = _browser_step(self.workflow)
+        missing = [m for m in _browser_suites() if m not in named]
         self.assertEqual(missing, [],
                          f"browser suite(s) run nowhere in CI: {missing}. Add "
                          f"them to the `Panel browser tests` step in ci.yml.")
@@ -145,10 +189,22 @@ class EveryNativeWindowsSuiteIsClaimedByCi(unittest.TestCase):
                                 "the native-Windows marker scan stopped finding them")
 
     def test_each_marked_suite_is_named_in_the_job(self):
-        missing = [m for m in _windows_suites() if m not in self.step]
+        # Whole tokens: `tests.test_pack_locks` used to be "found" inside
+        # `tests.test_pack_locks_exclusion`.
+        named = self.step.split()
+        missing = [m for m in _windows_suites() if m not in named]
         self.assertEqual(missing, [],
                          f"native-Windows suite(s) run nowhere on Windows: {missing}. "
                          f"Add them to the windows-safety step in ci.yml.")
+
+    def test_a_windows_only_skip_needs_the_marker(self):
+        """A module that skips off Windows proves nothing on the Linux matrix."""
+        unmarked = [p.name for p in sorted(TESTS.glob("test_*.py"))
+                    if _skips_unless_windows(p) and not _declares_windows(p)
+                    and p.name not in _WINDOWS_SKIP_ALLOWED]
+        self.assertEqual(unmarked, [],
+                         f"these skip unless on Windows but declare no "
+                         f"{WINDOWS_MARKER}, so no CI job runs that branch: {unmarked}")
 
     def test_every_name_in_the_job_still_claims_windows(self):
         """The other direction: a renamed or repurposed suite leaves a name in
