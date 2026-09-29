@@ -52,7 +52,7 @@ h1 .dot{color:var(--neon)}
 .actions button{color:var(--btn);border-color:var(--btnLine)}
 .actions button:hover{border-color:var(--btn);
   box-shadow:0 0 0 1px var(--btnLine),0 0 12px var(--btnLine)}
-#undo,#redo,#resetAll{--btn:#cbd5e1;--btnLine:#3a4657}
+#undo,#redo,#resetAll,#importDraft{--btn:#cbd5e1;--btnLine:#3a4657}
 #all       {--btn:#4ade80;--btnLine:#1d5133}
 #none      {--btn:#fb7185;--btnLine:#5c2330}
 #inv       {--btn:#fbbf24;--btnLine:#5a4415}
@@ -308,6 +308,8 @@ body.compact .glyph,body.compact .lbl,body.compact .sub{display:none}
     <button id="undo" title="Undo the last reorder or selection change (Ctrl+Z)" disabled>&#8630; Undo</button>
     <button id="redo" title="Redo (Ctrl+Y or Ctrl+Shift+Z)" disabled>Redo &#8631;</button>
     <button id="resetAll" title="Restore order, holds, selection and view settings from the last successful Save">Reset all</button>
+    <button id="importDraft" title="Load an exported draft back into the grid. Nothing is saved until you press Save.">Import draft</button>
+    <input id="draftFile" type="file" accept="application/json,.json" hidden>
     <span class="sep"></span>
     <button id="top" title="Jump to the first card">&#8593; Top</button>
     <button id="bot" title="Jump to the last card">&#8595; Bottom</button>
@@ -363,4 +365,5 @@ const PER_SET = __PER_SET__;
 <script src="/static/panel-drag.js?v=__ASSET_VER__"></script>
 <script src="/static/panel-actions.js?v=__ASSET_VER__"></script>
 <script src="/static/panel-holding.js?v=__ASSET_VER__"></script>
+<script src="/static/panel-draft.js?v=__ASSET_VER__"></script>
 </body></html>
