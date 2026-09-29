@@ -70,8 +70,8 @@ function redo(){
   applySnapshot(future.pop()); toast('Redone');
 }
 function updateHistoryButtons(){
-  document.getElementById('undo').disabled=!past.length;
-  document.getElementById('redo').disabled=!future.length;
+  /** @type {HTMLButtonElement} */ (document.getElementById('undo')).disabled=!past.length;
+  /** @type {HTMLButtonElement} */ (document.getElementById('redo')).disabled=!future.length;
 }
 document.getElementById('undo').onclick=undo;
 document.getElementById('redo').onclick=redo;
@@ -99,7 +99,7 @@ function invertPicked(){
   for(const it of ITEMS) if(!it.isLogo && it.included) markPicked(it.key,!picked.has(it.key));
   paintSelLabel();
 }
-const zoomInput=document.getElementById('zoomReset');
+const zoomInput=/** @type {HTMLInputElement} */ (document.getElementById('zoomReset'));
 function applyZoomInput(){
   const n=Number(zoomInput.value.replace(/%$/,'').trim());
   if(Number.isFinite(n)&&n>0) setZoom(n/100);
@@ -229,7 +229,7 @@ function trayWindow(n){
 function renderHolding(){
   const held=ITEMS.filter(x=>!x.isLogo&&!x.included);
   holdCount.textContent=held.length;
-  document.getElementById('unholdAll').disabled=!held.length;
+  /** @type {HTMLButtonElement} */ (document.getElementById('unholdAll')).disabled=!held.length;
   // Never re-window under a drag: the source card must stay in the document,
   // and the drop re-renders the tray anyway.
   if(dragKey!==null)return;
@@ -275,6 +275,7 @@ function renderHolding(){
   // when the tray actually changes height, not on every count update.
 }
 const originalUpdateCount=updateCount;
+// @ts-expect-error -- deliberate: the tray wraps the grid's counter, which it loads after.
 updateCount=function(){originalUpdateCount();renderHolding();};
 let trayRaf=null;
 holding.addEventListener('scroll',()=>{
@@ -288,6 +289,7 @@ function heldOrder(){return ITEMS.filter(x=>!x.isLogo&&!x.included).map(x=>x.key
 function heldPicked(){return heldOrder().filter(k=>picked.has(k));}
 // markPicked paints cards.get(key) -- the GRID node, which a held emoji lacks.
 const originalMarkPicked=markPicked;
+// @ts-expect-error -- deliberate: a held emoji has no grid node, so the tray extends the marker.
 markPicked=function(key,on){
   originalMarkPicked(key,on);
   trayCards.get(key)?.classList.toggle('picked',on);   // unmounted: set on mount
@@ -396,7 +398,7 @@ holding.addEventListener('dragover',e=>{
   e.preventDefault();e.dataTransfer.dropEffect='move';holding.classList.add('drop');
 });
 holding.addEventListener('dragleave',e=>{
-  if(!holding.contains(e.relatedTarget))holding.classList.remove('drop');
+  if(!holding.contains(/** @type {Node} */ (e.relatedTarget)))holding.classList.remove('drop');
 });
 holding.addEventListener('drop',e=>{
   holding.classList.remove('drop');

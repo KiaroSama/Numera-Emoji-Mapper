@@ -15,14 +15,14 @@ function setAll(fn){ remember();
 // the only way to see a video move at all, so the old handlers survive for it.
 if (RM) {
   grid.addEventListener('mouseover',e=>{
-    const box = e.target.closest('.thumb'); if(!box || box.contains(e.relatedTarget)) return;
+    const box = e.target.closest('.thumb'); if(!box || box.contains(/** @type {Node} */ (e.relatedTarget))) return;
     const v = box.querySelector('video'); if(v) setPlaying(v, true);
     // A video card is an animated preview image unless Real video is on.
     const img = !v && box.closest('.fmt-video') && box.querySelector('img[data-anim]');
     if(img && mayAnimate(false, true)) showMotion(img);
   });
   grid.addEventListener('mouseout',e=>{
-    const box = e.target.closest('.thumb'); if(!box || box.contains(e.relatedTarget)) return;
+    const box = e.target.closest('.thumb'); if(!box || box.contains(/** @type {Node} */ (e.relatedTarget))) return;
     const v = box.querySelector('video'); if(v){ setPlaying(v, false); try{v.currentTime=0;}catch(_){} }
     const img = !v && box.closest('.fmt-video') && box.querySelector('img[data-anim]');
     if(img) showStill(img);

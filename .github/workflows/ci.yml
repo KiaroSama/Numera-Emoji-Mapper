@@ -58,6 +58,12 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      # The panel's classic scripts share one global scope and call each other
+      # by name; nothing else notices a rename that breaks another file until a
+      # browser runs that path. This job already has TypeScript installed.
+      - name: Type-check the panel scripts
+        run: npx tsc -p ../assets/jsconfig.json --noEmit
+
       # vitest stubs fetch, so nothing here can reach Telegram -- the same rule
       # the Python suite enforces with its hermetic guard, for the same reason:
       # a test once reached live Telegram and replaced a sticker in a published

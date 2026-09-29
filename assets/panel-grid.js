@@ -504,7 +504,7 @@ function paintZoom(){
   // .value, not .textContent -- zoomReset is a typeable <input> now (an exact
   // percentage was the one thing the +/- buttons and Ctrl+wheel could not
   // give), and .textContent on an <input> silently does nothing at all.
-  document.getElementById('zoomReset').value = Math.round(zoom * 100) + '%';
+  /** @type {HTMLInputElement} */ (document.getElementById('zoomReset')).value = Math.round(zoom * 100) + '%';
 }
 function loadZoom(){
   // `|| 1` covers a stored value that is not a number at all: NaN would clamp
