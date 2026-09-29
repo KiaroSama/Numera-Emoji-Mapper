@@ -252,7 +252,9 @@ class AnimationCost(unittest.TestCase):
         page.click("#all")
         state = ("getComputedStyle(document.querySelector('#grid .card.picked'), '::before')"
                  ".animationPlayState")
-        self.assertEqual(page.evaluate(state), "running")
+        # The zoom above scrolled, so the ring may still be paused for up to one
+        # settle delay: wait for the condition rather than reading it once.
+        page.wait_for_function(f"{state} === 'running'")
         page.evaluate("window.__keepScrolling(1000)")
         page.wait_for_function(f"{state} === 'paused'")
         self.settle(page)
