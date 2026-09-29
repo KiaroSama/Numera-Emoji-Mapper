@@ -1,8 +1,7 @@
 # Persistence audit — 2026-09-19
 
-**Respect all owner-defined repository, workspace, global instructions and Git hooks. Never disable checks, bypass hooks, force-push, merge or close this PR on the auditor's behalf. The owner's reviewing agent makes the integration decision.**
-
-Baseline: `bfd0cdc8336dda292febc683b1e52cac9e15d12b`.
+Reviewed: [pull request #33](https://github.com/KiaroSama/Numera-Emoji-Mapper/pull/33),
+a commit before the 2026-09-26 history rewrite.
 
 The earlier native-frame collision, maintenance-lock and rollback-bundle repairs are retained. This change follows the newer curation feature through every persistence boundary instead of repeating the previous reports.
 

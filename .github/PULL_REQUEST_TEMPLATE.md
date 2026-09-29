@@ -23,6 +23,6 @@ Closes #
 - [ ] I have the right to submit this change and offer it under GPL-3.0-or-later.
 - [ ] No secrets, tokens, API keys, or `.env` values are included.
 - [ ] Code comments and docs are in English and match the existing style.
-- [ ] `python -m compileall -q .` passes.
-- [ ] `python -c "from emojikit import build_pack, make_emoji_pngs"` succeeds.
+- [ ] `.\scripts\check.ps1` passes (or CI is green on this branch).
+- [ ] Worker changes: `npm run typecheck` and `npx vitest run` in `worker/` pass.
 - [ ] Relevant workflow was tested (general / crypto-coin) or testing limits are noted.

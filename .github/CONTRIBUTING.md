@@ -1,7 +1,7 @@
 # Contributing
 
 Numera Emoji Mapper is free software under the **GNU General Public License v3 or
-later** (see [LICENSE](LICENSE)).
+later** (see [LICENSE](../LICENSE)).
 
 ## External contributions
 
@@ -48,7 +48,7 @@ Run `scripts\check.ps1` before every commit rather than a hand-written
 `unittest` command: the suite must be started as
 `python -m unittest discover -s tests -t . -p "test_*.py"`, and dropping `-t .`
 disables the test-suite credential/network guard (see
-[`tests/README.md`](tests/README.md)).
+[`tests/README.md`](../tests/README.md)).
 
 Keep code comments and documentation in English, match the existing style, and
 never commit `.env`, `secrets.md`, or any real credentials.
