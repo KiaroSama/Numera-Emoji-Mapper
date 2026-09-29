@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`python -m emojikit.plan_apply`** applies the Curate panel's saved pack
+  plan to the live packs: dry run by default, `--apply` removes the outgoing
+  half of each move, adds arrivals and new emoji through the verified publisher
+  path, then reorders — at most 20 Telegram changes per run, resumable, with
+  every delete journalled and confirmed. A held emoji that is still live stays.
+
 ## [2.0.0] - 2026-09-29
 
 ### Breaking

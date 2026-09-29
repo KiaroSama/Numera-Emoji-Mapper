@@ -11,7 +11,8 @@ and never-published candidates aimed at it. With `--live` each set is read
 (getStickerSet, read-only) to confirm which ids a move would retire.
 
 Exit 0 when nothing is pending, 3 when the plan asks for work. The design for
-actually applying it is docs/design/plan-applier.md; there is no --apply.
+actually applying it is docs/design/plan-applier.md, and `python -m
+emojikit.plan_apply` does it (dry run unless --apply).
 """
 
 from __future__ import annotations

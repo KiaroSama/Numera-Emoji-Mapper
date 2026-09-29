@@ -1,8 +1,9 @@
 # Design: applying the panel's pack plan
 
-Status: **proposal**. Nothing here is built except the read-only report
-(`python -m emojikit.plan_status`). No `--apply` exists, and none should be
-written until the owner has answered the open questions at the end.
+Status: **built 2026-09-29** as `python -m emojikit.plan_apply` (usage: GUIDE, "The move
+plan"). Decided the same day — the owner answered the three questions (see
+"Owner decisions" at the end). The applier is built on this design, dry run by
+default; `--apply` is the only path that changes a live pack.
 
 ## The gap
 
@@ -42,8 +43,9 @@ with `getStickerSet`. Exit 3 when anything is pending, so it can feed
 A full pack (200, logo included) cannot take an arrival, and Telegram refuses
 the add rather than queueing it. So per run:
 
-1. **Removals** — held emoji that are live, then the `from` half of each move.
-   Each frees a slot and retires an id.
+1. **Removals** — the `from` half of each move. Each frees a slot and retires
+   an id. A held emoji that is still live is NOT removed: it stays in its pack
+   until the owner places it somewhere (owner decision 2).
 2. **Adds** — the `to` half of each move, then candidates, in the panel's
    current order (the same `_by_position` rule the publisher uses).
 3. **Reorder** — `sync_order` per touched pack, so positions match the panel.
@@ -97,12 +99,14 @@ long flood wait is reached. The next run resumes from the journal.
   on save; an old plan file may still carry them).
 - Unknown live state for any touched set: stop, as every writer here does.
 
-## Open questions for the owner
+## Owner decisions (2026-09-29)
 
-Nothing above should be built until these are answered.
-
-1. Moving an emoji to another pack gives it a new id, and the old id stops
-   working in every message that used it. Is that acceptable?
-2. A held emoji that is already live: remove it from its pack now, or leave it
-   live until you place it somewhere?
-3. Should there be a cap on moves (or removals) per run, and if so how many?
+1. **A cross-pack move is allowed** even though the emoji gets a new id and the
+   old id stops working in messages that used it. The roster keeps the retired
+   id (`by_previous_id`) so an old reference can still be traced.
+2. **A held emoji that is already live stays live** until it is placed in a
+   pack; the applier never removes it on its own.
+3. **At most 20 Telegram changes per run** (removals and adds together;
+   reordering inside a pack keeps ids and is not counted). A run that reaches
+   the cap stops cleanly with exit 3 and the next run continues from the
+   journal.
