@@ -10,8 +10,11 @@ runners are small and noisy); counts are stable, and later changes assert them.
 """
 from __future__ import annotations
 
+import io
 import json
 import unittest
+
+from PIL import Image
 
 from tests import _panel_browser_fixtures as fx
 
@@ -186,6 +189,30 @@ class AnimationCost(unittest.TestCase):
         page.evaluate("setZoom(1)")
         self.settle(page)
         self.assertGreater(page.evaluate(count)[3], 0, "normal cards keep their labels")
+
+    def test_the_pick_ring_pauses_while_scrolling(self):
+        page = self._compact()
+        page.click("#selmode")
+        page.click("#all")
+        state = ("getComputedStyle(document.querySelector('#grid .card.picked'), '::before')"
+                 ".animationPlayState")
+        self.assertEqual(page.evaluate(state), "running")
+        page.evaluate("window.__keepScrolling(1000)")
+        page.wait_for_function(f"{state} === 'paused'")
+        self.settle(page)
+        page.wait_for_function(f"{state} === 'running'")
+
+    def test_the_checkerboard_keeps_its_pixels(self):
+        """One gradient layer replaced four; the pattern must not change."""
+        page = self.open()
+        light, dark = (130, 140, 154), (70, 78, 90)
+        for i in range(3):
+            with Image.open(io.BytesIO(page.locator("#grid .thumb").nth(i).screenshot())) as im:
+                rgb = im.convert("RGB")
+                got = [rgb.getpixel(pt) for pt in ((4, 4), (12, 4), (4, 12), (12, 12))]
+            for colour, want in zip(got, (light, dark, dark, light), strict=True):
+                self.assertTrue(all(abs(c - w) <= 2 for c, w in zip(colour, want, strict=True)),
+                                (i, got))
 
     def test_undo_restores_the_all_visible_switch(self):
         page = self._compact()

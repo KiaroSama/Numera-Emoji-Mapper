@@ -142,8 +142,22 @@ document.addEventListener('visibilitychange', ()=>{
 // decoding, and the frames go past too fast to see. Freeze on the first scroll
 // event, thaw once it settles; the render itself is rAF-throttled.
 let scrollThaw = null;
+// `body.moving` pauses the always-running decoration (the pick ring) while the
+// page scrolls or a card is dragged, and lets it run again once things settle.
+let movingTimer = null, dragging = false;
+function markMoving(){
+  document.body.classList.add('moving');
+  clearTimeout(movingTimer);
+  movingTimer = setTimeout(()=>{ if(!dragging) document.body.classList.remove('moving'); }, 180);
+}
+document.addEventListener('dragstart', ()=>{ dragging = true; document.body.classList.add('moving'); }, true);
+for (const type of ['dragend', 'drop']) {
+  document.addEventListener(type, ()=>{ dragging = false; markMoving(); }, true);
+}
+
 addEventListener('scroll', ()=>{
   scheduleRender();
+  markMoving();
   // Not `|| RM`: under reduced motion a hovered video is the one thing that
   // can be playing, and `scrollThaw` is how mayAnimate() knows to hold it.
   if(!ANIM_ON) return;
