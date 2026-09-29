@@ -21,7 +21,7 @@ Two independent but related sides:
 
 | Side | Bots | Purpose |
 |------|------|---------|
-| **Crypto coins** (`coins/`) | `TELEGRAM_BOT_TOKEN` (`@YourCoinEmojiBot`) | the original coin-logo packs (29 packs, ~5.8k emoji) |
+| **Crypto coins** (`coins/`) | `TELEGRAM_BOT_TOKEN` (`@YourCoinEmojiBot`) | the coin-logo packs |
 | **General / collector** | `GENERAL_BOT_TOKEN` (`@YourEmojiBot`) | build any pack, copy packs, extract IDs |
 
 Supported custom-emoji formats: **static** (PNG/WEBP, 100×100), **animated**
@@ -44,6 +44,11 @@ Numera Emoji Mapper/
     sync_order.py            reorder an already published pack (no re-upload)
     pack_archive.py             # archived media reconciliation
     pack_manifest.py            # pack roster and gallery CLI
+    pack_export.py           one pack as a zip in slot order (pack_archive --export)
+    pack_rows.py             the one renderer for every pack-list table
+    status.py                is the roster/archive current? offline (§12.5e)
+    plan_status.py           what the panel's saved plan would change, read-only
+    script_json.py           JSON safe inside a <script> data block
     panel.py                 web "Curate" panel: the server, the page, the APIs
     emoji_bot.py             interactive bot: extract premium-emoji IDs (tap-to-copy)
     telegram_api.py           the Bot API client, its errors and Telegram's caps
@@ -65,18 +70,37 @@ Numera Emoji Mapper/
     ingest.py                 verified dedup and collision-safe media storage
     panel_preview.py          bounded, sized thumbnail cache
     panel_logging.py          validated, bounded browser event logs
+    panel_plan.py             the move plan: pack_plan.json, the panel's intended layout
+    panel_instance.py         find and reopen a panel already running on the port
+    sandbox_clone.py          an independent copy of a catalog for the sandbox panel
+    sqlite_snapshot.py        a SQLite backup with bounded BUSY/LOCKED retries
+    state_artifacts.py        every key-bearing JSON file a migration must rewrite
+    maintenance.py            one lock for every permanent writer of a catalog folder
+    migration_bundle.py       verified media intents + reversible migration snapshots
     logsetup.py            UTC file logging (logs/)
-    media.py               format detect + conversions (static/video/tgs)
+    media.py               format detect + conversions (static/video)
+    media_lottie.py        Lottie/.tgs: load, package, validate, preview
     video_decode.py        the video decoder choice + a bounded frame cache
     errors.py              shared exception types (no import cycle)
     repaint.py             baking Telegram's tint into a Lottie or a static
     identity.py            content keys, perceptual hashes, same_image
     catalog.py             content-addressed SQLite catalog (dedup + inclusion)
     media_paths.py         how items.file_path is stored and resolved (data-folder relative)
+  assets/                  the panel page (panel.html) and its scripts, loaded in this order:
+    panel-grid.js            the model, the virtual grid and zoom
+    panel-motion.js          which cards animate, and when (the animation budget)
+    panel-save.js            the save queues and the server heartbeat
+    panel-drag.js            drag & drop and edge auto-scroll
+    panel-actions.js         selection gestures, toolbar, toasts, the boot block
+    panel-holding.js         history, holding tray and Save checkpoints
+    panel-draft.js           export a draft to a file and import it back
+    jsconfig.json + panel-globals.d.ts   the type-check the CI worker job runs (tsc checkJs)
   coins/                   the crypto-coin component (see §7)
     _paprika_api.py        CoinPaprika HTTP + candidate search + logo decode
   scripts/check.ps1        byte-compile + full unit suite (CI runs this too)
   scripts/identity_repair.py  report/migrate catalog keys after a decode fix
+  scripts/panel_sandbox.py    the panel against a throwaway copy of the catalog
+  scripts/run-actions.ps1     the launcher's menu actions (dot-sourced by run.ps1)
   tests/                   unit tests + fixtures (see tests/README.md and §10)
   docs/GUIDE.md            this file
   .env.example             config template
@@ -103,10 +127,12 @@ py -3.11 -m venv .venv
 # Coin extra: numpy, imported only by coins/remap_ids.py (~20 MB wheel + BLAS,
 # so it is not in the core set). Skip it unless you work on coins/.
 .venv\Scripts\python.exe -m pip install -r requirements-coins.txt
-# Test extra: ruff + playwright, for scripts\check.ps1 and the panel's browser
-# suite. Nothing in the runtime imports either. Skip it unless you run tests.
-.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.venv\Scripts\python.exe -m playwright install chromium
+# Test extra: ruff (pinned in requirements-lint.txt) + playwright, for
+# scripts\check.ps1 and the panel's browser suite. Nothing in the runtime imports
+# either. Skip it unless you run tests. check.ps1 checks all of this up front and
+# prints the one line that installs whatever is missing:
+.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt; .venv\Scripts\python.exe -m playwright install chromium
+# Then:  .\scripts\check.ps1   (or  -Tests test_a,test_b -SkipCompile -SkipLint)
 
 # 2. Configure secrets
 copy .env.example .env
@@ -120,12 +146,14 @@ PACK_OWNER_USER_ID=<your numeric Telegram id>   # owns every created set; press 
 TELEGRAM_BOT_TOKEN=<coin bot token>
 GENERAL_BOT_TOKEN=<general bot token>
 BOT_ALLOWED_USER_IDS=<optional: extra ids allowed to use emojikit/emoji_bot.py>
+BOT_ALLOWED_CHANNEL_IDS=<optional: channel ids (-100...) whose posts the bots answer; empty = none>
 PACK_LINKS_CHAT_ID=<optional: channel that receives finished-pack links>
 WORKER_PUBLISH_URL=<optional: https://<worker>.workers.dev/publish — see §12.9>
 WORKER_PUBLISH_SECRET=<optional: bearer for that endpoint; both or neither>
 EMOJI_LOG_RETENTION_DAYS=30    # optional: prune logs/ older than N days (0 = keep all)
 EMOJI_FFMPEG_TIMEOUT=300       # optional: seconds per ffmpeg/ffprobe child
 CMC_API_KEY=<optional CoinMarketCap key, only for coins/fetch_cmc.py>
+COIN_PAGE_DELAY=2              # optional: seconds between coin provider pages
 
 # Your identities -- required where used, NO default (the repo names no operator)
 BRAND_LOGO_BOTS=<bots whose sets lead with your logo; EMPTY = none, unset = stop>
@@ -177,19 +205,34 @@ Build a single pack
   A3) Crypto-coin pack rebuild    (coin bot)
 
 Collection (multi-format, duplicate-proof)
+  B0) Collect specific emoji by id (recommended start)
   B1) Collect emoji from existing packs (download)
   B2) Add media from a folder (build from scratch)
   B3) Publish the collection into new packs
   B4) Open web panel to pick & reorder emoji (browser)
+  B5) Reorder a live pack to match the panel (report, then apply)
 
 Bot
   C1) Run the Numera Emoji Mapper bot (premium-emoji ID extractor)
 
 Maintenance
   D1) Run the project checks (byte-compile + unit tests)
+  D2) Status: is everything current? (offline)
+  D3) Check / refresh the pack roster (packs/)
+  D4) Check / sync the pack archive
 
 Select {quit=exit}:
 ```
+
+The menu follows the recommended path (Appendix D): **B0** collects by id
+(`fetch_emoji_ids`), **B4** curates, **B3** publishes, **B5** reorders a live
+pack (`sync_order`: a report first, then `--apply` only on a `[y/N]` yes).
+**B3** keeps an existing family's mode — it reads `collection\publish_<base>.json`
+— and for a new base asks "Publish as ONE mixed family (recommended)?", passing
+`--mixed` on yes; a family cannot switch mode once started. **D3**/**D4** run
+the roster/archive `--check` and offer `--refresh`/`--sync` only when stale;
+**D2** is `python -m emojikit.status`. The actions live in
+`scripts\run-actions.ps1`, which `run.ps1` dot-sources.
 
 Navigation follows the FFmWiz style: every input prompt shows a colored
 `{back=0, quit=exit}` hint. Typing **0** steps back **one** prompt (e.g. from the
@@ -202,7 +245,12 @@ recorded in the launcher log.
 
 Every run writes a UTC log to `logs\run_<YYYY-MM-DD_HH-mm-ss>_UTC.log` (startup,
 prereq checks, menu selections, actions, warnings/errors, shutdown — no secret
-values). Non-interactive health check (CI / scripts): `.\run.ps1 -Check`.
+values). Non-interactive health check (CI / scripts): `.\run.ps1 -Check`. It
+fails (exit 1) on a missing `.venv`, a Python below 3.11 or a missing core
+dependency, and warns -- by key NAME, never a value -- for every key in
+`.env.example` that `.env` leaves unset or empty, with what the key is for.
+Unset keys are warnings: not every workflow needs every key. When the launcher
+has to create `.venv`, it only picks an interpreter that reports 3.11 or newer.
 ---
 
 ## 5. The collector model (how dedup, mapping & curation work)
@@ -242,7 +290,8 @@ Guarantees (root-cause fixes — do not regress these):
 
 `emojikit/media.py` cheat-sheet: `detect_format`, `to_static_png`,
 `to_video_webm` (ffmpeg, VP9, ≤256 KB), `to_animated_tgs` (Lottie→gzip),
-`validate_video`, `validate_tgs`, `reencode_in_place`.
+`validate_video`, `validate_tgs`, `reencode_in_place`. The Lottie/.tgs half
+lives in `emojikit/media_lottie.py` and is re-exported from `media`.
 
 `perceptual_hash` premultiplies by alpha before reducing to grey, because
 `convert("L")` on RGBA discards alpha and the RGB under a transparent pixel
@@ -265,11 +314,10 @@ It imports `media`; `media` never imports it.
     --token-env GENERAL_BOT_TOKEN [--data-dir collection] [--limit N] [--phash-threshold -1]
 ```
 
-Find which pack an emoji ID belongs to first (then fetch that pack):
+Or name the pack by one of its emoji — an id fetches the whole pack it belongs to.
 
 ```powershell
-# getCustomEmojiStickers returns set_name + is_animated/is_video
-# (see emojikit.emoji_bot.enrich_labels for the call; or a one-off snippet)
+.venv\Scripts\python.exe -m emojikit.fetch_pack 5283254221590787816 --token-env GENERAL_BOT_TOKEN
 ```
 
 ### 6.2 Build emoji from your own files
@@ -303,6 +351,17 @@ into the field between them (Enter applies it, double-click resets to 100%);
 the grid is virtual, so a thousand cards cost what a hundred do. Click
 **Save** → writes the `included` flag to the catalog.
 
+The header's switches are remembered across reloads and undoable:
+**Animation** (off holds every card on its first frame), **All visible** (by
+default at most 24 cards animate, the ones nearest the centre of the screen; on,
+every visible card animates — heavier), and **Real video** (video cards are
+light animated WebP previews by default; on, they are real `<video>` players).
+**Import draft**, next to **Reset all**, reads a draft exported earlier: keys
+this catalog still holds take the draft's order, inclusion, pack and hold,
+keys it no longer holds are dropped, and emoji added since the draft keep their
+state at the end. It never posts — review, then Save — and it is one undo step;
+the toast reports how many were kept, not in this catalog, and new.
+
 **Selection mode** (the pill next to Zoom) is for moving several emoji as one
 group. In the holding tray, click a card anywhere to pick it and Shift-click
 another to take the run between them; in the grid, drag across the small pick
@@ -329,11 +388,15 @@ whatever candidates follow it, same as unticking one in place always has.
 Sets are named `<base>s<n>_by_<bot>` (static), `<base>v<n>` (video),
 `<base>a<n>` (animated) — split by format for organization (since Bot API 7.2 a
 set *may* mix formats, so this is a choice, not a requirement). Each finished
-pack DMs the owner its `t.me/addemoji/...` link, and a per-pack manifest
+pack's `t.me/addemoji/...` link goes to `PACK_LINKS_CHAT_ID` (or the owner's
+private chat when that is unset), directly or through the Worker, and a per-pack manifest
 (`collection/manifests/<set>.md`: name + emoji ID) is written. The manifest
 counts the **pack**, not the catalog rows: when a brand logo leads the set it is
 row 1 and the catalog items follow from 2, because the logo is a sticker in the
-pack even though it is not a catalog item.
+pack even though it is not a catalog item. This table, the archive's
+`_manifest.md`, the coin manifests and the `packs/` roster are all rendered by
+`emojikit/pack_rows.py`: every keyword is listed, and a `|` or a line break in a
+label is escaped rather than breaking the table.
 
 ---
 
@@ -343,20 +406,20 @@ Self-contained tool that reuses `emojikit/build_pack.py` and the coin bot.
 
 ```powershell
 # Logos (data): fetch + keywords
-.venv\Scripts\python.exe coins\fetch_logos.py          # CoinGecko logos + keywords.csv
-.venv\Scripts\python.exe coins\fetch_paprika.py --dry  # resolve + report only, nothing published
-.venv\Scripts\python.exe coins\fetch_paprika.py        # fill from CoinPaprika
-.venv\Scripts\python.exe coins\fetch_cmc.py            # fill from CoinMarketCap (needs CMC_API_KEY)
-.venv\Scripts\python.exe coins\build_keywords.py       # (re)build keywords.csv from logos
+.venv\Scripts\python.exe -m coins.fetch_logos          # CoinGecko logos + keywords.csv
+.venv\Scripts\python.exe -m coins.fetch_paprika --dry  # resolve + report only, nothing published
+.venv\Scripts\python.exe -m coins.fetch_paprika        # fill from CoinPaprika
+.venv\Scripts\python.exe -m coins.fetch_cmc            # fill from CoinMarketCap (needs CMC_API_KEY)
+.venv\Scripts\python.exe -m coins.build_keywords       # (re)build keywords.csv from logos
 
 # Convert logos to 100x100 emoji PNGs
 .venv\Scripts\python.exe -m emojikit.make_emoji_pngs --in coins\logos\svg --out coins\logos\emoji
 .venv\Scripts\python.exe -m emojikit.make_emoji_pngs --in coins\logos\png --out coins\logos\emoji
 
 # Build / rebuild the packs (duplicate-proof, records upload order)
-.venv\Scripts\python.exe coins\rebuild_dedup.py        # build + map + send links
-.venv\Scripts\python.exe coins\rebuild_dedup.py map    # only rebuild the id map + inventory
-.venv\Scripts\python.exe coins\rebuild_dedup.py links  # resend the combined links message
+.venv\Scripts\python.exe -m coins.rebuild_dedup        # all: DELETES the packs in rebuild_state.json, then build + map + links
+.venv\Scripts\python.exe -m coins.rebuild_dedup map    # only rebuild the id map + inventory
+.venv\Scripts\python.exe -m coins.rebuild_dedup links  # resend the combined links message
 ```
 
 ### 7.1 The ticker → custom_emoji_id map (`coins/ticker_to_id.json`)
@@ -366,31 +429,31 @@ not from positions** (a historical position-based bug scrambled it):
 
 ```powershell
 # 1) Calibrate: run WITHOUT --apply and pick a cutoff from the reported distances.
-.venv\Scripts\python.exe coins\remap_ids.py --emoji-dir "PATH\to\emoji"
+.venv\Scripts\python.exe -m coins.remap_ids --emoji-dir "PATH\to\emoji"
 # 2) Apply. --max-distance is REQUIRED with --apply (must be > 0): an uncalibrated
 #    run would accept a nearest-but-wrong match and overwrite the map with it.
 #    --min-margin (default: --max-distance) additionally rejects a match whose
 #    runner-up is nearly as close. A refused --apply writes ticker_to_id.candidate.json
 #    instead, for review.
-.venv\Scripts\python.exe coins\remap_ids.py --emoji-dir "PATH\to\emoji" --max-distance 200 --apply
+.venv\Scripts\python.exe -m coins.remap_ids --emoji-dir "PATH\to\emoji" --max-distance 200 --apply
 
 # Fill chain-variant / alias tickers (etharb->eth, bnbbsc->bnb, usdc.e, ...):
-.venv\Scripts\python.exe coins\enhance_map.py          # strip chain suffixes -> base id
-.venv\Scripts\python.exe coins\alias_map.py            # match by coin NAME -> base id
+.venv\Scripts\python.exe -m coins.enhance_map          # strip chain suffixes -> base id
+.venv\Scripts\python.exe -m coins.alias_map            # match by coin NAME -> base id
 ```
 
 ### 7.2 Audit, fix logos, manifests
 
 ```powershell
 # Audit ALL packs for blank/duplicate stickers (downloads every sticker):
-.venv\Scripts\python.exe coins\check_all_packs.py
+.venv\Scripts\python.exe -m coins.check_all_packs
 
 # Review logos vs official CoinGecko art; fix ONLY confirmed-wrong tickers:
-.venv\Scripts\python.exe coins\verify_logos.py --emoji-dir "PATH\to\emoji"            # report
-.venv\Scripts\python.exe coins\verify_logos.py --emoji-dir "PATH\to\emoji" --fix --only sol,xrp
+.venv\Scripts\python.exe -m coins.verify_logos --emoji-dir "PATH\to\emoji"            # report
+.venv\Scripts\python.exe -m coins.verify_logos --emoji-dir "PATH\to\emoji" --fix --only sol,xrp
 
 # Write a per-pack manifest (.md: ticker(s) + emoji id) for every pack:
-.venv\Scripts\python.exe coins\write_manifests.py --out-dir "PATH\to\pack-folder"
+.venv\Scripts\python.exe -m coins.write_manifests --out-dir "PATH\to\pack-folder"
 ```
 
 > Logo similarity vs official art is **not** proof a logo is wrong (different
@@ -430,8 +493,10 @@ split across multiple messages (each under 4096 chars).
 
 ## 9. Telegram limits to remember
 
-- Custom-emoji **set cap: 200**. Formats can't be mixed in one set.
-- **Animated = vector (Lottie/TGS) only.** Raster animation → **video** emoji.
+- Custom-emoji **set cap: 200**. Since Bot API 7.2 one set may mix formats
+  (`build_collection --mixed`); one set per format is the default.
+- **Animated = vector (Lottie/TGS) only**, on a 512×512 canvas. Raster
+  animation → **video** emoji.
 - Video: VP9, 100×100, ≤3 s, 30 fps, no audio, ≤256 KB.
 - A bot can `getStickerSet`/`getFile` for any pack it can see, but **cannot read
   channel history** — only posts received after it joined.
@@ -513,10 +578,14 @@ lockfile and fails if `package.json` and the lock disagree, so CI cannot quietly
 test a different dependency tree than the one committed. `dependabot.yml` has an
 `npm` entry for `/worker` so that tree gets updates like every other one.
 
-CI (`.github/workflows/ci.yml`, Python 3.11, 3.12 **and** 3.14): installs both
-dependency manifests + ruff + ffmpeg, runs `ruff check .`, the import smoke
-test, then `scripts/check.ps1` (compile + lint + suite, `shell: pwsh`), then an
-offline `build_pack` dry-run. Run `scripts\check.ps1` locally before pushing.
+CI (`.github/workflows/ci.yml`) has four jobs. `build` (Python 3.11, 3.12
+**and** 3.14) installs both dependency manifests, the pinned ruff and ffmpeg,
+runs `scripts/check.ps1` (compile + lint + suite, `shell: pwsh`), then an
+offline `build_pack` dry-run. `panel-browser` runs the browser suites in
+headless Chromium, `worker` type-checks and tests the Worker and type-checks the
+panel scripts, and `windows-safety` parses every PowerShell script and runs the
+native-Windows lock, migration and persistence suites. Run `scripts\check.ps1`
+locally before pushing.
 
 Git: work is committed in small logical commits and pushed to `main` on
 `KiaroSama/Numera-Emoji-Mapper`. Never commit `.env`, `secrets.md`, `collection/`,
@@ -574,8 +643,8 @@ Behaviour:
   .webp .gif .bmp .apng` in `--in` to `<name>.png` (100×100, transparent) in
   `--out`. Skips files already converted (idempotent), and records a marker so a
   hung SVG is blacklisted on the next run (`.svg_skip.txt`, `.svg_cur`).
-- **Legacy coin mode** (no `--in`): reads `logos/svg/*.svg` then `logos/png/*.png`
-  and writes `logos/emoji/<ticker>.png`.
+- **Legacy coin mode** (no `--in`): reads `coins/logos/svg/*.svg` then
+  `coins/logos/png/*.png` and writes `coins/logos/emoji/<ticker>.png`.
 - **Blank guard**: if an SVG renders blank (e.g. an unsupported gradient), it is
   **not** saved — the loop falls back to the raster `png/` source; a blank raster
   is skipped too. No blank emoji is ever produced.
@@ -612,11 +681,11 @@ Examples:
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--base` | *(required)* | Set-name base (letters/digits/`_`). |
+| `--base` | *(required)* | Set-name base: begins with a letter; letters, digits and single underscores between them. |
 | `--title` | *(required)* | Human-readable set title. |
-| `--source-dir` | `logos/emoji` | Folder of 100×100 PNGs to upload. |
+| `--source-dir` | `coins/logos/emoji` | Folder of 100×100 PNGs to upload. |
 | `--token-env` | `TELEGRAM_BOT_TOKEN` | Env var holding the bot token. |
-| `--keywords` | `auto` | keywords CSV; `auto` = coin `keywords.csv` only for the default source. |
+| `--keywords` | `auto` | keywords CSV; `auto` = `coins/keywords.csv`, only for the default source or `COIN_EMOJI_DIR`. |
 | `--emoji` | `🪙` | Associated standard emoji. |
 | `--user-id` | `PACK_OWNER_USER_ID` | Numeric owner id. |
 | `--per-set` | `200` | Emojis per set. Accepted range is **1–200** (Telegram's cap); anything larger exits 2 with a usage error. |
@@ -636,7 +705,7 @@ run continues without recreating existing sets. Use `--dry-run` first.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `packs...` | *(required)* | One or more pack short-names or `t.me/addemoji/<name>` links. |
+| `packs...` | *(required)* | One or more pack short-names, `t.me/addemoji/<name>` links, or emoji ids (digits or `premium-id:<id>`) — an id fetches the whole pack it belongs to. Each pack is fetched once; an id that names no pack is reported and counts as a failure (exit 3 when something else succeeded). |
 | `--token-env` | `GENERAL_BOT_TOKEN` | Bot token env var. |
 | `--data-dir` | `collection` | Catalog/media directory. |
 | `--phash-threshold` | `-1` (off) | Hamming distance for near-dup merging; `-1` keeps look-alikes. |
@@ -724,6 +793,14 @@ is appended and is **not optional** — Telegram rejects a name without it. The
 64-character limit is checked against the real bot username before the first
 upload, not discovered as a Bot API error after the plan is frozen.
 
+**The publish takes the panel's order at the moment you publish.** The plan
+(`publish_plan_<base>.json`) is the append-only record of WHAT is queued; the
+pending items are uploaded in the catalog's current panel order, so arranging
+the next pack's candidates in the panel decides which emoji fill it and in what
+order. A `--dry-run` or `--preflight` computes the plan without writing it and
+changes nothing. Resume safety does not depend on this order: each item is
+marked published per family, and the upload order is recorded in the state file.
+
 
 **Set titles are one sequence across every format.** `--title "@YourBrand Emoji
 Packs"` produces `@YourBrand Emoji Packs 1`, `2`, `3` … in creation order,
@@ -736,7 +813,7 @@ remain the identity, and only the human title moved.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--base` | *(required)* | Set-name base (letters/digits only). |
+| `--base` | *(required)* | Set-name base: begins with a letter; letters, digits and single underscores between them. |
 | `--title` | *(required)* | Human-readable title. |
 | `--token-env` | `GENERAL_BOT_TOKEN` | Bot token env var. |
 | `--user-id` | `PACK_OWNER_USER_ID` | Numeric owner id. |
@@ -877,7 +954,7 @@ run writes nothing.
 |------|---------|---------|
 | `--refresh` | — | Read the live sets and rewrite `packs/`. |
 | `--check` | — | Is `packs/` still current? Exit 3 if not. Touches no network. |
-| `--family` | `all` | `general` (the 5 packs) or `coins` (the 29 crypto packs). |
+| `--family` | `all` | With `--refresh` only: `general` or `coins`. The other family's packs and id lookups in `index.json` are kept, with the input fingerprint they were built from. |
 
 Writes three files per set, named after it: `.json` to parse, `.md` to read, and
 `.html` to LOOK at — one self-contained page, every thumbnail inlined as a
@@ -910,7 +987,7 @@ previous roster and carries the trail forward, keyed by `history_key`
 (`ck:<content_key>`, `logo:<set>`, or `coin:<tickers>`) so the history survives
 both a new id and a move to another pack. `packs/index.json` adds
 `by_current_id`, `by_source_id` and `by_previous_id` (a retired id → the id that
-took its place) over all 34 packs, plus an `id_changes` count.
+took its place) over every live pack, plus an `id_changes` count.
 
 Every row gives the emoji's `custom_emoji_id`, its `#` numbered **from 0** (the
 brand logo is emoji 0) beside the 1-based `slot` Telegram shows, its format, the
@@ -933,11 +1010,11 @@ refresh rewrites ~79 MB.
 Coin artwork lives outside the repo; point `COIN_EMOJI_DIR` at it, or the coin
 pages come out without pictures (the data is unaffected).
 
-**`Pack-Roster-Check` keeps it honest.** A Stop hook runs `--check` and blocks
-the turn when the roster no longer matches its inputs — a new download, a
-replaced or recoloured sticker, a reorder, a coin remap. It blocks once per
-distinct input state, so declining cannot loop, and re-arms on the next change.
-Clear it with `--refresh`, and say in the reply that the roster was updated.
+**Keep it current.** `--check` is cheap and offline; it exits 3 when the
+roster no longer matches its inputs — a new download, a replaced or recoloured
+sticker, a reorder, a coin remap. Run it after anything that changes a pack (or
+wire it into your own automation); `--refresh` rebuilds the roster.
+`python -m emojikit.status` (§12.5e) runs this check and the archive's together.
 
 ### 12.5d `emojikit/pack_archive.py` — the finished pack's media leaves the project
 
@@ -950,6 +1027,7 @@ still be reordered, which would make every name in its folder wrong.
 |------|---------|---------|
 | `--check` | — | Does the archive still describe the packs? Exit 3 if not. Local only, no network. |
 | `--sync` | — | Archive every FULL pack and regenerate its metadata from the live set. |
+| `--export PACK --zip PATH` | — | Copy one pack of the general family (its number or set name, full or not) into a zip, in slot order, named like the archive, with its `_manifest.md`. Moves and changes nothing. Refused while the roster is stale (run `pack_manifest --refresh`), and refused -- nothing written -- when any file of the pack cannot be found. Needs `COLLECTION_PACK_BASE` only. |
 
 `EMOJI_ARCHIVE_DIR` is the archive root and `COLLECTION_PACK_BASE` the pack
 family it follows; both are required, with no default. Each folder holds:
@@ -969,8 +1047,22 @@ metadata files every run — a recolour mints a new id and a reorder moves slots
 so an archive written once and never revisited stops describing its pack. It
 never deletes: a file the live pack no longer knows is reported, not removed.
 
-The `Pack-Archive-Check` Stop hook runs `--check` and blocks the turn when the
-archive has fallen behind. Say in the reply whenever you cleared it.
+`--check` is cheap and offline and exits 3 when the archive has fallen behind;
+run it after anything that changes a full pack, and `--sync` to catch up.
+`python -m emojikit.status` (§12.5e) runs it together with the roster check.
+
+### 12.5e `emojikit/status.py` — is everything current?
+
+```powershell
+.venv\Scripts\python.exe -m emojikit.status
+```
+
+Offline and read-only: runs the roster check (`pack_manifest --check`) and the
+archive check (`pack_archive --check`), and counts the included catalog emoji
+not yet published to `COLLECTION_PACK_BASE`. One line per item, each with the
+command that fixes it. Exit 0 when nothing is stale, 3 when something is;
+emoji waiting to be published are a to-do, not staleness. An archive whose
+`EMOJI_ARCHIVE_DIR` is unset is reported as not checked, never as current.
 
 ### 12.6 `emojikit/panel.py` — curate web panel
 
@@ -980,8 +1072,9 @@ archive has fallen behind. Say in the reply whenever you cleared it.
 | `--all` | off | Also show emoji already live in a pack. |
 | `--with-pack N` | off | Also show the emoji already live in pack **N**. Repeatable. |
 | `--port` | `9450` | Local port. |
-| `--preview-fps` | `15` | Frame rate for animated previews. The browser decodes every frame of every animated card that is on screen, so this is the lever on CPU while the grid is idle. |
-| `--no-open` | off | Don't auto-open the browser. |
+| `--preview-fps` | `15` | Maximum frame rate for animated previews. The grid uses at most 15, and 10 below 75 % zoom (`panel_preview.page_tiers`). |
+| `--no-open` | off | Don't auto-open the browser. Otherwise it opens straight after the port is bound; the bot name (which only decides whether the brand-logo card shows) is looked up in the background, so an unreachable Telegram never holds the start-up. |
+| `--bot-username` | — | Branding without a Telegram lookup (see "Brand logo preview"). |
 
 Interactions: **click** a card to toggle include/exclude, **click the
 `premium-id:` label** to copy that id to the clipboard (it stops there and does
@@ -1024,6 +1117,11 @@ Two separate reasons a reload used to appear to do nothing:
   which is why only closing the launcher (killing every instance) made a change
   appear. `allow_reuse_address` stays off. B4 identifies an existing panel and
   reopens its session without replacing it; an unrelated port holder is refused.
+
+If a refresh cannot open the catalog — a publish holding it, say — the page
+keeps the last view it had and says so beside the counts: "catalog busy (a
+publish may be running) — showing the view from HH:MM UTC". A busy catalog used
+to look exactly like a catalog with no news.
 
 Editing `emojikit/panel.py` itself still needs the process restarted — a refresh asks the
 running server for a page, and that server holds the old code.
@@ -1116,10 +1214,15 @@ running as you:
 ```powershell
 .venv\Scripts\python.exe scripts\panel_sandbox.py
 ```
-Animated *and* video emoji play on their own while near the viewport; hover
-plays a video only under `prefers-reduced-motion`, where nothing autoplays.
-Animated emoji play on their own while near the viewport; the header's
-**Animation: On/Off** button stops that everywhere and is remembered in
+The sandbox copies the source's preview cache into the clone (best effort: a
+failed copy is logged and those previews render on demand), so a sandbox does
+not spend minutes re-rendering what the real catalog already has.
+
+Animated and video cards play on their own while on screen, at most 24 of them
+at once — the ones nearest the centre; **All visible** lifts that cap. Under
+`prefers-reduced-motion` nothing autoplays and hover plays a real video. The header's
+**Animation: On/Off** stops everything, and **Real video** swaps the light
+video previews for `<video>` players; all three are remembered in
 `localStorage`.
 
 **Order = publish order.** The panel shows items in the saved manual order
@@ -1131,10 +1234,13 @@ is fixed first and is never reordered/counted/saved.
 
 **Performance.** The grid is virtual; only nearby rows exist in the DOM.
 Animated previews are native WebP images, with no browser animation library.
-Compact zoom caps playback at 10fps and uses 72px previews on ordinary-density
-screens; other previews are 104px. `--preview-fps` (1–30, default 15) limits the
-server rate. The cache key includes content identity, size and rate, so a tier
-the owner has not used yet (compact zoom's 72px, say) starts cold.
+The tiers come from one place, `panel_preview.page_tiers`: **full** is 104 px
+at up to 15 fps, **compact** (below 75 % zoom) is 72 px at up to 10 fps on
+ordinary-density screens. `--preview-fps` (1–30, default 15) caps both. A video
+card's preview is an animated WebP decoded through the same path as its still
+(`panel_preview._video_animation`), cached as `<hash>@v<fps>-<size>.webp` so an
+older single-frame file under `@<fps>-<size>` is never served as the animation.
+The cache key includes content identity, size and rate.
 
 **The cache is warmed in the background, and the render bound is resource-aware.**
 Measured on this catalog, one animation costs ~155 ms and one video poster
@@ -1144,15 +1250,21 @@ the owner scrolled. The bound is now `max(2, min(6, cpu_count - 2))`, which on a
 16-core machine cut one viewport of 24 cold animations from 2.92 s to 1.55 s
 (1.9×) while still leaving most of the machine to the OS and the save handlers.
 A daemon thread then renders what the page is about to ask for, in grid order,
-so the top of the list is ready first and the scroll meets a warm cache: on a
-cold sandbox clone of this catalog it rendered 1505 files in ~2.5 minutes with
-the panel fully usable throughout. It is best effort — an unreadable file is
-skipped rather than ending the pass, and Ctrl+C never waits for it.
+so the top of the list is ready first and the scroll meets a warm cache. It
+renders exactly the tiers the page requests — the full tier, then the compact
+one — for animated and video cards (a still and an animation each), plus the
+compact still the holding tray shows for an excluded card; a static card is
+served from `/img/` and never warmed. A file already cached is skipped, and the
+log line says `preview warm-up: rendered N, already cached N, failed N`. On a
+cold sandbox clone of the maintainer's catalog it rendered 1505 files in ~2.5
+minutes with the panel fully usable throughout. It is best effort — an
+unreadable file is skipped rather than ending the pass, and Ctrl+C never waits
+for it.
 
 Only genuinely visible animations play: the sticky header's covered region,
-hidden tabs and scrolling are excluded. Switching animation off clears moving
-image layers and releases video sources; still WebP posters keep video artwork
-visible without an idle decoder. Changes affect preview quality, not stored or
+hidden tabs and scrolling are excluded, and of the rest at most 24 play unless
+**All visible** is on. Switching animation off shows every card's still and,
+with **Real video** on, releases the players' sources. Changes affect preview quality, not stored or
 published media. Measure performance on a separate catalog with the same media,
 viewport, zoom and warm-cache state; desktop load and browser configuration matter.
 
@@ -1304,19 +1416,22 @@ resolve is named in the reply.
 
 ### 12.8 `coins/` commands
 
-| Command | Purpose |
-|---------|---------|
-| `coins\fetch_logos.py [pages]` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). |
-| `coins\fetch_paprika.py [--dry]` | Fill remaining coins from CoinPaprika. `--dry` resolves and reports only — no downloads, no pack or map changes. |
-| `coins\fetch_cmc.py [--dry]` | Fill remaining coins from CoinMarketCap (needs `CMC_API_KEY`). `--dry` as above. |
-| `coins\build_keywords.py` | (Re)build `keywords.csv` from logos on disk. |
-| `coins\rebuild_dedup.py [all\|build\|map\|links]` | Default `all` = **delete the old packs** + build + map + links (DESTRUCTIVE); `build` uploads only; `map` re-derives the id map; `links` resends links. |
-| `coins\remap_ids.py --emoji-dir DIR [--max-distance N --apply]` | Rebuild `ticker_to_id.json` by image content (drift-proof). `--apply` requires `--max-distance > 0`; needs numpy (`requirements-coins.txt`). |
-| `coins\verify_logos.py --emoji-dir DIR [--fix --only a,b]` | Review logos vs official; fix only listed tickers. |
-| `coins\check_all_packs.py` | Audit all packs for blank/duplicate stickers. |
-| `coins\write_manifests.py --out-dir DIR` | Write per-pack manifest `.md` files. |
-| `coins\enhance_map.py` | Map chain-suffixed tickers (e.g. `bnbbsc`) to the base id. |
-| `coins\alias_map.py` | Map tickers to a base id by matching coin name. |
+Run each from the repository root as a module, `python -m coins.<tool>`; a
+tool run as a file path cannot import the shared `emojikit` package.
+
+| Command | File | Purpose |
+|---------|------|---------|
+| `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |
+| `-m coins.fetch_paprika [--dry] [--retry-unmatched]` | `coins/fetch_paprika.py` | Fill remaining coins from CoinPaprika. `--dry` resolves and reports only — no downloads, no pack or map changes. `--retry-unmatched` searches again for coins cached as unmatched (older runs cached provider outages that way). A search CoinPaprika never answers is **unknown**, not "no match": it is not cached, and the run exits 3 so it is retried. |
+| `-m coins.fetch_cmc [--dry]` | `coins/fetch_cmc.py` | Fill remaining coins from CoinMarketCap (needs `CMC_API_KEY`). `--dry` as above. A rejected key (HTTP 401/403) stops the run naming `CMC_API_KEY`; an unanswered lookup is unknown and exits 3. |
+| `-m coins.build_keywords` | `coins/build_keywords.py` | (Re)build `keywords.csv` from logos on disk. Exits 3 when a name lookup failed; earlier names are kept. |
+| `-m coins.rebuild_dedup [all\|build\|map\|links]` | `coins/rebuild_dedup.py` | Default `all` = **delete the old packs** + build + map + links (DESTRUCTIVE); `build` uploads only; `map` re-derives the id map; `links` resends links. |
+| `-m coins.remap_ids --emoji-dir DIR [--max-distance N --apply]` | `coins/remap_ids.py` | Rebuild `ticker_to_id.json` by image content (drift-proof). `--apply` requires `--max-distance > 0`; `--min-margin N` rejects a match whose runner-up is closer than N (default: `--max-distance`); `--candidates FILE` is where a refused `--apply` writes its reviewable result; `--cache`, `--out`, `--state` and `--token-env` move the live-signature cache, the map written, the state read and the token variable. Needs numpy (`requirements-coins.txt`). |
+| `-m coins.verify_logos --emoji-dir DIR [--fix --only a,b]` | `coins/verify_logos.py` | Review logos vs official; fix only listed tickers. `--top N` (default 100) is how many coins by market cap to review, `--threshold N` (default 20) the review-flag distance; `--map`, `--state` and `--token-env` choose the map, the state file and the token variable. |
+| `-m coins.check_all_packs` | `coins/check_all_packs.py` | Audit all packs for blank/duplicate stickers. |
+| `-m coins.write_manifests --out-dir DIR` | `coins/write_manifests.py` | Write per-pack manifest `.md` files. `--state`, `--map` and `--token-env` choose the state file, the map and the token variable. |
+| `-m coins.enhance_map` | `coins/enhance_map.py` | Map chain-suffixed tickers (e.g. `bnbbsc`) to the base id. |
+| `-m coins.alias_map` | `coins/alias_map.py` | Map tickers to a base id by matching coin name. |
 
 ### 12.9 `worker/` — Cloudflare Worker (both bots + pack announcements)
 
@@ -1407,8 +1522,8 @@ every delivery is then rejected 401, which looks exactly like a dead bot.
 `-Status` reports, `-Delete` hands a token back to the poller, and it refuses to
 replace a webhook pointing elsewhere without `-Force`.
 
-**Logs.** The channel line follows the Ad Timer Bot's format, bot tag on its own
-first line:
+**Logs.** The channel line puts the bot tag on its own first line, then a level
+emoji and the event:
 
 ```
 [general]
@@ -1451,7 +1566,8 @@ Per-secret detail: `worker/README.md`.
 
 ## 13. The catalog database (`collection/catalog.db`)
 
-SQLite, created/managed by `emojikit/catalog.py`. Three tables:
+SQLite, created/managed by `emojikit/catalog.py`. Four tables: `items`,
+`seen_files`, `meta` and `publications`.
 
 **Media paths survive a folder rename.** They used to be absolute: renaming the
 project folder left 68 rows pointing at a folder that no longer existed, and the
@@ -1474,9 +1590,10 @@ the scan is done, so an already converted catalog's open writes nothing.
 | `sources` | TEXT (JSON) | Where it came from, e.g. `["RMaccs"]` or `["local:foo.png"]`. |
 | `phash` | INTEGER | 64-bit dHash stored as **signed** 64-bit (two's complement) to avoid SQLite overflow; restored to unsigned on read. |
 | `custom_emoji_id` | TEXT | Live Telegram id after upload (else NULL). |
-| `uploaded` | INTEGER | `1` once published (committed per item → crash-safe dedup). |
+| `uploaded` | INTEGER | Legacy: `1` once published to ANY family. Still mirrored for the ingest commands' progress counts; publish state is per family in `publications` (§13.3b). |
 | `included` | INTEGER | `1` = will be published (panel selection); `0` = excluded. |
 | `created_utc` | TEXT | `YYYY-MM-DD HH:MM:SS UTC`. |
+| `position` | INTEGER | The panel's order, which is the publish order (`set_order`). |
 
 Indexes: `idx_items_format`, `idx_items_uploaded`.
 
@@ -1492,6 +1609,21 @@ entirely and just merges labels.
 
 ### 13.3 `meta` — key/value (e.g. `schema_version`).
 
+### 13.3b `publications` — what is live, per pack family
+
+| Column | Type | Meaning |
+|--------|------|---------|
+| `base` | TEXT | The pack family (`--base`). Primary key `(base, content_key)`. |
+| `content_key` | TEXT | The catalog row. |
+| `set_name` | TEXT | The set it went into (NULL when an older run did not record it). |
+| `custom_emoji_id` | TEXT | Its live id. |
+| `uploaded_utc` | TEXT | When it was recorded. |
+
+Per family, not per item: one `uploaded` flag meant publishing a catalog to one
+base marked it done everywhere, so the same catalog could never be published to
+a second base, and a deleted pack could not be rebuilt without hand-editing the
+database.
+
 ### 13.4 Why phash is stored signed
 
 A dHash is an **unsigned** 64-bit integer. SQLite integers are signed 64-bit, so
@@ -1504,7 +1636,8 @@ values. (Regression test: `tests/test_catalog.py::test_large_phash_64bit`.)
 
 ```powershell
 .venv\Scripts\python.exe -c "import sqlite3;d=sqlite3.connect('collection/catalog.db');
-print(d.execute('SELECT format,COUNT(*),SUM(uploaded),SUM(included) FROM items GROUP BY format').fetchall())"
+print(d.execute('SELECT format,COUNT(*),SUM(included) FROM items GROUP BY format').fetchall());
+print(d.execute('SELECT base,COUNT(*) FROM publications GROUP BY base').fetchall())"
 ```
 
 ### 13.6 Identity migration, recovery and rollback (`scripts/identity_repair.py`)
@@ -1606,11 +1739,12 @@ Constants: `SIZE=100`, `TGS_MAX_BYTES=65536`, `WEBM_MAX_BYTES=262144`,
 | `to_video_webm(src, out)` | Path | ffmpeg → VP9 WEBM, 100×100, ≤3 s, transparent-padded; CRF escalates until ≤256 KB. |
 | `probe_video(path)` | `VideoInfo(width,height,duration,codec)` | via ffprobe. |
 | `validate_video(path)` | raises on violation | dims/duration/codec/size checks. |
-| `to_animated_tgs(src, out)` | Path | Lottie `.json`/`.tgs` → valid 100×100 `.tgs` (gzip). |
-| `validate_tgs(path)` | raises | ≤64 KB + required Lottie keys. |
-| `content_key(path, fmt)` | str | Dedup primary key (see §16). |
-| `perceptual_hash(path, fmt)` | int\|None | 64-bit dHash for static/video; None for animated. |
-| `hamming(a, b)` | int | Bit difference between two hashes. |
+| `to_animated_tgs(src, out)` | Path | Lottie `.json`/`.tgs` → valid 512×512 `.tgs` (gzip). Any other canvas is refused, never rescaled. |
+| `validate_tgs(path)` | raises | ≤64 KB, gzip, required Lottie keys, 512×512 canvas, ≤60 fps, ≤3 s. |
+
+Content keys and hashes live in `emojikit.identity`, not here: `content_key(path,
+fmt)` (the dedup primary key, §16), `perceptual_hash(path, fmt)` (64-bit dHash
+for static/video; `None` for animated), `hamming(a, b)` and `same_image`.
 
 The ffmpeg filter used for video:
 `fps=30,scale=100:100:force_original_aspect_ratio=decrease:flags=lanczos,format=rgba,pad=100:100:(ow-iw)/2:(oh-ih)/2:color=0x00000000,format=yuva420p`,
@@ -1675,8 +1809,7 @@ Failing closed stays the contract: a clip that cannot be read is `None`
 
 Baking Telegram's `--tint` into artwork, rather than publishing a set that asks
 the client to flatten it. Split out of `media.py` (a different job, and that
-file had reached the size ceiling), and re-exported from it so existing callers
-are unchanged.
+file had reached the size ceiling); callers import `emojikit.repaint` directly.
 
 | Function | Returns | Notes |
 |----------|---------|-------|
@@ -1733,7 +1866,8 @@ returns the root logger. Capabilities:
   `logging.captureWarnings(True)`.
 - **End-of-run summary** (atexit) — `run <id> finished in N.NNs | warnings=… errors=… critical=…`.
 
-The public surface is exactly three names:
+The everyday surface is three names, plus `record_exit_code(code)`, which the
+entry points call so the end-of-run summary states the exit code:
 
 ```python
 from emojikit.logsetup import setup_logging, redact, register_secret
@@ -1749,7 +1883,7 @@ build if any value from `.env` appears in a git-tracked file.
 Thin Bot API client (used everywhere). Key methods: `get_me`, `send_message`,
 `get_sticker_set`, `download_file`, `create_emoji_set`/`add_emoji` (format-aware,
 for static/animated/video), and the legacy static `create_set`/`add_sticker`.
-`_call(method, data=, files=)` handles flood waits (`retry_after`) and the
+`call(method, data=, files=)` (public; `_call` is its old name) handles flood waits (`retry_after`) and the
 ~2-minute `STICKERSET_INVALID` name-release delay automatically.
 ---
 
@@ -1768,12 +1902,14 @@ for static/animated/video), and the legacy static `create_set`/`add_sticker`.
 ### 15.2 Animated (`animated`)
 
 - File: `.tgs` = **gzip-compressed Lottie JSON** (vector animation).
-- Hard cap **64 KB**; emoji canvas 100×100; ≤3 s; up to 60 fps.
+- Hard cap **64 KB**; canvas **512×512**; ≤3 s; at most 60 fps.
 - **Vector only.** You cannot turn a GIF/MP4 into an animated emoji — that path
   produces a *video* emoji. `media.to_animated_tgs` only packages/validates an
-  existing Lottie (`.json` or `.tgs`): load → (rescale layers if the canvas
-  isn't 100×100) → `json.dumps` minified → gzip with `mtime=0` (deterministic) →
-  `validate_tgs` (size + required keys `v, fr, ip, op, layers`).
+  existing Lottie (`.json` or `.tgs`): load → **refuse** a canvas that is not
+  512×512 (rescaling only the top-level layer moves and clips the artwork, so
+  the fix is a re-export) → `json.dumps` minified → gzip with `mtime=0`
+  (deterministic) → `validate_tgs` (size, gzip, required keys `v, fr, ip, op,
+  layers`, canvas, frame rate, duration).
 - In the panel, `.tgs` is rendered server-side to an animated WebP
   (`/preview/<key>`) and played natively by the browser as an `<img>`.
 
@@ -1802,7 +1938,7 @@ From the Bot API, prefer the sticker object's `is_animated` / `is_video` flags.
 
 ### 16.1 The content key
 
-`media.content_key(path, fmt)` produces the catalog primary key:
+`identity.content_key(path, fmt)` produces the catalog primary key:
 
 - **static** → `"s:" + sha256(image.convert(RGBA).resize(64×64, LANCZOS).tobytes())[:32]`.
   Two byte-different files that look identical after normalization collapse;
@@ -1824,7 +1960,7 @@ From the Bot API, prefer the sticker object's `is_animated` / `is_video` flags.
 
 ### 16.2 Perceptual near-duplicate (opt-in)
 
-`media.perceptual_hash` is a 64-bit **dHash** (difference hash): downscale to
+`identity.perceptual_hash` is a 64-bit **dHash** (difference hash): downscale to
 9×8 grayscale, compare horizontally adjacent pixels → 64 bits. `hamming(a,b)`
 counts differing bits.
 
@@ -1868,7 +2004,7 @@ calibration that has worked in practice — recheck the distance histogram the
 dry run prints before trusting it on a changed corpus).
 
 ```powershell
-.venv\Scripts\python.exe coins\remap_ids.py --emoji-dir "<coin logo folder>" --max-distance 200 --apply
+.venv\Scripts\python.exe -m coins.remap_ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
 ```
 
 A resumable cache (`coins/remap_live_cache.json`, gitignored) avoids
@@ -1932,7 +2068,7 @@ the base coin's id. This filled the NOWPayments inventory to 354/354.
     --token-env GENERAL_BOT_TOKEN --dry-run
 #    -> "static: 76 emoji -> 1 set(s) named mypacks1_by_<bot> ..."
 
-# 4) Publish (resumable). Each finished pack DMs you its addemoji link:
+# 4) Publish (resumable). Each finished pack's addemoji link is announced:
 .venv\Scripts\python.exe -m emojikit.build_collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN
 #    -> manifests written to collection/manifests/mypacks1_by_<bot>.md
@@ -1941,9 +2077,8 @@ the base coin's id. This filled the NOWPayments inventory to 354/354.
 ### 18.2 Find which pack an emoji id belongs to, then download it
 
 ```powershell
-# Resolve id -> set_name (uses getCustomEmojiStickers), then fetch that set:
-.venv\Scripts\python.exe -c "import os,sys,json;sys.path.insert(0,'.');from emojikit.build_pack import Telegram,load_env;load_env();tg=Telegram(os.environ['GENERAL_BOT_TOKEN']);print(tg._call('getCustomEmojiStickers',data={'custom_emoji_ids':json.dumps(['<ID>'])})[0]['set_name'])"
-.venv\Scripts\python.exe -m emojikit.fetch_pack <set_name> --token-env GENERAL_BOT_TOKEN
+# An id (bare or premium-id:<id>) resolves to its set and fetches it:
+.venv\Scripts\python.exe -m emojikit.fetch_pack <ID> --token-env GENERAL_BOT_TOKEN
 ```
 
 ### 18.3 Build a video emoji pack from GIFs
@@ -1958,10 +2093,10 @@ the base coin's id. This filled the NOWPayments inventory to 354/354.
 ### 18.4 Rebuild the coin id map after any pack change
 
 ```powershell
-.venv\Scripts\python.exe coins\remap_ids.py --emoji-dir "<coin logo folder>" --max-distance 200 --apply
-.venv\Scripts\python.exe coins\enhance_map.py
-.venv\Scripts\python.exe coins\alias_map.py
-.venv\Scripts\python.exe coins\write_manifests.py --out-dir "<coin archive folder>"
+.venv\Scripts\python.exe -m coins.remap_ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
+.venv\Scripts\python.exe -m coins.enhance_map
+.venv\Scripts\python.exe -m coins.alias_map
+.venv\Scripts\python.exe -m coins.write_manifests --out-dir "<coin archive folder>"
 ```
 ---
 
@@ -2040,9 +2175,23 @@ A `ThreadingHTTPServer` on `127.0.0.1`. Routes:
 | `GET /img/<key>` | The media bytes (webp/png/webm) with correct MIME. |
 | `GET /preview/<key>?fps=N&size=S` | Cached animated WebP for TGS; `still=1` returns a still for static/video/TGS. Sizes: 52, 72 or 104; rates: 1–30, bounded by `--preview-fps`. |
 | `GET /static/<file>` | Static assets (logo, favicon, and the panel scripts, `emojikit.panel.SCRIPT_FILES`), traversal-guarded. The scripts are requested as `panel-grid.js?v=<hash>` — the hash is the scripts' content (`emojikit.panel.ASSET_VER`), because the route is immutable-cached and an edited script would otherwise be served stale. The logo is requested the same way, as `logo-128.png?v=<hash>` of its own bytes (`emojikit.panel.ICON_VER`), so a replaced logo is not served stale either. The query is stripped before the file lookup. |
-| `POST /api/save` | Body `{"excluded":[keys], "known":[keys]}` → `catalog.set_inclusion(...)`, **restricted to `known`**. |
+| `GET /api/ping` | `{"ok":true}`. The page polls it to tell you when the panel process is gone; it touches neither the lock nor the catalog. |
+| `GET /api/session` | Which catalog and view this panel serves (a hash of the catalog path, `all`, `packs`). A second launch on the same port reads it to reopen this panel instead of starting another. |
+| `POST /api/save` | Body `{"excluded":[keys], "known":[keys], "packs":[[key, pack], …]}` → `catalog.set_inclusion(...)`, **restricted to `known`**; `packs` (optional) is the intended pack per emoji, written to `pack_plan.json`. |
 | `POST /api/order` | Body `{"order":[keys]}` → `catalog.set_order(...)` (drag-to-reorder = publish order). |
 | `POST /api/client-log` | Up to 32 whitelisted events, 16KiB per batch; counts/revisions/status/error type and location only. No token, label, media ID or arbitrary message fields. |
+
+**Transport.** HTTP/1.1 keep-alive (the old HTTP/1.0 opened a connection and a
+handler thread per thumbnail, and a browser allows six per host), a listen
+backlog of 64 (the stdlib's 5 refused the page's own script loads when a
+screenful of thumbnails arrived at once), and a 30 s idle timeout so a
+kept-alive connection cannot hold its thread forever. Every response carries an
+accurate `Content-Length`, except a 204, which carries none (RFC 9110).
+Every response also carries `X-Content-Type-Options: nosniff` and
+`Referrer-Policy: no-referrer`; the page adds `X-Frame-Options: DENY` and
+`Content-Security-Policy: frame-ancestors 'none'`, because a page on another
+origin could frame this loopback page and its requests would still pass the
+Host check.
 
 All POST routes are guarded: loopback-only `Host`/
 `Origin`, a per-run token sent as `X-Panel-Token`, an exact-permutation check on
@@ -2077,8 +2226,13 @@ Front-end:
   default, plus a **Backdrop switch** (Checker → Light → Dark → Gray, persisted
   in `localStorage`) to inspect tricky emoji on any background.
 - All selected by default. Click toggles; **Shift+click** toggles a range.
-  Header buttons: ↑ Top / ↓ Bottom / Select all / Deselect all / Invert /
-  Backdrop / Animation: On|Off / Save. The two jump buttons scroll the
+  Header buttons: Undo / Redo / Reset all / Import draft / ↑ Top / ↓ Bottom /
+  zoom / Select all / Deselect all / Invert / Backdrop / Animation /
+  All visible / Real video / Selection mode / → Hold / Save selection.
+  Select all / Deselect all / Invert change inclusion in one pass over the list
+  (`setIncludedMany`), and holding a picked group computes every origin in one
+  pass (`originsFor`), instead of recomputing the pack runs per item (for
+  Deselect all on a thousand cards, ~60 ms became a few). The two jump buttons scroll the
   **document**, not `scrollIntoView`: that aligns an element with the top of
   the viewport, which sits behind the sticky header, so Top stopped a
   header-height short — hiding the Pack 1 marker — and Bottom stopped short for
@@ -2101,6 +2255,9 @@ Front-end:
   capacity message. The grid drop commits a tray card's inclusion before
   recording history; `dragend.dropEffect` is not used as proof of a successful
   drop. Tray thumbnails are still images and are reused across updates.
+  The tray is **windowed** like the grid: only held cards near its visible
+  stretch are mounted, between two spacers, at a 70 px card pitch (64 px wide
+  plus the 6 px gap).
   The tray joins **selection mode**: each held card carries the same pick box a
   grid card does, click plus shift-click takes a run of them, dragging one
   picked card carries every picked held emoji, and **Unhold** on a picked card
@@ -2153,13 +2310,19 @@ Front-end:
   caps request frequency. UI actions and error locations go to the panel's
   normal UTF-8 UTC log; arbitrary exception text and private content do not.
   Logging failure does not enter or block either save queue.
+- **The panel scripts** load in this order, as classic scripts sharing one
+  scope (`emojikit.panel.SCRIPT_FILES`): `panel-grid.js`, `panel-motion.js`,
+  `panel-save.js`, `panel-drag.js`, `panel-actions.js`, `panel-holding.js`,
+  `panel-draft.js`. `assets/jsconfig.json` and `assets/panel-globals.d.ts` let
+  `tsc` type-check them (`checkJs`); the CI `worker` job runs it.
 - **The grid is virtual** (`assets/panel-grid.js`). `ITEMS` is the order and
-  the selection; the DOM holds only the rows within half a screen of the
-  viewport, between two spacers that carry the height of everything above and
+  the selection; the DOM holds only the rows within half a screen or three rows
+  of the viewport, whichever is smaller, between two spacers that carry the height of everything above and
   below. Every card is the same fixed height and every row offset is integer
   arithmetic on numbers JavaScript computes and hands to CSS as variables
-  (`--cols`, `--cardH`, `--sepH`, `--gap`, `--z`), so a render is a binary
-  search plus ~100 node moves, whatever the catalog holds. Measured on the
+  (`--cols`, `--cardH`, `--sepH`, `--gap`, `--z`), written only when a value
+  changes — each write restyled every card, even an unchanged one — so a render
+  is a binary search plus ~100 node moves, whatever the catalog holds. Measured on the
   1 063-card catalog in headless Chromium: a drag step cost 24–46 ms per
   pointer move on the old page (every one re-laid-out 1 062 cards; 40 % of
   frames over 32 ms) and 16–24 ms here with none over 32 ms; a cold scroll
@@ -2168,7 +2331,8 @@ Front-end:
 - **Zoom** scales the card: everything inside a card is sized in `em` off one
   `font-size: calc(12px * var(--z))`, and the column count follows from the
   container width, so `--z` changes both how big a tile is and how many fit.
-  Below `0.75` the body gets `compact` and the text rows are dropped. The
+  Below `0.75` the body gets `compact` and a card carries only its header and
+  thumbnail; the text rows are not built at all. The
   item at the top of the screen is re-scrolled to the top after the relayout.
   Range 0.4–2.4, steps of ×1.15, persisted as `panelZoom`. Ctrl+wheel and
   Ctrl+plus/minus/0 are intercepted (`passive:false`) so the browser's own page
@@ -2186,21 +2350,30 @@ Front-end:
   A carried card whose row scrolls out of the window is **parked** in a hidden
   holder, never removed: the browser delivers `dragend` to the source node,
   and a removed source leaves the gesture stuck.
-- **Static and animated are both plain `<img>`** — the browser owns decoding
-  and compositing. Not `loading="lazy"`: a card only exists once its row is
-  within half a screen, so the window is the lazy loading. Video is
-  `<video preload="metadata">` (muted, looping, `playsinline`) whose **source
-  is attached only while animation is on and the card is in the viewport** and
-  released when it leaves (`videoIO`): a media player is the most expensive
-  thing a card can create or tear down, and 56 of them alive at once was what
-  the old page paid on every load. A card that is unmounted releases its
-  player the same way.
-- **One `IntersectionObserver` (no margin) gates playback**: it swaps an
-  animated card's `src` between the still (`?still=1`) and the animated WebP,
-  and plays/pauses `<video>`. A grid of *everything* playing was the original
-  CPU sink; the fix is the viewport bound, not hover — a grid of frozen stills
-  cannot be curated, which is why hover-only was rejected for both. Scrolling
-  freezes every card on frame 0 until it settles.
+- **Static, animated and (by default) video cards are all plain `<img>`** —
+  the browser owns decoding and compositing. Not `loading="lazy"`: a card only
+  exists once its row is near the viewport, so the window is the lazy loading.
+  A video card shows an animated WebP preview rendered from the video; creating
+  or tearing down a media player was the 60–140 ms frame left after the grid
+  went virtual. With **Real video** on, a video card is
+  `<video preload="metadata">` (muted, looping, `playsinline`) whose **source is
+  attached only while animation is on and the card is in the viewport** and
+  released when it leaves (`videoIO`). Players are never created or torn down
+  mid-scroll: a release requested during a scroll is queued and done once it
+  settles. Changing the switch rebuilds the mounted video cards, but never
+  under a drag.
+- **One `IntersectionObserver` (no margin) reports what is on screen, and
+  `allocate()` decides what moves** (`assets/panel-motion.js`). At most
+  `ANIM_BUDGET` = 24 cards animate, the ones nearest the centre of the screen
+  below the sticky header; **All visible** lifts the cap. At low zoom the old
+  page decoded 128 animations per frame the moment Animation was switched on.
+  The observer swaps an animated card's `src` between the still (`?still=1`)
+  and the animated WebP, and plays/pauses a real `<video>`. A grid of frozen
+  stills cannot be curated, which is why hover-only was rejected. A scroll
+  freezes only the cards that were playing and thaws them once it settles
+  (180 ms). While the page scrolls or a card is dragged, `body.moving` pauses
+  the pick ring's animation too. The checkerboard backdrop is drawn with one
+  `repeating-conic-gradient`.
 - `prefers-reduced-motion` is respected: nothing plays by itself, and hover
   becomes the only way to play a video, which is what those handlers are for.
 
@@ -2209,6 +2382,13 @@ The panel ships no animation library: animated emoji are rasterised to WebP by
 offline.
 
 ### The move plan (`<data-dir>/pack_plan.json`)
+
+`python -m emojikit.plan_status [--live]` shows, read-only, what applying the
+saved plan would change — per pack: target count and logo slot against the cap,
+emoji moving in and out, held emoji still live, never-published candidates — and
+every `custom_emoji_id` a move would retire. Exit 3 when the plan asks for work.
+Nothing applies it yet; the proposal and its open questions are in
+`docs/design/plan-applier.md`.
 
 The panel decides nothing on Telegram. It is where the owner says what the
 layout **should** be; every save writes that decision to `pack_plan.json` beside
@@ -2292,13 +2472,13 @@ moment and a half-written plan is a scrambled instruction set.
 | `STICKERSET_INVALID` right after deleting a set | Telegram locks a freed set name ~2 min. | The client auto-waits and retries; just let it run. |
 | `flood wait Ns` | Telegram rate limit. | The client honors `retry_after` automatically; let it continue. |
 | Animated card shows ▶ but never plays | Bad/non-standard `.tgs`, or JS blocked. | Other cards still work; that single TGS just won't render. |
-| Wrong logo for a coin | Source logo is a different token with the same ticker. | `coins\verify_logos.py --fix --only <ticker>` with the correct image. |
+| Wrong logo for a coin | Source logo is a different token with the same ticker. | `python -m coins.verify_logos --fix --only <ticker>` with the correct image. |
 | Scrambled ticker→id map | Position-based mapping (legacy). | Rebuild with `coins\remap_ids.py ... --apply`. |
 | `canonical_map.lock is held by pid …` | Another coin tool is mid-write of `ticker_to_id.json`. Every writer holds one lock across the whole read-modify-write, so neither can lose the other's ids. | Let the other tool finish, then re-run. The map was **not** modified. |
 | `publish_<base>.lock is held by pid …` **and that process is gone** (you stopped a publish, or it crashed) | The lock outlives the run that made it. It is reclaimed once the holder is provably dead AND the lock is over two minutes old — the delay covers the moment between a lock being created and its owner being written into it. | Wait ~2 minutes and re-run the same command. It resumes where it stopped; nothing is re-uploaded. |
 | `the pending replacement … was recorded against map A, not this run's map B` | A `verify_logos --fix` was interrupted; its intent is bound to the exact `--map`/`--state` it started against. | Re-run with the **original** `--map`/`--state` so it can be resolved, or review the pack and delete `coins\verify_logos_intent.json` deliberately. |
 | `… exists but its first sticker is not <x>.png; refusing to adopt` | A set of that name exists but this run did not create it (leftover family, or someone else's). Existence is not identity. | Rename the family, or delete the stale set, then re-run. |
-| `position N could not be examined …` from `build_collection` | A live sticker could not be downloaded or hashed, so the publisher cannot tell whether it is one of ours. Guessing "not ours" is what publishes a second copy. | Usually transient — re-run. If it repeats on **video or animated** sets, ffmpeg is off PATH: content hashing needs it, and without it every such sticker is unexaminable. Install ffmpeg (see Prerequisites). |
+| `position N could not be examined …` from `build_collection` | A live sticker could not be downloaded or hashed, so the publisher cannot tell whether it is one of ours. Guessing "not ours" is what publishes a second copy. | Usually transient — re-run. If it repeats on **video or animated** sets, ffmpeg is off PATH: content hashing needs it, and without it every such sticker is unexaminable. Install ffmpeg (see [§3 Setup](#3-setup-one-time)). |
 | `Bad Request: wrong file type` on an **animated** item | Telegram's **uploader** refuses a subtract mask (`masksProperties[].mode == "s"`); its **player** renders one happily. So a sticker can be live in a published pack for years and still be refused when you upload the same bytes -- proven by downloading one from a live pack and sending it straight back untouched. Add masks (`"a"`) are fine. Nothing local can see it: the file is valid gzip, valid Lottie, 512x512, in-spec fps and duration. | `validate_tgs` now refuses it at ingest and names the layer, so this should no longer reach a publish. If it does, the publisher records it as a **skip** with the reason rather than retrying it on every future run. The only repair is re-exporting the animation without that mask, which changes the artwork -- an owner decision, never automatic. |
 | CI red on push | A check failed (install/import/checks/dry-run). | `gh run view <id> --log-failed`; reproduce locally with `.\scripts\check.ps1`; the matrix is Python 3.11, 3.12 **and** 3.14, so check which one failed. |
 | `ModuleNotFoundError: No module named 'numpy'` from `coins\remap_ids.py` | numpy is the coin extra, not part of the core manifest. | `pip install -r requirements-coins.txt`. |
@@ -2321,8 +2501,10 @@ Leave near-dup merging off (default). Only exact-content duplicates merge.
 No. The Bot API only delivers posts received after the bot joined.
 
 **Q: Where do the share links go?**
-`build_collection` and the coin tools DM the owner (`PACK_OWNER_USER_ID`) each
-finished pack's `t.me/addemoji/...` link.
+To `PACK_LINKS_CHAT_ID` (a channel id or `@name`; the bot must be an admin
+there), or to the owner's private chat (`PACK_OWNER_USER_ID`) when it is unset —
+from this process, or through the Worker when `WORKER_PUBLISH_URL` is set
+(§12.9). All three publishers use `emojikit.announce.announce_packs`.
 
 **Q: Is my data uploaded anywhere?**
 Only to Telegram, via your bots. `collection/`, `logs/`, `.env`, `secrets.md`
@@ -2346,7 +2528,7 @@ set regardless of the set's format.
   Hamming distance ≈ visually similar.
 - **TGS** — gzip-compressed Lottie JSON = an animated sticker/emoji.
 - **set / pack** — a Telegram sticker set (≤200 custom emoji).
-- **plan** — the frozen, ordered list of items to upload (resume is deterministic).
+- **plan** — the append-only list of items queued for a pack family; they upload in the panel's current order.
 - **included flag** — per-item publish toggle set by the Curate emojikit.panel.
 - **drift** — when live sticker order ≠ assumed order, scrambling a position map.
 
@@ -2388,7 +2570,7 @@ added, counts as the first of those 200).
 | `collection/media/{static,video,animated}/` | no | Downloaded/built media. |
 | `collection/manifests/<set>.md` | no | Per-pack manifest (name + id). |
 | `collection/publish_<base>.json` | no | Publish state (sets, sent links, keys, skipped). |
-| `collection/publish_plan_<base>.json` | no | Frozen per-format upload plan. |
+| `collection/publish_plan_<base>.json` | no | Append-only per-format record of what is queued (not its order). |
 | `collection/pack_plan.json` | no | The panel's move plan: which emoji should change pack, and which are parked. Written on every Save. |
 | `coins/ticker_to_id.json` | no | Canonical ticker → custom_emoji_id map. The owner's own pack data, not part of the tool. |
 | `coins/keywords.csv` | **yes** | ticker → name/keywords. |
@@ -2559,22 +2741,21 @@ $PY -m emojikit.sync_order --base mypack --apply
 $PY -m emojikit.emoji_bot
 
 # --- coins ---
-$PY coins\fetch_logos.py
+$PY -m coins.fetch_logos
 $PY -m emojikit.make_emoji_pngs --in coins\logos\svg --out coins\logos\emoji
 $PY -m emojikit.make_emoji_pngs --in coins\logos\png --out coins\logos\emoji
-$PY coins\rebuild_dedup.py
-$PY coins\remap_ids.py --emoji-dir "<coin logo folder>" --max-distance 200 --apply
-$PY coins\enhance_map.py
-$PY coins\alias_map.py
-$PY coins\check_all_packs.py
-$PY coins\verify_logos.py --emoji-dir "<coin logo folder>"
-$PY coins\verify_logos.py --emoji-dir "<coin logo folder>" --fix --only sol,xrp
-$PY coins\write_manifests.py --out-dir "<coin archive folder>"
+$PY -m coins.rebuild_dedup        # all: deletes the recorded old packs first
+$PY -m coins.remap_ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
+$PY -m coins.enhance_map
+$PY -m coins.alias_map
+$PY -m coins.check_all_packs
+$PY -m coins.verify_logos --emoji-dir "<coin logo folder>"
+$PY -m coins.verify_logos --emoji-dir "<coin logo folder>" --fix --only sol,xrp
+$PY -m coins.write_manifests --out-dir "<coin archive folder>"
 
 # --- tests / CI-locally ---
 .\scripts\check.ps1                                     # what CI runs (compile + suite)
 $PY -m unittest discover -s tests -t . -p "test_*.py"   # -t . is REQUIRED (see §10)
-$PY -m compileall -q .
 $PY -c "from emojikit import build_pack, make_emoji_pngs, fetch_pack, fetch_emoji_ids, add_media, build_collection, emoji_bot, panel"
 
 # --- git ---
@@ -2609,15 +2790,13 @@ DRY RUN: nothing uploaded.
 ### B.2 Resolve an id and download its pack
 
 ```
-> python -c "...getCustomEmojiStickers(['5283254221590787816'])..."
-set_name: RMaccs | format: static
-> python -m emojikit.fetch_pack RMaccs --token-env GENERAL_BOT_TOKEN
+> python -m emojikit.fetch_pack 5283254221590787816 --token-env GENERAL_BOT_TOKEN
 ```
 
 ### B.3 Audit the coin packs
 
 ```
-> python coins\check_all_packs.py
+> python -m coins.check_all_packs
 ...
 total stickers audited: 5791
 BLANK stickers: 0
@@ -2758,7 +2937,7 @@ catalog cannot identify.
 
 ### Keeping a copy
 
-The published files are already on disk under `collection/media/<format>/`,
+A pack still being filled keeps its files under `collection/media/<format>/`,
 named by content key, with `collection/manifests/<set>.md` listing what went
-where. There is no export command; ask for one if you want the pack zipped in
-pack order with an index.
+where; a FULL pack's media moves to the archive (§12.5d). To take one pack away as a zip in pack order with an index:
+`python -m emojikit.pack_archive --export <n> --zip pack<n>.zip` (§12.5d).

@@ -65,8 +65,8 @@ so the poller and the Worker do not drift.
 
 ## Logs
 
-The channel line follows the Ad Timer Bot's log format, with the bot tag on its
-own first line:
+The channel line puts the bot tag on its own first line, then a level emoji and
+the event:
 
 ```
 [general]
@@ -237,7 +237,7 @@ Leave either unset and the old direct path is used, unchanged. Both or neither:
 a URL without a secret is a half-finished setup that would 401 every
 announcement, so it takes the direct path rather than pretending to work.
 
-**All three publishers** go through one `emojikit.build_pack.announce_packs` —
+**All three publishers** go through one `emojikit.announce.announce_packs` —
 `emojikit/build_pack.py` (single pack), `emojikit/build_collection.py` (collector) and
 `coins/rebuild_dedup.py` (coin family). They used to carry three copies of
 "format the link and sendMessage", and when this Worker arrived only the

@@ -24,11 +24,11 @@ cannot fail at the moment it is needed.
 Tests use Python's stdlib `unittest` (no extra dependencies). Video tests are
 skipped automatically when `ffmpeg`/`ffprobe` are not on `PATH`.
 
-Two modules are the exception: `test_panel_browser.py` and
-`test_panel_queues.py` need playwright and a Chromium build, and they **raise**
-rather than skipping when those are missing — a browser test that reports green
-on a machine with no browser is worse than no browser test at all. Both reach
-the page through `_panel_browser_fixtures.py`, which is also what
+Four modules are the exception: `test_panel_browser.py`,
+`test_panel_queues.py`, `test_panel_curation.py` and `test_panel_perf.py` need
+playwright and a Chromium build, and they **raise** rather than skipping when
+those are missing — a browser test that reports green on a machine with no
+browser is worse than no browser test at all. All four reach the page through `_panel_browser_fixtures.py`, which is also what
 `test_ci_coverage.py` watches.
 
 ```powershell
@@ -37,7 +37,7 @@ the page through `_panel_browser_fixtures.py`, which is also what
 ```
 
 Set `NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS=1` to opt out on purpose. CI does exactly
-that in the Python matrix and runs both modules in its own `panel-browser:` job
+that in the Python matrix and runs all four in its own `panel-browser:` job
 instead: they test JavaScript, so once per Python version would download
 Chromium twice to prove the same thing. That job names its modules explicitly
 rather than globbing, so `test_ci_coverage.py` fails if a new browser suite is
@@ -98,7 +98,10 @@ rather than adding an opt-out.
 | `test_telegram_client.py` | `telegram_api.Telegram` on its own: token redaction, the STICKERSET_INVALID retry scope, and what the client accepts as evidence that an upload landed |
 | `test_pack_locks.py` | `packstate.exclusive_lock` mechanics: refusal, release on error, stale reclaim and its races, ownership, heartbeat, and the lock-path helpers. (`test_lock_order.py` checks the documented ORDER of the same locks, by AST.) |
 | `test_pack_locks_exclusion.py` | that two real processes never hold one pack-family lock at once. The old recovery path could seat two publishers: it decided ownership by reading a file, comparing a token and unlinking, and an unlinked inode is a lock nobody else can see. Two genuine subprocesses, not threads |
-| `test_rebuild_dedup_state.py` | the `coins/rebuild_dedup.py` mutation walk: plan → validate → delete the old packs → upload, plus its in-flight reconcile and run lock |
+| `test_rebuild_dedup_state.py` | the `coins/rebuild_dedup.py` delete phase (an old pack that survived deletion must not complete it), the link message's retry bound, and the owner id parsed at import |
+| `test_rebuild_dedup_resume.py` | resuming the rebuild after an interruption, decided by identity: an ambiguous upload stops the run, a failed live read is not "0 stickers", an in-flight upload and an adopted create are proven by content |
+| `test_rebuild_dedup_plan.py` | the frozen plan, the cursor that walks it and the state schema; the `build` command's exit (saved cursor on trailing skips, partial while an upload is unresolved) |
+| `test_rebuild_dedup_locks.py` | one rebuild per pack family: the lock keyed on the pack base, taken and released around every run |
 | `test_rebuild_dedup_map.py` | the second phase of the same module: `map_and_fill` resolving `ticker_to_id.json` by image identity under the map lock, and the shared-logo-group guard |
 | `test_publish_dedup.py` | verified retries for non-idempotent Bot API calls, live-set reconcile, adopt-on-occupied, recorded fuids |
 | `test_build_collection_state.py` | `build_collection`'s state machine: plan/state files failing closed, live-set drift, identity on a recorded position and the unattributed tail |
@@ -124,7 +127,23 @@ rather than adding an opt-out.
 | `test_coin_providers.py` | the coin providers publishing logos: blank-logo refusal, the verified publish, and the canonical map re-read under the lock |
 | `test_coin_recovery.py` | `fetch_paprika`'s unverified-upload recovery: an add that MAY be live is reconciled against the live set, never silently re-sent |
 | `test_coin_ticker_map.py` | every writer of `ticker_to_id.json` — alias/enhance/provider — serialised so none loses another's update, and one inventory implementation |
-| `test_remap_ids.py` | the coin remap / pack audit tools, both of which used to trust their download cache blindly |
+| `test_remap_ids.py` | `coins/remap_ids.py`: a download cache that used to be trusted blindly, the `--apply` refusals, and the map written under the pack-family lock |
+| `test_check_all_packs.py` | `coins/check_all_packs.py`: the audit report describes the LIVE packs, an analyse failure is an error retried next run (not a blank), and a throttled set listing is retried |
+| `test_coin_keywords.py` | `coins/_keywords.py`, the one writer of `keywords.csv`: invalid PNGs are not listed, an empty name keeps the old one, a crash leaves the previous file whole |
+| `test_contracts_shared.py` | the Python half of the Python↔Worker contracts, read from `fixtures/contracts/` (the Worker's `contracts.test.ts` reads the same files): the publish body, and the custom-emoji id syntax |
+| `test_build_pack_announce.py` | `build_pack` announces finished packs as the bot whose token it publishes with |
+| `test_cli_env.py` | reading `.env`: a file saved with a byte order mark keeps its first key |
+| `test_telegram_body_shape.py` | a JSON body that is not an object goes through the client's retry and applied-check path instead of raising `AttributeError` |
+| `test_launcher_contract.py` | every flag `run.ps1` (and `scripts/run-actions.ps1`) passes exists in that tool's `--help` |
+| `test_cli_docs.py` | GUIDE §12, the CLI reference, against each tool's own `--help`: every flag documented, every documented flag real |
+| `test_pack_rows.py` | the one renderer behind every "emoji in this pack" table, and its four writers: a pipe or a newline in a label is escaped, column headers unchanged |
+| `test_pack_export.py` | `pack_archive --export`: a pack as a zip in slot order with its manifest, sources untouched, refused while the roster is stale or a file is missing |
+| `test_status.py` | `emojikit.status`: offline, read-only; exit 3 and the fix command when the roster or archive is stale |
+| `test_plan_status.py` | `emojikit.plan_status`: what the panel's saved pack plan would change, read-only, including the ids a move would retire |
+| `test_panel_perf.py` | the browser performance suite: real animated WebP previews, the 24-card budget nearest the centre, All visible, the scroll freeze, bounded zoomed-out windows, unchanged CSS variables, the pick-ring pause, bulk hold matching the item-by-item result. Each scenario prints one `PANEL_PERF` line; timings are printed, never asserted, counts are. Runs in the `panel-browser` job |
+| `test_panel_startup.py` | the panel binds and opens the browser without waiting on a hanging bot-name lookup, and a panel already on the port is reopened, not rebuilt |
+| `test_suite_guard.py` | every test module refuses a direct run (its `__main__` block), and `load_env()` treats an imported `unittest` as a test run and nothing else |
+| `test_fetch_pack_ids.py` | `fetch_pack` given an emoji id fetches the pack it belongs to, once; an id that names no pack is reported |
 | `test_verify_logos.py` | `verify_logos`: the inversion-aware distance, the durable replacement intent bound to its own `--map`, and the fix path's exit codes |
 | `test_panel.py` | what `emojikit/panel.py` serves of the catalog: inert item JSON (no script breakout), the save-during-reorder window, an unavailable catalog, and saving from a filtered grid |
 | `test_panel_view.py` | what `emojikit.panel_view.build_view` makes of the catalog: brand-logo preview, the similarity order, the tap-to-copy id, the published-item filter, the pack index travelling onto an already-live card so the grid can draw the boundary between two packs, and one pack unhidden on request |
@@ -158,7 +177,19 @@ fakes shared by the modules above them (the PNG builders, `FakeTelegram`,
 `RebuildCase`, and the standalone-script loader every entry-point contract
 module imports). One copy each, because a duplicated fake drifts away from the
 thing it stands in for. The leading underscore is load-bearing:
-`-p "test_*.py"` must not collect them as test modules.
+`-p "test_*.py"` must not collect them as test modules. `_media_fixtures.py`
+holds `make_png` (a block on transparency, any size) and `encode_vp9` (numbered
+frames to an alpha-keeping WebM), which the publisher and video suites share;
+`_cli_fixtures.cli_help` runs a tool's `--help` without writing a log file.
+
+**Deprecations fail.** `tests/__init__.py` turns a `DeprecationWarning` issued
+by the project's own code (`emojikit`, `coins`, `scripts`, `tests`) into an
+error, so a removal shows up one release early; third-party warnings stay
+warnings.
+
+**Run chosen suites with the gate, not a hand-written command:**
+`.\scripts\check.ps1 -Tests test_catalog,test_panel_plan -SkipCompile -SkipLint`
+runs them as `tests.<name>`, so the guard above still applies.
 
 A fixture may only be shared if it carries no `test_*` methods and no
 TestCase base. One that does multiplies with every importer instead of
@@ -200,6 +231,8 @@ this suite once per Python version.
 | Fixture | Purpose | Safe to commit |
 |---------|---------|----------------|
 | `fixtures/lottie/red_circle_512.json` | minimal valid 512×512 Lottie animation used to exercise TGS packaging/validation and animated content hashing. 512×512 is Telegram's required canvas for animated emoji — a 100×100 fixture would encode the wrong contract | yes (synthetic, no secrets) |
+| `fixtures/contracts/publish_request.json` | the exact body `announce_via_worker` sends; read by `test_contracts_shared.py` and `worker/test/contracts.test.ts`, so either side changing it breaks both | yes (synthetic, neutral names) |
+| `fixtures/contracts/emoji_messages.json` | messages and typed id lists with the ids each side must extract | yes (synthetic) |
 
 Static images and animated GIFs used by the tests are generated on the fly with
 Pillow in temporary directories and are **not** committed. No network access or

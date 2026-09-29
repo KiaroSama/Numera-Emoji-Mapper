@@ -7,7 +7,7 @@ anyone can run with their own bots and their own packs.
 
 **Numera Emoji Mapper**:
 The name of this project and of everything the repository ships.
-_Avoid_: Numera Emoji Mapper
+_Avoid_: Emoji Mapper
 
 **Operator**:
 The person running one installation, with their own bots, packs and brand.

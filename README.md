@@ -119,19 +119,8 @@ to attach searchable keywords to each emoji. Without it, the file name is used.
 
 ## `emojikit/build_pack.py` options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--base` | *(required)* | set-name base (letters/digits/_) |
-| `--title` | *(required)* | human-readable set title |
-| `--source-dir` | `logos/emoji` | folder of 100×100 PNGs to upload |
-| `--token-env` | `TELEGRAM_BOT_TOKEN` | env var holding the bot token |
-| `--keywords` | `auto` | keywords CSV; `auto` = coin list only for the default source |
-| `--emoji` | 🪙 | associated standard emoji |
-| `--user-id` | `PACK_OWNER_USER_ID` | numeric owner id |
-| `--per-set` | 200 | emojis per set; 1–200 only (Telegram's cap), higher is a usage error |
-| `--limit` / `--start` | 0 / 0 | process a slice of the source |
-| `--state` | `state_<base>.json` | resume file (per pack, never clobbered) |
-| `--dry-run` | off | validate inputs without calling Telegram |
+Every option, with its default, is in the GUIDE's CLI reference, [§12.2](docs/GUIDE.md#122-emojikitbuild_packpy--upload-a-folder-of-pngs-to-emoji-sets) — one list, checked against the tool's own `--help` by `tests/test_cli_docs.py`, so it cannot drift the way a second copy here did. The ones you need first:
+`--base` and `--title` (required), `--source-dir`, `--token-env` (`TELEGRAM_BOT_TOKEN` announces as the coin bot, any other as the general bot) and `--dry-run`.
 
 Runs are **resumable**: progress is saved to `state_<base>.json`, so an
 interrupted or flood-limited run continues without recreating existing sets.
@@ -280,13 +269,27 @@ checkpoint; Reset is undoable. Order continues to auto-save, while inclusion
 changes require Save. Older replies never acknowledge edits made after a Save.
 A failed request retains the draft; transient failures retry, and a permanently
 rejected body waits for a changed request. **Export draft** preserves a local
-JSON copy if reconciliation is needed.
+JSON copy if reconciliation is needed, and **Import draft** (next to Reset
+all) reads one back: keys this catalog still holds take the draft's decisions,
+unknown keys are dropped, emoji added since the draft stay at the end. Nothing
+is posted until you press Save, the import is undoable, and a toast says how
+many were kept, not in this catalog, and new.
 
-Animated previews use browser-native WebP. At compact zoom, ordinary-density
-screens use 72px previews and at most 10fps; larger tiles use 104px. The server
-runs at most two uncached preview renders at once. Off-screen and header-covered
-animations stop, and switching animation off releases video decoders in favor
-of still posters. The source media and published files are unchanged.
+**At most 24 cards animate**, the ones nearest the centre of the screen; the
+**All visible** switch animates every visible card (heavier). Video cards are
+light animated WebP previews by default; the **Real video** switch brings back
+`<video>` players, which are never created or torn down mid-scroll. A scroll
+freezes only the cards that were playing and thaws them once it settles.
+Previews come in two tiers — 104 px at up to 15 fps, and below 75 % zoom 72 px
+at up to 10 fps — and a background warm-up renders exactly those for animated
+and video cards (plus the holding tray's still) at start-up. The server renders
+up to max(2, min(6, CPU count − 2)) uncached previews at once. Switching
+**Animation** off holds every card on its first frame. The source media and
+published files are unchanged.
+
+If a refresh cannot open the catalog (a publish holding it), the page keeps the
+last view and says "catalog busy (a publish may be running) — showing the view
+from HH:MM UTC".
 
 Panel actions and browser error locations join the normal UTC `logs/panel_*.log`
 file. Event fields contain counts, revisions, status and source locations;
@@ -308,11 +311,19 @@ on that port is refused; use another port for a separate panel session.
 
 The crypto-coin tool is now a self-contained component under `coins/`. It reuses
 the shared engine in the package (`emojikit/build_pack.py`) and the coin bot
-(`TELEGRAM_BOT_TOKEN`). Its data, scripts and images all live under `coins/`:
+(`TELEGRAM_BOT_TOKEN`). Its data, scripts and images all live under `coins/`.
+Run every tool as a module from the repository root, e.g.
+`python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 
 - `coins/fetch_logos.py` — download coin logos from CoinGecko + write `coins/keywords.csv`
-- `coins/fetch_paprika.py` / `coins/fetch_cmc.py` — fill remaining coins from CoinPaprika / CoinMarketCap
+- `coins/fetch_paprika.py` / `coins/fetch_cmc.py` — fill remaining coins from CoinPaprika / CoinMarketCap.
+  A lookup the provider never answers is *unknown*, not "no match": it is not
+  cached and the run exits 3 so it is retried. `coins.fetch_paprika --retry-unmatched`
+  searches again for coins an older run cached as unmatched. A rejected
+  `CMC_API_KEY` stops `coins.fetch_cmc` with a message naming it.
 - `coins/build_keywords.py` — (re)build `coins/keywords.csv` from logos on disk
+  (it and `fetch_logos.py` share one writer; either exits 3 when a lookup or
+  page was incomplete, keeping names an earlier run found)
 - `coins/rebuild_dedup.py` — duplicate-proof full rebuild + inventory fill
 - `coins/remap_ids.py` — rebuild `ticker_to_id.json` from image content, never positions
 - `coins/enhance_map.py` / `coins/alias_map.py` — point chain-variant tickers at the base coin's id
@@ -338,7 +349,7 @@ Then build/rebuild with the coin bot:
 ```powershell
 # build + rebuild the id map + send the links (DESTRUCTIVE: deletes the old packs
 # first). Subcommands: build = upload only, map = rebuild the id map, links = resend.
-.venv\Scripts\python.exe coins\rebuild_dedup.py
+.venv\Scripts\python.exe -m coins.rebuild_dedup
 ```
 
 ## Project layout
@@ -355,6 +366,11 @@ Numera Emoji Mapper/                  # the whole project
     sync_order.py                # reorder a LIVE pack to match the panel
     pack_archive.py             # archived media reconciliation
     pack_manifest.py            # pack roster and gallery CLI
+    pack_export.py              # one pack as a zip in slot order (pack_archive --export)
+    pack_rows.py                # the one renderer for every pack-list table
+    status.py                   # is the roster/archive current? (offline)
+    plan_status.py              # what the panel's saved plan would change (read-only)
+    script_json.py              # JSON safe inside a <script> data block
     panel.py                     # curate panel: the server, the page, the APIs
     emoji_bot.py                 # bot: extract premium-emoji ids (tap-to-copy)
     telegram_api.py           # the Bot API client + Telegram's caps
@@ -376,8 +392,15 @@ Numera Emoji Mapper/                  # the whole project
     ingest.py                 # verified dedup and collision-safe media storage
     panel_preview.py          # bounded, sized thumbnail cache
     panel_logging.py          # validated, bounded browser event logs
+    panel_plan.py             # the move plan (pack_plan.json): the intended layout
+    panel_instance.py         # find and reopen a panel already on the port
+    sandbox_clone.py          # an independent catalog copy for the sandbox panel
+    sqlite_snapshot.py        # SQLite backup with bounded BUSY/LOCKED retries
+    state_artifacts.py        # every key-bearing JSON a migration must rewrite
+    media_paths.py            # how items.file_path is stored (data-folder relative)
     logsetup.py                # UTC file logging
-    media.py                   # format detect + static/video/tgs convert
+    media.py                   # format detect + static/video convert
+    media_lottie.py            # Lottie/.tgs: load, package, validate, preview
     video_decode.py            # the video decoder choice + a frame cache
     repaint.py                 # bake a tint into a Lottie or a static
     identity.py                # content keys, perceptual hashes, same_image
@@ -388,12 +411,17 @@ Numera Emoji Mapper/                  # the whole project
   worker/                      # Cloudflare Worker: both bots + /publish (TypeScript)
     src/                       # auth, telegram, emoji-id extraction, routing
     test/                      # vitest, fetch stubbed (never reaches Telegram)
-  assets/                      # the project's own images + the panel page and its scripts
+  assets/                      # the project's own images + the panel page and its scripts:
+                               # panel-grid, -motion, -save, -drag, -actions, -holding, -draft
+                               # (.js, in load order) + jsconfig.json/panel-globals.d.ts (tsc)
   run.ps1                      # launcher (single-pack + collection workflows)
+  scripts/run-actions.ps1      # the launcher's menu actions (dot-sourced by run.ps1)
   scripts/check.ps1            # byte-compile + full unit suite (also used by CI)
   scripts/identity_repair.py   # report/migrate/recover/restore catalog identity
+  scripts/panel_sandbox.py     # the panel against a throwaway copy of the catalog
   requirements.txt
   requirements-dev.txt         # test-only: ruff + playwright (never at runtime)
+  requirements-lint.txt        # the pinned ruff, shared by requirements-dev.txt and CI
   .env.example                 # configuration template
   README.md  LICENSE                # CONTRIBUTING/SECURITY live in .github/
   tests/                       # unit tests + fixtures (see tests/README.md)
@@ -413,7 +441,7 @@ Generated/local-only (gitignored): `logos/` (and `coins/logos/`), `build/`,
 `coins/shared_logo_groups.json`, `coins/unresolved_logos.json`) are local-only
 too: this repository ships the tool that builds emoji packs, not anybody's
 published packs, and those files name live custom-emoji ids. They are rebuilt
-from Telegram by `coins/rebuild_dedup.py map`.
+from Telegram by `python -m coins.rebuild_dedup map`.
 
 ## Checks
 
@@ -421,11 +449,16 @@ One command byte-compiles every source file, lints it, and runs the whole unit
 suite — the same one CI runs, so local and CI results cannot drift:
 
 ```powershell
-python -m pip install -r requirements-dev.txt   # once; never runtime deps
-python -m playwright install chromium           # once; the panel's browser suite
+# once: core, coins, ruff and playwright, then the panel suite's Chromium
+.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt; .venv\Scripts\python.exe -m playwright install chromium
 .\scripts\check.ps1
-.\run.ps1 -Check      # separate: environment doctor (venv/deps/ffmpeg/.env)
+.\scripts\check.ps1 -Tests test_catalog -SkipCompile -SkipLint   # chosen suites only
+.\run.ps1 -Check      # separate: environment doctor (venv, Python 3.11+, deps, ffmpeg, unset .env keys)
+.venv\Scripts\python.exe -m emojikit.status   # is the roster/archive current? offline, exit 3 if stale
 ```
+
+If anything the gate needs is missing, `check.ps1` prints that one install line
+and exits 2.
 
 `tests/test_panel_browser.py` drives the real panel in headless Chromium and
 **raises** rather than skipping when playwright or Chromium is missing — a

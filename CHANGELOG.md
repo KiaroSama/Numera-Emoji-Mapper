@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - the curate panel stays light on a big catalog
+
+- **At most 24 cards animate**, the ones nearest the centre of the screen. The
+  new **All visible** switch animates every visible card, as before (heavier).
+  A scroll freezes and thaws only the cards that were playing.
+- **Video cards are light animated previews by default.** The **Real video**
+  switch brings back `<video>` players; players are never created or torn down
+  mid-scroll.
+- **The preview warm-up renders exactly what the page asks for** - the 104 px
+  and 72 px tiers for animated and video cards, plus the holding tray's still -
+  skips what is cached, and logs rendered / already cached / failed. The render
+  bound is max(2, min(6, CPU count - 2)) instead of 2.
+- **Less work per frame**: CSS variables are written only when they change,
+  Deselect all and holding a group each walk the list once, the holding tray is
+  windowed like the grid, the grid mounts half a screen or three rows beyond the
+  viewport (whichever is smaller), compact cards carry only header and
+  thumbnail, the pick ring pauses while the page scrolls or drags, and the
+  checker backdrop is one gradient.
+- **The panel starts without waiting on Telegram**: the browser opens straight
+  after the port is bound and the bot name is looked up in the background.
+- **The server keeps connections alive** (HTTP/1.1, 30 s idle timeout) and
+  queues up to 64 connections, so a page loading its scripts and a screenful of
+  thumbnails is no longer refused.
+- **A sandbox copies the preview cache** (best effort), so it does not
+  re-render everything.
+
+### Added - import a draft back into the panel
+
+- **Import draft** (next to Reset all) reads an exported draft: keys the page
+  holds take the draft's decisions, unknown keys are dropped, new emoji stay at
+  the end. It never posts and it is undoable; the toast counts kept, not in this
+  catalog, and new.
+
+### Fixed - a busy catalog, framing, and three publish-safety gaps
+
+- **A refresh that cannot open the catalog keeps the last view** and says
+  "catalog busy (a publish may be running) - showing the view from HH:MM UTC",
+  instead of looking like a catalog with no news.
+- **The panel refuses to be framed and stops content sniffing**: every response
+  carries `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`;
+  the page also `X-Frame-Options: DENY` and `frame-ancestors 'none'`.
+- **A test file run directly refuses** (`python tests\test_x.py` skipped the
+  credential scrub and the network block); run suites through `check.ps1`.
+- **An unusable brand logo stops the publish before any set is created**,
+  instead of producing packs without their logo.
+- **`pack_archive --sync` commits each move as it goes**, uses Windows-safe
+  folder names, and only slot 1 can be the logo.
+
+### Changed - coin tools run as modules
+
+- **Every coin tool runs from the repository root as `python -m coins.<tool>`**,
+  e.g. `python -m coins.rebuild_dedup build`; the docs no longer show
+  `python coins\<tool>.py`.
+
+### Fixed - the publish follows the panel's current order
+
+- **Pending emoji upload in the order the panel shows when you publish.** The
+  first run of a pack family -- a dry run included -- used to freeze the order,
+  so rearranging the next pack's candidates in the panel changed nothing.
+- **`--dry-run` and `--preflight` no longer write the publish plan.**
+
 ### Security - channel posts need an allowlist
 
 - **The bots answer a channel post only from a listed channel.** A channel post
@@ -529,16 +590,16 @@ renders as its picture - so these two grids are the only place the label can be
 checked against the art it claims to describe, which is exactly how 21 wrong
 glyphs were found. A sticker with no glyph shows an em dash rather than a gap.
 
-Verified while adding it: across all 34 packs and 6587 emoji there is no row
-with a missing or non-numeric id, no gap in any pack's slot sequence, and no id
-appearing in two packs.
+Verified while adding it, across every live pack: no row with a missing or
+non-numeric id, no gap in any pack's slot sequence, and no id appearing in two
+packs.
 
 ### Added - `packs/`, the roster of what is actually in every published pack
 
 `pack_manifest.py --refresh` writes, per live set, `packs/<set>.json` (machine),
 `packs/<set>.md` (human) and `packs/<set>.html` (a self-contained page showing
 every emoji, animation included), plus `packs/index.json` and `packs/README.md`
-over all 34 packs - the 5 general ones and the 29 crypto ones.
+over every live pack, general and coin alike.
 
 Each row carries the emoji's `custom_emoji_id`, its position numbered from 0
 (so the brand logo is emoji 0) alongside the 1-based slot Telegram shows, its
@@ -559,18 +620,13 @@ note is suppressed for the coin family, whose bot is exempt from the logo.
 `packs/` is git-ignored: it is derived from Telegram on demand, and one refresh
 rewrites ~79 MB of pages and cached thumbnails.
 
-### Added - `Pack-Roster-Check`, a Stop gate that keeps the roster honest
+### Added - `pack_manifest.py --check`, which says whether the roster is stale
 
-A roster is only worth having if it is never stale, so this blocks the turn when
+A roster is only worth having if it is never stale. `--check` exits 3 when
 `packs/` stops describing its inputs - a new download, a replaced or recoloured
-sticker, a reorder, a coin remap. The staleness test lives in ONE place,
-`pack_manifest.py --check` (four stat calls and a small JSON read, no network),
-so the hook and the tool cannot disagree about what stale means.
-
-It honours `stop_hook_active`, blocks once per distinct input state so declining
-to refresh cannot loop, re-arms the moment anything changes again, and fails
-OPEN when the interpreter is missing or the check times out - a gate that blocks
-on its own broken dependency is unclearable.
+sticker, a reorder, a coin remap - with four stat calls and a small JSON read,
+no network. The staleness test lives in this ONE place, so anything that runs
+it (your own automation included) cannot disagree about what stale means.
 
 ### Fixed - three things wrong with the curate grid
 
@@ -1288,9 +1344,9 @@ Two traps worth recording, both caught by the suite:
   direct path runs unchanged otherwise. `state["sent"]` still owns duplicate
   suppression, and a failed announcement is deliberately **not** recorded as
   sent — recording it would make the guard skip that pack forever.
-- **Log-channel messages follow the Ad Timer Bot's format**, with the bot tag on
-  its own first line, a level emoji, and a UTC stamp. Three of its behaviours
-  came across with it because they solve problems this Worker has: a 12/minute
+- **Log-channel messages put the bot tag on its own first line**, then a level
+  emoji and a UTC stamp. Three behaviours came with the format because they
+  solve problems this Worker has: a 12/minute
   budget that **drops and counts** instead of queueing (a queue inside a Worker
   isolate outlives its request and loses the messages anyway), a chat-id
   normaliser that accepts the bare id Telegram's UI shows and adds the `-100`
