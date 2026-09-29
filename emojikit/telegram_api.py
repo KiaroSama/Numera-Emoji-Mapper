@@ -18,6 +18,8 @@ import tempfile
 import time
 
 import requests
+
+from emojikit.errors import FloodWaitTooLong
 from enum import Enum
 from pathlib import Path
 
@@ -109,6 +111,8 @@ class Telegram:
     def __init__(self, token: str) -> None:
         self.token = token
         self.s = requests.Session()
+        # Longest flood wait (s) to sleep out; None = any. A run with a time budget sets it.
+        self.max_flood_wait: float | None = None
 
     def _safe(self, exc: BaseException) -> str:
         """Exception text with the bot token stripped.
@@ -165,6 +169,8 @@ class Telegram:
                 # Honor flood waits.
                 if "retry after" in desc.lower():
                     wait = int(payload.get("parameters", {}).get("retry_after", 5))
+                    if self.max_flood_wait is not None and wait > self.max_flood_wait:
+                        raise FloodWaitTooLong(method, wait)
                     print(f"  flood wait {wait}s ({method})", flush=True)
                     log.warning("flood wait %ss (%s)", wait, method)
                     time.sleep(wait + 1)
