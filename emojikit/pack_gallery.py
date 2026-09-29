@@ -29,6 +29,7 @@ from pathlib import Path
 from PIL import Image
 
 from emojikit import media
+from emojikit.script_json import json_for_script
 
 log = logging.getLogger("emojikit.pack_gallery")
 
@@ -356,7 +357,6 @@ def render(doc: dict, media_of, cache: Path) -> str:
             f'<div class="nm">{html.escape(e["name"] or "")}</div>'
             f'{ids}</div>')
 
-    import json as _json
     title = html.escape(doc.get("title") or doc["set_name"])
     zero_note = (
         "<b>#</b> counts from 0 and emoji 0 is the brand logo; <b>slot</b> is the "
@@ -393,7 +393,7 @@ Captured {html.escape(doc["captured_utc"])} live from Telegram.
 {chr(10).join(cards)}
 </main>
 <script type="application/json" id="roster">
-{_json.dumps(doc, ensure_ascii=False, indent=1)}
+{json_for_script(doc, indent=1)}
 </script>
 <script>{_JS}</script>
 </body></html>
