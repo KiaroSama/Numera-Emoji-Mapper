@@ -92,6 +92,34 @@ class TestRedaction(unittest.TestCase):
         s = "key s:01f6c1284261975d0000934b7fe6f3c3 cid 111111111"
         self.assertEqual(L.redact(s), s)
 
+    def test_a_token_glued_to_bot_is_masked(self):
+        """`\\b` before the digits never matched "bot123...": `t` and `1` are
+        both word characters, so the boundary is absent in exactly the shape a
+        Bot API URL has."""
+        glued = "bot123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ012"
+        out = L.redact(f"POST https://api.telegram.org/{glued}")
+        self.assertNotIn("123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ012", out)
+
+    def test_the_worker_secrets_are_masked_by_name(self):
+        for key in ("WORKER_PUBLISH_SECRET", "GENERAL_WEBHOOK_SECRET",
+                    "COIN_WEBHOOK_SECRET"):
+            self.assertIn(key, L.SECRET_ENV_KEYS)
+
+    def test_a_token_env_of_any_name_is_masked(self):
+        """--token-env can name a variable logsetup does not know by name."""
+        from unittest import mock
+        from emojikit import build_pack as bp
+        value = "an-unlisted-token-value-for-this-test"
+        argv = ["build_pack.py", "--base", "t", "--title", "T", "--user-id", "1",
+                "--source-dir", str(ROOT / "no-such-dir"),
+                "--token-env", "SOME_OTHER_TOKEN", "--dry-run"]
+        with mock.patch.object(sys, "argv", argv), \
+                mock.patch.dict(os.environ, {"SOME_OTHER_TOKEN": value}), \
+                mock.patch.object(bp, "setup_logging", lambda *a, **k: None), \
+                mock.patch("sys.stderr"):
+            bp.main()
+        self.assertNotIn(value, L.redact(f"token {value}"))
+
     def test_formatter_redacts_record(self):
         L._RUN["id"] = "deadbeef"
         fmt = L._HumanFormatter("[%(levelname)s] [%(run_id)s] %(message)s")
