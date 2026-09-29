@@ -231,7 +231,7 @@ class ThePanelPageActuallyShips(unittest.TestCase):
         self.assertTrue(PAGE.rstrip().endswith("</html>"))
         # Every placeholder the handler substitutes must survive extraction --
         # a page missing one renders the literal token to the browser.
-        for token in ("__ITEMS__", "__TOKEN__", "__PREVIEW_FPS__",
+        for token in ("__ITEMS__", "__TOKEN__", "__PREVIEW_TIERS__",
                       "__PER_SET__", "__HIDDEN__", "__ASSET_VER__", "__ICON_VER__"):
             self.assertIn(token, PAGE, f"{token} lost in the asset")
 

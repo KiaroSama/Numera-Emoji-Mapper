@@ -69,7 +69,7 @@ class ThePanelScriptsShip(unittest.TestCase):
         inline = p.PAGE[p.PAGE.index('<script id="items-data"'):]
         self.assertNotIn("addEventListener", inline)
         self.assertNotIn("function ", inline)
-        for token in ("__TOKEN__", "__PREVIEW_FPS__", "__PER_SET__", "__HIDDEN__"):
+        for token in ("__TOKEN__", "__PREVIEW_TIERS__", "__PER_SET__", "__HIDDEN__"):
             self.assertIn(token, inline)
 
 

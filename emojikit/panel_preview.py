@@ -37,52 +37,95 @@ def parameters(query: str, maximum_fps: int) -> tuple[bool, int, int]:
     return values.get("still") == ["1"], min(fps, maximum_fps), size
 
 
-def warm(view: list[dict], by_key: dict, db_path: Path, fps: int,
-         size: int = 104, stop: threading.Event | None = None) -> int:
+def page_tiers(max_fps: int) -> dict:
+    """The preview sizes and rates the page requests; the warm-up uses the same."""
+    return {"full": {"size": 104, "fps": min(max_fps, 15)},
+            "compact": {"size": 72, "fps": min(max_fps, 10)}}
+
+
+def warm(view: list[dict], by_key: dict, db_path: Path, max_fps: int,
+         stop: threading.Event | None = None) -> dict:
     """Render, in grid order, the previews the page is about to ask for.
 
     Every miss used to be paid at scroll time, one viewport at a time, behind
     the render bound -- which is what "the animations arrive in pieces" was.
     Warming in grid order means the top of the list is ready first and the rest
-    lands before the owner scrolls that far. Rendering is best effort: a failure
-    here must never take the panel down, because the request path renders the
-    same file again anyway and reports its own error.
+    lands before the owner scrolls that far. It renders exactly the tiers the
+    page requests (`page_tiers`): the full tier first, then the compact one the
+    page switches to below 75 % zoom, plus the compact still the holding tray
+    shows for every excluded card. A static card in the grid is served from
+    `/img/`, so its grid previews are never asked for and never rendered.
+    Rendering is best effort: a failure here must never take the panel down,
+    because the request path renders the same file again and reports its own error.
     """
-    done = 0
-    for card in view:
-        if stop is not None and stop.is_set():
-            break
-        key, src = card.get("key"), by_key.get(card.get("key"))
-        if not key or src is None or card.get("isLogo"):
-            continue
-        wanted = [(True, fps)] if card.get("fmt") != "animated" else [(True, fps), (False, fps)]
-        for still, rate in wanted:
+    tiers = page_tiers(max_fps)
+    counts = {"rendered": 0, "cached": 0, "failed": 0}
+
+    def one(key: str, src: Path, still: bool, tier: dict) -> None:
+        if cached_path(key, src, db_path, tier["fps"], still, tier["size"]) is not None:
+            counts["cached"] += 1
+            return
+        try:
+            preview_bytes(key, src, db_path, tier["fps"], still, tier["size"])
+            counts["rendered"] += 1
+        except Exception as exc:  # noqa: BLE001 - one bad file must not stop the warm-up
+            counts["failed"] += 1
+            log.debug("preview warm-up skipped %s (still=%s): %s", key, still, exc)
+
+    cards = [(c, c.get("key"), by_key.get(c.get("key"))) for c in view
+             if c.get("key") and not c.get("isLogo") and by_key.get(c.get("key")) is not None]
+    for tier_name in ("full", "compact"):
+        tier = tiers[tier_name]
+        for card, key, src in cards:
             if stop is not None and stop.is_set():
-                break
-            try:
-                preview_bytes(key, Path(src), db_path, rate, still, size)
-                done += 1
-            except Exception as exc:  # noqa: BLE001 - one bad file must not stop the warm-up
-                log.debug("preview warm-up skipped %s (still=%s): %s", key, still, exc)
-    return done
+                return counts
+            moving = card.get("fmt") in ("animated", "video")
+            wanted = [True, False] if moving else []
+            if tier_name == "compact" and not card.get("included", True) and not moving:
+                wanted = [True]          # the holding tray's still
+            for still in wanted:
+                one(key, Path(src), still, tier)
+    return counts
 
 
-def preview_bytes(key: str, src: Path, db_path: Path, fps: int,
-                  still: bool = False, size: int = 104) -> bytes:
-    cache = db_path.parent / "preview"
-    legacy = cache / f"{key.replace(':', '_')}@{'still' if still else fps}.webp"
-    if (size == 104 and src.suffix.lower() == ".tgs"
-            and legacy.parent.resolve() == cache.resolve() and legacy.is_file()):
-        return legacy.read_bytes()
+def _check_key(key: str) -> None:
+    # The key becomes part of a file name: catalog keys are "<kind>:<hex>", and
+    # anything carrying a path separator is refused rather than resolved.
+    if "/" in key or "\\" in key:
+        raise ValueError(f"invalid preview key: {key!r}")
+
+
+def _dest(cache: Path, key: str, src: Path, fps: int, still: bool, size: int) -> Path:
     name = hashlib.sha256(key.encode("utf-8")).hexdigest()
     video = src.suffix.lower() == ".webm"
     # A moving video preview gets its own name: older runs wrote a single frame
     # under `@<fps>-<size>` for a video, and that file must not be served as
     # the animation.
     tier = "still" if still else (f"v{fps}" if video else str(fps))
-    dest = cache / f"{name}@{tier}-{size}.webp"
-    if dest.is_file():
-        return dest.read_bytes()
+    return cache / f"{name}@{tier}-{size}.webp"
+
+
+def cached_path(key: str, src: Path, db_path: Path, fps: int,
+                still: bool = False, size: int = 104) -> Path | None:
+    """The cached preview file if it exists -- checked, never read."""
+    _check_key(key)
+    cache = db_path.parent / "preview"
+    if size == 104 and src.suffix.lower() == ".tgs":
+        legacy = cache / f"{key.replace(':', '_')}@{'still' if still else fps}.webp"
+        if legacy.is_file():
+            return legacy
+    dest = _dest(cache, key, src, fps, still, size)
+    return dest if dest.is_file() else None
+
+
+def preview_bytes(key: str, src: Path, db_path: Path, fps: int,
+                  still: bool = False, size: int = 104) -> bytes:
+    hit = cached_path(key, src, db_path, fps, still, size)
+    if hit is not None:
+        return hit.read_bytes()
+    cache = db_path.parent / "preview"
+    dest = _dest(cache, key, src, fps, still, size)
+    video = src.suffix.lower() == ".webm"
     with _guard:
         lock = _locks.setdefault(str(dest), threading.Lock())
     with lock:
