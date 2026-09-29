@@ -166,13 +166,14 @@ class GradientOpacitySurvivesARepaint(unittest.TestCase):
         self.assertEqual(ragged["g"]["k"]["k"], before)
 
 
-class TheRepaintApiIsStillWhereCallersLookForIt(unittest.TestCase):
-    """It moved to `emojikit.repaint`; `fetch_emoji_ids` and the existing tests
-    reach for it on `media`."""
+class TheRepaintApiLivesInRepaint(unittest.TestCase):
+    """The `media` re-export shim is gone; every caller imports `emojikit.repaint`."""
 
-    def test_media_re_exports_the_public_names(self):
-        self.assertIs(media.parse_tint, repaint.parse_tint)
-        self.assertIs(media.repaint_in_place, repaint.repaint_in_place)
+    def test_the_public_names_live_in_repaint_only(self):
+        self.assertTrue(callable(repaint.parse_tint))
+        self.assertTrue(callable(repaint.repaint_in_place))
+        self.assertFalse(hasattr(media, "parse_tint"))
+        self.assertFalse(hasattr(media, "repaint_in_place"))
 
 
 if __name__ == "__main__":

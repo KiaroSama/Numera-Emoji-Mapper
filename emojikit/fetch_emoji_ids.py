@@ -34,7 +34,7 @@ from pathlib import Path
 from emojikit.build_pack import (REPAINT_MODES, ingest_exit_code, load_env,
                         repaintable_gate)
 from emojikit.telegram_api import (Telegram)
-from emojikit import identity, media
+from emojikit import identity, media, repaint
 from emojikit.catalog import Catalog, DEFAULT_PHASH_THRESHOLD, phash_threshold_arg
 from emojikit.ingest import store_media
 from emojikit.logsetup import record_exit_code, redact, setup_logging
@@ -197,7 +197,7 @@ def fetch_ids(tg: Telegram, cat: Catalog, ids: list[str], data_dir: Path,
             # byte-identical clone of the source sticker. Before the
             # fingerprint, so the key describes what is actually on disk.
             media.reencode_in_place(tmp, fmt)
-            if recolour and media.repaint_in_place(tmp, fmt, tint):
+            if recolour and repaint.repaint_in_place(tmp, fmt, tint):
                 keywords.append(f"tint:#{tint[0]:02X}{tint[1]:02X}{tint[2]:02X}")
                 counts["repainted"] += 1
             # One decode for both keys -- see identity.fingerprint.
@@ -252,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
     tint = None
     if args.tint:
         try:
-            tint = media.parse_tint(args.tint)
+            tint = repaint.parse_tint(args.tint)
         except media.MediaError as exc:
             log.error("%s", exc)
             return 2
