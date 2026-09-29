@@ -256,7 +256,7 @@ class VerifyLogosFix(unittest.TestCase):
 
     def test_a_definite_failure_leaves_the_oracle_untouched(self):
         tg, _ = self._session(["a", OLD_CID, "c"], ["a", NEW_CID, "c"])
-        real = tg._call
+        real = tg.call
 
         def reject(method, *a, **kw):
             # _call raises RuntimeError only once the change is verified NOT applied.
@@ -264,7 +264,7 @@ class VerifyLogosFix(unittest.TestCase):
                 raise RuntimeError("replaceStickerInSet failed: STICKER_INVALID")
             return real(method, *a, **kw)
 
-        with mock.patch.object(tg, "_call", reject):
+        with mock.patch.object(tg, "call", reject):
             self.assertFalse(self.mod.fix_one(tg, 42, self.sets, self.map_path,
                                               self.emoji, "btc"))
         self.assert_oracle_untouched()

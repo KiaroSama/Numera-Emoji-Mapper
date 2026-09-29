@@ -61,9 +61,9 @@ class DownloadLiveTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def _run(self, tg, session, cache):
-        with mock.patch.object(remap_ids.requests, "Session", lambda: session):
-            return remap_ids.download_live(tg, "TOKEN123", [{"index": 1, "name": "s1"}],
-                                           cache, self.cache_path)
+        tg.session = session
+        return remap_ids.download_live(tg, [{"index": 1, "name": "s1"}],
+                                       cache, self.cache_path)
 
     def test_failed_sticker_leaves_set_incomplete_and_is_retried(self):
         tg = FakeTelegram({"s1": [_sticker("a"), _sticker("b")]})
@@ -173,13 +173,13 @@ class MainApplyTest(unittest.TestCase):
         (self.emoji / f"{name}.png").write_bytes(png)
 
     def _main(self, tg, session, *extra):
+        tg.session = session
         argv = ["remap_ids", "--emoji-dir", str(self.emoji),
                 "--state", str(self.dir / "state.json"),
                 "--cache", str(self.dir / "cache.json"),
                 "--out", str(self.out), "--candidates", str(self.cand), *extra]
         with mock.patch.object(remap_ids, "Telegram", lambda token: tg), \
                 mock.patch.object(remap_ids, "PACK_LOCK", self.pack_lock), \
-                mock.patch.object(remap_ids.requests, "Session", lambda: session), \
                 mock.patch.object(remap_ids, "load_env", lambda: None), \
                 mock.patch.object(remap_ids, "setup_logging", lambda *a, **k: None), \
                 mock.patch.object(remap_ids.time, "sleep", lambda s: None), \
@@ -298,6 +298,7 @@ class ApplyIsSerialisedAgainstThePackFamily(unittest.TestCase):
         self.tmp.cleanup()
 
     def _main(self, tg, session):
+        tg.session = session
         argv = ["remap_ids", "--emoji-dir", str(self.emoji),
                 "--state", str(self.dir / "state.json"),
                 "--cache", str(self.dir / "cache.json"),
@@ -306,7 +307,6 @@ class ApplyIsSerialisedAgainstThePackFamily(unittest.TestCase):
                 "--max-distance", "100", "--apply"]
         with mock.patch.object(remap_ids, "Telegram", lambda token: tg), \
                 mock.patch.object(remap_ids, "PACK_LOCK", self.pack_lock), \
-                mock.patch.object(remap_ids.requests, "Session", lambda: session), \
                 mock.patch.object(remap_ids, "load_env", lambda: None), \
                 mock.patch.object(remap_ids, "setup_logging", lambda *a, **k: None), \
                 mock.patch.object(remap_ids.time, "sleep", lambda s: None), \

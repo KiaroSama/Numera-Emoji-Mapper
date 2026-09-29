@@ -32,6 +32,10 @@ sys.path.insert(0, str(ROOT))
 
 from PIL import Image  # noqa: E402
 
+# Killing a hung ffmpeg through a .bat grandchild is a Windows-only branch; only
+# the windows-safety job reaches it.
+RUNS_ON_NATIVE_WINDOWS = True
+
 from emojikit import add_media  # noqa: E402
 from emojikit.build_pack import EXIT_FAILED, EXIT_USAGE  # noqa: E402
 from emojikit import identity, media  # noqa: E402

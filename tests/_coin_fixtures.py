@@ -170,11 +170,26 @@ class LiveSetsTelegram:
             self.on_read()
         return {"stickers": [dict(s) for s in self.sets[name]]}
 
-    def _call(self, method, data=None):
+    # Serves file bytes the way Telegram.download_bytes does: through a
+    # FakeSession the test hands in, an error status raising after "retries".
+    session = None
+
+    def call(self, method, *, data=None, files=None, retries=5,
+             applied_check=None):
         assert method == "getFile", method
         return {"file_path": f"stickers/{data['file_id']}.png"}
 
-    def _safe(self, exc):
+    def download_bytes(self, file_id, retries=5):
+        path = self.call("getFile", data={"file_id": file_id})["file_path"]
+        r = self.session.get(path, timeout=60)
+        try:
+            r.raise_for_status()
+        except requests.HTTPError as exc:
+            # The real client gives up with a message that names no URL.
+            raise RuntimeError(f"download failed for file_id {file_id}") from exc
+        return r.content
+
+    def safe(self, exc):
         return str(exc).replace("TOKEN123", "[REDACTED]")
 
 
