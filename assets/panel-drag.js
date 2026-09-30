@@ -111,6 +111,10 @@ function endDrag(committed){
   if(!committed && dragKey !== null){ applySnapshot(dragSnap,false); }
   for(const k of carried){ const n = cards.get(k); if(n) n.classList.remove('drag'); }
   carried.clear(); dragKey=null; dragSnap=null; aimedPack=undefined;
+  // The tray refuses to re-render while a drag is in progress, and the drop
+  // (which moves a held emoji back into the grid) runs BEFORE this point -- so
+  // without this the card stayed in the tray after it had landed in a pack.
+  renderHolding();
   stopEdgeScroll();
   // Anything still parked is outside the window now that nothing carries it.
   while(park.firstChild) unmountCard(park.firstChild);
