@@ -355,6 +355,28 @@ class TheHoldTrayIsSelectableByHand(PanelPage, unittest.TestCase):
         page.wait_for_timeout(150)
         self.assertEqual(page.evaluate("holdDragKeys.size"), 1)
 
+    def test_a_card_dropped_from_the_tray_into_the_grid_leaves_the_tray(self):
+        """Reported: held emoji dragged back into a pack stayed in the tray.
+
+        The model was right (the emoji was included and drawn in the grid) but
+        the tray skips re-rendering while a drag is in progress, the drop runs
+        before the drag ends, and nothing re-rendered it afterwards. The earlier
+        drop tests called acceptDrop() with no drag in progress, which is
+        exactly the case that never showed it."""
+        page = self.open(fx.synth(12, packs=[1] * 6 + [2] * 6))
+        cards = self.held(page, 1)
+        key = cards.nth(0).get_attribute("data-key")
+        transfer = page.evaluate_handle("() => new DataTransfer()")
+        cards.nth(0).dispatch_event("dragstart", {"dataTransfer": transfer})
+        target = page.locator("#grid .card:not(.logo)").nth(3)
+        target.dispatch_event("dragover", {"dataTransfer": transfer})
+        target.dispatch_event("drop", {"dataTransfer": transfer})
+        page.wait_for_timeout(150)
+        self.assertTrue(page.evaluate(f"ITEMS.find(x => x.key === {key!r}).included"))
+        self.assertEqual(page.locator(f'#holdCards .hcard[data-key="{key}"]').count(), 0,
+                         "a card back in the grid must leave the tray at once")
+        self.assertEqual(page.locator("#holdCount").inner_text(), "0")
+
 
 class ALargeTrayIsWindowed(PanelPage, unittest.TestCase):
     """600 held emoji must not be 600 cards and 600 images in the header."""
