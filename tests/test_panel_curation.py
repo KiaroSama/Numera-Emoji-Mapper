@@ -371,7 +371,6 @@ class TheHoldTrayIsSelectableByHand(PanelPage, unittest.TestCase):
         target = page.locator("#grid .card:not(.logo)").nth(3)
         target.dispatch_event("dragover", {"dataTransfer": transfer})
         target.dispatch_event("drop", {"dataTransfer": transfer})
-        page.wait_for_timeout(150)
         self.assertTrue(page.evaluate(f"ITEMS.find(x => x.key === {key!r}).included"))
         self.assertEqual(page.locator(f'#holdCards .hcard[data-key="{key}"]').count(), 0,
                          "a card back in the grid must leave the tray at once")
