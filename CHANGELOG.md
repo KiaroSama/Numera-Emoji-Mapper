@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A Telegram flood wait longer than `--max-wait` (default 300 s) ends the run with
   exit 3 instead of stalling it.
 
+### Fixed
+
+- A held emoji dropped back into the grid disappears from the holding tray
+  immediately, instead of leaving a stale card there until the next redraw.
+
 ## [2.0.0] - 2026-09-29
 
 ### Breaking
