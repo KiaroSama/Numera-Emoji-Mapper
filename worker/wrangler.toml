@@ -31,5 +31,5 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "numera-emoji-mapper-logs"
-database_id = "3a2331f2-ffce-40d4-9d63-275e6c03ec3c"
+database_id = "bb6300bc-bd90-4f91-b18c-f57d5b139ca1"
 migrations_dir = "migrations"
