@@ -1,4 +1,4 @@
 # The linter, alone: CI's lint step installs just this, and requirements-dev.txt
 # includes it. Pinned so a ruff release cannot turn CI red with no code change;
 # Dependabot proposes the bump.
-ruff==0.16.9
+ruff==0.16.10
