@@ -56,11 +56,16 @@ source folder and the selected bot token differ.
 ## Requirements
 
 - Python 3.11+
+- **Required Rust computation module** (`emojikit._native`): install Rust 1.99+
+  and the platform linker, then run `python scripts/build_native.py` with the
+  project interpreter. Windows needs the MSVC C++ build tools. There is no
+  Python fallback. Rust handles similarity ordering and batch hash shortlisting;
+  media identity, persistence and Telegram operations retain their existing code.
 - A Telegram bot (create one with [@BotFather](https://t.me/BotFather))
 - Your numeric Telegram user id (the pack owner) — press **Start** on the bot once
 - Dependencies in `requirements.txt` (`pip install -r requirements.txt`) — this
-  is the **core** set (requests, Pillow, resvg-py, rlottie-python) and is all the general
-  workflow needs. The coin tool `coins/remap_ids.py` additionally needs numpy,
+  is the **core Python** set (requests, Pillow, resvg-py, rlottie-python), used
+  alongside the required native module. The coin tool `coins/remap_ids.py` additionally needs numpy,
   which lives in `requirements-coins.txt` (a ~20 MB wheel nobody building
   ordinary packs has to install)
 - **ffmpeg + ffprobe** on `PATH` — only required for **video** emoji (`.webm`).
@@ -73,6 +78,7 @@ source folder and the selected bot token differ.
 # 1. Create a virtual environment and install deps
 py -3.11 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe scripts\build_native.py
 # working on the crypto-coin component too? add the coin extra:
 # .venv\Scripts\python.exe -m pip install -r requirements-coins.txt
 

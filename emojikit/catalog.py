@@ -31,6 +31,7 @@ from pathlib import Path
 from . import media_paths
 from .ingest import catalog_identity
 from .maintenance import writer
+from .similarity import require_native
 
 log = logging.getLogger("emojikit.catalog")
 
@@ -129,6 +130,7 @@ class Catalog:
         # Validate before touching the database: an out-of-range threshold
         # silently merges unrelated emoji, and every caller routes through here.
         self.phash_threshold = check_phash_threshold(phash_threshold)
+        require_native()  # fail before a missing native install can touch state
         self.path = Path(db_path)
         # What a relative items.file_path is relative to (see media_paths).
         self.media_base = self.path.parent

@@ -118,13 +118,16 @@ Generated/local-only (gitignored): `collection/`, `logs/`, `build/`, `input/`,
 
 ## 3. Setup (one time)
 
+The native build requires Rust 1.99+ and a platform linker; it is not an optional
+Python dependency. See [the native computation contract](adr/0002-rust-computational-core.md).
+
 ```powershell
 # 1. Create the virtual environment (Python 3.11 is the supported runtime)
 py -3.11 -m venv .venv
-# Core manifest: requests + Pillow + resvg-py + rlottie-python. Everything
-# except one coin tool
-# runs on this alone.
+# Core Python dependencies plus the required Rust computation module.
 .venv\Scripts\python.exe -m pip install -r requirements.txt
+# Rust 1.99+ and a platform linker must already be installed.
+.venv\Scripts\python.exe scriptsuild_native.py
 # Coin extra: numpy, imported only by coins/remap_ids.py (~20 MB wheel + BLAS,
 # so it is not in the core set). Skip it unless you work on coins/.
 .venv\Scripts\python.exe -m pip install -r requirements-coins.txt
@@ -139,6 +142,32 @@ py -3.11 -m venv .venv
 copy .env.example .env
 # edit .env and fill in tokens + owner id (see keys below)
 ```
+
+### Required native computation
+
+`emojikit._native` is a Rust/PyO3 extension, required for the catalog and panel;
+there is no Python fallback. Install Rust 1.99+ and a platform linker (MSVC C++
+build tools on Windows), then run `python scripts/build_native.py` with the
+project interpreter. The installer resolves the checkout from its own path,
+installs maturin into that interpreter, builds a locked release wheel and checks
+the import. It never installs Rust automatically. Rebuild after native-source
+changes. `run.ps1` offers installation; declining or a failed build stops startup.
+`-Check` checks the import without installing or prompting.
+
+Only the exact greedy similarity walk and batch Hamming candidate shortlist
+run in Rust. First-minimum ties and absent hashes retain the old behavior.
+Content-key generation, actual image comparison, signed SQLite hash storage,
+locks, resume state and Telegram mutation/retry paths are unchanged. A candidate
+is still only a candidate, never proof two files are equal.
+
+Build and benchmark tools use the existing UTF-8 UTC logs under `logs/`, with
+redaction and the configured retention policy. `python scripts/benchmark_similarity.py`
+compares five repeated identical-input runs with the source oracle. Optional
+`--catalog collection/catalog.db` reads hashes with SQLite read-only mode, never
+migrating the catalog or calling Telegram. Reported timings are measurements,
+not a universal speed guarantee. For rollback, restore the pre-port application
+in a separate checkout and leave operator data/config in place; this port changes
+no persisted schema, content keys or published identifiers.
 
 `.env` keys:
 
@@ -248,7 +277,7 @@ Every run writes a UTC log to `logs\run_<YYYY-MM-DD_HH-mm-ss>_UTC.log` (startup,
 prereq checks, menu selections, actions, warnings/errors, shutdown — no secret
 values). Non-interactive health check (CI / scripts): `.\run.ps1 -Check`. It
 fails (exit 1) on a missing `.venv`, a Python below 3.11 or a missing core
-dependency, and warns -- by key NAME, never a value -- for every key in
+dependency or required Rust module, and warns -- by key NAME, never a value -- for every key in
 `.env.example` that `.env` leaves unset or empty, with what the key is for.
 Unset keys are warnings: not every workflow needs every key. When the launcher
 has to create `.venv`, it only picks an interpreter that reports 3.11 or newer.

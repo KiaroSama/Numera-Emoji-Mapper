@@ -64,6 +64,14 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
+# Native computation build artifacts
+/native/target/
+/emojikit/_native*.pdb
+/emojikit/_native*.pyd
+/emojikit/_native*.so
+/dist/
+*.whl
+
 # ---------------------------------------------------------------------------
 # Generated images (downloaded/rendered; large, external licenses) and
 # general-pack working directories.

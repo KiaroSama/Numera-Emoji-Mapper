@@ -13,7 +13,8 @@ import re
 from pathlib import Path
 
 from emojikit import operator_config
-from emojikit.catalog import PHASH_BITS, Catalog
+from emojikit.catalog import Catalog
+from emojikit.similarity import greedy_indices
 
 # Deliberately the panel's logger, not this module's: these messages are the
 # panel starting up, and a second logger name would split one run's output.
@@ -35,32 +36,11 @@ def order_by_similarity(items: list) -> list:
         hashed = [it for it in group if it.phash is not None]
         plain = [it for it in group if it.phash is None]
         if hashed:
-            # The walk stays quadratic on purpose: the greedy nearest-neighbour
-            # chain IS the look-alike grouping the panel is for, and every index
-            # that would make it sub-quadratic (LSH buckets, BK-tree pruning)
-            # changes which near-twin ends up next to which. Only the constant
-            # is negotiable, so the distance is inlined rather than called:
-            # ``(a ^ b).bit_count()`` is identity.hamming's exact result, and at
-            # n=3 600 dropping the per-pair call costs 0.48 s instead of 0.92 s
-            # for a byte-identical order. (Against the older string-building
-            # hamming it was 3.7 s.)
-            # ponytail: O(n^2) scan; revisit only if a catalog grows past ~10k
-            # items AND a different grouping is acceptable.
-            remaining = hashed[:]
-            ordered = [remaining.pop(0)]
-            hashes = [it.phash for it in remaining]
-            last = ordered[0].phash
-            while remaining:
-                best, best_d = 0, PHASH_BITS + 1
-                for i, h in enumerate(hashes):
-                    d = (h ^ last).bit_count()
-                    if d < best_d:
-                        best, best_d = i, d
-                        if d == 0:
-                            break   # nothing beats 0, and min() takes the first
-                ordered.append(remaining.pop(best))
-                last = hashes.pop(best)
-            out.extend(ordered)
+            # Bucketing/pruning changes the look-alike chain; only its constant
+            # is negotiable. Rust preserves the first-minimum tie and item order.
+            # ponytail: O(n^2) scan; revisit beyond ~10k only if a different
+            # grouping becomes acceptable.
+            out.extend(hashed[i] for i in greedy_indices([it.phash for it in hashed]))
         out.extend(plain)
     return out
 

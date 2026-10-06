@@ -1,5 +1,15 @@
 # Tests
 
+Build the required native module first with the project interpreter:
+`python scripts/build_native.py` (Rust 1.99+ and the platform linker required).
+CI builds a release wheel before every Python job that uses the catalog/panel.
+`test_native_similarity.py` compares exact indices against source-generated
+fixtures, checks fixture drift, malformed inputs and missing-native failures.
+The Python oracle is test-only, never a production fallback. Regenerate fixtures
+with `python -m tests._similarity_oracle`; changes require reviewing source parity.
+Rust formatting, clippy, unit checks and a repeated benchmark run once in the
+3.11 build job; native parity also runs on Windows and Python 3.12/3.14.
+
 Run from the repository root:
 
 ```powershell

@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- The catalog and Curate panel require the Rust computation extension. Install
+  Rust 1.99+ and the platform linker, then run `python scripts/build_native.py`
+  with the project interpreter; there is no Python computation fallback.
+
 ### Added
+
+- Exact Rust similarity ordering and batch perceptual-hash candidate selection,
+  with source-generated parity fixtures, supported-platform native builds and a
+  read-only benchmark/replay command. Identity and published data are unchanged.
 
 - **`python -m emojikit.plan_apply`** applies the Curate panel's saved pack
   plan to the live packs: dry run by default, `--apply` removes the outgoing
