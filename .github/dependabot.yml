@@ -21,6 +21,14 @@ updates:
       - "dependencies"
       - "worker"
 
+  # Required native computation crate
+  - package-ecosystem: "cargo"
+    directory: "/native"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+
   # GitHub Actions used in workflows
   - package-ecosystem: "github-actions"
     directory: "/"

@@ -306,7 +306,10 @@ function Install-Deps ($py) {
     Write-Step "Installing requirements ..."
     Invoke-Py $py @('-m','pip','install','--upgrade','pip') | Out-Null   # self-upgrade is best-effort
     $code = Invoke-Py $py @('-m','pip','install','-r',(Join-Path $ScriptRoot 'requirements.txt'))
-    if ($code -eq 0) { Write-Ok "Dependencies installed."; return $true }
+    if ($code -eq 0) {
+        $code = Invoke-Py $py @((Join-Path $ScriptRoot 'scripts/build_native.py'))
+        if ($code -eq 0) { Write-Ok "Dependencies and Rust module installed."; return $true }
+    }
     Write-Err "Dependency install failed (exit $code)."
     return $false
 }
@@ -315,7 +318,7 @@ function Install-Deps ($py) {
 # optional tool (coins/remap_ids.py) needs it, so treating it as required here
 # would tell every general-pack user their environment is broken.
 function Test-Deps ($py) {
-    & $py -c "import requests,PIL,resvg_py" *> $null
+    & $py -c "import requests,PIL,resvg_py; from emojikit.similarity import require_native; require_native()" *> $null
     return ($LASTEXITCODE -eq 0)
 }
 
@@ -459,7 +462,7 @@ if ($Check) {
     if (Test-Ffmpeg) { Log-Ok "ffmpeg present (video emoji enabled)." }
     else { Write-Warn "ffmpeg not found: video emoji disabled (winget install Gyan.FFmpeg)." }
     if (-not (Test-Deps $py)) {
-        Write-Err "Some dependencies are missing."
+        Write-Err "Dependencies or required Rust module missing. Install requirements, then run: python scripts/build_native.py (Rust 1.99+ required)."
         Write-Log 'INFO' 'doctor: exit 1'
         exit 1
     }
@@ -479,7 +482,9 @@ if (-not (Test-Deps $py)) {
         # A broken install must not reach the menu: every action would fail on import.
         if (-not (Install-Deps $py)) { Write-Log 'CRITICAL' 'dependency install failed; exiting'; exit 1 }
     } else {
-        Write-Warn "Continuing without the missing dependencies; actions may fail."
+        Write-Err "Cannot continue without dependencies and the required Rust module."
+        Write-Log 'INFO' 'dependency installation declined; exit 1'
+        exit 1
     }
 }
 Check-Env $py            # logs .env status (warns only if missing)

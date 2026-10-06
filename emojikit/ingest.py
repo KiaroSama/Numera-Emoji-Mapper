@@ -11,6 +11,7 @@ from pathlib import Path
 from emojikit import identity
 from emojikit.errors import MediaError
 from emojikit.packstate import write_json_atomic
+from emojikit.similarity import near_indices
 
 
 def equivalent_files(a: Path, b: Path, fmt: str) -> bool | None:
@@ -34,15 +35,15 @@ def catalog_identity(cat, key: str, fmt: str, path: Path,
     lookup = f"{prefix}:{digest.rsplit(':', 1)[-1]}"
     matches = []
     unknown = False
-    for item in cat.all_items(fmt):
+    items = cat.all_items(fmt)
+    near = set(near_indices([it.phash for it in items], phash, cat.phash_threshold)) \
+        if phash is not None and cat.phash_threshold >= 0 else set()
+    for i, item in enumerate(items):
         candidate_lookup = item.content_key
         if candidate_lookup.count(":") == 2:
             candidate_lookup = f"{prefix}:{candidate_lookup.rsplit(':', 1)[-1]}"
         exact = item.content_key == key or candidate_lookup == lookup
-        near = (cat.phash_threshold >= 0 and phash is not None
-                and item.phash is not None
-                and identity.hamming(item.phash, phash) <= cat.phash_threshold)
-        if not exact and not near:
+        if not exact and i not in near:
             continue
         same = equivalent_files(Path(item.file_path), path, fmt)
         if same is True:

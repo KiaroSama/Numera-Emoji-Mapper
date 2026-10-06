@@ -1,0 +1,18 @@
+[build-system]
+requires = ["maturin==1.15.0"]
+build-backend = "maturin"
+
+[project]
+name = "numera-emoji-core"
+version = "2.0.0"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+description = "Native computation for Numera Emoji Mapper"
+
+[tool.maturin]
+manifest-path = "native/Cargo.toml"
+module-name = "emojikit._native"
+python-source = "."
+python-packages = ["emojikit"]
+include = [{ path = "native/Cargo.lock", format = "sdist" }]
+exclude = ["**/.env*", "**/secrets.md", "**/.ignoreme/**", "**/explain-AI.md", ".ai/**", ".claude/**", ".kiro/**", ".codex/**", ".agents/**", ".specify/**", "specs/**", "plans/**", "private/**", "collection/**", "packs/**", "logs/**", ".backups/**", "graphify-out/**", ".codebase-memory/**"]

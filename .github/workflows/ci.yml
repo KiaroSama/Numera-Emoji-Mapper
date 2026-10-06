@@ -78,6 +78,13 @@ jobs:
       - name: Unit tests (vitest)
         run: npx vitest run
 
+      - name: Dependency advisories and offline packaging
+        env:
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          npm audit --audit-level=high
+          npx wrangler deploy --dry-run --outdir .wrangler/dry-run
+
   # The panel's browser suite drives the real page in headless Chromium. Its own
   # job for the same reason as the Worker's: it tests JavaScript, so running it
   # once per Python version would download Chromium twice to prove the same
@@ -100,6 +107,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Select supported Rust toolchain
+        run: rustup default 1.99.0
+
+      - name: Build required Rust computation module
+        run: python scripts/build_native.py
 
       # `--with-deps` runs apt-get under sudo to install Chromium's system
       # libraries. It was forbidden on the old self-hosted runner, which had no
@@ -163,6 +176,12 @@ jobs:
           pip install -r requirements.txt -r requirements-coins.txt
           pip install -r requirements-lint.txt
 
+      - name: Select supported Rust toolchain
+        run: rustup default 1.99.0
+
+      - name: Build required Rust computation module
+        run: python scripts/build_native.py
+
       # INSTALLED here, not merely checked: a hosted runner is a fresh machine
       # with no ffmpeg, where the old self-hosted box had it in its global
       # setup. The `command -v` check afterwards is the load-bearing half --
@@ -191,6 +210,20 @@ jobs:
         run: |
           ./scripts/check.ps1
           exit $LASTEXITCODE
+
+      - name: Rust format, lint and unit checks
+        if: matrix.python-version == '3.11'
+        env:
+          PYO3_PYTHON: python
+          CARGO_BUILD_JOBS: "2"
+        run: |
+          cargo fmt --manifest-path native/Cargo.toml --check
+          cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
+          cargo test --manifest-path native/Cargo.toml --locked -- --test-threads=2
+
+      - name: Similarity benchmark and parity
+        if: matrix.python-version == '3.11'
+        run: python scripts/benchmark_similarity.py
 
       - name: build_pack dry-run (no network)
         run: |
@@ -240,6 +273,11 @@ jobs:
           cache: pip
       - name: Install isolated test dependencies
         run: python -m pip install -r requirements.txt -r requirements-coins.txt
+      - name: Select supported Rust toolchain
+        run: rustup default 1.99.0
+
+      - name: Build required Rust computation module
+        run: python scripts/build_native.py
       - name: Require native Windows and FFmpeg
         shell: pwsh
         run: |
@@ -261,4 +299,4 @@ jobs:
           tests.test_panel_intent_persistence tests.test_video_collision_ingest
           tests.test_entry_point_contracts tests.test_panel_sandbox
           tests.test_sandbox_lifecycle tests.test_atomic_state_files
-          tests.test_media_paths tests.test_media_bounds -v
+          tests.test_media_paths tests.test_media_bounds tests.test_native_similarity -v

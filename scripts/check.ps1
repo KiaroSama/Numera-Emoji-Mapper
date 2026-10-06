@@ -124,12 +124,12 @@ Write-Host "Python: $py" -ForegroundColor DarkGray
 # Everything the gate needs, checked up front and named in ONE line. Each
 # missing piece used to surface as its own red run -- numpy from a test module's
 # import, playwright from the browser suite, ruff from the lint step.
-$needed = @('numpy', 'ruff')
+$needed = @('numpy', 'ruff', 'emojikit._native')
 if ($env:NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS -ne '1') { $needed += 'playwright' }
 $probe = "import importlib.util, sys; sys.exit(0 if all(importlib.util.find_spec(m) for m in sys.argv[1:]) else 1)"
 & $py -c $probe @needed
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[X] Missing check dependencies ($($needed -join ', ') required); install: & `"$py`" -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt; & `"$py`" -m playwright install chromium" -ForegroundColor Red
+    Write-Host "[X] Missing check dependencies ($($needed -join ', ') required); build native: & `"$py`" scripts/build_native.py; install: & `"$py`" -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt; & `"$py`" -m playwright install chromium" -ForegroundColor Red
     exit 2
 }
 
