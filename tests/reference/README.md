@@ -222,7 +222,9 @@ cutover gate. Runtime originals and immutable `tests/oracles` remain preserved.
 
 `behavior.json` records canonical Git source SHA-256 (LF text, not mixed checkout
 line endings) and source-derived normalized AST
-behavior digest for each production-module reference. The normalization ignores
+behavior digest for each production-module reference. Canonical AST JSON avoids
+version-dependent `ast.dump` formatting; empty `type_params` fields introduced in
+Python 3.12 are omitted, while nonempty fields remain significant. The normalization ignores
 imports and only ROOT/OFFSET_FILE assignments; it does not ignore function bodies,
 validation, exception handling, SQL, outputs or control flow. The integrator checked
 source/reference equality before creating these pins. Later reference edits must

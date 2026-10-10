@@ -63,20 +63,7 @@ class NativeConsumerBoundary(unittest.TestCase):
     def test_relocated_references_preserve_source_behavior_and_pinned_oracles(self):
         import hashlib
         import re
-        class RelocationOnly(ast.NodeTransformer):
-            def generic_visit(self, node):
-                # Python 3.12 adds empty type_params to these same source nodes.
-                node._fields = tuple(field for field in node._fields if field != "type_params")
-                return super().generic_visit(node)
-            def visit_Import(self, node):
-                return None
-            def visit_ImportFrom(self, node):
-                return None
-            def visit_Assign(self, node):
-                if any(isinstance(target, ast.Name) and target.id in {"ROOT", "OFFSET_FILE"}
-                       for target in node.targets):
-                    return None
-                return self.generic_visit(node)
+        from tests._reference_behavior import digest
         import json
         sources = json.loads((ROOT / "tests/reference/behavior.json").read_text(encoding="utf-8"))["sources"]
         references = {p.name for p in (ROOT / "tests/reference").glob("*.py")
@@ -85,9 +72,7 @@ class NativeConsumerBoundary(unittest.TestCase):
         for name, evidence in sources.items():
             with self.subTest(reference=name):
                 reference = ROOT / "tests/reference" / name
-                new = RelocationOnly().visit(ast.parse(reference.read_text(encoding="utf-8")))
-                digest = hashlib.sha256(ast.dump(new, include_attributes=False).encode("utf-8")).hexdigest()
-                self.assertEqual(digest, evidence["relocated_behavior_sha256"])
+                self.assertEqual(digest(reference.read_text(encoding="utf-8")), evidence["relocated_behavior_sha256"])
                 source = ROOT / evidence["source"]
                 if source.exists():
                     self.assertEqual(hashlib.sha256(source.read_text(encoding="utf-8").encode("utf-8")).hexdigest(),
@@ -95,9 +80,9 @@ class NativeConsumerBoundary(unittest.TestCase):
         ledger = (ROOT / "tests/oracles/README.md").read_text(encoding="utf-8")
         snapshots = re.findall(r"\| ([\w_]+\.py) \| ([0-9a-f]{64}) \|", ledger)
         self.assertEqual(len(snapshots), 20)
-        for name, digest in snapshots:
+        for name, expected_digest in snapshots:
             with self.subTest(oracle=name):
-                self.assertEqual(hashlib.sha256((ROOT / "tests/oracles" / name).read_bytes()).hexdigest(), digest)
+                self.assertEqual(hashlib.sha256((ROOT / "tests/oracles" / name).read_bytes()).hexdigest(), expected_digest)
 
     def test_all_references_import_with_retired_production_modules_blocked(self):
         import subprocess
