@@ -90,6 +90,7 @@ def execute(request: dict):
                 return not media.is_blank_image(image)
         if fmt == "video":
             media.validate_video(source)
+            return not media.is_blank_video(source)
         else:
             media.validate_tgs(source)
         return True

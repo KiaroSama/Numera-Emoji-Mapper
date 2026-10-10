@@ -18,6 +18,8 @@ impl MediaAdapter {
     pub async fn call(&self, request: Value) -> Result<Value, String> {
         #[cfg(target_os = "linux")]
         verify_inherited_group_bridge(&self.root)?;
+        let codec_config = crate::config::Config::load(self.root.clone())?;
+        let ffmpeg_timeout = codec_config.integer("EMOJI_FFMPEG_TIMEOUT", 300, 1, i64::MAX);
         std::fs::create_dir_all(&self.scratch).map_err(|e| e.to_string())?;
         let directory = loop {
             let id = NEXT.fetch_add(1, Ordering::Relaxed);
@@ -48,6 +50,7 @@ impl MediaAdapter {
             .stderr(Stdio::null())
             .env("PYTHONUTF8", "1")
             .env("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1")
+            .env("EMOJI_FFMPEG_TIMEOUT", ffmpeg_timeout.to_string())
             .env("TEMP", &directory)
             .env("TMP", &directory)
             .env("TMPDIR", &directory);

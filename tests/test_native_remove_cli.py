@@ -18,6 +18,15 @@ RUNS_ON_NATIVE_WINDOWS = True
 
 class NativePlanRemoval(unittest.TestCase):
     def test_budgeted_removal_retires_id_without_starting_an_add(self):
+        self._removal(False)
+
+    def test_unknown_live_state_stops_with_runtime_exit_and_retains_intent(self):
+        self._removal(True)
+
+    def test_flood_wait_keeps_pending_exit_and_planning_refusal_keeps_usage_exit(self):
+        self._removal("flood")
+
+    def _removal(self, unknown):
         self.assertTrue(BINARY.is_file(), "native executable required")
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
             folder = Path(folder).resolve()
@@ -36,6 +45,10 @@ class NativePlanRemoval(unittest.TestCase):
                     "moves": [], "held": [], "per_set": 200}
             (data / "publish_fixture.json").write_text(json.dumps(state), encoding="utf-8")
             (data / "pack_plan.json").write_text(json.dumps(plan), encoding="utf-8")
+            if unknown:
+                (data / "plan_apply_fixture.json").write_text(json.dumps({"version": 1, "base": "fixture",
+                    "intent": {"op": "remove", "key": "a", "set": "fixture1_by_YourEmojiBot", "cid": "111111111"},
+                    "retired": []}), encoding="utf-8")
             live = [{"custom_emoji_id": "111111111", "file_id": "fixture-file", "file_unique_id": "fixture-unique"}]
             observed = []
             class Handler(BaseHTTPRequestHandler):
@@ -60,7 +73,11 @@ class NativePlanRemoval(unittest.TestCase):
                     else:
                         self.send_error(400)
                         return
-                    body = json.dumps({"ok": True, "result": result}).encode("utf-8")
+                    payload = {"ok": True, "result": [] if unknown and method == "getStickerSet" else result}
+                    if unknown == "flood":
+                        payload = {"ok": False, "error_code": 429, "description": "Too Many Requests: retry after 301",
+                                   "parameters": {"retry_after": 301}}
+                    body = json.dumps(payload).encode("utf-8")
                     self.send_response(200)
                     self.send_header("Content-Length", str(len(body)))
                     self.end_headers()
@@ -78,6 +95,23 @@ class NativePlanRemoval(unittest.TestCase):
                     cwd=folder, env=environment, stdin=subprocess.DEVNULL, capture_output=True,
                     encoding="utf-8", timeout=15,
                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                if unknown == "flood":
+                    self.assertEqual(result.returncode, 3, result.stderr)
+                    self.assertIn("FLOOD_WAIT", result.stderr)
+                    self.assertEqual(observed, ["getMe"])
+                    refused = subprocess.run([str(BINARY), "plan-apply", "--max-changes", "0"],
+                        cwd=folder, env=environment, stdin=subprocess.DEVNULL, capture_output=True,
+                        encoding="utf-8", timeout=5)
+                    self.assertEqual(refused.returncode, 2)
+                    self.assertEqual(observed, ["getMe"])
+                    return
+                if unknown:
+                    self.assertEqual(result.returncode, 4, result.stderr)
+                    self.assertNotIn("deleteStickerFromSet", observed)
+                    journal = json.loads((data / "plan_apply_fixture.json").read_text(encoding="utf-8"))
+                    self.assertEqual(journal["intent"]["cid"], "111111111")
+                    self.assertEqual(json.loads((data / "publish_fixture.json").read_text(encoding="utf-8")), state)
+                    return
                 self.assertEqual(result.returncode, 3, result.stderr)
                 self.assertEqual(observed.count("deleteStickerFromSet"), 1)
                 state = json.loads((data / "publish_fixture.json").read_text(encoding="utf-8"))
