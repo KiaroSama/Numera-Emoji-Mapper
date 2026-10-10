@@ -352,7 +352,7 @@ mod platform {
                 ]);
             }
             // /proc enumeration order is not progress; preserve a deterministic signature.
-            let mut rows: Vec<Vec<u64>> = values.chunks_exact(4).map(|row| row.to_vec()).collect();
+            let mut rows = values.as_chunks::<4>().0.to_vec();
             rows.sort();
             Ok(rows.into_iter().flatten().collect())
         }

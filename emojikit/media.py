@@ -315,6 +315,16 @@ def _load_image(src: Path) -> Image.Image:
     return Image.open(src).convert("RGBA")
 
 
+def is_blank_video(path: Path) -> bool:
+    """Check bounded alpha-preserving samples across the clip, not just frame zero."""
+    raw = video_decode.frames_rgba(path, fps=4)
+    frame_bytes = video_decode.FRAME_BYTES
+    if len(raw) < frame_bytes:
+        return False
+    return all(sum(value > VISIBLE_ALPHA for value in raw[start + 3:start + frame_bytes:4])
+               <= BLANK_MAX_VISIBLE for start in range(0, len(raw) - frame_bytes + 1, frame_bytes))
+
+
 def is_blank_image(img: Image.Image) -> bool:
     """True if an image has no meaningful visible pixels.
 

@@ -316,7 +316,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_commit --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store -- --test-threads=1
+        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_commit --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store --test media_config -- --test-threads=1
 
       - name: Native lock, migration, HTTP persistence, identity and CLI regressions
         env:
@@ -334,6 +334,6 @@ jobs:
           tests.test_native_storage_recovery tests.test_native_plan_steps
           tests.test_native_telegram tests.test_native_panel tests.test_native_ingest
           tests.test_native_reconcile tests.test_native_local_cli tests.test_native_fetch_cli
-          tests.test_native_publish_cli tests.test_native_publication tests.test_native_bot
+          tests.test_native_publish_cli tests.test_native_publication tests.test_native_video_visibility tests.test_native_bot
           tests.test_native_bot_poll tests.test_native_preview_codec tests.test_native_plan_cli tests.test_native_plan_status_cli tests.test_native_convert_cli tests.test_native_remove_cli
           tests.test_native_roster tests.test_native_roster_cli tests.test_native_archive_cli tests.test_native_export_cli tests.test_native_status_cli tests.test_native_ticker_cli tests.test_native_identity_cli tests.test_native_migration_cli tests.test_native_ids_cli tests.test_native_reorder_cli -v

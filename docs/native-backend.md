@@ -42,7 +42,10 @@ Existing JSON schemas, content identity and configured logo policy remain contra
 Rust owns SQLite, network transport, application decisions, HTTP, filesystem state
 and reporting. `emojikit/media_bridge.py` is the exact codec/identity boundary for
 Pillow, SVG/Lottie and FFmpeg operations; it must not perform catalog, publishing
-or bot orchestration. JavaScript UI and the Cloudflare Worker remain unchanged.
+or bot orchestration. Codec children receive only validated non-secret codec
+settings (currently `EMOJI_FFMPEG_TIMEOUT`); exported environment settings take
+precedence over project `.env`, while child dotenv loading and credentials remain
+disabled. JavaScript UI and the Cloudflare Worker remain unchanged.
 
 ## Isolated development consumers
 
