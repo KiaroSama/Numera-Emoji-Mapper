@@ -17,6 +17,12 @@ RUNS_ON_NATIVE_WINDOWS = True
 
 class NativeBotPolling(unittest.TestCase):
     def test_rejected_rich_fallback_cursor_and_conflict_exit(self):
+        self._polling(False)
+
+    def test_ambiguous_rich_send_never_sends_a_plain_duplicate(self):
+        self._polling(True)
+
+    def _polling(self, ambiguous):
         self.assertTrue(BINARY.is_file(), "native executable required")
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as directory:
             directory = Path(directory).resolve()
@@ -44,7 +50,7 @@ class NativeBotPolling(unittest.TestCase):
                     elif method == "setMyCommands":
                         result = True
                     elif method == "getUpdates":
-                        if form["offset"] == ["0"]:
+                        if form["offset"] == ["0"] and (not ambiguous or sum(method == "getUpdates" for method, _ in observed) == 1):
                             result = [{"update_id": 7, "message": {"message_id": 1,
                                 "chat": {"id": 111111111, "type": "private"},
                                 "from": {"id": 111111111}, "entities": [
@@ -57,6 +63,11 @@ class NativeBotPolling(unittest.TestCase):
                     elif method == "sendMessage":
                         replies.append(form["text"][0])
                         if len(replies) == 1:
+                            if ambiguous:
+                                import socket
+                                self.connection.shutdown(socket.SHUT_RDWR)
+                                self.close_connection = True
+                                return
                             self.reply({"ok": False, "description": "invalid custom emoji"})
                             return
                         result = {"message_id": 2}
@@ -83,15 +94,29 @@ class NativeBotPolling(unittest.TestCase):
                     stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=20,
                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
                 self.assertEqual(result.returncode, 4, result.stderr)
-                self.assertEqual(json.loads((fixture / "state_emoji_bot.json").read_text(encoding="utf-8")),
-                                 {"offset": 8})
-                self.assertEqual(len(replies), 2)
+                if ambiguous:
+                    self.assertEqual(json.loads((fixture / "state_emoji_bot.json").read_text(encoding="utf-8")),
+                                     {"offset": 8}, "reported unresolved outcome did not persist its cursor")
+                    self.assertIn("reply outcome unresolved; no fallback", result.stderr)
+                    self.assertEqual(len(replies), 1, "ambiguous rich send produced a duplicate")
+                else:
+                    self.assertEqual(json.loads((fixture / "state_emoji_bot.json").read_text(encoding="utf-8")),
+                                     {"offset": 8})
+                    self.assertEqual(len(replies), 2)
+                    self.assertNotIn("<tg-emoji", replies[1])
                 self.assertIn("<tg-emoji", replies[0])
-                self.assertNotIn("<tg-emoji", replies[1])
                 polls = [form for method, form in observed if method == "getUpdates"]
                 self.assertEqual([form["offset"] for form in polls], [["0"], ["8"]])
                 self.assertEqual(json.loads(polls[0]["allowed_updates"][0]),
                                  ["message", "channel_post", "my_chat_member"])
+                if ambiguous:
+                    observed.clear()
+                    restarted = subprocess.run([str(executable), "emoji-bot"], cwd=directory, env=environment,
+                        stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=10,
+                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                    self.assertEqual(restarted.returncode, 4, restarted.stderr)
+                    self.assertEqual(len(replies), 1, "restart resent an acknowledged unresolved reply")
+                    self.assertEqual([form["offset"] for method, form in observed if method == "getUpdates"], [["8"]])
             finally:
                 server.shutdown()
                 server.server_close()
