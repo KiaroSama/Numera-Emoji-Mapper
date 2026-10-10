@@ -16,8 +16,8 @@ from unittest import mock
 
 from tests._panel_fixtures import _make_png
 
-from emojikit import panel
-from emojikit.catalog import Catalog
+from tests.reference import panel
+from tests.reference.catalog import Catalog
 
 
 def _free_port() -> int:

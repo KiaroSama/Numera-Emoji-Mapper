@@ -6,10 +6,10 @@ import sys
 from pathlib import Path
 from unittest import mock
 
-from emojikit import collection_migrate as cm
-from emojikit import migration_bundle
-from emojikit.catalog import Catalog
-from scripts import identity_repair as ir
+from tests.reference import collection_migrate as cm
+from tests.reference import migration_bundle
+from tests.reference.catalog import Catalog
+from tests.reference import identity_repair as ir
 
 
 def _decode(path, fmt):
@@ -33,19 +33,19 @@ def main():
             _hold()
         return 0
     if operation == "hold-publisher":
-        from emojikit import build_collection as publisher
+        from tests.reference import build_collection as publisher
         with mock.patch.object(publisher, "_publish", side_effect=lambda *a, **k: _hold() or 0):
             return publisher.main(["--base", "newfamily", "--title", "Fixture", "--dry-run",
                                    "--no-brand-logo", "--data-dir", str(data)])
     if operation == "hold-archive":
-        from emojikit import pack_archive
+        from tests.reference import pack_archive
         with mock.patch.object(pack_archive, "CATALOG", data / "catalog.db"), \
                 mock.patch.object(pack_archive, "_catalog", side_effect=lambda: _hold() or ({}, {})), \
                 mock.patch.object(pack_archive, "_sets", return_value=[]), \
                 mock.patch.object(pack_archive, "archive_root", return_value=data / "archive"):
             return pack_archive.sync(None)
     if operation == "hold-ingest":
-        from emojikit import add_media
+        from tests.reference import add_media
         from PIL import Image
         image = data / "incoming.png"
         Image.new("RGBA", (100, 100), "red").save(image)
@@ -56,7 +56,7 @@ def main():
         import threading
         from http.server import ThreadingHTTPServer
         from urllib import request
-        from emojikit import panel, panel_save
+        from tests.reference import panel, panel_save
 
         def opening(*args, **kwargs):
             catalog = Catalog(*args, **kwargs)

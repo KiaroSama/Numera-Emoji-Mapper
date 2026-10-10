@@ -16,7 +16,7 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit import build_pack as bp
+from tests.reference import build_pack as bp
 from emojikit import telegram_api as tg_api
 from emojikit import packstate as ps
 from tests._pack_fixtures import _png

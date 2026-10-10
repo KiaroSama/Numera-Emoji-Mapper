@@ -33,7 +33,6 @@ Run with --dry-run first to validate inputs without calling Telegram.
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import logging
 import os
@@ -73,12 +72,8 @@ KEYWORDS_CSV = ROOT / "coins" / "keywords.csv"
 
 def load_keywords(path: Path = KEYWORDS_CSV) -> dict[str, str]:
     """ticker -> 'ticker, name' keyword string (optional; missing file -> {})."""
-    out: dict[str, str] = {}
-    if path and Path(path).is_file():
-        with open(path, encoding="utf-8") as fh:
-            for row in csv.DictReader(fh):
-                out[row["ticker"].lower()] = row.get("keywords") or row["ticker"]
-    return out
+    from emojikit.cli_env import load_keywords as shared_keywords
+    return shared_keywords(path)
 
 
 def _is_coin_source(source_dir: Path) -> bool:

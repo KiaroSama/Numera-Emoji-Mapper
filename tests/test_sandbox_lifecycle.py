@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import sqlite3
+import shutil
 import subprocess
 import sys
 import threading
@@ -17,7 +18,7 @@ from pathlib import Path
 from unittest import mock
 
 from emojikit import sandbox_clone as sc
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 from tests.test_panel_sandbox import SandboxFixture, panel_sandbox
 
 RUNS_ON_NATIVE_WINDOWS = True
@@ -158,9 +159,8 @@ class CloneBoundaries(SandboxFixture):
             observations.append(sc.sweep_stale(self.tmp))
             return result
 
-        def serve(argv, *, reuse_existing):
+        def serve(argv, *, lease_fd):
             directory = Path(argv[argv.index('--data-dir') + 1])
-            self.assertFalse(reuse_existing)
             with Catalog(directory / 'catalog.db') as cat:
                 self.assertEqual(len(cat.all_items()), 1)
             observations.append(sc.sweep_stale(self.tmp))
@@ -168,7 +168,7 @@ class CloneBoundaries(SandboxFixture):
 
         with mock.patch.object(sc, 'write_marker', marked), \
                 mock.patch.object(panel_sandbox.tempfile, 'gettempdir', return_value=str(self.tmp)), \
-                mock.patch.object(panel_sandbox.panel, 'main', serve), \
+                mock.patch.object(panel_sandbox, 'serve_native', serve), \
                 contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(panel_sandbox.main(['--source', str(self.source), '--port', '8799']), 0)
         self.assertEqual(observations, [0, 0])
@@ -239,10 +239,17 @@ class CloneBoundaries(SandboxFixture):
         with socket.socket() as reserve:
             reserve.bind(('127.0.0.1', 0))
             port = reserve.getsockname()[1]
-        code = ('import sys, tests, tempfile; from scripts import panel_sandbox; '
-                'tempfile.gettempdir=lambda:sys.argv[1]; '
-                'raise SystemExit(panel_sandbox.main(sys.argv[2:]))')
-        child = subprocess.Popen([sys.executable, '-c', code, str(self.tmp),
+        from tests.test_native_local_cli import BINARY, ROOT
+        fixture = self.tmp / 'installed-root'
+        (fixture / 'native/runtime').mkdir(parents=True)
+        shutil.copytree(ROOT / 'assets', fixture / 'assets')
+        shutil.copy2(ROOT / 'pyproject.toml', fixture / 'pyproject.toml')
+        shutil.copy2(BINARY, fixture / 'native/runtime' / BINARY.name)
+        shutil.copytree(ROOT / 'emojikit', fixture / 'emojikit', ignore=shutil.ignore_patterns('__pycache__'))
+        code = ('import sys, tests, tempfile; from pathlib import Path; from scripts import panel_sandbox; '
+                'tempfile.gettempdir=lambda:sys.argv[1]; panel_sandbox.ROOT=Path(sys.argv[2]); '
+                'raise SystemExit(panel_sandbox.main(sys.argv[3:]))')
+        child = subprocess.Popen([sys.executable, '-c', code, str(self.tmp), str(fixture),
                                   '--source', str(self.source), '--port', str(port),
                                   '--bot-username', 'FixtureBot'], stdin=subprocess.DEVNULL,
                                  stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
@@ -281,7 +288,24 @@ class CloneBoundaries(SandboxFixture):
             child.kill()
             _, stderr = child.communicate(timeout=10)
         self.assertIsNotNone(clone, stderr)
-        self.assertEqual(sc.sweep_stale(self.tmp), 1)
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            try:
+                with socket.create_connection(('127.0.0.1', port), timeout=.1):
+                    pass
+            except OSError:
+                break
+            time.sleep(.05)
+        else:
+            self.fail('native sandbox still listened after its wrapper died')
+        deadline = time.monotonic() + 10
+        reclaimed = 0
+        while time.monotonic() < deadline:
+            reclaimed = sc.sweep_stale(self.tmp)
+            if reclaimed:
+                break
+            time.sleep(.05)
+        self.assertEqual(reclaimed, 1, 'native lifetime lease did not release after shutdown')
         self.assertFalse(clone.exists())
         self.assertEqual(database_state(self.source / 'catalog.db'), source_before)
 
@@ -290,7 +314,7 @@ class CloneBoundaries(SandboxFixture):
         self.fill()
         before = dict(os.environ)
         with mock.patch.object(panel_sandbox.tempfile, 'gettempdir', return_value=str(self.tmp)), \
-                mock.patch.object(panel_sandbox.panel, 'main', side_effect=RuntimeError('panel startup failed')), \
+                mock.patch.object(panel_sandbox, 'serve_native', side_effect=RuntimeError('panel startup failed')), \
                 contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(RuntimeError, 'startup failed'):
             panel_sandbox.main(['--source', str(self.source), '--port', '8799'])
         self.assertEqual(os.environ, before)

@@ -16,8 +16,8 @@ from unittest import mock
 from pathlib import Path
 
 
-from emojikit import collection_state as cs
-from emojikit import sync_order as so
+from tests.reference import collection_state as cs
+from tests.reference import sync_order as so
 
 
 def _live(*cids: str) -> list[dict]:

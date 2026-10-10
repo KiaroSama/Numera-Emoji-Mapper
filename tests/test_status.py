@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit import pack_archive, pack_manifest, status
+from tests.reference import pack_archive, pack_manifest, status
 
 
 class TheStatusCommand(unittest.TestCase):

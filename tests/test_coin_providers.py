@@ -33,7 +33,7 @@ from unittest import mock
 
 from PIL import Image
 
-from emojikit import build_pack as bp
+from tests.reference import build_pack as bp
 from emojikit import telegram_api as tg_api
 from emojikit import packstate as ps
 from coins import fetch_cmc, fetch_paprika as fp

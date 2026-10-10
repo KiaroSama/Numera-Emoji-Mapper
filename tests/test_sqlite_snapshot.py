@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from emojikit import collection_migrate as cm
+from tests.reference import collection_migrate as cm
 from emojikit import sqlite_snapshot as snapshot
 from tests.test_identity_migration import _Catalog
 

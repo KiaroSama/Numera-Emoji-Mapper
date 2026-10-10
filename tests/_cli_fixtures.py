@@ -78,6 +78,7 @@ def _noise_png_bytes(key: str, size: int = 64) -> bytes:
 
 
 _HELP_RUNNER = """
+import tests
 import runpy, sys
 import emojikit.logsetup as L
 # --help must leave nothing behind: most entry points configure logging BEFORE

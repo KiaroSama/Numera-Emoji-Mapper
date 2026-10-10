@@ -1,0 +1,429 @@
+{
+  "source": "d173116:emojikit/panel_plan.py",
+  "utc": "2026-10-07T00:00:00Z",
+  "cases": [
+    {
+      "name": "empty",
+      "operation": "build",
+      "view": [],
+      "targets": {},
+      "per_set": 200,
+      "expected": {
+        "version": 1,
+        "written_utc": "2026-10-07T00:00:00Z",
+        "per_set": 200,
+        "counts": {},
+        "over_capacity": {},
+        "moves": [],
+        "held": []
+      }
+    },
+    {
+      "name": "moves-held-and-unseen",
+      "operation": "build",
+      "view": [
+        {
+          "key": "a",
+          "pack": 2,
+          "included": true,
+          "label": "😀"
+        },
+        {
+          "key": "b",
+          "pack": 3,
+          "included": false
+        },
+        {
+          "key": "c",
+          "included": true
+        },
+        {
+          "key": "logo",
+          "pack": 1,
+          "isLogo": true
+        },
+        {
+          "key": "no-opinion",
+          "pack": 4,
+          "included": true
+        }
+      ],
+      "targets": {
+        "a": 3,
+        "b": 5,
+        "c": 3,
+        "logo": 2
+      },
+      "per_set": 1,
+      "expected": {
+        "version": 1,
+        "written_utc": "2026-10-07T00:00:00Z",
+        "per_set": 1,
+        "counts": {
+          "3": 2
+        },
+        "over_capacity": {
+          "3": 2
+        },
+        "moves": [
+          {
+            "key": "a",
+            "label": "😀",
+            "from_pack": 2,
+            "to_pack": 3
+          }
+        ],
+        "held": [
+          {
+            "key": "b",
+            "label": "b",
+            "from_pack": 3
+          }
+        ]
+      }
+    },
+    {
+      "name": "scoped-merge-retains-unseen",
+      "operation": "merge",
+      "previous": {
+        "version": 1,
+        "targets": [
+          [
+            "unseen",
+            9
+          ],
+          [
+            "a",
+            2
+          ]
+        ],
+        "known": [
+          "unseen",
+          "a"
+        ],
+        "excluded": [],
+        "moves": [
+          {
+            "key": "unseen",
+            "label": "u",
+            "from_pack": 1,
+            "to_pack": 9
+          }
+        ],
+        "held": [],
+        "logo_slots": {
+          "9": 1
+        }
+      },
+      "view": [
+        {
+          "key": "a",
+          "included": false,
+          "pack": 2
+        },
+        {
+          "key": "new",
+          "included": true
+        },
+        {
+          "key": "logo",
+          "isLogo": true
+        }
+      ],
+      "targets": {
+        "new": 9
+      },
+      "scope": [
+        "a",
+        "new"
+      ],
+      "per_set": 1,
+      "live": null,
+      "expected": {
+        "version": 1,
+        "written_utc": "2026-10-07T00:00:00Z",
+        "per_set": 1,
+        "counts": {
+          "9": 2
+        },
+        "over_capacity": {
+          "9": 3
+        },
+        "moves": [
+          {
+            "key": "unseen",
+            "label": "u",
+            "from_pack": 1,
+            "to_pack": 9
+          }
+        ],
+        "held": [
+          {
+            "key": "a",
+            "label": "a",
+            "from_pack": 2
+          }
+        ],
+        "targets": [
+          [
+            "new",
+            9
+          ],
+          [
+            "unseen",
+            9
+          ]
+        ],
+        "known": [
+          "a",
+          "new",
+          "unseen"
+        ],
+        "excluded": [
+          "a"
+        ],
+        "logo_slots": {
+          "9": 1
+        }
+      }
+    },
+    {
+      "name": "prune-only-with-catalog",
+      "operation": "merge",
+      "previous": {
+        "version": 1,
+        "targets": [
+          [
+            "gone",
+            9
+          ],
+          [
+            "unseen",
+            2
+          ]
+        ],
+        "known": [
+          "gone",
+          "unseen"
+        ],
+        "excluded": [
+          "gone"
+        ],
+        "moves": [],
+        "held": [
+          {
+            "key": "gone",
+            "label": "gone",
+            "from_pack": 9
+          }
+        ],
+        "logo_slots": {
+          "9": 1,
+          "2": 1
+        }
+      },
+      "view": [
+        {
+          "key": "a",
+          "pack": 1,
+          "included": true
+        },
+        {
+          "key": "brand",
+          "pack": 2,
+          "isLogo": true
+        }
+      ],
+      "targets": {
+        "a": 2
+      },
+      "scope": [
+        "a"
+      ],
+      "per_set": 2,
+      "live": [
+        "a",
+        "unseen"
+      ],
+      "expected": {
+        "version": 1,
+        "written_utc": "2026-10-07T00:00:00Z",
+        "per_set": 2,
+        "counts": {
+          "2": 2
+        },
+        "over_capacity": {
+          "2": 3
+        },
+        "moves": [
+          {
+            "key": "a",
+            "label": "a",
+            "from_pack": 1,
+            "to_pack": 2
+          }
+        ],
+        "held": [],
+        "targets": [
+          [
+            "a",
+            2
+          ],
+          [
+            "unseen",
+            2
+          ]
+        ],
+        "known": [
+          "a",
+          "unseen"
+        ],
+        "excluded": [],
+        "logo_slots": {
+          "2": 1
+        }
+      }
+    },
+    {
+      "name": "legacy-explicit-moves",
+      "operation": "targets",
+      "previous": {
+        "moves": [
+          {
+            "key": "a",
+            "to_pack": 3
+          }
+        ],
+        "held": []
+      },
+      "expected": {
+        "a": 3
+      }
+    },
+    {
+      "name": "duplicate-target-refused",
+      "operation": "targets",
+      "previous": {
+        "targets": [
+          [
+            "a",
+            1
+          ],
+          [
+            "a",
+            2
+          ]
+        ],
+        "moves": [],
+        "held": []
+      },
+      "error": "duplicate pack target keys"
+    },
+    {
+      "name": "overlay-does-not-rewrite-live-or-logo",
+      "operation": "overlay",
+      "view": [
+        {
+          "key": "a",
+          "pack": 1,
+          "included": true,
+          "extra": {
+            "kept": 1
+          }
+        },
+        {
+          "key": "b",
+          "pack": 2
+        },
+        {
+          "key": "logo",
+          "pack": 1,
+          "isLogo": true
+        }
+      ],
+      "previous": {
+        "targets": [
+          [
+            "a",
+            3
+          ],
+          [
+            "logo",
+            4
+          ]
+        ],
+        "moves": [],
+        "held": []
+      },
+      "expected": [
+        {
+          "key": "a",
+          "pack": 3,
+          "included": true,
+          "extra": {
+            "kept": 1
+          }
+        },
+        {
+          "key": "b",
+          "pack": 2
+        },
+        {
+          "key": "logo",
+          "pack": 1,
+          "isLogo": true
+        }
+      ]
+    },
+    {
+      "name": "unicode-key-sort",
+      "operation": "merge",
+      "previous": null,
+      "view": [
+        {
+          "key": "é",
+          "included": true
+        },
+        {
+          "key": "a",
+          "included": true
+        },
+        {
+          "key": "😀",
+          "included": true
+        },
+        {
+          "key": "中",
+          "included": true
+        }
+      ],
+      "targets": {
+        "é": 2,
+        "a": 10,
+        "😀": 1,
+        "中": 2
+      },
+      "scope": [
+        "é",
+        "a",
+        "😀",
+        "中"
+      ],
+      "per_set": 200,
+      "live": [],
+      "expected": {
+        "version": 1,
+        "written_utc": "2026-10-07T00:00:00Z",
+        "per_set": 200,
+        "counts": {},
+        "over_capacity": {},
+        "moves": [],
+        "held": [],
+        "targets": [],
+        "known": [],
+        "excluded": [],
+        "logo_slots": {}
+      }
+    }
+  ]
+}

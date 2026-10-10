@@ -11,6 +11,27 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pyo3 = { version = "=0.29.3", features = ["abi3-py311"] }
+serde_json = { version = "=1.0.151", features = ["preserve_order", "arbitrary_precision"] }
+rusqlite = { version = "=0.40.2", features = ["bundled", "backup"] }
+serde = "=1.0.229"
+csv = "=1.4.0"
+base64 = "=0.23.1"
+zip = { version = "=8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+reqwest = { version = "=0.13.5", default-features = false, features = ["blocking", "form", "json", "multipart", "native-tls"] }
+axum = "=0.8.9"
+chrono = { version = "=0.4.45", default-features = false, features = ["clock", "std"] }
+sha1 = "=0.11.0"
+sha2 = "=0.11.0"
+percent-encoding = "=2.3.2"
+getrandom = "=0.4.3"
+tokio = { version = "=1.53.2", features = ["rt-multi-thread", "net", "signal", "time", "sync", "process"] }
+
+[[bin]]
+name = "numera-emoji"
+path = "src/main.rs"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = ["Win32_Storage_FileSystem", "Win32_System_IO", "Win32_Foundation", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_Security", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Com"] }
 
 [profile.release]
 lto = "thin"

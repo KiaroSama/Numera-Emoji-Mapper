@@ -2,7 +2,7 @@
 #
 # The converter writes the name of the file it is working on into a marker file
 # and clears it afterwards, so the marker is a per-file heartbeat. The watchdog
-# gives every single file PERFILE seconds; it no longer watches the output-file
+# gives every single file 120 seconds; it no longer watches the output-file
 # count, which killed a legitimately slow (or blank-result) source just because
 # no new PNG had appeared for 30 seconds.
 #
@@ -11,8 +11,8 @@
 # quarantined, or when the converter itself reports failures -- never pretend a
 # dead run succeeded.
 #
-# This script lives in coins/. The converter lives in emojikit/ and the virtual
-# environment (.venv) stays at the PROJECT ROOT, one level up. Coin images
+# This script lives in coins/. The converter is installed in native/runtime/;
+# the codec environment (.venv) stays at the PROJECT ROOT. Coin images
 # live in coins/logos/{svg,png} and are written to coins/logos/emoji.
 
 # NOT a script-wide SilentlyContinue. That swallowed every failure below,
@@ -27,85 +27,56 @@ $ProjectRoot = Split-Path -Parent $ScriptRoot
 Set-Location -LiteralPath $ScriptRoot
 
 $py       = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
-$convert  = Join-Path $ProjectRoot 'emojikit\make_emoji_pngs.py'
+$convert  = Join-Path $ProjectRoot 'native\runtime\numera-emoji.exe'
+$owner    = Join-Path $ProjectRoot 'scripts\native_convert_owner.py'
 $svgDir   = Join-Path $ScriptRoot 'logos\svg'
 $pngDir   = Join-Path $ScriptRoot 'logos\png'
 $emojiDir = Join-Path $ScriptRoot 'logos\emoji'
 $marker   = Join-Path $emojiDir '.svg_cur'
-$PERFILE  = 120   # seconds one source may take before we call it stuck
-$POLL     = 2
 
 # This script is run directly, not through run.ps1, so the venv it needs may
 # simply not exist yet. Say so in one line instead of watchdogging a process
 # that was never started.
-foreach ($required in @($py, $convert)) {
+foreach ($required in @($py, $convert, $owner)) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
         Write-Host "[watchdog] required file not found: $required"
-        Write-Host "[watchdog] create the project venv and install requirements first (see README)."
+        Write-Host "[watchdog] create the project venv, install requirements and run scripts/build_native.py first (see README)."
         exit 2
     }
-}
-
-# Marker state = "<mtime ticks>|<name>". Any change means real progress.
-# The converter clears and rewrites this file constantly, so both reads can
-# legitimately land on a file that is being replaced.
-function Get-MarkerState ($path) {
-    if (-not (Test-Path -LiteralPath $path)) { return '' }
-    $item = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
-    if (-not $item) { return '' }
-    $text = Get-Content -LiteralPath $path -Raw -ErrorAction SilentlyContinue
-    return "$($item.LastWriteTimeUtc.Ticks)|$text"
 }
 
 $exit = 0
 $quarantined = @()
 $finished = $false
 
-# Pass 1: SVGs (hang-prone) under the watchdog. Start-Process joins -ArgumentList
-# with plain spaces, so every path must carry its own quotes -- this project
-# lives under "G:\Program Files\...".
-$svgArgs = @('-m', 'emojikit.make_emoji_pngs', '--in', "`"$svgDir`"", '--out', "`"$emojiDir`"")
+# Each pass is owned by the selected Python wrapper's private native Job.
+# Its 120s marker-idle and 3600s wall bounds stop and reap the entire tree.
 for ($iter = 1; $iter -le 100; $iter++) {
-    $proc = Start-Process -FilePath $py -ArgumentList $svgArgs -WorkingDirectory $ProjectRoot `
-        -PassThru -NoNewWindow `
-        -RedirectStandardOutput (Join-Path $ScriptRoot 'emoji_conv.txt') -RedirectStandardError (Join-Path $ScriptRoot 'emoji_err.txt')
-    if (-not $proc) {
-        # No process object means nothing is running, so every $proc member
-        # below reads as $null and the watchdog would "supervise" a corpse.
-        Write-Host "[watchdog] could not start '$py' - see emoji_err.txt."
-        exit 2
-    }
-    $state = Get-MarkerState $marker
-    $since = Get-Date
-    $killed = $false
-    while (-not $proc.HasExited) {
-        Start-Sleep -Seconds $POLL
-        $now = Get-MarkerState $marker
-        if ($now -ne $state) { $state = $now; $since = Get-Date; continue }
-        if (((Get-Date) - $since).TotalSeconds -lt $PERFILE) { continue }
-        # Races the converter clearing the marker; '' is a real answer here.
+    & $py $owner --in $svgDir --out $emojiDir --stdout (Join-Path $ScriptRoot 'emoji_conv.txt') --stderr (Join-Path $ScriptRoot 'emoji_err.txt')
+    $code = $LASTEXITCODE
+    if ($code -eq 124) {
         $stuck = "$(Get-Content -LiteralPath $marker -Raw -ErrorAction SilentlyContinue)".Trim()
         if (-not $stuck) { $stuck = '(unknown)' }
-        Stop-Process -Id $proc.Id -Force
         $quarantined += $stuck
-        $killed = $true
-        Write-Host "[watchdog] '$stuck' made no progress for ${PERFILE}s (iter $iter) - killed."
+        Write-Host "[watchdog] '$stuck' made no progress for 120s (iter $iter) - killed and reaped."
+        continue
+    }
+    if ($code -eq 125) {
+        Write-Host '[watchdog] conversion exceeded its 3600s wall bound - see emoji_err.txt'
+        $exit = 1
         break
     }
-    [void]$proc.WaitForExit(10000)   # let the redirected output flush before reading
-    if ($killed) { continue }        # the culprit is quarantined; retry the rest
 
-    # Only a kill justifies a restart. A converter that exited on its own without
-    # printing DONE hit a real error, and rerunning it 99 more times just hides it.
-    # Still being flushed if WaitForExit timed out: absent is not an error here.
+    # Only an owned idle-timeout kill justifies a restart. An ordinary exit
+    # without DONE is an error, not permission to silently retry it.
     $tail = Get-Content 'emoji_conv.txt' -Tail 1 -ErrorAction SilentlyContinue
     if ($tail -match '^DONE:') {
         Write-Host "[watchdog] SVG conversion complete: $tail"
-        if ($proc.ExitCode -gt $exit) { $exit = $proc.ExitCode }
+        if ($code -gt $exit) { $exit = $code }
         $finished = $true
     } else {
-        Write-Host "[watchdog] converter exited (code $($proc.ExitCode)) without finishing - see emoji_err.txt"
-        $exit = if ($proc.ExitCode -gt 1) { $proc.ExitCode } else { 1 }
+        Write-Host "[watchdog] converter exited (code $($code)) without finishing - see emoji_err.txt"
+        $exit = if ($code -gt 1) { $code } else { 1 }
     }
     break
 }
@@ -127,14 +98,16 @@ if (-not $finished) {
     exit $exit
 }
 
-# Pass 2: raster PNGs (fast, no watchdog needed). Also the fallback for SVGs
-# that produced nothing, so it runs even when pass 1 reported failures.
+# Pass 2: PNG fallback gets the same owned process-tree and timeout bounds.
 if (Test-Path -LiteralPath $pngDir) {
-    Push-Location -LiteralPath $ProjectRoot
-    try {
-        & $py -m emojikit.make_emoji_pngs --in $pngDir --out $emojiDir
-        if ($LASTEXITCODE -gt $exit) { $exit = $LASTEXITCODE }
-    } finally { Pop-Location }
+    & $py $owner --in $pngDir --out $emojiDir --stdout (Join-Path $ScriptRoot 'emoji_png_log.txt') --stderr (Join-Path $ScriptRoot 'emoji_png_err.txt')
+    $code = $LASTEXITCODE
+    Get-Content -LiteralPath (Join-Path $ScriptRoot 'emoji_png_log.txt') -ErrorAction SilentlyContinue
+    if ($code -in @(124, 125)) {
+        Write-Host '[watchdog] PNG conversion stopped at its owned timeout - sources need review.'
+        $code = 1
+    }
+    if ($code -gt $exit) { $exit = $code }
 }
 
 exit $exit

@@ -107,7 +107,7 @@ class TestRedaction(unittest.TestCase):
     def test_a_token_env_of_any_name_is_masked(self):
         """--token-env can name a variable logsetup does not know by name."""
         from unittest import mock
-        from emojikit import build_pack as bp
+        from tests.reference import build_pack as bp
         value = "an-unlisted-token-value-for-this-test"
         argv = ["build_pack.py", "--base", "t", "--title", "T", "--user-id", "1",
                 "--source-dir", str(ROOT / "no-such-dir"),

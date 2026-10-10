@@ -188,7 +188,7 @@ def _lock_owner_is_alive(pid: int) -> bool:
 
 
 @contextlib.contextmanager
-def exclusive_lock(path: Path, *, stale_after: float = LOCK_STALE_AFTER):
+def exclusive_lock(path: Path, *, stale_after: float = LOCK_STALE_AFTER, on_acquired=None):
     """Exclusive lock so two runs cannot mutate one pack family at once.
 
     THE OPERATING SYSTEM owns the exclusion, for the whole critical section:
@@ -256,6 +256,8 @@ def exclusive_lock(path: Path, *, stale_after: float = LOCK_STALE_AFTER):
             except OSError:
                 pass
 
+        if on_acquired is not None:
+            on_acquired(fd)
         yield heartbeat
     finally:
         # Release explicitly rather than relying on close: on Windows the two

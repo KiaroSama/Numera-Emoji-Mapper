@@ -18,7 +18,7 @@ import os
 from collections import defaultdict
 from pathlib import Path
 
-from emojikit.build_pack import (load_env)
+from emojikit.cli_env import (load_env)
 from emojikit.telegram_api import (Telegram)
 from emojikit.logsetup import register_secret, setup_logging
 from emojikit.pack_rows import markdown_table

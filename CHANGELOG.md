@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Native local-backend development commands and source-oracle recovery tests.
+  The native installer places the executable outside Cargo build output; the
+  production launcher remains Python pending complete acceptance and cutover.
+
 - Exact Rust similarity ordering and batch perceptual-hash candidate selection,
   with source-generated parity fixtures, supported-platform native builds and a
   read-only benchmark/replay command. Identity and published data are unchanged.

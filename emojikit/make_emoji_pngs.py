@@ -37,10 +37,8 @@ kept as cheap insurance.)
 from __future__ import annotations
 
 import argparse
-import io
 from pathlib import Path
 
-import resvg_py
 from PIL import Image
 
 from emojikit.build_pack import EXIT_USAGE, ingest_exit_code
@@ -135,11 +133,7 @@ def _render_svg(path: Path) -> Image.Image | None:
     so it rendered twice (on white, on black) and solved for alpha per pixel;
     it also could not paint gradients, silently producing a blank image.
     """
-    try:
-        png = resvg_py.svg_to_bytes(svg_path=str(path), width=RENDER)
-    except Exception:  # noqa: BLE001 - a broken SVG must not stop the batch
-        return None
-    return Image.open(io.BytesIO(bytes(png))).convert("RGBA")
+    return media.render_svg(path, RENDER)
 
 
 def _is_blank(img: Image.Image) -> bool:

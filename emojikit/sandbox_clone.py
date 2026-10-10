@@ -160,7 +160,7 @@ def _rebase_media(con: sqlite3.Connection, source: Path, dest: Path, root: Path)
 
 
 @contextmanager
-def _owned_clone(source: Path, dest: Path, *, project_root: Path | None, discard: bool):
+def _owned_clone(source: Path, dest: Path, *, project_root: Path | None, discard: bool, on_lease=None):
     source, raw_dest = Path(source).resolve(), Path(dest)
     # Check the original path before resolving away a dangling symlink.
     if raw_dest.is_symlink():
@@ -172,7 +172,8 @@ def _owned_clone(source: Path, dest: Path, *, project_root: Path | None, discard
     if db.is_symlink() or not db.is_file():
         raise CloneRefused(f"no supported catalog at {db} -- nothing to sandbox")
     _check_destination(source, dest)
-    with exclusive_lock(lifetime_lock_path(dest)):
+    lease_options = {"on_acquired": on_lease} if on_lease is not None else {}
+    with exclusive_lock(lifetime_lock_path(dest), **lease_options):
         # A simultaneous creator may have won after the preflight.
         _check_destination(source, dest)
         made, ready = False, False
@@ -232,7 +233,7 @@ def clone_catalog(source: Path, dest: Path, *, project_root: Path | None = None)
 
 
 @contextmanager
-def sandbox_session(source: Path, dest: Path, *, project_root: Path | None = None):
-    """Own construction, serving and cleanup as one uninterrupted lifetime."""
-    with _owned_clone(source, dest, project_root=project_root, discard=True) as count:
+def sandbox_session(source: Path, dest: Path, *, project_root: Path | None = None, on_lease=None):
+    """Own construction, serving and cleanup; optionally borrow the held FD for a child."""
+    with _owned_clone(source, dest, project_root=project_root, discard=True, on_lease=on_lease) as count:
         yield count

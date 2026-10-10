@@ -36,7 +36,7 @@ sys.path.insert(0, str(ROOT / "coins"))
 import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from emojikit.build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL, EXIT_USAGE)  # noqa: E402
+from tests.reference.build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL, EXIT_USAGE)  # noqa: E402
 from emojikit.packstate import (LockBusy, exclusive_lock, pack_family_lock_path, write_json_atomic)  # noqa: E402
 
 from coins import _dedup_plan as rd_cfg  # noqa: E402  - imported for its BASE, see PackFamilyLockTest

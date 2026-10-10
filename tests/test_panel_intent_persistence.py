@@ -13,11 +13,12 @@ from unittest import mock
 
 from PIL import Image
 
-from emojikit import identity, panel, panel_save
-from emojikit.catalog import Catalog
+from emojikit import identity
+from tests.reference import panel, panel_save
+from tests.reference.catalog import Catalog
 from emojikit.maintenance import maintenance
 from emojikit.packstate import LockBusy
-from emojikit.panel_plan import PLAN_NAME, merge_plan
+from tests.reference.panel_plan import PLAN_NAME, merge_plan
 
 
 
@@ -191,9 +192,9 @@ class PanelIntentPersistence(unittest.TestCase):
         self.assertEqual(self.call("/api/order", {"order": self.keys})[0], 409)
 
     def test_actual_video_plan_survives_migration_reload_and_restore(self):
-        from emojikit import collection_migrate as cm
-        from scripts import identity_repair as ir
-        from tests.test_video_collision_ingest import RED, encode
+        from tests.reference import collection_migrate as cm
+        from tests.reference import identity_repair as ir
+        from tests._video_fixtures import RED, encode
 
         media = encode(self.root, "legacy-video", [RED] * 3)
         old = "v:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -229,7 +230,7 @@ class PanelIntentPersistence(unittest.TestCase):
         self.assertEqual(plan["over_capacity"], {"1": 3})
 
     def _refuse_stale_scope(self, change, *, refresh):
-        from emojikit.migration_bundle import signature
+        from tests.reference.migration_bundle import signature
 
         self.assertEqual(self.save()[0], 200)
         old_page = self.page()

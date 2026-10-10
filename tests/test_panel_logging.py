@@ -5,8 +5,8 @@ import io
 import logging
 import unittest
 
-from emojikit import panel, panel_logging
-from emojikit.panel_logging import ClientEventLog
+from tests.reference import panel, panel_logging
+from tests.reference.panel_logging import ClientEventLog
 
 
 class UILogContract(unittest.TestCase):

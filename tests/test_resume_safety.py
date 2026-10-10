@@ -25,7 +25,7 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit import build_pack as bp
+from tests.reference import build_pack as bp
 from emojikit import telegram_api as tg_api
 from emojikit import packstate as ps
 from emojikit import announce
@@ -328,7 +328,7 @@ class AddMediaExitCode(unittest.TestCase):
         self.tmp.cleanup()
 
     def _run(self):
-        from emojikit import add_media
+        from tests.reference import add_media
         argv = ["add_media.py", "--in", str(self.src),
                 "--data-dir", str(self.dir / "data")]
         with mock.patch.object(sys, "argv", argv):
@@ -383,7 +383,7 @@ class LinksDestination(unittest.TestCase):
         The two collector-side modules deliberately do not import
         ``links_chat_id`` any more: what they cannot reach, they cannot misuse.
         """
-        from emojikit import build_collection, collection_notify
+        from tests.reference import build_collection, collection_notify
         import coins.rebuild_dedup as rd
         for module in (bp, collection_notify, rd):
             self.assertIs(module.announce_packs, announce.announce_packs,

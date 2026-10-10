@@ -18,10 +18,10 @@ from pathlib import Path
 
 from PIL import Image
 
-from emojikit import build_collection as bc
-from emojikit import collection_state as cs
+from tests.reference import build_collection as bc
+from tests.reference import collection_state as cs
 from emojikit import identity, media
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 from emojikit.cli_env import EXIT_USAGE
 from unittest import mock
 from tests._bc_fixtures import FakeTG, _CatalogFixture, _main

@@ -130,9 +130,9 @@ def _sticker(fuid: str, cid: str) -> dict:
 import tempfile  # noqa: E402
 import unittest  # noqa: E402
 from unittest import mock  # noqa: E402
-from emojikit import build_collection as bc  # noqa: E402
+from tests.reference import build_collection as bc  # noqa: E402
 from emojikit import identity  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
+from tests.reference.catalog import Catalog  # noqa: E402
 
 
 SET = "pks1_by_YourEmojiBot"

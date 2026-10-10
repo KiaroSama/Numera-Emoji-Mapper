@@ -1,0 +1,136 @@
+{
+  "source": "d173116:pack_manifest._row",
+  "cases": [
+    {
+      "name": "new",
+      "pos": 0,
+      "st": {
+        "custom_emoji_id": "111111111",
+        "file_id": "f",
+        "file_unique_id": "u",
+        "emoji": "😀"
+      },
+      "is_logo": false,
+      "label": "fixture",
+      "sources": [
+        "222222222"
+      ],
+      "key": "s:a",
+      "prior": null,
+      "expected": {
+        "index": 0,
+        "slot": 1,
+        "custom_emoji_id": "111111111",
+        "previous_custom_emoji_ids": [],
+        "history_key": "s:a",
+        "glyph": "😀",
+        "format": "static",
+        "role": "emoji",
+        "name": "fixture",
+        "source_emoji_ids": [
+          "222222222"
+        ]
+      }
+    },
+    {
+      "name": "replacement-appends-previous-id",
+      "pos": 2,
+      "st": {
+        "custom_emoji_id": "333333333",
+        "file_id": "g",
+        "file_unique_id": "v",
+        "is_video": true
+      },
+      "is_logo": false,
+      "label": "video",
+      "sources": [
+        "222222222"
+      ],
+      "key": "v:a",
+      "prior": {
+        "id": "111111111",
+        "history": [
+          "000000000",
+          "333333333",
+          "111111111"
+        ]
+      },
+      "expected": {
+        "index": 2,
+        "slot": 3,
+        "custom_emoji_id": "333333333",
+        "previous_custom_emoji_ids": [
+          "000000000",
+          "333333333",
+          "111111111"
+        ],
+        "history_key": "v:a",
+        "glyph": null,
+        "format": "video",
+        "role": "emoji",
+        "name": "video",
+        "source_emoji_ids": [
+          "222222222"
+        ]
+      }
+    },
+    {
+      "name": "logo-id-from-live",
+      "pos": 0,
+      "st": {
+        "custom_emoji_id": "444444444",
+        "file_id": "logo",
+        "file_unique_id": "logo-u"
+      },
+      "is_logo": true,
+      "label": "brand logo",
+      "sources": [],
+      "key": "__brand_logo__",
+      "prior": null,
+      "expected": {
+        "index": 0,
+        "slot": 1,
+        "custom_emoji_id": "444444444",
+        "previous_custom_emoji_ids": [],
+        "history_key": "__brand_logo__",
+        "glyph": null,
+        "format": "static",
+        "role": "brand-logo",
+        "name": "brand logo",
+        "source_emoji_ids": []
+      }
+    },
+    {
+      "name": "unchanged-id-no-history-copy",
+      "pos": 1,
+      "st": {
+        "custom_emoji_id": "111111111",
+        "is_animated": true
+      },
+      "is_logo": false,
+      "label": "animated",
+      "sources": [],
+      "key": "a:a",
+      "prior": {
+        "id": "111111111",
+        "history": [
+          "222222222"
+        ]
+      },
+      "expected": {
+        "index": 1,
+        "slot": 2,
+        "custom_emoji_id": "111111111",
+        "previous_custom_emoji_ids": [
+          "222222222"
+        ],
+        "history_key": "a:a",
+        "glyph": null,
+        "format": "animated",
+        "role": "emoji",
+        "name": "animated",
+        "source_emoji_ids": []
+      }
+    }
+  ]
+}

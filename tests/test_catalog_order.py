@@ -10,7 +10,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 
 def _png(p: Path):

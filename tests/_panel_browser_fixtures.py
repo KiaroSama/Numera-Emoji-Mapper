@@ -17,11 +17,15 @@ from functools import lru_cache
 import io
 import os
 import re
+import signal
+import socket
 import sqlite3
+import subprocess
+import sys
 import tempfile
-import threading
+import time
 import unittest
-from http.server import ThreadingHTTPServer
+from urllib import request
 from pathlib import Path
 
 from PIL import Image
@@ -29,11 +33,10 @@ from PIL import Image
 from tests._panel_fixtures import ROOT
 
 
-from emojikit import panel
-from emojikit import panel_view
-from emojikit.catalog import Catalog
+from tests.reference import panel_view
+from tests.reference.script_json import json_for_script
+from tests.reference.catalog import Catalog
 
-TOKEN = "test-token-value"
 VIEWPORT = {"width": 1200, "height": 900}
 OPT_OUT = "NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS"
 HOWTO = (f"the panel browser tests need playwright and Chromium:\n"
@@ -142,14 +145,6 @@ Object.defineProperty(window, 'localStorage', {configurable: true, get: boom});
 """
 
 
-class _Server(ThreadingHTTPServer):
-    # The panel's own server listens with the same backlog. The stdlib's 5
-    # refused connections while a page opened its seven scripts and a screen of
-    # previews at once, and a refused script surfaced as "snapshot is not
-    # defined" in whichever test happened to be running on a busy machine.
-    request_queue_size = 64
-
-
 class Harness:
     """One browser, one served panel, for the life of a test class."""
 
@@ -157,6 +152,10 @@ class Harness:
         self.catalog_size = catalog_size
         self.browser = None
         self._pw = None
+        self.process = None
+        self.job = None
+        self.capture = None
+        self.tmp = None
 
     def start(self) -> None:
         self._pw = sync_playwright().start()
@@ -166,41 +165,89 @@ class Harness:
             self.browser = self._pw.chromium.launch(headless=True, channel=channel)
         except Exception as exc:         # re-raised, with the cure attached
             self._pw.stop()
+            self._pw = None
             raise RuntimeError(HOWTO) from exc
 
-        # Windows test artifacts stay under the project; CI uses the same layout.
-        temp_root = ROOT / "logs" / "test-temp"
-        temp_root.mkdir(parents=True, exist_ok=True)
-        self.tmp = tempfile.TemporaryDirectory(dir=temp_root)
-        self.data = Path(self.tmp.name)
-        self.db = self.data / "catalog.db"
-        with Catalog(self.db) as cat:
-            for i in range(self.catalog_size):
-                img = self.data / "media" / "static" / f"i{i}.png"
-                img.parent.mkdir(parents=True, exist_ok=True)
-                Image.new("RGBA", (40, 40), (9 * i % 256, 20, 30, 255)).save(img, "PNG")
-                cat.add(content_key=f"s:item{i:030d}", fmt="static", file_path=img,
-                        keywords=[f"item{i}"])
-            view, by_key, hidden = panel.build_view(cat, "")
-        self.png = (self.data / "media" / "static" / "i0.png").read_bytes()
-        handler = panel.make_handler(view, by_key, self.db, TOKEN, hidden=hidden)
-        self.httpd = _Server(("127.0.0.1", 0), handler)
-        self.url = f"http://127.0.0.1:{self.httpd.server_address[1]}/"
-        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
-        self.thread.start()
+        try:
+            # Windows test artifacts stay under the project; CI uses the same layout.
+            temp_root = ROOT / "logs" / "test-temp"
+            temp_root.mkdir(parents=True, exist_ok=True)
+            self.tmp = tempfile.TemporaryDirectory(dir=temp_root)
+            self.data = Path(self.tmp.name).resolve()
+            self.db = self.data / "catalog.db"
+            with Catalog(self.db) as cat:
+                for i in range(self.catalog_size):
+                    img = self.data / "media" / "static" / f"i{i}.png"
+                    img.parent.mkdir(parents=True, exist_ok=True)
+                    Image.new("RGBA", (40, 40), (9 * i % 256, 20, 30, 255)).save(img, "PNG")
+                    cat.add(content_key=f"s:item{i:030d}", fmt="static", file_path=img,
+                            keywords=[f"item{i}"])
+            self.png = (self.data / "media" / "static" / "i0.png").read_bytes()
+            with socket.socket() as reservation:
+                reservation.bind(("127.0.0.1", 0))
+                port = reservation.getsockname()[1]
+            self.url = f"http://127.0.0.1:{port}/"
+            binary = ROOT / "native/target/debug" / ("numera-emoji.exe" if os.name == "nt" else "numera-emoji")
+            if not binary.is_file():
+                raise RuntimeError("Build the native panel executable before browser acceptance.")
+            self.capture = (self.data / "server-output.txt").open("w+b")
+            if os.name == "nt":
+                from scripts.build_job import Job
+                self.job = Job()
+            self.process = subprocess.Popen(
+                [str(binary), "panel", "--data-dir", str(self.data), "--port", str(port),
+                 "--no-open", "--bot-username", "YourEmojiBot"],
+                cwd=ROOT, env={**os.environ, "PYO3_PYTHON": sys.executable},
+                stdin=subprocess.DEVNULL, stdout=self.capture, stderr=self.capture,
+                creationflags=(subprocess.CREATE_NO_WINDOW | 4) if os.name == "nt" else 0,
+                start_new_session=os.name != "nt")
+            if self.job:
+                self.job.attach(self.process)
+            deadline = time.monotonic() + 10
+            probe = request.build_opener(request.ProxyHandler({}))
+            while True:
+                if self.process.poll() is not None:
+                    self.capture.seek(0)
+                    raise RuntimeError("Native panel startup failed: " + self.capture.read().decode("utf-8"))
+                try:
+                    with probe.open(self.url + "api/ping", timeout=.25) as response:
+                        if response.status == 200:
+                            break
+                except OSError:
+                    pass
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("Native panel readiness exceeded 10s.")
+                time.sleep(.01)
+        except BaseException:
+            self.stop()
+            raise
 
     def stop(self) -> None:
-        self.httpd.shutdown()
-        self.thread.join(timeout=10)
-        alive = self.thread.is_alive()
-        self.httpd.server_close()
-        self.tmp.cleanup()
-        if self.browser is not None:
-            self.browser.close()
-        if self._pw is not None:
-            self._pw.stop()
-        if alive:
-            raise AssertionError("panel server thread leaked")
+        try:
+            if self.job:
+                self.job.finish()
+            elif self.process:
+                try:
+                    os.killpg(self.process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        finally:
+            try:
+                if self.process:
+                    if self.process.poll() is None:
+                        self.process.kill()
+                    self.process.wait(timeout=10)
+                if self.capture:
+                    self.capture.close()
+            finally:
+                try:
+                    if self.browser is not None:
+                        self.browser.close()
+                    if self._pw is not None:
+                        self._pw.stop()
+                finally:
+                    if self.tmp:
+                        self.tmp.cleanup()
 
     def open(self, items=None, *, init=None, clock=False, on_error=None,
              cleanup=None, media="png", **ctx_args):
@@ -237,7 +284,7 @@ class Harness:
         return page
 
     def _rewrite(self, items):
-        payload = panel._json_for_script(items)
+        payload = json_for_script(items)
 
         def handler(route):
             served = route.fetch()

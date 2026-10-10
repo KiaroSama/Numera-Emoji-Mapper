@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 from emojikit import media_paths  # noqa: E402
-from emojikit.catalog import MEDIA_PATHS_DONE, Catalog  # noqa: E402
+from tests.reference.catalog import MEDIA_PATHS_DONE, Catalog  # noqa: E402
 
 # Case-insensitive path containment is a Windows property; the Linux matrix
 # skips it, so the windows-safety job has to run this module.

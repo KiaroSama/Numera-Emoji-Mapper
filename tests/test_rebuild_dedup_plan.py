@@ -21,7 +21,7 @@ import json
 from unittest import mock
 
 
-from emojikit import build_pack as bp
+from tests.reference import build_pack as bp
 from emojikit import packstate as ps
 from coins import rebuild_dedup as rd
 from coins import _dedup_plan as cfg

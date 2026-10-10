@@ -9,7 +9,7 @@ from __future__ import annotations
 
 
 
-from emojikit import panel as p
+from tests.reference import panel as p
 
 PAGE = p.PAGE
 SCRIPT = p.SCRIPT

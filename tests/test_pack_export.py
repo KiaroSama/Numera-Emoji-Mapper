@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit import pack_archive, pack_export, pack_manifest
+from tests.reference import pack_archive, pack_export, pack_manifest
 from tests._media_fixtures import make_png
 
 KA = "s:" + "a" * 32

@@ -69,7 +69,7 @@ class TheLauncherPassesOnlyRealFlags(unittest.TestCase):
             if not flags:
                 continue            # nothing passed, nothing to check (emoji_bot)
             with self.subTest(module=module):
-                text = cli_help(f"emojikit.{module}", ROOT)
+                text = cli_help(f"tests.reference.{module}", ROOT)
                 missing = sorted(f for f in flags if f not in text)
                 self.assertEqual(missing, [],
                                  f"run.ps1 passes {missing} to emojikit.{module}, "

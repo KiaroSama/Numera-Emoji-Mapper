@@ -60,6 +60,7 @@ WEBM_FPS = 30
 # stalls the whole ingest/publish run with no output and no error.
 FFMPEG_TIMEOUT = 300             # seconds per child; a 3 s emoji encode is <1 s
 _KILL_GRACE = 5                  # seconds allowed to kill and reap a stuck child
+NATIVE_CODEC_GROUP_VERSION = 1   # native owner contains the adapter and every codec child
 
 # Shared "is there anything to see?" rule, also used by the publisher: alpha at
 # or below VISIBLE_ALPHA is invisible in practice, and a handful of stray pixels
@@ -110,7 +111,7 @@ def ff_timeout() -> float:
     """Per-child ffmpeg/ffprobe wall limit; override with EMOJI_FFMPEG_TIMEOUT."""
     # Lazy import: emojikit stays importable without the CLI layer (and this is
     # called once per child process, so the sys.modules lookup is free).
-    from emojikit.build_pack import safe_int_env
+    from emojikit.cli_env import safe_int_env
     return safe_int_env("EMOJI_FFMPEG_TIMEOUT", FFMPEG_TIMEOUT, minimum=1)
 
 
@@ -125,9 +126,9 @@ def _kill_tree(proc: subprocess.Popen) -> None:
         if os.name == "nt":
             subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
                            capture_output=True, check=False, timeout=_KILL_GRACE)
-        else:
-            # start_new_session below makes the child its own group leader, so
-            # this kills its whole tree without touching our own process group.
+        elif os.environ.get("NUMERA_CODEC_OWNED_GROUP") != "1":
+            # Standalone Python owns a private child group. Native adapter children
+            # instead inherit the Rust-owned group; never signal Python's own group here.
             os.killpg(proc.pid, signal.SIGKILL)
     except (OSError, subprocess.SubprocessError):
         pass                              # already gone, or not ours to signal
@@ -152,7 +153,8 @@ def _run(cmd: list[str], *, capture: bool = False,
     # POSIX: own session so _kill_tree can signal the group. Windows uses
     # taskkill /T instead, which needs no creation flag (and setting one would
     # stop Ctrl+C from reaching the child).
-    extra = {} if os.name == "nt" else {"start_new_session": True}
+    native_owned = os.environ.get("NUMERA_CODEC_OWNED_GROUP") == "1"
+    extra = {} if os.name == "nt" else {"start_new_session": not native_owned}
     proc = subprocess.Popen(cmd, stdout=pipe, stderr=pipe, **extra)
     try:
         out, err = proc.communicate(timeout=limit)
@@ -292,12 +294,20 @@ def fit_100(img: Image.Image) -> Image.Image:
     return canvas
 
 
+def render_svg(path: Path, width: int = 256) -> Image.Image | None:
+    """Rasterize straight RGBA without importing the application CLI."""
+    import resvg_py
+    try:
+        png = resvg_py.svg_to_bytes(svg_path=str(path), width=width)
+    except Exception:  # noqa: BLE001 - broken SVG permits a sibling raster fallback
+        return None
+    return Image.open(io.BytesIO(bytes(png))).convert("RGBA")
+
+
 def _load_image(src: Path) -> Image.Image:
     """Decode a raster or SVG source into an RGBA Pillow image."""
     if src.suffix.lower() == ".svg":
-        # The SVG rasterizer is only needed for SVG; import lazily.
-        from emojikit.make_emoji_pngs import _render_svg  # type: ignore
-        img = _render_svg(src)
+        img = render_svg(src)
         if img is None:
             raise MediaError(f"failed to render SVG: {src.name}")
         return img

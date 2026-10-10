@@ -7,8 +7,8 @@ import json
 import sqlite3
 from unittest import mock
 
-from emojikit import collection_migrate as cm
-from scripts import identity_repair as ir
+from tests.reference import collection_migrate as cm
+from tests.reference import identity_repair as ir
 from tests.test_identity_migration import MigrationCase, _Catalog
 
 

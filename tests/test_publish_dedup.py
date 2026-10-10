@@ -25,10 +25,10 @@ from unittest import mock
 import requests
 from PIL import Image
 
-from emojikit import build_collection as bc
+from tests.reference import build_collection as bc
 from emojikit.telegram_api import (AmbiguousUploadError, Telegram)
 from emojikit import identity
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 
 from tests._media_fixtures import make_png as _make_png
@@ -149,7 +149,7 @@ class _FakeServer:
         return _FileResp(self.files.get(url.rsplit("/", 1)[1], b""))
 
 
-@mock.patch("emojikit.build_pack.time.sleep", lambda s: None)
+@mock.patch("tests.reference.build_pack.time.sleep", lambda s: None)
 class VerifiedRetryTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

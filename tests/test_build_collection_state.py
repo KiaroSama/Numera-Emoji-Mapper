@@ -34,12 +34,12 @@ from contextlib import redirect_stdout
 from unittest import mock
 
 
-from emojikit import build_collection as bc
-from emojikit import collection_state as cs
-from emojikit import collection_reconcile as cr
-from emojikit.build_pack import (EXIT_FAILED, EXIT_OK)
+from tests.reference import build_collection as bc
+from tests.reference import collection_state as cs
+from tests.reference import collection_reconcile as cr
+from tests.reference.build_pack import (EXIT_FAILED, EXIT_OK)
 from emojikit.telegram_api import (LiveStateUnknown)
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 from tests._bc_fixtures import (SET, SET2, DownloadingTG, FakeTG,
                                 _CatalogFixture, _main, _sticker)
@@ -89,7 +89,7 @@ class StateFileContract(_CatalogFixture):
         cs.save_json(path, {"base": "pk", "sets": [], "sent": ["first"]})
         # Simulate the process dying at the very end of the write: with a
         # non-atomic write_text the destination is already truncated by then.
-        with mock.patch("emojikit.build_pack.os.replace", side_effect=OSError("boom")):
+        with mock.patch("tests.reference.build_pack.os.replace", side_effect=OSError("boom")):
             with self.assertRaises(OSError):
                 cs.save_json(path, {"base": "pk", "sets": [], "sent": ["second"]})
         self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["sent"],

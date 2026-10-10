@@ -15,42 +15,20 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from emojikit import add_media
-from emojikit import collection_reconcile as cr
-from emojikit import fetch_emoji_ids
-from emojikit import fetch_pack
+from tests.reference import add_media
+from tests.reference import collection_reconcile as cr
+from tests.reference import fetch_emoji_ids
+from tests.reference import fetch_pack
 from emojikit import identity, media, video_decode
-from emojikit.catalog import Catalog
-from emojikit.ingest import store_media
+from tests.reference.catalog import Catalog
+from tests.reference.ingest import store_media
+from tests._video_fixtures import BLUE, RED, TEST_ROOT, encode
 
 
 
 # Claimed by the `windows-safety` CI job: the decoder is a native subprocess with native paths.
 # tests/test_ci_coverage.py enforces the match both ways.
 RUNS_ON_NATIVE_WINDOWS = True
-
-RED = bytes((220, 20, 20, 255)) * (100 * 100)
-BLUE = bytes((20, 20, 220, 255)) * (100 * 100)
-TEST_ROOT = Path(__file__).resolve().parents[1] / "logs"
-
-
-def encode(directory: Path, name: str, frames: list[bytes], *, pts: str = "") -> Path:
-    source = directory / (name + ".rgba")
-    source.write_bytes(b"".join(frames))
-    out = directory / (name + ".webm")
-    # Preserve the intended VFR timestamps AND a real final-frame duration.
-    # FFmpeg 7 otherwise writes duration == final PTS (zero terminal duration),
-    # correctly rejected by the production fail-closed timeline reader.
-    timing = ["-vf", "settb=1/1000,setpts=" + pts,
-              "-fps_mode", "passthrough", "-enc_time_base", "1/1000",
-              "-bsf:v", "setts=duration=33"] if pts else []
-    media._run([media.ffmpeg_path(), "-y", "-v", "error", "-f", "rawvideo",
-                "-pixel_format", "rgba", "-video_size", "100x100", "-framerate", "30",
-                "-i", str(source), *timing, "-c:v", "libvpx-vp9", "-threads", "1",
-                "-cpu-used", "8", "-lossless", "1", "-pix_fmt", "yuva420p",
-                "-auto-alt-ref", "0", str(out)], capture=True, timeout=30)
-    source.unlink()
-    return out
 
 
 class FakeTelegram:

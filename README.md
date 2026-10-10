@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/numera-emoji-mapper-logo.png" alt="Numera Emoji Mapper" width="180">
+<img src="assets/numera-emoji-mapper-logo-circle.png" alt="Numera Emoji Mapper" width="420">
 
 # Numera Emoji Mapper
 
@@ -59,8 +59,9 @@ source folder and the selected bot token differ.
 - **Required Rust computation module** (`emojikit._native`): install Rust 1.99+
   and the platform linker, then run `python scripts/build_native.py` with the
   project interpreter. Windows needs the MSVC C++ build tools. There is no
-  Python fallback. Rust handles similarity ordering and batch hash shortlisting;
-  media identity, persistence and Telegram operations retain their existing code.
+  Python computation fallback. The installer also builds and installs the native
+  development executable outside Cargo build output. The production launcher remains
+  Python until full backend acceptance; see [native backend status](docs/native-backend.md).
 - A Telegram bot (create one with [@BotFather](https://t.me/BotFather))
 - Your numeric Telegram user id (the pack owner) — press **Start** on the bot once
 - Dependencies in `requirements.txt` (`pip install -r requirements.txt`) — this

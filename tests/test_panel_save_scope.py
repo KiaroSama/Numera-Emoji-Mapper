@@ -34,8 +34,8 @@ from urllib import error, request
 from tests._panel_fixtures import _make_png
 
 
-from emojikit import panel as p
-from emojikit.catalog import Catalog
+from tests.reference import panel as p
+from tests.reference.catalog import Catalog
 
 TOKEN = "scope-test-token"
 

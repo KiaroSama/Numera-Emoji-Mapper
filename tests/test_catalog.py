@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 
 class TestCatalogIntegrity(unittest.TestCase):

@@ -1,0 +1,237 @@
+{
+  "source": "d173116:ingest.catalog_identity",
+  "cases": [
+    {
+      "name": "new",
+      "items": [],
+      "comparison": {},
+      "threshold": 2,
+      "incoming": {
+        "content_key": "s:abc",
+        "fmt": "static",
+        "file_path": "incoming",
+        "phash": 0
+      },
+      "collision": "s:collision:abc",
+      "expected": [
+        "s:abc",
+        true
+      ],
+      "calls": []
+    },
+    {
+      "name": "exact-key-is-not-equality",
+      "items": [
+        {
+          "content_key": "s:abc",
+          "fmt": "static",
+          "file_path": "s:abc",
+          "phash": 1
+        }
+      ],
+      "comparison": {
+        "s:abc": false
+      },
+      "threshold": 2,
+      "incoming": {
+        "content_key": "s:abc",
+        "fmt": "static",
+        "file_path": "incoming",
+        "phash": 0
+      },
+      "collision": "s:collision:abc",
+      "expected": [
+        "s:collision:abc",
+        true
+      ],
+      "calls": [
+        "s:abc"
+      ]
+    },
+    {
+      "name": "collision-digest-match",
+      "items": [
+        {
+          "content_key": "s:other:abc",
+          "fmt": "static",
+          "file_path": "s:other:abc",
+          "phash": 1
+        }
+      ],
+      "comparison": {
+        "s:other:abc": true
+      },
+      "threshold": 2,
+      "incoming": {
+        "content_key": "s:abc",
+        "fmt": "static",
+        "file_path": "incoming",
+        "phash": 0
+      },
+      "collision": "s:collision:abc",
+      "expected": [
+        "s:other:abc",
+        false
+      ],
+      "calls": [
+        "s:other:abc"
+      ]
+    },
+    {
+      "name": "near-match",
+      "items": [
+        {
+          "content_key": "s:different",
+          "fmt": "static",
+          "file_path": "s:different",
+          "phash": 1
+        }
+      ],
+      "comparison": {
+        "s:different": true
+      },
+      "threshold": 2,
+      "incoming": {
+        "content_key": "s:abc",
+        "fmt": "static",
+        "file_path": "incoming",
+        "phash": 0
+      },
+      "collision": "s:collision:abc",
+      "expected": [
+        "s:different",
+        false
+      ],
+      "calls": [
+        "s:different"
+      ]
+    },
+    {
+      "name": "unknown-beside-match",
+      "items": [
+        {
+          "content_key": "s:abc",
+          "fmt": "static",
+          "file_path": "s:abc",
+          "phash": 1
+        },
+        {
+          "content_key": "s:different",
+          "fmt": "static",
+          "file_path": "s:different",
+          "phash": 1
+        }
+      ],
+      "comparison": {
+        "s:abc": true,
+        "s:different": null
+      },
+      "threshold": 2,
+      "incoming": {
+        "content_key": "s:abc",
+        "fmt": "static",
+        "file_path": "incoming",
+        "phash": 0
+      },
+      "collision": "s:collision:abc",
+      "error": "catalog identity is undecidable or ambiguous; incoming media was retained",
+      "calls": [
+        "s:abc",
+        "s:different"
+      ]
+    },
+    {
+      "name": "two-matches",
+      "items": [
+        {
+          "content_key": "s:abc",
+          "fmt": "static",
+          "file_path": "s:abc",
+          "phash": 1
+        },
+        {
+          "content_key": "s:different",
+          "fmt": "static",
+          "file_path": "s:different",
+          "phash": 1
+        }
+      ],
+      "comparison": {
+        "s:abc": true,
+        "s:different": true
+      },
+      "threshold": 2,
+      "incoming": {
+        "content_key": "s:abc",
+        "fmt": "static",
+        "file_path": "incoming",
+        "phash": 0
+      },
+      "collision": "s:collision:abc",
+      "error": "catalog identity is undecidable or ambiguous; incoming media was retained",
+      "calls": [
+        "s:abc",
+        "s:different"
+      ]
+    },
+    {
+      "name": "occupied-collision",
+      "items": [
+        {
+          "content_key": "s:abc",
+          "fmt": "static",
+          "file_path": "s:abc",
+          "phash": 1
+        },
+        {
+          "content_key": "s:collision:abc",
+          "fmt": "static",
+          "file_path": "s:collision:abc",
+          "phash": 1
+        }
+      ],
+      "comparison": {
+        "s:abc": false,
+        "s:collision:abc": false
+      },
+      "threshold": 2,
+      "incoming": {
+        "content_key": "s:abc",
+        "fmt": "static",
+        "file_path": "incoming",
+        "phash": 0
+      },
+      "collision": "s:collision:abc",
+      "error": "collision identity is already occupied; incoming media was retained",
+      "calls": [
+        "s:abc",
+        "s:collision:abc"
+      ]
+    },
+    {
+      "name": "disabled-phash",
+      "items": [
+        {
+          "content_key": "s:different",
+          "fmt": "static",
+          "file_path": "s:different",
+          "phash": 1
+        }
+      ],
+      "comparison": {},
+      "threshold": -1,
+      "incoming": {
+        "content_key": "s:abc",
+        "fmt": "static",
+        "file_path": "incoming",
+        "phash": 0
+      },
+      "collision": "s:collision:abc",
+      "expected": [
+        "s:abc",
+        true
+      ],
+      "calls": []
+    }
+  ]
+}

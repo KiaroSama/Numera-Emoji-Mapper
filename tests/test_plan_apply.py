@@ -22,11 +22,12 @@ from unittest import mock
 
 from PIL import Image
 
-from emojikit import build_collection, identity, plan_apply, sync_order
-from emojikit.catalog import Catalog
-from emojikit.collection_state import _lock_path, _state_path, load_state, save_json
+from tests.reference import build_collection, plan_apply, sync_order
+from emojikit import identity
+from tests.reference.catalog import Catalog
+from tests.reference.collection_state import _lock_path, _state_path, load_state, save_json
 from emojikit.packstate import exclusive_lock
-from emojikit.panel_plan import read_plan
+from tests.reference.panel_plan import read_plan
 from emojikit.errors import FloodWaitTooLong
 from emojikit.telegram_api import LiveStateUnknown, SetState, Telegram
 

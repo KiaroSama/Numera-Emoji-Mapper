@@ -50,7 +50,7 @@ log = logging.getLogger("panel")
 
 _MIME = {".webp": "image/webp", ".png": "image/png", ".gif": "image/gif",
          ".webm": "video/webm", ".tgs": "application/gzip"}
-DEFAULT_PORT = 9450   # the panel's home port; panel_sandbox imports it
+from emojikit.cli_env import PANEL_PORT as DEFAULT_PORT  # noqa: E402
 
 MAX_BODY = 4 * 1024 * 1024  # generous for an order list, small enough to bound
 

@@ -55,7 +55,7 @@ def _has_parser(path: Path) -> bool:
 
 
 def _target(path: Path) -> str:
-    return (f"emojikit.{path.stem}" if path.parent.name == "emojikit" else str(path))
+    return (f"tests.reference.{path.stem}" if path.parent.name == "emojikit" else str(path))
 
 
 class TheCliReferenceMatchesTheTools(unittest.TestCase):

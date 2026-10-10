@@ -13,8 +13,9 @@ import unittest
 from pathlib import Path
 
 
-from emojikit import collection_notify, pack_archive, pack_manifest, pack_rows
-from emojikit.catalog import Catalog
+from tests.reference import collection_notify, pack_archive, pack_manifest
+from emojikit import pack_rows
+from tests.reference.catalog import Catalog
 from coins import write_manifests
 from tests._media_fixtures import make_png
 

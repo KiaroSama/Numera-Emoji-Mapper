@@ -14,9 +14,9 @@ from urllib import error, request
 
 from PIL import Image
 
-from emojikit import panel
+from tests.reference import panel
 from emojikit import media
-from emojikit import panel_preview
+from tests.reference import panel_preview
 
 
 LOTTIE = {"v": "5.7.4", "w": 512, "h": 512, "fr": 30, "ip": 0, "op": 30,

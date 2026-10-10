@@ -32,7 +32,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from emojikit.build_pack import (EXIT_OK, EXIT_PARTIAL, load_env)
+from emojikit.cli_env import (EXIT_OK, EXIT_PARTIAL, load_env)
 from emojikit.announce import (announce_packs)
 from emojikit.packstate import (exclusive_lock)
 from emojikit.telegram_api import (AmbiguousUploadError, LiveStateUnknown, SetState, Telegram)

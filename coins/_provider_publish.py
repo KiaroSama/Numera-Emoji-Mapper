@@ -26,7 +26,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from emojikit.build_pack import (load_env, load_keywords, safe_int_env)
+from emojikit.cli_env import (load_env, load_keywords, safe_int_env)
 from emojikit.packstate import (LockBusy, canonical_map_lock, exclusive_lock, make_intent, pack_family_lock_path, write_json_atomic)
 from emojikit.telegram_api import (AmbiguousUploadError, LiveStateUnknown, SetState, Telegram)
 from emojikit.identity import _dhash, hamming

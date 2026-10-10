@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 
-from emojikit.fetch_emoji_ids import (
+from tests.reference.fetch_emoji_ids import (
     collect_ids,
     extract_real_ids,
     within_file_duplicates,

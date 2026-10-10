@@ -19,14 +19,14 @@ from pathlib import Path
 from unittest import mock
 from urllib import error, request
 
-from emojikit import collection_migrate as cm
+from tests.reference import collection_migrate as cm
 from emojikit import media_paths
 from emojikit import packstate
-from emojikit.collection_state import _lock_path
+from tests.reference.collection_state import _lock_path
 from tests.test_identity_migration import MigrationCase
-from scripts import identity_repair as ir
-from emojikit import migration_bundle as bundle
-from emojikit.catalog import Catalog
+from tests.reference import identity_repair as ir
+from tests.reference import migration_bundle as bundle
+from tests.reference.catalog import Catalog
 from emojikit.maintenance import maintenance
 
 
@@ -349,10 +349,10 @@ class ActualWriterOwnership(unittest.TestCase):
                 self.assertEqual(child.returncode, 0, stderr)
 
     def test_pending_journal_blocks_ingest_archive_publisher_and_panel_save(self):
-        from emojikit import add_media
-        from emojikit import build_collection
-        from emojikit import pack_archive
-        from emojikit import panel
+        from tests.reference import add_media
+        from tests.reference import build_collection
+        from tests.reference import pack_archive
+        from tests.reference import panel
         from PIL import Image
 
         image = self.data / "incoming.png"
@@ -408,7 +408,7 @@ class ActualWriterOwnership(unittest.TestCase):
             thread.join(timeout=5)
 
     def test_real_catalog_order_and_unchanged_pack_resume_survive_migration_and_restore(self):
-        from emojikit.collection_reconcile import reconcile_set
+        from tests.reference.collection_reconcile import reconcile_set
         from tests._migration_process import _decode
         keys = ["v:" + f"{i:02x}" * 16 for i in range(3)]
         with Catalog(self.data / "catalog.db") as cat:

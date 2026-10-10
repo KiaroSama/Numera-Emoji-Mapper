@@ -35,9 +35,9 @@ from tests._media_fixtures import HAS_FFMPEG, encode_vp9
 
 from PIL import Image
 
-from emojikit import collection_reconcile as cr
+from tests.reference import collection_reconcile as cr
 from emojikit import identity
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 RED = (220, 20, 20, 255)
 BLUE = (20, 20, 220, 255)

@@ -22,13 +22,14 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit import build_collection as bc
-from emojikit import collection_state as cs
-from emojikit import build_pack as bp
+from tests.reference import build_collection as bc
+from tests.reference import collection_state as cs
+from tests.reference import build_pack as bp
 from emojikit import announce
-from emojikit import collection_media_check, collection_notify, media
+from tests.reference import collection_media_check, collection_notify
+from emojikit import media
 from emojikit.announce import (announce_packs)
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 import io
 from contextlib import redirect_stdout

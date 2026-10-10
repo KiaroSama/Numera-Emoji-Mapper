@@ -13,12 +13,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from emojikit import fetch_emoji_ids
-from emojikit import fetch_pack
+from tests.reference import fetch_emoji_ids
+from tests.reference import fetch_pack
 from emojikit import identity, media
-from emojikit.catalog import Catalog
-from emojikit.ingest import store_media
-from tests.test_video_collision_ingest import FakeTelegram, RED, TEST_ROOT, encode
+from tests.reference.catalog import Catalog
+from tests.reference.ingest import store_media
+from tests.test_video_collision_ingest import FakeTelegram
+from tests._video_fixtures import RED, TEST_ROOT, encode
 
 
 class RefusedDownloadRetention(unittest.TestCase):

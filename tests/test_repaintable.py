@@ -24,11 +24,11 @@ from contextlib import redirect_stderr
 from pathlib import Path
 
 
-from emojikit import build_pack as bp
-from emojikit import fetch_emoji_ids
-from emojikit import fetch_pack
+from tests.reference import build_pack as bp
+from tests.reference import fetch_emoji_ids
+from tests.reference import fetch_pack
 from emojikit import media, repaint
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 from tests.test_fetch_pack_limit import FakeTelegram, _png_bytes
 

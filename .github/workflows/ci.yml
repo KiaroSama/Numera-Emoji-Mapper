@@ -114,6 +114,12 @@ jobs:
       - name: Build required Rust computation module
         run: python scripts/build_native.py
 
+      - name: Build native backend executable for command parity
+        env:
+          PYO3_PYTHON: python
+          CARGO_BUILD_JOBS: "2"
+        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+
       # `--with-deps` runs apt-get under sudo to install Chromium's system
       # libraries. It was forbidden on the old self-hosted runner, which had no
       # passwordless sudo and would have sat on a password prompt until the job
@@ -182,6 +188,12 @@ jobs:
       - name: Build required Rust computation module
         run: python scripts/build_native.py
 
+      - name: Build native backend executable for command parity
+        env:
+          PYO3_PYTHON: python
+          CARGO_BUILD_JOBS: "2"
+        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+
       # INSTALLED here, not merely checked: a hosted runner is a fresh machine
       # with no ffmpeg, where the old self-hosted box had it in its global
       # setup. The `command -v` check afterwards is the load-bearing half --
@@ -240,7 +252,7 @@ jobs:
           with tempfile.TemporaryDirectory(prefix="ci-smoke-", dir="logs") as folder:
               Image.new("RGBA", (100, 100), (0, 128, 255, 255)).save(Path(folder) / "a.png")
               os.environ["GENERAL_BOT_TOKEN"] = "dummy"
-              r = subprocess.run([sys.executable, "-m", "emojikit.build_pack", "--base", "ci",
+              r = subprocess.run([str(Path("native/target/debug/numera-emoji").resolve()), "build-pack", "--base", "ci",
                                   "--title", "CI", "--user-id", "1",
                                   "--source-dir", folder,
                                   "--token-env", "GENERAL_BOT_TOKEN", "--dry-run"],
@@ -282,6 +294,12 @@ jobs:
 
       - name: Build required Rust computation module
         run: python scripts/build_native.py
+
+      - name: Build native backend executable for command parity
+        env:
+          PYO3_PYTHON: python
+          CARGO_BUILD_JOBS: "2"
+        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
       - name: Require native Windows and FFmpeg
         shell: pwsh
         run: |
@@ -294,7 +312,15 @@ jobs:
           if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) {
             throw 'ffmpeg and ffprobe are required for native Windows regressions'
           }
+      - name: Native codec lifecycle regressions
+        env:
+          PYO3_PYTHON: python
+          CARGO_BUILD_JOBS: "2"
+        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_commit --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store -- --test-threads=1
+
       - name: Native lock, migration, HTTP persistence, identity and CLI regressions
+        env:
+          PYO3_PYTHON: python
         run: >-
           python -m unittest
           tests.test_pack_locks tests.test_pack_locks_exclusion
@@ -303,4 +329,11 @@ jobs:
           tests.test_panel_intent_persistence tests.test_video_collision_ingest
           tests.test_entry_point_contracts tests.test_panel_sandbox
           tests.test_sandbox_lifecycle tests.test_atomic_state_files
-          tests.test_media_paths tests.test_media_bounds tests.test_native_similarity -v
+          tests.test_media_paths tests.test_media_bounds tests.test_native_similarity
+          tests.test_native_state tests.test_native_catalog tests.test_native_real_catalog tests.test_native_command_help tests.test_native_package tests.test_native_consumer_boundary tests.test_native_install tests.test_build_process_owner tests.test_media_boundary
+          tests.test_native_storage_recovery tests.test_native_plan_steps
+          tests.test_native_telegram tests.test_native_panel tests.test_native_ingest
+          tests.test_native_reconcile tests.test_native_local_cli tests.test_native_fetch_cli
+          tests.test_native_publish_cli tests.test_native_publication tests.test_native_bot
+          tests.test_native_bot_poll tests.test_native_preview_codec tests.test_native_plan_cli tests.test_native_plan_status_cli tests.test_native_convert_cli tests.test_native_remove_cli
+          tests.test_native_roster tests.test_native_roster_cli tests.test_native_archive_cli tests.test_native_export_cli tests.test_native_status_cli tests.test_native_ticker_cli tests.test_native_identity_cli tests.test_native_migration_cli tests.test_native_ids_cli tests.test_native_reorder_cli -v

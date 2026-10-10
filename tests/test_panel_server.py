@@ -19,8 +19,8 @@ from urllib import error, request
 from tests._panel_fixtures import ROOT, _make_png
 
 
-from emojikit import panel as p
-from emojikit.catalog import Catalog
+from tests.reference import panel as p
+from tests.reference.catalog import Catalog
 
 
 class LoopbackCheck(unittest.TestCase):
@@ -131,7 +131,7 @@ class OnlyOnePanelPerPort(unittest.TestCase):
             probe.bind(("127.0.0.1", 0))
             port = probe.getsockname()[1]
 
-        argv = [sys.executable, "-m", "emojikit.panel", "--data-dir", str(data),
+        argv = [sys.executable, "-m", "tests.reference.panel", "--data-dir", str(data),
                 "--port", str(port), "--no-open", "--bot-username", "FixtureBot"]
         first = subprocess.Popen(argv, stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT, text=True, encoding="utf-8", cwd=ROOT)
