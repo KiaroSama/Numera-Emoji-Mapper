@@ -33,6 +33,7 @@ fn duplicate_tail_refuses_without_overwriting_the_first_verified_id() {
                 Err(e) => panic!("{e}"),
             }
         };
+        socket.set_nonblocking(false).unwrap();
         socket
             .set_read_timeout(Some(Duration::from_secs(3)))
             .unwrap();

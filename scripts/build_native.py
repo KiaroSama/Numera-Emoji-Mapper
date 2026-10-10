@@ -61,6 +61,48 @@ def run(command: list[str], env: dict[str, str], timeout: int) -> subprocess.Com
     return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
+def install_extension(source: Path) -> Path:
+    """Keep auditwheel's relative shared-library layout when checkout shadows pip."""
+    package = ROOT / "emojikit"
+    if package.is_symlink() or source.is_symlink() or not source.is_file():
+        raise RuntimeError("Unsupported native extension path.")
+    package.mkdir(parents=True, exist_ok=True)
+    libraries = source.parent.parent / "numera_emoji_core.libs"
+    if libraries.exists():
+        target = ROOT / libraries.name
+        if libraries.is_symlink() or not libraries.is_dir() or target.is_symlink():
+            raise RuntimeError("Unsupported native shared-library directory.")
+        target.mkdir(exist_ok=True)
+        for dependency in libraries.iterdir():
+            if dependency.is_symlink() or not dependency.is_file():
+                raise RuntimeError("Unsupported native shared-library member.")
+            destination = target / dependency.name
+            if destination.is_symlink():
+                raise RuntimeError("Refusing to replace a linked native shared library.")
+            fd, name = tempfile.mkstemp(prefix=".native-", suffix=".tmp", dir=target)
+            staged = Path(name)
+            try:
+                with os.fdopen(fd, "wb") as output, dependency.open("rb") as input_file:
+                    shutil.copyfileobj(input_file, output)
+                    output.flush()
+                    os.fsync(output.fileno())
+                os.replace(staged, destination)
+            finally:
+                staged.unlink(missing_ok=True)
+    destination = package / source.name
+    if source.is_symlink() or package.is_symlink() or destination.is_symlink():
+        raise RuntimeError("Unsupported native extension path.")
+    fd, name = tempfile.mkstemp(prefix=".native-", suffix=".tmp", dir=package)
+    staged = Path(name)
+    try:
+        os.close(fd)
+        shutil.copy2(source, staged)
+        os.replace(staged, destination)
+    finally:
+        staged.unlink(missing_ok=True)
+    return destination
+
+
 def install_executable(source: Path) -> Path:
     if source.is_symlink() or not source.is_file() or not source.stat().st_size:
         raise RuntimeError("Native executable is missing or unsupported.")
@@ -147,13 +189,7 @@ def main() -> int:
             log.error("Installed wheel has no native module.")
             return 1
         source = matches[0]
-        destination = ROOT / "emojikit" / source.name
-        staged = destination.with_suffix(destination.suffix + ".tmp")
-        try:
-            shutil.copy2(source, staged)
-            staged.replace(destination)
-        finally:
-            staged.unlink(missing_ok=True)
+        install_extension(source)
         from emojikit.similarity import require_native
         require_native()
         result = run(["cargo", "build", "--manifest-path", str(ROOT / "native/Cargo.toml"),
