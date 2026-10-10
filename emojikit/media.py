@@ -60,7 +60,8 @@ WEBM_FPS = 30
 # stalls the whole ingest/publish run with no output and no error.
 FFMPEG_TIMEOUT = 300             # seconds per child; a 3 s emoji encode is <1 s
 _KILL_GRACE = 5                  # seconds allowed to kill and reap a stuck child
-NATIVE_CODEC_GROUP_VERSION = 1   # native owner contains the adapter and every codec child
+# Native owner contains the adapter and every codec child.
+NATIVE_CODEC_GROUP_VERSION = 1
 
 # Shared "is there anything to see?" rule, also used by the publisher: alpha at
 # or below VISIBLE_ALPHA is invisible in practice, and a handful of stray pixels

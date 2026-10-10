@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 from pathlib import Path
 import signal
@@ -11,6 +12,9 @@ import time
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from emojikit.logsetup import record_exit_code, setup_logging  # noqa: E402
+
+log = logging.getLogger("native_convert_owner")
 
 
 def marker_state(marker: Path):
@@ -42,15 +46,19 @@ def run(source: Path, output: Path, stdout: Path, stderr: Path) -> int:
                 job.attach(child)
             while True:
                 try:
-                    return child.wait(timeout=2)
+                    code = child.wait(timeout=2)
+                    log.info("Native conversion attempt exited with code %d", code)
+                    return code
                 except subprocess.TimeoutExpired:
                     now = time.monotonic()
                     current = marker_state(marker)
                     if current != state:
                         state, progressed = current, now
                     if now - started >= 3600:
+                        log.error("Native conversion exceeded the 3600s wall bound")
                         return 125
                     if now - progressed >= 120:
+                        log.error("Native conversion marker made no progress for 120s")
                         return 124
     finally:
         try:
@@ -61,14 +69,22 @@ def run(source: Path, output: Path, stdout: Path, stderr: Path) -> int:
                     os.killpg(child.pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+        except (OSError, RuntimeError) as exc:
+            log.error("Owned conversion tree cleanup failed: %s", exc)
+            raise
         finally:
             if child:
                 if child.poll() is None:
                     child.kill()
-                child.wait(timeout=10)
+                try:
+                    child.wait(timeout=10)
+                except (OSError, subprocess.SubprocessError) as exc:
+                    log.error("Owned conversion child did not finalize: %s", exc)
+                    raise
 
 
 def main() -> int:
+    setup_logging("native_convert_owner")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--in", dest="source", type=Path, required=True)
     parser.add_argument("--out", dest="output", type=Path, required=True)
@@ -76,10 +92,10 @@ def main() -> int:
     parser.add_argument("--stderr", type=Path, required=True)
     args = parser.parse_args()
     try:
-        return run(args.source, args.output, args.stdout, args.stderr)
+        return record_exit_code(run(args.source, args.output, args.stdout, args.stderr))
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
-        print(f"Native converter ownership failed: {exc}", file=sys.stderr)
-        return 1
+        log.error("Native converter ownership failed: %s", exc)
+        return record_exit_code(1)
 
 
 if __name__ == "__main__":
