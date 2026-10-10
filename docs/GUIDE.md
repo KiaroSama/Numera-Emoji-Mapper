@@ -1170,7 +1170,7 @@ triggers the browser's "leave site?" prompt.
 panel does, so a synthetic drag event *is* a write — there is no careful way to
 test it against real data. `scripts/panel_sandbox.py` clones the catalog to a
 temp directory, serves it on the real panel's port + 1 (imported from
-`emojikit.panel.DEFAULT_PORT`, never typed again), and deletes the clone
+the shared `emojikit.cli_env.PANEL_PORT`, never typed again), and deletes the clone
 on exit.
 
 It isolates four things, because cloning the data turned out to be only one of
@@ -1229,15 +1229,19 @@ and an age or a PID is not proof it has stopped. The first sweep matched the
 name prefix and deleted every hit, so starting a second sandbox removed the
 first one's catalog.
 
-**And it isolates the account.** The panel runs in the wrapper's own process
-with `NUMERA_EMOJI_MAPPER_NO_DOTENV=1` -- the flag `load_env()` already honours for the
-test suite -- and with every key `.env.example` names, plus anything
-credential-shaped, stripped from the environment and restored afterwards.
-Without it, a sandbox that had carefully cloned the catalog still called `getMe`
-against live Telegram with the real token, because the panel detects its bot
-username at start-up and an already-exported token needs no dotenv file. Running
-in-process also means killing the wrapper stops the server and drops its lease
-together, and no unidentified listener is ever adopted as the sandbox.
+**And it isolates the account.** The wrapper launches the installed native panel
+with `NUMERA_EMOJI_MAPPER_NO_DOTENV=1` and every key `.env.example` names, plus
+anything credential-shaped, stripped from its environment. An already-exported
+token otherwise needs no dotenv file and could reach live Telegram during bot
+detection. The selected Python interpreter remains only the exact-media codec
+adapter, not the panel application.
+
+The wrapper owns the child's process tree and waits for it before deleting its
+clone. Windows uses a private kill-on-close Job. Linux passes the same locked
+lifetime file description to the server; the server monitors the wrapper's PID
+and start time and keeps that lease through shutdown and codec finalization.
+Killing the wrapper therefore cannot make a still-served clone reclaimable.
+A fresh clone's session identity never authorizes adoption of another listener.
 
 This is cooperative test-data isolation, not an OS boundary against hostile code
 running as you:
