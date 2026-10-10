@@ -48,7 +48,9 @@ fn loopback_router_validates_mutations_and_persists_curation() {
     let item = {
         let mut catalog = Catalog::open(&db, "fixture", &root).unwrap();
         catalog.insert(&json!({"content_key":"s:fixture","fmt":"static","file_path":"./art.png","emojis":["😀"],"keywords":["fixture"]}), "fixture").unwrap();
-        catalog.all(None).unwrap()[0].clone()
+        catalog.insert(&json!({"content_key":"s:unseen","fmt":"static","file_path":"./unseen.png"}), "fixture").unwrap();
+        catalog.inclusion(&["s:unseen".into()]).unwrap();
+        catalog.get("s:fixture").unwrap().unwrap()
     };
     let view = json!({"view":[{"key":"s:fixture","label":"fixture","format":"static","included":true,"pack":1}],"by_key":{},"hidden":0});
     let log = Arc::new(RunLog::open(&root, "panel-fixture", vec![]));
@@ -197,6 +199,25 @@ fn loopback_router_validates_mutations_and_persists_curation() {
             .send()
             .unwrap();
         assert_eq!(unknown.status(), 400);
+        let stale = client
+            .post(format!("{url}/api/save"))
+            .header("x-panel-token", "fixture-token")
+            .json(&json!({"excluded":["s:fixture"]}))
+            .send()
+            .unwrap();
+        assert_eq!(stale.status(), 409);
+        let stale_scope = client
+            .post(format!("{url}/api/save"))
+            .header("x-panel-token", "fixture-token")
+            .json(&json!({"known":["s:missing"],"excluded":[]}))
+            .send()
+            .unwrap();
+        assert_eq!(stale_scope.status(), 409);
+        {
+            let catalog = Catalog::open(&db, "fixture", &root).unwrap();
+            assert_eq!(catalog.get("s:fixture").unwrap().unwrap()["included"], true);
+            assert!(!data.join("pack_plan.json").exists());
+        }
         let owner = _native::ownership::Ownership::acquire(
             &data,
             _native::ownership::Mode::Maintenance,
@@ -220,12 +241,13 @@ fn loopback_router_validates_mutations_and_persists_curation() {
         let status = save.status();
         let body = save.json::<Value>().unwrap();
         assert_eq!(status, 200, "{body}");
-        assert_eq!(body["excluded"], 1);
+        assert_eq!(body["excluded"], 2);
         let catalog = Catalog::open(&db, "fixture", &root).unwrap();
         assert_eq!(
             catalog.get("s:fixture").unwrap().unwrap()["included"],
             false
         );
+        assert_eq!(catalog.get("s:unseen").unwrap().unwrap()["included"], false);
     });
     let _ = stop.send(());
     runtime.block_on(async {
