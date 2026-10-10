@@ -22,6 +22,7 @@ fn loopback_bot_lookup_accepts_only_verified_username_and_cancels_without_waitin
                     Err(e) => panic!("{e}"),
                 }
             };
+            socket.set_nonblocking(false).unwrap();
             socket
                 .set_read_timeout(Some(Duration::from_secs(2)))
                 .unwrap();

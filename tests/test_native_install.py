@@ -14,6 +14,22 @@ RUNS_ON_NATIVE_WINDOWS = True
 
 
 class NativeInstall(unittest.TestCase):
+    def test_checkout_extension_keeps_repaired_wheel_libraries(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
+            root = Path(folder) / "checkout"
+            package = Path(folder) / "installed/emojikit"
+            package.mkdir(parents=True)
+            source = package / "_native.abi3.so"
+            source.write_bytes(b"fixture extension")
+            libraries = package.parent / "numera_emoji_core.libs"
+            libraries.mkdir()
+            (libraries / "libssl-fixture.so").write_bytes(b"fixture shared dependency")
+            with mock.patch.object(build_native, "ROOT", root):
+                destination = build_native.install_extension(source)
+            self.assertEqual(destination.read_bytes(), source.read_bytes())
+            self.assertEqual((root / libraries.name / "libssl-fixture.so").read_bytes(),
+                             b"fixture shared dependency")
+
     def test_installed_binary_runs_after_source_removed_and_failed_replace_preserves_it(self):
         self.assertTrue(BINARY.is_file(), "native executable required")
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:

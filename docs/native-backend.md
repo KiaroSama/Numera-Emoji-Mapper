@@ -15,6 +15,8 @@ Use the selected project interpreter with Rust 1.99+ and the platform linker:
 
 The installer builds the locked release PyO3 wheel, checks its import, explicitly
 builds the `numera-emoji` executable and installs it under `native/runtime/`.
+On Linux, auditwheel-repaired shared libraries are also installed beside the
+checkout package so the extension's relative loader paths remain valid.
 The executable is copied through a unique sibling staging file, flushed and
 SHA-256-verified before replacement. A failed replacement preserves the previous
 installed file. Worker counts respect the existing test/build ceiling.
