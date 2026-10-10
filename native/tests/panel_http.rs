@@ -48,7 +48,12 @@ fn loopback_router_validates_mutations_and_persists_curation() {
     let item = {
         let mut catalog = Catalog::open(&db, "fixture", &root).unwrap();
         catalog.insert(&json!({"content_key":"s:fixture","fmt":"static","file_path":"./art.png","emojis":["😀"],"keywords":["fixture"]}), "fixture").unwrap();
-        catalog.insert(&json!({"content_key":"s:unseen","fmt":"static","file_path":"./unseen.png"}), "fixture").unwrap();
+        catalog
+            .insert(
+                &json!({"content_key":"s:unseen","fmt":"static","file_path":"./unseen.png"}),
+                "fixture",
+            )
+            .unwrap();
         catalog.inclusion(&["s:unseen".into()]).unwrap();
         catalog.get("s:fixture").unwrap().unwrap()
     };

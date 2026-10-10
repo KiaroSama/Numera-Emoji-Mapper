@@ -316,7 +316,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_commit --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store --test media_config -- --test-threads=1
+        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_commit --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test atomic_failure --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store --test media_config -- --test-threads=1
 
       - name: Native lock, migration, HTTP persistence, identity and CLI regressions
         env:
