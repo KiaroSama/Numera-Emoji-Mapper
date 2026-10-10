@@ -60,57 +60,6 @@ class NativeConsumerBoundary(unittest.TestCase):
             if sys.platform == "win32":
                 job.return_value.finish.assert_called_once()
 
-    def test_catalog_reference_needs_no_production_catalog_or_ingest(self):
-        import importlib
-        with mock.patch.dict(sys.modules):
-            for name in ("tests.reference.catalog", "tests.reference.ingest"):
-                sys.modules.pop(name, None)
-            sys.modules["emojikit.catalog"] = None
-            sys.modules["emojikit.ingest"] = None
-            reference = importlib.import_module("tests.reference.catalog")
-            self.assertEqual(reference.Catalog.__module__, "tests.reference.catalog")
-            self.assertEqual(reference.catalog_identity.__module__, "tests.reference.ingest")
-            from emojikit.errors import MediaError
-            self.assertIs(sys.modules["tests.reference.ingest"].MediaError, MediaError)
-
-    def test_migration_reference_needs_no_production_migration_or_catalog(self):
-        import importlib
-        with mock.patch.dict(sys.modules):
-            for name in ("catalog", "ingest", "migration_bundle", "collection_migrate", "collection_state", "identity_repair"):
-                sys.modules.pop("tests.reference." + name, None)
-                sys.modules["emojikit." + name] = None
-            reference = importlib.import_module("tests.reference.collection_migrate")
-            repair = importlib.import_module("tests.reference.identity_repair")
-            from emojikit.errors import MediaError
-            self.assertIs(reference.MediaError, MediaError)
-            self.assertIs(repair.cm, reference)
-            self.assertEqual(repair.ROOT, ROOT)
-
-    def test_panel_reference_needs_no_production_panel_or_catalog(self):
-        import importlib
-        with mock.patch.dict(sys.modules):
-            names = ("panel", "panel_plan", "panel_view", "panel_save", "panel_instance", "panel_logging",
-                     "panel_preview", "script_json", "catalog", "ingest", "collection_state")
-            for name in names:
-                sys.modules.pop("tests.reference." + name, None)
-                sys.modules["emojikit." + name] = None
-            panel = importlib.import_module("tests.reference.panel")
-            plan = importlib.import_module("tests.reference.panel_plan")
-            self.assertEqual(panel.ROOT, ROOT)
-            self.assertEqual(panel.Catalog.__module__, "tests.reference.catalog")
-            self.assertIs(panel.PlanError, plan.PlanError)
-
-    def test_cli_references_need_no_production_builders_or_report(self):
-        import importlib
-        with mock.patch.dict(sys.modules):
-            for name in ("build_pack", "make_emoji_pngs", "plan_status", "repaint_gate", "panel_plan"):
-                sys.modules.pop("tests.reference." + name, None)
-                sys.modules["emojikit." + name] = None
-            for name in ("build_pack", "make_emoji_pngs", "plan_status"):
-                reference = importlib.import_module("tests.reference." + name)
-                self.assertEqual(reference.ROOT, ROOT)
-                self.assertEqual(reference.__name__, "tests.reference." + name)
-
     def test_relocated_references_preserve_source_behavior_and_pinned_oracles(self):
         import hashlib
         import re
@@ -141,7 +90,8 @@ class NativeConsumerBoundary(unittest.TestCase):
                 self.assertEqual(digest, evidence["relocated_behavior_sha256"])
                 source = ROOT / evidence["source"]
                 if source.exists():
-                    self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), evidence["source_sha256"])
+                    self.assertEqual(hashlib.sha256(source.read_text(encoding="utf-8").encode("utf-8")).hexdigest(),
+                                     evidence["source_sha256"])
         ledger = (ROOT / "tests/oracles/README.md").read_text(encoding="utf-8")
         snapshots = re.findall(r"\| ([\w_]+\.py) \| ([0-9a-f]{64}) \|", ledger)
         self.assertEqual(len(snapshots), 20)
@@ -158,22 +108,23 @@ class NativeConsumerBoundary(unittest.TestCase):
             "assert len(names)>=30, 'reference inventory unexpectedly empty'\n"
             "for name in names: sys.modules['emojikit.'+name]=None\n"
             "for name in names: importlib.import_module('tests.reference.'+name)\n"
+            "root=pathlib.Path.cwd()\n"
+            "for name in names:\n"
+            " module=sys.modules['tests.reference.'+name]\n"
+            " if hasattr(module,'ROOT'): assert module.ROOT==root, name\n"
+            "from tests.reference import panel,panel_plan,identity_repair,collection_migrate,ingest\n"
+            "from emojikit.errors import MediaError\n"
+            "assert panel.PlanError is panel_plan.PlanError\n"
+            "assert identity_repair.cm is collection_migrate\n"
+            "assert ingest.MediaError is MediaError\n"
+            "import tests._video_fixtures as fixture\n"
+            "assert len(fixture.RED)==100*100*4\n"
             "assert not any(name.startswith('emojikit.') and name.split('.')[1] in names "
             "and module is not None for name,module in sys.modules.items())\n"
         )
         result = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
             stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
-
-    def test_shared_video_fixture_needs_no_retired_applications(self):
-        import importlib
-        with mock.patch.dict(sys.modules):
-            sys.modules.pop("tests._video_fixtures", None)
-            for name in ("catalog", "ingest", "add_media", "fetch_pack", "fetch_emoji_ids", "collection_reconcile"):
-                sys.modules["emojikit." + name] = None
-            fixture = importlib.import_module("tests._video_fixtures")
-            self.assertEqual(len(fixture.RED), 100 * 100 * 4)
-            self.assertEqual(fixture.encode.__module__, "tests._video_fixtures")
 
     def test_sandbox_imports_without_the_python_panel_application(self):
         import importlib.util

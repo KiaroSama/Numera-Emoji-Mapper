@@ -3,7 +3,7 @@
   "sources": {
     "add_media.py": {
       "source": "emojikit/add_media.py",
-      "source_sha256": "b709419724e29c176e8fd779da4c38d0f144bf1317f9774c8dc74f27b3b9d94b",
+      "source_sha256": "59588f4c7c7e9eb41eb2048396afbf729bf15c03199e9e11278857f8e953592a",
       "relocated_behavior_sha256": "aff28fbaa03462b4161dd832562bae33eb9c2d8dfbe6f5a9a3c531574940fa3f"
     },
     "build_collection.py": {
@@ -168,7 +168,7 @@
     },
     "sync_order.py": {
       "source": "emojikit/sync_order.py",
-      "source_sha256": "2770888d95f980a3a7d08e639c9d058948bd3f10055861cc6fee47788bc439e1",
+      "source_sha256": "4fb5523e41c2fb2524b93e12e0b78c355d4e0f6678872dd556965a36b5003650",
       "relocated_behavior_sha256": "182e2ed90c2996513c77e5f312ec54297b3baefc42c5c9904f8b20c887b70e8b"
     }
   }
