@@ -175,14 +175,21 @@ fn loopback_router_validates_mutations_and_persists_curation() {
             .send()
             .unwrap();
         assert_eq!(forbidden.status(), 403);
-        let oversized = client
-            .post(format!("{url}/api/save"))
-            .header("x-panel-token", "fixture-token")
-            .header("Content-Type", "application/json")
-            .body(" ".repeat(4 * 1024 * 1024 + 1))
-            .send()
-            .unwrap();
-        assert_eq!(oversized.status(), 413);
+        // Reject from the header alone, avoiding a client/server upload-close race.
+        {
+            use std::io::{Read, Write};
+            let mut socket = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            socket
+                .set_write_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            write!(socket, "POST /api/save HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nx-panel-token: fixture-token\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", 4 * 1024 * 1024 + 1).unwrap();
+            let mut bytes = [0; 256];
+            let count = socket.read(&mut bytes).unwrap();
+            assert!(String::from_utf8_lossy(&bytes[..count]).starts_with("HTTP/1.1 413 "));
+        }
         let unknown = client
             .post(format!("{url}/api/save"))
             .header("x-panel-token", "fixture-token")
