@@ -34,10 +34,10 @@ from PIL import Image
 # the windows-safety job reaches it.
 RUNS_ON_NATIVE_WINDOWS = True
 
-from emojikit import add_media  # noqa: E402
-from emojikit.build_pack import EXIT_FAILED, EXIT_USAGE  # noqa: E402
+from tests.reference import add_media  # noqa: E402
+from tests.reference.build_pack import EXIT_FAILED, EXIT_USAGE  # noqa: E402
 from emojikit import identity, media  # noqa: E402
-from emojikit.catalog import (Catalog, PHASH_BITS,  # noqa: E402
+from tests.reference.catalog import (Catalog, PHASH_BITS,  # noqa: E402
                               PHASH_MAX_THRESHOLD, check_phash_threshold)
 
 # The stand-in binaries block forever; this timeout is the only thing that can
@@ -47,7 +47,7 @@ FF_TIMEOUT = 1
 # fix it never did, and the whole run hung.
 MAX_ELAPSED = 60
 
-_HANG = "import time\nwhile True:\n    time.sleep(60)\n"
+_HANG = "import threading\nthreading.Event().wait()\n"
 
 
 def _install_hanging_ff(directory: Path) -> None:

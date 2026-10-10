@@ -13,12 +13,12 @@ from contextlib import redirect_stdout
 from unittest import mock
 
 
-from emojikit import build_collection as bc
-from emojikit import collection_state as cs
+from tests.reference import build_collection as bc
+from tests.reference import collection_state as cs
 from emojikit import telegram_api as tg_api
-from emojikit.build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL, EXIT_USAGE)
+from tests.reference.build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL, EXIT_USAGE)
 from emojikit.packstate import (exclusive_lock)
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 from tests._bc_fixtures import (SET, SET2, FakeTG,
                                 _CatalogFixture, _main, _make_png,

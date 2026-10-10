@@ -1,0 +1,95 @@
+{
+  "source": "d173116:migration_bundle.rewrite_database",
+  "cases": [
+    {
+      "name": "swap-all-references",
+      "map": {
+        "v:a": "v:b",
+        "v:b": "v:a"
+      },
+      "hashes": {
+        "v:a": 9223372036854775808,
+        "v:b": 0
+      },
+      "expected": {
+        "moved": 2,
+        "items": [
+          [
+            "v:a",
+            -9223372036854775808,
+            "beta"
+          ],
+          [
+            "v:b",
+            0,
+            "alpha"
+          ]
+        ],
+        "publications": [
+          [
+            "v:a",
+            "222222222"
+          ],
+          [
+            "v:b",
+            "111111111"
+          ]
+        ],
+        "seen_files": [
+          [
+            "v:a",
+            "unique-b"
+          ],
+          [
+            "v:b",
+            "unique-a"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "move-and-null-hash",
+      "map": {
+        "v:a": "v:c"
+      },
+      "hashes": {
+        "v:c": null
+      },
+      "expected": {
+        "moved": 1,
+        "items": [
+          [
+            "v:b",
+            456,
+            "beta"
+          ],
+          [
+            "v:c",
+            null,
+            "alpha"
+          ]
+        ],
+        "publications": [
+          [
+            "v:b",
+            "222222222"
+          ],
+          [
+            "v:c",
+            "111111111"
+          ]
+        ],
+        "seen_files": [
+          [
+            "v:b",
+            "unique-b"
+          ],
+          [
+            "v:c",
+            "unique-a"
+          ]
+        ]
+      }
+    }
+  ]
+}

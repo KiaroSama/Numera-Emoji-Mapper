@@ -1,0 +1,123 @@
+{
+  "source": "d173116:state_artifacts.rewrite",
+  "cases": [
+    {
+      "name": "pack_plan.json",
+      "document": {
+        "version": 1,
+        "moves": [
+          {
+            "key": "v:old",
+            "label": "v:old"
+          }
+        ],
+        "held": [
+          {
+            "key": "v:old"
+          }
+        ],
+        "targets": [
+          [
+            "v:old",
+            6
+          ]
+        ],
+        "excluded": [],
+        "known": [
+          "v:old"
+        ]
+      },
+      "mapping": {
+        "v:old": "v:new"
+      },
+      "expected": {
+        "version": 1,
+        "moves": [
+          {
+            "key": "v:new",
+            "label": "v:old"
+          }
+        ],
+        "held": [
+          {
+            "key": "v:new"
+          }
+        ],
+        "targets": [
+          [
+            "v:new",
+            6
+          ]
+        ],
+        "excluded": [],
+        "known": [
+          "v:new"
+        ]
+      }
+    },
+    {
+      "name": "publish_fixture.json",
+      "document": {
+        "base": "fixture",
+        "sets": [
+          {
+            "keys": [
+              "v:old",
+              "s:keep"
+            ]
+          }
+        ],
+        "skipped": [
+          "v:old"
+        ],
+        "in_flight": {
+          "key": "v:old",
+          "title": "v:old"
+        }
+      },
+      "mapping": {
+        "v:old": "v:new"
+      },
+      "expected": {
+        "base": "fixture",
+        "sets": [
+          {
+            "keys": [
+              "v:new",
+              "s:keep"
+            ]
+          }
+        ],
+        "skipped": [
+          "v:new"
+        ],
+        "in_flight": {
+          "key": "v:new",
+          "title": "v:new"
+        }
+      }
+    },
+    {
+      "name": "publish_plan_fixture.json",
+      "document": {
+        "video": [
+          "v:old"
+        ],
+        "static": [
+          "s:keep"
+        ]
+      },
+      "mapping": {
+        "v:old": "v:new"
+      },
+      "expected": {
+        "video": [
+          "v:new"
+        ],
+        "static": [
+          "s:keep"
+        ]
+      }
+    }
+  ]
+}

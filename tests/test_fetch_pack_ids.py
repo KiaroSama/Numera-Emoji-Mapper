@@ -17,8 +17,8 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit import fetch_pack
-from emojikit.build_pack import EXIT_OK, EXIT_PARTIAL
+from tests.reference import fetch_pack
+from tests.reference.build_pack import EXIT_OK, EXIT_PARTIAL
 from tests.test_fetch_pack_limit import _png_bytes
 
 KNOWN = {"5000000000000000001": "alpha_by_bot", "5000000000000000002": "alpha_by_bot",

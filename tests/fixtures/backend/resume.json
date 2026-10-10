@@ -1,0 +1,224 @@
+{
+  "source": "d173116:collection_state._validate_state",
+  "cases": [
+    {
+      "name": "defaults",
+      "state": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1",
+            "fmt": "static",
+            "index": 1,
+            "live": 0
+          }
+        ],
+        "sent": [],
+        "sent_full": [],
+        "skipped": []
+      },
+      "expected": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1",
+            "fmt": "static",
+            "index": 1,
+            "live": 0,
+            "title": "fixture1",
+            "logo": false,
+            "keys": []
+          }
+        ],
+        "sent": [],
+        "sent_full": [],
+        "skipped": []
+      }
+    },
+    {
+      "name": "logo-membership",
+      "state": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1_by_YourEmojiBot",
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a"
+            ],
+            "live": 2,
+            "logo": true
+          }
+        ],
+        "sent": [],
+        "sent_full": [],
+        "skipped": []
+      },
+      "expected": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1_by_YourEmojiBot",
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a"
+            ],
+            "live": 2,
+            "logo": true,
+            "title": "fixture1_by_YourEmojiBot"
+          }
+        ],
+        "sent": [],
+        "sent_full": [],
+        "skipped": []
+      }
+    },
+    {
+      "name": "bool-index",
+      "state": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1_by_YourEmojiBot",
+            "fmt": "mixed",
+            "index": true,
+            "keys": [
+              "a"
+            ],
+            "live": 2,
+            "logo": true
+          }
+        ],
+        "sent": [],
+        "sent_full": [],
+        "skipped": []
+      },
+      "error": "fixture.json: sets[0] (fixture1_by_YourEmojiBot) has a bad index True. Refusing to publish from state that cannot be trusted; inspect or delete the file deliberately, then re-run."
+    },
+    {
+      "name": "missing-live",
+      "state": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1_by_YourEmojiBot",
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a"
+            ],
+            "live": 1,
+            "logo": true
+          }
+        ],
+        "sent": [],
+        "sent_full": [],
+        "skipped": []
+      },
+      "error": "fixture.json: sets[0] (fixture1_by_YourEmojiBot) claims 1 live sticker(s) but records 2. Refusing to publish from state that cannot be trusted; inspect or delete the file deliberately, then re-run."
+    },
+    {
+      "name": "duplicate-key",
+      "state": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1_by_YourEmojiBot",
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a",
+              "a"
+            ],
+            "live": 3,
+            "logo": true
+          }
+        ],
+        "sent": [],
+        "sent_full": [],
+        "skipped": []
+      },
+      "error": "fixture.json: sets[0] (fixture1_by_YourEmojiBot) records the same emoji twice. Refusing to publish from state that cannot be trusted; inspect or delete the file deliberately, then re-run."
+    },
+    {
+      "name": "wrong-format",
+      "state": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1_by_YourEmojiBot",
+            "fmt": "bad",
+            "index": 1,
+            "keys": [
+              "a"
+            ],
+            "live": 2,
+            "logo": true
+          }
+        ],
+        "sent": [],
+        "sent_full": [],
+        "skipped": []
+      },
+      "error": "fixture.json: sets[0] (fixture1_by_YourEmojiBot) has unknown format 'bad'. Refusing to publish from state that cannot be trusted; inspect or delete the file deliberately, then re-run."
+    },
+    {
+      "name": "repeat-set",
+      "state": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1_by_YourEmojiBot",
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a"
+            ],
+            "live": 2,
+            "logo": true
+          },
+          {
+            "name": "fixture1_by_YourEmojiBot",
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a"
+            ],
+            "live": 2,
+            "logo": true
+          }
+        ],
+        "sent": [],
+        "sent_full": [],
+        "skipped": []
+      },
+      "error": "fixture.json: sets[1] repeats the set name fixture1_by_YourEmojiBot. Refusing to publish from state that cannot be trusted; inspect or delete the file deliberately, then re-run."
+    },
+    {
+      "name": "empty-sent",
+      "state": {
+        "base": "fixture",
+        "sets": [
+          {
+            "name": "fixture1_by_YourEmojiBot",
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a"
+            ],
+            "live": 2,
+            "logo": true
+          }
+        ],
+        "sent": [
+          ""
+        ],
+        "sent_full": [],
+        "skipped": []
+      },
+      "error": "fixture.json: 'sent' must hold non-empty strings. Refusing to publish from state that cannot be trusted; inspect or delete the file deliberately, then re-run."
+    }
+  ]
+}

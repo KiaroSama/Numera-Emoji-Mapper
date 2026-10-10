@@ -12,7 +12,7 @@ credentials-free environment:
 
 * the catalog is CLONED by `emojikit.sandbox_clone` -- its own database bytes,
   its own media bytes, every path repointed -- and the clone is deleted on exit;
-* its port is the real panel's + 1, taken from `panel.DEFAULT_PORT` rather than
+* its port is the real panel's + 1, taken from the shared `cli_env.PANEL_PORT` rather than
   typed again, so a sandbox can never take the port a real panel is on and a
   real panel is never mistaken for the sandbox;
 * the arguments are an ALLOWLIST. This used to forward unknown options straight
@@ -20,9 +20,9 @@ credentials-free environment:
   collection` served the owner's live catalog while this file printed that the
   live catalog was not served. Nothing is forwarded now; the panel's argument
   list is built here, explicitly;
-* the panel runs IN THIS PROCESS with session reuse off, so killing the wrapper
-  stops the server and drops its lease together, and no unidentified listener is
-  ever adopted as the sandbox.
+* the installed native panel runs in a private owned process tree. The wrapper
+  stops and reaps that tree before releasing the clone's lifetime lease; a fresh
+  clone's session identity cannot match another listener.
 
 Usage (this is what `.claude/launch.json` runs):
 
@@ -37,6 +37,8 @@ import argparse
 import contextlib
 import os
 import re
+import signal
+import subprocess
 import sys
 import tempfile
 import uuid
@@ -44,13 +46,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from emojikit import panel  # noqa: E402 - needs ROOT on the path
+from emojikit.cli_env import PANEL_PORT  # noqa: E402 - needs ROOT on the path
 from emojikit.sandbox_clone import (  # noqa: E402
     TMP_PREFIX, sandbox_session, sweep_stale)
 
 # IMPORTED, never re-typed: the sandbox's whole job is to stay off the port a
 # real panel uses, and two copies of that number would drift the day one moves.
-PANEL_PORT = panel.DEFAULT_PORT
 DEFAULT_PORT = PANEL_PORT + 1
 
 # Names that never belong in a sandbox child, beyond whatever `.env.example`
@@ -145,6 +146,52 @@ def panel_arguments(args: argparse.Namespace, data_dir: Path) -> list[str]:
     return argv
 
 
+def serve_native(argv: list[str], *, lease_fd: int | None = None) -> int:
+    executable = ROOT / "native/runtime" / ("numera-emoji.exe" if os.name == "nt" else "numera-emoji")
+    if not executable.is_file():
+        raise RuntimeError("Installed native backend missing; run scripts/build_native.py first.")
+    job = None
+    if os.name == "nt":
+        from scripts.build_job import Job
+        job = Job()
+    environment = {**scrubbed_environment(), "PYO3_PYTHON": sys.executable}
+    if sys.platform == "linux":
+        if lease_fd is None:
+            raise RuntimeError("Native sandbox requires the clone's lifetime lease.")
+        environment["NUMERA_SANDBOX_LEASE_FD"] = str(lease_fd)
+        stat = Path("/proc/self/stat").read_text(encoding="utf-8").rsplit(")", 1)[1].split()
+        environment["NUMERA_SANDBOX_PARENT_PID"] = str(os.getpid())
+        environment["NUMERA_SANDBOX_PARENT_START"] = stat[19]
+    child = None
+    try:
+        child = subprocess.Popen([str(executable), "panel", *argv], cwd=ROOT,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            creationflags=(subprocess.CREATE_NO_WINDOW | 4) if job else 0,
+            start_new_session=not job,
+            **({"pass_fds": (lease_fd,)} if sys.platform == "linux" else {}))
+        if job:
+            job.attach(child)
+        try:
+            return child.wait()
+        except KeyboardInterrupt:
+            return 0
+    finally:
+        try:
+            if job:
+                job.finish()
+            elif child:
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        finally:
+            if child:
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=10)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -159,10 +206,11 @@ def main(argv: list[str] | None = None) -> int:
 
     # Acquire lifetime ownership BEFORE creating the published clone marker.
     # The same lease spans serving and cleanup, including exceptional exits.
-    with sandbox_session(source, tmp) as n, scrubbed_process_environment():
+    lease = []
+    with sandbox_session(source, tmp, on_lease=lease.append) as n, scrubbed_process_environment():
         print(f"sandbox catalog: {n} items cloned from {source} -> {tmp}", flush=True)
         print(f"the source catalog at {source} is not served", flush=True)
-        return panel.main(panel_arguments(args, tmp), reuse_existing=False)
+        return serve_native(panel_arguments(args, tmp), lease_fd=lease[0])
 
 
 if __name__ == "__main__":

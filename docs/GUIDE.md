@@ -154,11 +154,12 @@ the import. It never installs Rust automatically. Rebuild after native-source
 changes. `run.ps1` offers installation; declining or a failed build stops startup.
 `-Check` checks the import without installing or prompting.
 
-Only the exact greedy similarity walk and batch Hamming candidate shortlist
-run in Rust. First-minimum ties and absent hashes retain the old behavior.
-Content-key generation, actual image comparison, signed SQLite hash storage,
-locks, resume state and Telegram mutation/retry paths are unchanged. A candidate
-is still only a candidate, never proof two files are equal.
+The production Python launcher still uses the required Rust computation module;
+the larger native backend is not yet the primary runtime. The installer now also
+builds and installs its executable outside disposable Cargo output. See
+[native backend status](native-backend.md) for command scope, exact-media dependencies,
+rollback limitations and the cutover gate. First-minimum ties and absent hashes
+retain the old behavior; a candidate is never proof two files are equal.
 
 Build and benchmark tools use the existing UTF-8 UTC logs under `logs/`, with
 redaction and the configured retention policy. `python scripts/benchmark_similarity.py`

@@ -16,8 +16,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 from PIL import Image  # noqa: E402
 
-from emojikit import make_emoji_pngs as m  # noqa: E402
-from emojikit.build_pack import EXIT_FAILED, EXIT_OK, EXIT_PARTIAL  # noqa: E402
+from tests.reference import make_emoji_pngs as m  # noqa: E402
+from tests.reference.build_pack import EXIT_FAILED, EXIT_OK, EXIT_PARTIAL  # noqa: E402
 
 BLUE_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">'
             '<rect width="64" height="64" fill="#0000ff"/></svg>')
@@ -200,7 +200,7 @@ class CoinDefaultsPointAtTheCoinsFolder(unittest.TestCase):
             self.assertEqual(path.parent, ROOT / "coins" / "logos")
 
     def _dry_run_keywords(self, source: Path, corpus: str = "") -> str:
-        from emojikit import build_pack as bp
+        from tests.reference import build_pack as bp
         argv = ["build_pack.py", "--base", "t", "--title", "T", "--user-id", "1",
                 "--source-dir", str(source), "--token-env", "FAKE_TOKEN",
                 "--dry-run"]

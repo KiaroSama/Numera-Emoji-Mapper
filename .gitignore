@@ -66,6 +66,7 @@ __pycache__/
 
 # Native computation build artifacts
 /native/target/
+/native/runtime/
 /emojikit/_native*.pdb
 /emojikit/_native*.pyd
 /emojikit/_native*.so

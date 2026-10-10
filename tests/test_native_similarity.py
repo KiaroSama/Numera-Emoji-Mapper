@@ -62,7 +62,7 @@ class NativeSimilarity(unittest.TestCase):
     def test_missing_native_cannot_create_catalog_state(self):
         import tempfile
         from emojikit import similarity
-        from emojikit.catalog import Catalog
+        from tests.reference.catalog import Catalog
 
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "catalog.db"

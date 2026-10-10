@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit import plan_status
+from tests.reference import plan_status
 
 STATE = {"sets": [{"index": 1, "name": "mine1_by_bot", "live": 4,
                    "keys": ["s:a", "s:b", "s:c"]},

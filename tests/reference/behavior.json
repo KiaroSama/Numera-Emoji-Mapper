@@ -1,0 +1,175 @@
+{
+  "normalization": "ignore imports and ROOT/OFFSET_FILE assignments only",
+  "sources": {
+    "add_media.py": {
+      "source": "emojikit/add_media.py",
+      "source_sha256": "b709419724e29c176e8fd779da4c38d0f144bf1317f9774c8dc74f27b3b9d94b",
+      "relocated_behavior_sha256": "aff28fbaa03462b4161dd832562bae33eb9c2d8dfbe6f5a9a3c531574940fa3f"
+    },
+    "build_collection.py": {
+      "source": "emojikit/build_collection.py",
+      "source_sha256": "f5215ab80ebecf2d31dd5443c802c532b47b5ef4fbe4460dbf4003f3eacbc494",
+      "relocated_behavior_sha256": "7bc0ee58b91002cc1046ad34d2fe5f7e102e306671cef3cc50053f467804e8bf"
+    },
+    "build_pack.py": {
+      "source": "emojikit/build_pack.py",
+      "source_sha256": "315bed309ca6c07518a5639a9c9d3234673061a49b37ef4cf1b612b90f1fe1d9",
+      "relocated_behavior_sha256": "4bd90d175fff7e9f6bfe4afb35429024f8480ee288809a03d530614d1e1e5c89"
+    },
+    "catalog.py": {
+      "source": "emojikit/catalog.py",
+      "source_sha256": "be0db6f7a510c88ece2ad8348cafc20d8f287c97671cdf5f3b2a4b86d9ebe7a0",
+      "relocated_behavior_sha256": "c73a6309fbb18b8d931746de678e988f6fe472cc7285b1f8ef8b333043512090"
+    },
+    "collection_media_check.py": {
+      "source": "emojikit/collection_media_check.py",
+      "source_sha256": "78743e72e413c0eb7f73e0f7a8d6306df46cb6e81e32b03b261c946115dcc209",
+      "relocated_behavior_sha256": "7693f2926ff1de5169fed8240bdf391973a8461c44791edf69f3e2b27dc6bfe4"
+    },
+    "collection_migrate.py": {
+      "source": "emojikit/collection_migrate.py",
+      "source_sha256": "4cb0211b690af6960a59e6c5ee851f64dc376aa611712fb938f6a87ed8ec8a68",
+      "relocated_behavior_sha256": "f6faf69849f4bcd4a255bf57f27470ab9e7e378adf156a4f308f01544af73bd5"
+    },
+    "collection_names.py": {
+      "source": "emojikit/collection_names.py",
+      "source_sha256": "94599d3cb61316236c3577d1f967a0ad5778eab91d9dd9f59229e025dadd5f2a",
+      "relocated_behavior_sha256": "3ee52b7d430052708f20d518adf361ca4692e746413d7a8f5b3c9c79d21604ff"
+    },
+    "collection_notify.py": {
+      "source": "emojikit/collection_notify.py",
+      "source_sha256": "256185937b786d14fca62082a9e157d2afeb2c393836383c8760512e59e39007",
+      "relocated_behavior_sha256": "9d9ad5db70f1bf62a2234c21d615176a13b9c46855becc08b47b04aff4e48dcb"
+    },
+    "collection_preflight.py": {
+      "source": "emojikit/collection_preflight.py",
+      "source_sha256": "2821e30d219dbf4cb4df8ff08f97f697e6f89bf79cca1d5a2ae572000dc5d965",
+      "relocated_behavior_sha256": "dbbcabff7be88322f82c8848ffcee6037d43501ec5ed9590faee6e4f628d28ff"
+    },
+    "collection_reconcile.py": {
+      "source": "emojikit/collection_reconcile.py",
+      "source_sha256": "d22315d90e504d7acd622c02111eb9f2b9b3f33889fd483aa068cfe2b71d3dac",
+      "relocated_behavior_sha256": "dcb0e9413a5564826b666df34c799cb4d9e0af3eb7659a2a1c496b0303513404"
+    },
+    "collection_state.py": {
+      "source": "emojikit/collection_state.py",
+      "source_sha256": "f8c6e96a1ea7c2fa34484ab5bd7c5cdcda4b7099d86f793acd4464e7284faf99",
+      "relocated_behavior_sha256": "5b8e067e2390ec72918d57e1addd98b964c04d0308f4bb17ceb7359b8757d03f"
+    },
+    "emoji_bot.py": {
+      "source": "emojikit/emoji_bot.py",
+      "source_sha256": "e7ac5c65647d1e3e7b74e7fa8f7b027814439733aef1e1d0baab5033f53b175c",
+      "relocated_behavior_sha256": "6b4768237c59b8c47ac630b0fad582d81a50e5690bfec53c1351a6804358676c"
+    },
+    "fetch_emoji_ids.py": {
+      "source": "emojikit/fetch_emoji_ids.py",
+      "source_sha256": "965b8bbf1f0a8343eee5856fc2d988c56c62d6706fcb08b3a75ce68597ee5c42",
+      "relocated_behavior_sha256": "037bdcfaddcb9b0f148fdd32c0e934e4ab2c3bc621b0fac2299da694d1270b5e"
+    },
+    "fetch_pack.py": {
+      "source": "emojikit/fetch_pack.py",
+      "source_sha256": "dfd50abec4ac45aef4cadb1b109307d492a5936db264a27d98d2fa3296bd62cc",
+      "relocated_behavior_sha256": "d96d94cbb30416e9f272728747c8c204eeecc625729b5e575165d5e82444d06c"
+    },
+    "ingest.py": {
+      "source": "emojikit/ingest.py",
+      "source_sha256": "d2e7740602bd6993e51ab6fd0c0244764ca71e47b9dbafa2c6bdd5895050d0b6",
+      "relocated_behavior_sha256": "99dff2ca1689e481ba94e4205f6ff8cafff5074b07908e3d2711abdb03db5595"
+    },
+    "make_emoji_pngs.py": {
+      "source": "emojikit/make_emoji_pngs.py",
+      "source_sha256": "8f19d62d444ae0dd50420d24e5619372d2876eab9220c5e91a851a54b09f396d",
+      "relocated_behavior_sha256": "727b308af935688f9cf7901cba8547f8c1f6e985f8d8c511edab4104ccb933ad"
+    },
+    "migration_bundle.py": {
+      "source": "emojikit/migration_bundle.py",
+      "source_sha256": "8b2648956047e95fe5fcc1e779e85041366de917f1290faeb7b1d6c0e6e040c8",
+      "relocated_behavior_sha256": "d99985ee97e61d47f3f93ca15d401d8349891d79517e9b5c698e8b79af52d53d"
+    },
+    "pack_archive.py": {
+      "source": "emojikit/pack_archive.py",
+      "source_sha256": "312e32d30bd0b8cdd905b93654a28b28131ce32f768fefd26e9d12aecd7f1c20",
+      "relocated_behavior_sha256": "f53ddaa97869af1664c0f99883ada8032e7bd021a46e2b75a69c51e73778ebf2"
+    },
+    "pack_export.py": {
+      "source": "emojikit/pack_export.py",
+      "source_sha256": "1af5b4c013806130786b94130f31e00c92b6c6f2924e46c0f67e109fa39ee6f2",
+      "relocated_behavior_sha256": "5447496f6c3f1ba7515a8ef38a0872d3a304f3ec9fcfc398b1c62a37117736b6"
+    },
+    "pack_gallery.py": {
+      "source": "emojikit/pack_gallery.py",
+      "source_sha256": "3a1460e846edb4bb75675f6d4d78d9e7d05ab75c7c61ec287d810a57cf5c9158",
+      "relocated_behavior_sha256": "2fef470fc8166c1f06f9a97d3f7fa9ee817f9ca11b3f3aca9b54145d6460f69b"
+    },
+    "pack_manifest.py": {
+      "source": "emojikit/pack_manifest.py",
+      "source_sha256": "f335b1e8ce4f508a40c20d13cffca0cb6c8506fbeb9b0363b53acd094d86ec13",
+      "relocated_behavior_sha256": "bacd8f5fa90e1ece2c494c621ab582361f3f06732b35485adde661e972f5708e"
+    },
+    "panel.py": {
+      "source": "emojikit/panel.py",
+      "source_sha256": "d670ffecc40f2e31631376160d6475ab1951bdc3840f98ed1e564de09ebc143f",
+      "relocated_behavior_sha256": "45b0c89100bda2091c28c6807158cf7df8716cc812a5322ce6d73b30c2364054"
+    },
+    "panel_instance.py": {
+      "source": "emojikit/panel_instance.py",
+      "source_sha256": "ec4ae6f7cab4ca817f885648ed1ac8a497ff800854f384f1f9b2c9024331d0b2",
+      "relocated_behavior_sha256": "2a15a833a66f989e31d6196556e7027deb03c0e95ad66ba3956d4ac57d385d16"
+    },
+    "panel_logging.py": {
+      "source": "emojikit/panel_logging.py",
+      "source_sha256": "e0ca46502251fbc326a46948f68c46f041d4f786b7ea1fe4f11cee527b327959",
+      "relocated_behavior_sha256": "c02773b566e6273db1ea6b7e2d2308a6b6d788f8fe5cc6314d15556f2568718c"
+    },
+    "panel_plan.py": {
+      "source": "emojikit/panel_plan.py",
+      "source_sha256": "4c6b43a35ea5fa5907cc1933524b1a5c79214d12bb13cccc269e34d7ae38b1e4",
+      "relocated_behavior_sha256": "af89f0798138085befcff3f38f99d6735b57ae83a246ec865903fc0d7f49a15c"
+    },
+    "panel_preview.py": {
+      "source": "emojikit/panel_preview.py",
+      "source_sha256": "832548b52fdc4862ca02d8e7d4af9eae84751ef590f333c67f1dd483e9d26024",
+      "relocated_behavior_sha256": "1837b773971e5ee2c581ea1ddbc75346eb8bcc4ea30b842ed76b24de1279d996"
+    },
+    "panel_save.py": {
+      "source": "emojikit/panel_save.py",
+      "source_sha256": "243488961d6d5b1626a361fd431f9b4872c3747cc56f0168938d95c196306391",
+      "relocated_behavior_sha256": "9f9caa1a85e18d625244b0404599c3e57b7bb4feaac819b911c6bb31a866fd37"
+    },
+    "panel_view.py": {
+      "source": "emojikit/panel_view.py",
+      "source_sha256": "8935c34372dea19ec47d586369344390eecd44f0fc9b65a24f9581f13be5cd27",
+      "relocated_behavior_sha256": "338eea55836176d84e9a4d3c9e171adf7113a936d287aa3b91bb672645d2f166"
+    },
+    "plan_apply.py": {
+      "source": "emojikit/plan_apply.py",
+      "source_sha256": "73da0b3c0e3a606f7bcdce49fcf1abddb4bc3c18fc6f59faa9344b739ccdefa3",
+      "relocated_behavior_sha256": "62d2417d5656b8efd11e72b95db6f229700513796b6cd3dfd7ca93674558bf76"
+    },
+    "plan_status.py": {
+      "source": "emojikit/plan_status.py",
+      "source_sha256": "11439c5fdc303263d95923df1307795008d196378b241fd578c308450b85310e",
+      "relocated_behavior_sha256": "24917975c85936dd675ead60533a9d351b774d59daa8bdf8159b53bd69c76537"
+    },
+    "repaint_gate.py": {
+      "source": "emojikit/repaint_gate.py",
+      "source_sha256": "7df425ea375f98e25bcf736b24ae471076317791b330ded03be6dc83967c9c9f",
+      "relocated_behavior_sha256": "47ad19ccded2370c5abb77d333c7cd114ba08a41e31e65a8c1f913f58ea6c520"
+    },
+    "script_json.py": {
+      "source": "emojikit/script_json.py",
+      "source_sha256": "b9afcea858593c9e532ee3690038433e48eefc00910af603b6b1e8b90a3e56e4",
+      "relocated_behavior_sha256": "2dac94115e1e932e477c77cb7ee7fa9b0860c8181aa3dcc2728a2537a36802ec"
+    },
+    "status.py": {
+      "source": "emojikit/status.py",
+      "source_sha256": "ee534afec67664ab7bea27499232df04fb0b9cbd80c97beb4259150dda7f3b7b",
+      "relocated_behavior_sha256": "f6bbd7143772b6ce944d41b1d256cf28974c7f2815c12b8c8505748d7af71e52"
+    },
+    "sync_order.py": {
+      "source": "emojikit/sync_order.py",
+      "source_sha256": "2770888d95f980a3a7d08e639c9d058948bd3f10055861cc6fee47788bc439e1",
+      "relocated_behavior_sha256": "182e2ed90c2996513c77e5f312ec54297b3baefc42c5c9904f8b20c887b70e8b"
+    }
+  }
+}

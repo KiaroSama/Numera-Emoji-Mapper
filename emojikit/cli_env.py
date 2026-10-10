@@ -7,11 +7,13 @@ them, so existing imports keep working.
 
 from __future__ import annotations
 
+import csv
 import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+PANEL_PORT = 9450
 
 
 # Exit codes shared by every CLI entry point, so a launcher or CI job can tell
@@ -21,6 +23,16 @@ EXIT_OK = 0
 EXIT_USAGE = 2       # invalid arguments or configuration
 EXIT_PARTIAL = 3     # some items succeeded, some failed -- retryable
 EXIT_FAILED = 4      # nothing succeeded, or an integrity stop
+
+
+def load_keywords(path: Path = ROOT / "coins" / "keywords.csv") -> dict[str, str]:
+    """Optional ticker keywords shared by retained coin workflows."""
+    out: dict[str, str] = {}
+    if path and Path(path).is_file():
+        with open(path, encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                out[row["ticker"].lower()] = row.get("keywords") or row["ticker"]
+    return out
 
 
 def ingest_exit_code(succeeded: int, failed: int) -> int:

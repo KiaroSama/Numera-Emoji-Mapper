@@ -1,0 +1,118 @@
+{
+  "source": "d173116:migration_bundle.database_signature",
+  "cases": [
+    {
+      "name": "raw",
+      "rows": [
+        [
+          "quote'only",
+          -9223372036854775808,
+          null,
+          {
+            "blob": "00090a0d1f207f80ff2722"
+          }
+        ],
+        [
+          "both'\"quotes",
+          9223372036854775807,
+          "دو 😀​  ",
+          {
+            "blob": "68656c6c6f"
+          }
+        ],
+        [
+          "back\\slash\t\n\r\b\f",
+          0,
+          "<>&",
+          {
+            "blob": ""
+          }
+        ],
+        [
+          "ordinary",
+          -1,
+          "./after.png",
+          {
+            "blob": "2727"
+          }
+        ],
+        [
+          "ordinary",
+          -1,
+          "./after.png",
+          {
+            "blob": "2727"
+          }
+        ]
+      ],
+      "files": [],
+      "expected": "9f5ad5157cd3e9c20d9d4ddac6d9d52d6c62278b5eb8240179eaf01125123636",
+      "repr_order": [
+        "[\"quote'only\", -9223372036854775808, None, b'\\x00\\t\\n\\r\\x1f \\x7f\\x80\\xff\\'\"']",
+        "['back\\\\slash\\t\\n\\r\\x08\\x0c', 0, '<>&', b'']",
+        "['both\\'\"quotes', 9223372036854775807, 'دو 😀\\u200b\\u2028\\x7f\\xa0', b'hello']",
+        "['ordinary', -1, './after.png', b\"''\"]",
+        "['ordinary', -1, './after.png', b\"''\"]"
+      ]
+    },
+    {
+      "name": "normalized",
+      "rows": [
+        [
+          "quote'only",
+          -9223372036854775808,
+          null,
+          {
+            "blob": "00090a0d1f207f80ff2722"
+          }
+        ],
+        [
+          "both'\"quotes",
+          9223372036854775807,
+          "دو 😀​  ",
+          {
+            "blob": "68656c6c6f"
+          }
+        ],
+        [
+          "back\\slash\t\n\r\b\f",
+          0,
+          "<>&",
+          {
+            "blob": ""
+          }
+        ],
+        [
+          "ordinary",
+          -1,
+          "./after.png",
+          {
+            "blob": "2727"
+          }
+        ],
+        [
+          "ordinary",
+          -1,
+          "./after.png",
+          {
+            "blob": "2727"
+          }
+        ]
+      ],
+      "files": [
+        {
+          "source": "./before.png",
+          "destination": "./after.png"
+        }
+      ],
+      "expected": "7ba3110f2ff99076897366e1f952ba905fecd3a036c43807e0203d6a9a9769e0",
+      "repr_order": [
+        "[\"quote'only\", -9223372036854775808, None, b'\\x00\\t\\n\\r\\x1f \\x7f\\x80\\xff\\'\"']",
+        "['back\\\\slash\\t\\n\\r\\x08\\x0c', 0, '<>&', b'']",
+        "['both\\'\"quotes', 9223372036854775807, 'دو 😀\\u200b\\u2028\\x7f\\xa0', b'hello']",
+        "['ordinary', -1, './after.png', b\"''\"]",
+        "['ordinary', -1, './after.png', b\"''\"]"
+      ]
+    }
+  ]
+}

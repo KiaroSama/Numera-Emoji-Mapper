@@ -30,7 +30,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import panel_sandbox  # noqa: E402 - needs the paths above
 from emojikit import sandbox_clone  # noqa: E402
-from emojikit.catalog import Catalog  # noqa: E402
+from tests.reference.catalog import Catalog  # noqa: E402
 from emojikit.packstate import exclusive_lock  # noqa: E402
 
 # Two things here are only real on native Windows, so a green Linux run proves
@@ -379,7 +379,7 @@ class ThePanelCanRunInProcessWithoutAdoptingAListener(unittest.TestCase):
         """Guarding only the first left the defect reachable by the second --
         the post-bind-failure recovery path, which is exactly the one a sandbox
         takes when something else already holds its port."""
-        from emojikit import panel
+        from tests.reference import panel
         with mock.patch.object(
                 panel, "reopen_existing",
                 side_effect=AssertionError("a listener was adopted")) as spy:
@@ -393,7 +393,7 @@ class ThePanelCanRunInProcessWithoutAdoptingAListener(unittest.TestCase):
 
     def test_main_still_reads_sys_argv_when_given_none(self):
         import inspect
-        from emojikit import panel
+        from tests.reference import panel
         signature = inspect.signature(panel.main)
         self.assertIs(signature.parameters["argv"].default, None)
         self.assertIs(signature.parameters["reuse_existing"].default, True,
@@ -481,9 +481,9 @@ class TheSandboxHoldsItsLeaseForTheLifeOfTheServer(SandboxFixture):
     Split deliberately into the half that can be wrong and the half that cannot.
 
     The half that CAN be wrong is the wiring -- whether the wrapper takes the
-    lock around the served panel at all, and whether the panel it runs is the
-    in-process one with reuse off. That is asserted here, from inside a stubbed
-    `panel.main`, deterministically and in milliseconds.
+    lock around the served native panel at all. That is asserted here inside
+    the `serve_native` boundary; actual owned-child shutdown is verified by the
+    native sandbox lifecycle test.
 
     The half that cannot be wrong is the release: `exclusive_lock` is an OS lock
     and the OS drops it when the process exits, which its own docstring records
@@ -499,9 +499,8 @@ class TheSandboxHoldsItsLeaseForTheLifeOfTheServer(SandboxFixture):
         self.fill()
         seen = {}
 
-        def fake_panel_main(argv, *, reuse_existing=True):
+        def fake_panel_main(argv, *, lease_fd):
             seen["argv"] = argv
-            seen["reuse_existing"] = reuse_existing
             clone = Path(argv[argv.index("--data-dir") + 1])
             seen["clone"] = clone
             # The decisive assertion: from here, mid-serve, the sweep must find
@@ -515,12 +514,11 @@ class TheSandboxHoldsItsLeaseForTheLifeOfTheServer(SandboxFixture):
         # Contained on purpose. Left alone, the wrapper clones into the REAL
         # system temp and the sweep above would run there -- so this test could
         # delete a sandbox the owner was actually using.
-        with mock.patch.object(panel_sandbox.panel, "main", fake_panel_main),                 mock.patch.object(panel_sandbox.tempfile, "gettempdir",
+        with mock.patch.object(panel_sandbox, "serve_native", fake_panel_main),                 mock.patch.object(panel_sandbox.tempfile, "gettempdir",
                                   return_value=str(self.tmp)),                 contextlib.redirect_stdout(io.StringIO()):
             code = panel_sandbox.main(["--source", str(self.source), "--port", "8799"])
 
         self.assertEqual(code, 0)
-        self.assertIs(seen["reuse_existing"], False, "no listener may be adopted")
         self.assertEqual(seen["swept"], 0, "the sweep reclaimed a LIVE sandbox")
         self.assertTrue(seen["catalog_alive"])
         self.assertEqual(seen["dotenv_off"], "1", "credentials must be off while serving")
@@ -558,13 +556,13 @@ class TheLifetimeLeaseDoesNotBlockThePanelItStarts(SandboxFixture):
         self.fill()
         seen = {}
 
-        def panel_that_opens_its_catalog(argv, *, reuse_existing=True):
+        def panel_that_opens_its_catalog(argv, *, lease_fd):
             clone = Path(argv[argv.index("--data-dir") + 1])
             with Catalog(clone / "catalog.db") as cat:
                 seen["items"] = len(cat.all_items())
             return 0
 
-        with mock.patch.object(panel_sandbox.panel, "main", panel_that_opens_its_catalog), \
+        with mock.patch.object(panel_sandbox, "serve_native", panel_that_opens_its_catalog), \
                 mock.patch.object(panel_sandbox.tempfile, "gettempdir",
                                   return_value=str(self.tmp)), \
                 contextlib.redirect_stdout(io.StringIO()):

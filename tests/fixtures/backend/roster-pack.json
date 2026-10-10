@@ -1,0 +1,405 @@
+{
+  "source": "d173116:pack_manifest.build_pack",
+  "cases": [
+    {
+      "name": "first-catalog-item-is-not-logo",
+      "family": "general",
+      "record": {
+        "name": "fixture_by_YourEmojiBot",
+        "title": "Fixture",
+        "index": 1
+      },
+      "pack": {
+        "title": "not-authoritative",
+        "stickers": [
+          {
+            "custom_emoji_id": "111111111",
+            "emoji": "😀"
+          }
+        ]
+      },
+      "provenance": {
+        "111111111": {
+          "content_key": "s:fixture",
+          "name": "fixture",
+          "source_emoji_ids": [
+            "222222222"
+          ]
+        }
+      },
+      "prior": {
+        "ck:s:fixture": {
+          "id": "333333333",
+          "history": [
+            "444444444"
+          ]
+        }
+      },
+      "expected": {
+        "set_name": "fixture_by_YourEmojiBot",
+        "title": "Fixture",
+        "family": "general",
+        "pack_index": 1,
+        "link": "https://t.me/addemoji/fixture_by_YourEmojiBot",
+        "count": 1,
+        "captured_utc": "2026-10-07 00:00:00 UTC",
+        "emoji": [
+          {
+            "index": 0,
+            "slot": 1,
+            "custom_emoji_id": "111111111",
+            "previous_custom_emoji_ids": [
+              "444444444",
+              "333333333"
+            ],
+            "history_key": "ck:s:fixture",
+            "glyph": "😀",
+            "format": "static",
+            "role": "emoji",
+            "name": "fixture",
+            "source_emoji_ids": [
+              "222222222"
+            ]
+          }
+        ]
+      },
+      "markdown": "# Fixture\n\n- **Set** `fixture_by_YourEmojiBot`\n- **Link** https://t.me/addemoji/fixture_by_YourEmojiBot\n- **Family** general  |  **Pack** 1  |  **Emoji** 1\n- **Captured** 2026-10-07 00:00:00 UTC (live from Telegram)\n\n`#` counts from 0 and emoji 0 is the brand logo; `slot` is the position Telegram shows. *Was* is the id this emoji had in the pack it was taken from, empty when we made it ourselves. *Ours before* lists the ids it held in THIS estate earlier, oldest first: a replace mints a new id, and the dead one is what stale inventories still point at.\n\n| # | slot | custom_emoji_id | ours before | glyph | format | name | was |\n|-:|----:|-----------------|-------------|-------|--------|------|-----|\n| 0 | 1 | `111111111` | `444444444 -> 333333333` | 😀 | static | fixture | `222222222` |\n"
+    },
+    {
+      "name": "logo-history-is-per-set",
+      "family": "general",
+      "record": {
+        "name": "fixture2_by_YourEmojiBot",
+        "title": null,
+        "index": 2
+      },
+      "pack": {
+        "stickers": [
+          {
+            "custom_emoji_id": "111111111"
+          },
+          {
+            "custom_emoji_id": "222222222",
+            "is_animated": true
+          }
+        ]
+      },
+      "provenance": {},
+      "prior": {
+        "logo:fixture2_by_YourEmojiBot": {
+          "id": "333333333",
+          "history": []
+        }
+      },
+      "expected": {
+        "set_name": "fixture2_by_YourEmojiBot",
+        "title": null,
+        "family": "general",
+        "pack_index": 2,
+        "link": "https://t.me/addemoji/fixture2_by_YourEmojiBot",
+        "count": 2,
+        "captured_utc": "2026-10-07 00:00:00 UTC",
+        "emoji": [
+          {
+            "index": 0,
+            "slot": 1,
+            "custom_emoji_id": "111111111",
+            "previous_custom_emoji_ids": [
+              "333333333"
+            ],
+            "history_key": "logo:fixture2_by_YourEmojiBot",
+            "glyph": null,
+            "format": "static",
+            "role": "brand-logo",
+            "name": "brand logo",
+            "source_emoji_ids": []
+          },
+          {
+            "index": 1,
+            "slot": 2,
+            "custom_emoji_id": "222222222",
+            "previous_custom_emoji_ids": [],
+            "history_key": "id:222222222",
+            "glyph": null,
+            "format": "animated",
+            "role": "emoji",
+            "name": null,
+            "source_emoji_ids": []
+          }
+        ]
+      },
+      "markdown": "# fixture2_by_YourEmojiBot\n\n- **Set** `fixture2_by_YourEmojiBot`\n- **Link** https://t.me/addemoji/fixture2_by_YourEmojiBot\n- **Family** general  |  **Pack** 2  |  **Emoji** 2\n- **Captured** 2026-10-07 00:00:00 UTC (live from Telegram)\n\n`#` counts from 0 and emoji 0 is the brand logo; `slot` is the position Telegram shows. *Was* is the id this emoji had in the pack it was taken from, empty when we made it ourselves. *Ours before* lists the ids it held in THIS estate earlier, oldest first: a replace mints a new id, and the dead one is what stale inventories still point at.\n\n| # | slot | custom_emoji_id | ours before | glyph | format | name | was |\n|-:|----:|-----------------|-------------|-------|--------|------|-----|\n| 0 | 1 | `111111111` | `333333333` | — | static | brand logo | — |\n| 1 | 2 | `222222222` | — | — | animated | — | — |\n"
+    },
+    {
+      "name": "unbranded-first-sticker",
+      "family": "general",
+      "record": {
+        "name": "fixture_by_YourEmojiBot",
+        "title": "Fixture",
+        "index": 1,
+        "logo": false
+      },
+      "pack": {
+        "stickers": [
+          {
+            "custom_emoji_id": "111111111"
+          }
+        ]
+      },
+      "provenance": {},
+      "prior": {},
+      "expected": {
+        "set_name": "fixture_by_YourEmojiBot",
+        "title": "Fixture",
+        "family": "general",
+        "pack_index": 1,
+        "link": "https://t.me/addemoji/fixture_by_YourEmojiBot",
+        "count": 1,
+        "captured_utc": "2026-10-07 00:00:00 UTC",
+        "emoji": [
+          {
+            "index": 0,
+            "slot": 1,
+            "custom_emoji_id": "111111111",
+            "previous_custom_emoji_ids": [],
+            "history_key": "id:111111111",
+            "glyph": null,
+            "format": "static",
+            "role": "emoji",
+            "name": null,
+            "source_emoji_ids": []
+          }
+        ]
+      },
+      "markdown": "# Fixture\n\n- **Set** `fixture_by_YourEmojiBot`\n- **Link** https://t.me/addemoji/fixture_by_YourEmojiBot\n- **Family** general  |  **Pack** 1  |  **Emoji** 1\n- **Captured** 2026-10-07 00:00:00 UTC (live from Telegram)\n\n`#` counts from 0 and emoji 0 is the brand logo; `slot` is the position Telegram shows. *Was* is the id this emoji had in the pack it was taken from, empty when we made it ourselves. *Ours before* lists the ids it held in THIS estate earlier, oldest first: a replace mints a new id, and the dead one is what stale inventories still point at.\n\n| # | slot | custom_emoji_id | ours before | glyph | format | name | was |\n|-:|----:|-----------------|-------------|-------|--------|------|-----|\n| 0 | 1 | `111111111` | — | — | static | — | — |\n"
+    },
+    {
+      "name": "shared-coin-logo-retains-all-tickers",
+      "family": "coins",
+      "record": {
+        "name": "fixture_by_YourEmojiBot",
+        "title": "Coins",
+        "index": 1
+      },
+      "pack": {
+        "stickers": [
+          {
+            "custom_emoji_id": "111111111"
+          },
+          {
+            "custom_emoji_id": "222222222",
+            "is_video": true
+          }
+        ]
+      },
+      "provenance": {
+        "111111111": [
+          "aaa",
+          "bbb"
+        ]
+      },
+      "prior": {
+        "coin:aaa,bbb": {
+          "id": "333333333",
+          "history": []
+        }
+      },
+      "expected": {
+        "set_name": "fixture_by_YourEmojiBot",
+        "title": "Coins",
+        "family": "coins",
+        "pack_index": 1,
+        "link": "https://t.me/addemoji/fixture_by_YourEmojiBot",
+        "count": 2,
+        "captured_utc": "2026-10-07 00:00:00 UTC",
+        "emoji": [
+          {
+            "index": 0,
+            "slot": 1,
+            "custom_emoji_id": "111111111",
+            "previous_custom_emoji_ids": [
+              "333333333"
+            ],
+            "history_key": "coin:aaa,bbb",
+            "glyph": null,
+            "format": "static",
+            "role": "emoji",
+            "name": "aaa, bbb",
+            "source_emoji_ids": []
+          },
+          {
+            "index": 1,
+            "slot": 2,
+            "custom_emoji_id": "222222222",
+            "previous_custom_emoji_ids": [],
+            "history_key": "id:222222222",
+            "glyph": null,
+            "format": "video",
+            "role": "emoji",
+            "name": null,
+            "source_emoji_ids": []
+          }
+        ]
+      },
+      "markdown": "# Coins\n\n- **Set** `fixture_by_YourEmojiBot`\n- **Link** https://t.me/addemoji/fixture_by_YourEmojiBot\n- **Family** coins  |  **Pack** 1  |  **Emoji** 2\n- **Captured** 2026-10-07 00:00:00 UTC (live from Telegram)\n\n`#` counts from 0; `slot` is the position Telegram shows. This family carries no brand logo, so emoji 0 is a real coin. *Was* is the id this emoji had in the pack it was taken from, empty when we made it ourselves. *Ours before* lists the ids it held in THIS estate earlier, oldest first: a replace mints a new id, and the dead one is what stale inventories still point at.\n\n| # | slot | custom_emoji_id | ours before | glyph | format | name | was |\n|-:|----:|-----------------|-------------|-------|--------|------|-----|\n| 0 | 1 | `111111111` | `333333333` | — | static | aaa, bbb | — |\n| 1 | 2 | `222222222` | — | — | video | — | — |\n"
+    }
+  ],
+  "index_case": {
+    "documents": [
+      {
+        "set_name": "fixture_by_YourEmojiBot",
+        "title": "Fixture",
+        "family": "general",
+        "pack_index": 1,
+        "link": "https://t.me/addemoji/fixture_by_YourEmojiBot",
+        "count": 1,
+        "captured_utc": "2026-10-07 00:00:00 UTC",
+        "emoji": [
+          {
+            "index": 0,
+            "slot": 1,
+            "custom_emoji_id": "111111111",
+            "previous_custom_emoji_ids": [
+              "444444444",
+              "333333333"
+            ],
+            "history_key": "ck:s:fixture",
+            "glyph": "😀",
+            "format": "static",
+            "role": "emoji",
+            "name": "fixture",
+            "source_emoji_ids": [
+              "222222222"
+            ]
+          }
+        ]
+      }
+    ],
+    "family": "general",
+    "old": {
+      "packs": [
+        {
+          "set_name": "coins_by_YourEmojiBot",
+          "title": "Coins",
+          "family": "coins",
+          "pack_index": 1,
+          "link": "https://t.me/addemoji/coins_by_YourEmojiBot",
+          "count": 1
+        }
+      ],
+      "by_current_id": {
+        "999999999": {
+          "set": "coins_by_YourEmojiBot",
+          "slot": 1,
+          "index": 0
+        }
+      },
+      "by_source_id": {
+        "888888888": "999999999"
+      },
+      "by_previous_id": {
+        "777777777": "999999999"
+      },
+      "inputs": {
+        "catalog.db": [
+          1,
+          1
+        ],
+        "publish_fixture.json": [
+          2,
+          2
+        ],
+        "rebuild_dedup_state.json": [
+          3,
+          3
+        ],
+        "ticker_to_id.json": [
+          4,
+          4
+        ]
+      }
+    },
+    "inputs": {
+      "catalog.db": [
+        9,
+        9
+      ],
+      "publish_fixture.json": [
+        9,
+        9
+      ],
+      "rebuild_dedup_state.json": [
+        9,
+        9
+      ],
+      "ticker_to_id.json": [
+        9,
+        9
+      ]
+    },
+    "expected": {
+      "captured_utc": "2026-10-07 00:00:00 UTC",
+      "pack_count": 2,
+      "emoji_count": 2,
+      "packs": [
+        {
+          "set_name": "coins_by_YourEmojiBot",
+          "title": "Coins",
+          "family": "coins",
+          "pack_index": 1,
+          "link": "https://t.me/addemoji/coins_by_YourEmojiBot",
+          "count": 1
+        },
+        {
+          "set_name": "fixture_by_YourEmojiBot",
+          "title": "Fixture",
+          "family": "general",
+          "pack_index": 1,
+          "link": "https://t.me/addemoji/fixture_by_YourEmojiBot",
+          "count": 1
+        }
+      ],
+      "by_current_id": {
+        "111111111": {
+          "set": "fixture_by_YourEmojiBot",
+          "slot": 1,
+          "index": 0
+        },
+        "999999999": {
+          "set": "coins_by_YourEmojiBot",
+          "slot": 1,
+          "index": 0
+        }
+      },
+      "by_source_id": {
+        "222222222": "111111111",
+        "888888888": "999999999"
+      },
+      "by_previous_id": {
+        "444444444": "111111111",
+        "333333333": "111111111",
+        "777777777": "999999999"
+      },
+      "id_changes": 3,
+      "inputs": {
+        "catalog.db": [
+          9,
+          9
+        ],
+        "publish_fixture.json": [
+          9,
+          9
+        ],
+        "rebuild_dedup_state.json": [
+          3,
+          3
+        ],
+        "ticker_to_id.json": [
+          4,
+          4
+        ]
+      }
+    },
+    "markdown": "# Published emoji packs\n\n2 packs, 2 emoji. Captured 2026-10-07 00:00:00 UTC live from Telegram.\n\nEach pack has three files named after the set: `.md` to read, `.json` to parse, and `.html` to LOOK at -- one self-contained page with every thumbnail inline (animation included) and the same roster repeated in a `<script type=\"application/json\">` block. `index.json` also carries three flat lookups: `by_current_id` (id -> where it lives now), `by_source_id` (the id an emoji had in its original pack -> ours) and `by_previous_id` (an id of OURS that a replace retired -> the id that took its place), so a stale reference resolves either way.\n\n| Pack | Set | Emoji | Link |\n|------|-----|------:|------|\n| coins 1 | `coins_by_YourEmojiBot` | 1 | https://t.me/addemoji/coins_by_YourEmojiBot |\n| general 1 | `fixture_by_YourEmojiBot` | 1 | https://t.me/addemoji/fixture_by_YourEmojiBot |\n"
+  }
+}

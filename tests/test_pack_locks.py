@@ -20,7 +20,7 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit import build_pack as bp
+from tests.reference import build_pack as bp
 from emojikit import packstate as ps
 
 

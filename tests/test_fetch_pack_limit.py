@@ -16,8 +16,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from emojikit import fetch_pack
-from emojikit.catalog import Catalog
+from tests.reference import fetch_pack
+from tests.reference.catalog import Catalog
 
 
 def _png_bytes(i: int) -> bytes:

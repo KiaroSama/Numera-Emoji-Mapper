@@ -1,0 +1,171 @@
+{
+  "source": "d173116:collection_reconcile._near_catalog_match",
+  "cases": [
+    {
+      "name": "animated-miss",
+      "fmt": "animated",
+      "probe": null,
+      "lookup": "v:abc",
+      "items": [],
+      "comparison": {},
+      "expected": null,
+      "calls": []
+    },
+    {
+      "name": "failed-raster-decode",
+      "fmt": "static",
+      "probe": null,
+      "lookup": "v:abc",
+      "items": [],
+      "comparison": {},
+      "expected": "undecidable",
+      "calls": []
+    },
+    {
+      "name": "distant-candidate-not-compared",
+      "fmt": "static",
+      "probe": 0,
+      "lookup": "v:abc",
+      "items": [
+        {
+          "content_key": "s:red",
+          "fmt": "static",
+          "phash": 7,
+          "file_path": "s:red"
+        }
+      ],
+      "comparison": {},
+      "expected": null,
+      "calls": []
+    },
+    {
+      "name": "unhashed-candidate-examined",
+      "fmt": "static",
+      "probe": 0,
+      "lookup": "v:abc",
+      "items": [
+        {
+          "content_key": "s:red",
+          "fmt": "static",
+          "phash": null,
+          "file_path": "s:red"
+        }
+      ],
+      "comparison": {
+        "s:red": true
+      },
+      "expected": "s:red",
+      "calls": [
+        "s:red"
+      ]
+    },
+    {
+      "name": "unique-color-match",
+      "fmt": "static",
+      "probe": 0,
+      "lookup": "v:abc",
+      "items": [
+        {
+          "content_key": "s:red",
+          "fmt": "static",
+          "phash": 1,
+          "file_path": "s:red"
+        },
+        {
+          "content_key": "s:blue",
+          "fmt": "static",
+          "phash": 2,
+          "file_path": "s:blue"
+        }
+      ],
+      "comparison": {
+        "s:red": true,
+        "s:blue": false
+      },
+      "expected": "s:red",
+      "calls": [
+        "s:red",
+        "s:blue"
+      ]
+    },
+    {
+      "name": "unreadable-rival-refuses",
+      "fmt": "static",
+      "probe": 0,
+      "lookup": "v:abc",
+      "items": [
+        {
+          "content_key": "s:red",
+          "fmt": "static",
+          "phash": 1,
+          "file_path": "s:red"
+        },
+        {
+          "content_key": "s:blue",
+          "fmt": "static",
+          "phash": 2,
+          "file_path": "s:blue"
+        }
+      ],
+      "comparison": {
+        "s:red": true,
+        "s:blue": null
+      },
+      "expected": "undecidable",
+      "calls": [
+        "s:red",
+        "s:blue"
+      ]
+    },
+    {
+      "name": "two-proven-matches",
+      "fmt": "static",
+      "probe": 0,
+      "lookup": "v:abc",
+      "items": [
+        {
+          "content_key": "s:red",
+          "fmt": "static",
+          "phash": 1,
+          "file_path": "s:red"
+        },
+        {
+          "content_key": "s:blue",
+          "fmt": "static",
+          "phash": 2,
+          "file_path": "s:blue"
+        }
+      ],
+      "comparison": {
+        "s:red": true,
+        "s:blue": true
+      },
+      "expected": "ambiguous",
+      "calls": [
+        "s:red",
+        "s:blue"
+      ]
+    },
+    {
+      "name": "video-exact-digest-nominates-distant-hash",
+      "fmt": "video",
+      "probe": 0,
+      "lookup": "v:abc",
+      "items": [
+        {
+          "content_key": "v:x:abc",
+          "fmt": "video",
+          "phash": 255,
+          "file_path": "v:x:abc"
+        }
+      ],
+      "comparison": {
+        "v:x:abc": true
+      },
+      "expected": "v:x:abc",
+      "calls": [
+        "v:x:abc"
+      ]
+    }
+  ]
+}

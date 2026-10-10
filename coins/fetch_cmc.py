@@ -24,7 +24,7 @@ import os
 import time
 import urllib.parse
 
-from emojikit.build_pack import (EXIT_PARTIAL, ingest_exit_code, load_env)
+from emojikit.cli_env import (EXIT_PARTIAL, ingest_exit_code, load_env)
 from emojikit import operator_config
 from emojikit.telegram_api import (Telegram)
 from emojikit.logsetup import setup_logging

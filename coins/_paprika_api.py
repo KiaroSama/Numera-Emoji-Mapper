@@ -21,7 +21,7 @@ from PIL import Image
 
 from coins import _http
 from coins._inventory import base_ticker, norm
-from emojikit.make_emoji_pngs import _fit_100, _is_blank
+from emojikit.media import fit_100 as _fit_100, is_blank_image as _is_blank
 
 log = logging.getLogger("fetch_paprika")
 

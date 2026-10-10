@@ -1,0 +1,403 @@
+{
+  "source": "d173116:plan_apply.compute_steps",
+  "cases": [
+    {
+      "name": "move-new-reorder",
+      "plan": {
+        "targets": [
+          [
+            "a",
+            2
+          ],
+          [
+            "c",
+            1
+          ]
+        ],
+        "moves": [],
+        "held": [],
+        "excluded": [],
+        "per_set": 200
+      },
+      "state": {
+        "sets": [
+          {
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a",
+              "b"
+            ],
+            "logo": true
+          },
+          {
+            "fmt": "mixed",
+            "index": 2,
+            "keys": [],
+            "logo": true
+          }
+        ],
+        "skipped": []
+      },
+      "items": {
+        "a": {
+          "included": true,
+          "pos": 1
+        },
+        "b": {
+          "included": true,
+          "pos": 0
+        },
+        "c": {
+          "included": true,
+          "pos": 2
+        }
+      },
+      "ids": {
+        "a": "111111111"
+      },
+      "expected": {
+        "removals": [
+          [
+            "a",
+            1
+          ]
+        ],
+        "adds": {
+          "1": [
+            "c"
+          ],
+          "2": [
+            "a"
+          ]
+        },
+        "moved_in": [
+          "a"
+        ],
+        "create": null,
+        "create_logo": false,
+        "reorder": [],
+        "held_live": [],
+        "unpublishable": [],
+        "counted": 3,
+        "pending": true
+      }
+    },
+    {
+      "name": "held-live",
+      "plan": {
+        "targets": [
+          [
+            "a",
+            2
+          ],
+          [
+            "c",
+            1
+          ]
+        ],
+        "moves": [],
+        "held": [],
+        "excluded": [
+          "a"
+        ],
+        "per_set": 200
+      },
+      "state": {
+        "sets": [
+          {
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a",
+              "b"
+            ],
+            "logo": true
+          },
+          {
+            "fmt": "mixed",
+            "index": 2,
+            "keys": [],
+            "logo": true
+          }
+        ],
+        "skipped": []
+      },
+      "items": {
+        "a": {
+          "included": true,
+          "pos": 1
+        },
+        "b": {
+          "included": true,
+          "pos": 0
+        },
+        "c": {
+          "included": true,
+          "pos": 2
+        }
+      },
+      "ids": {
+        "a": "111111111"
+      },
+      "expected": {
+        "removals": [],
+        "adds": {
+          "1": [
+            "c"
+          ]
+        },
+        "moved_in": [],
+        "create": null,
+        "create_logo": false,
+        "reorder": [
+          1
+        ],
+        "held_live": [
+          [
+            "a",
+            1
+          ]
+        ],
+        "unpublishable": [],
+        "counted": 1,
+        "pending": true
+      }
+    },
+    {
+      "name": "missing-id",
+      "plan": {
+        "targets": [
+          [
+            "a",
+            2
+          ],
+          [
+            "c",
+            1
+          ]
+        ],
+        "moves": [],
+        "held": [],
+        "excluded": [],
+        "per_set": 200
+      },
+      "state": {
+        "sets": [
+          {
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a",
+              "b"
+            ],
+            "logo": true
+          },
+          {
+            "fmt": "mixed",
+            "index": 2,
+            "keys": [],
+            "logo": true
+          }
+        ],
+        "skipped": []
+      },
+      "items": {
+        "a": {
+          "included": true,
+          "pos": 1
+        },
+        "b": {
+          "included": true,
+          "pos": 0
+        },
+        "c": {
+          "included": true,
+          "pos": 2
+        }
+      },
+      "ids": {},
+      "error": "a is live in pack 1 but its custom_emoji_id is not recorded, so its sticker cannot be found by id"
+    },
+    {
+      "name": "capacity-refusal",
+      "plan": {
+        "targets": [
+          [
+            "a",
+            2
+          ],
+          [
+            "c",
+            1
+          ]
+        ],
+        "moves": [],
+        "held": [],
+        "excluded": [],
+        "per_set": 1
+      },
+      "state": {
+        "sets": [
+          {
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a",
+              "b"
+            ],
+            "logo": true
+          },
+          {
+            "fmt": "mixed",
+            "index": 2,
+            "keys": [],
+            "logo": true
+          }
+        ],
+        "skipped": []
+      },
+      "items": {
+        "a": {
+          "included": true,
+          "pos": 1
+        },
+        "b": {
+          "included": true,
+          "pos": 0
+        },
+        "c": {
+          "included": true,
+          "pos": 2
+        }
+      },
+      "ids": {
+        "a": "111111111"
+      },
+      "error": "pack 1 would hold 3 (logo included), over the cap of 1"
+    },
+    {
+      "name": "next-pack",
+      "plan": {
+        "targets": [
+          [
+            "c",
+            3
+          ]
+        ],
+        "moves": [],
+        "held": [],
+        "excluded": [],
+        "per_set": 200
+      },
+      "state": {
+        "sets": [
+          {
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a",
+              "b"
+            ],
+            "logo": true
+          },
+          {
+            "fmt": "mixed",
+            "index": 2,
+            "keys": [],
+            "logo": true
+          }
+        ],
+        "skipped": []
+      },
+      "items": {
+        "a": {
+          "included": true,
+          "pos": 1
+        },
+        "b": {
+          "included": true,
+          "pos": 0
+        },
+        "c": {
+          "included": true,
+          "pos": 2
+        }
+      },
+      "ids": {
+        "a": "111111111"
+      },
+      "expected": {
+        "removals": [],
+        "adds": {
+          "3": [
+            "c"
+          ]
+        },
+        "moved_in": [],
+        "create": 3,
+        "create_logo": true,
+        "reorder": [
+          1
+        ],
+        "held_live": [],
+        "unpublishable": [],
+        "counted": 2,
+        "pending": true
+      }
+    },
+    {
+      "name": "gap-refusal",
+      "plan": {
+        "targets": [
+          [
+            "c",
+            4
+          ]
+        ],
+        "moves": [],
+        "held": [],
+        "excluded": [],
+        "per_set": 200
+      },
+      "state": {
+        "sets": [
+          {
+            "fmt": "mixed",
+            "index": 1,
+            "keys": [
+              "a",
+              "b"
+            ],
+            "logo": true
+          },
+          {
+            "fmt": "mixed",
+            "index": 2,
+            "keys": [],
+            "logo": true
+          }
+        ],
+        "skipped": []
+      },
+      "items": {
+        "a": {
+          "included": true,
+          "pos": 1
+        },
+        "b": {
+          "included": true,
+          "pos": 0
+        },
+        "c": {
+          "included": true,
+          "pos": 2
+        }
+      },
+      "ids": {
+        "a": "111111111"
+      },
+      "error": "the plan targets pack(s) [4], but only pack 3 can be created next (packs are numbered without gaps)"
+    }
+  ]
+}

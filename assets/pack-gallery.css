@@ -1,0 +1,84 @@
+
+/* Deliberately the curate panel's visual language -- same grid, same card, same
+   per-format accent, same checker backdrop -- so the two read as one product.
+   What is NOT here is everything that MUTATES: no draggable, no tick, no save,
+   no selection state. This page is for looking, and a control that looks live
+   but changes nothing is worse than no control. */
+:root{color-scheme:dark;--bg:#0b0f14;--panel:#111820;--line:#1f2a36;--txt:#e6edf6;
+  --muted:#8fa0b8;--neon:#22d3ee;--neon2:#7dd3fc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font:14px/1.45 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:#0e141c;border-bottom:1px solid var(--line);
+  padding:14px 20px}
+h1{margin:0 0 4px;font-size:18px}
+.meta{color:var(--muted);font-size:12px;line-height:1.5}
+.meta a{color:var(--neon2)}
+.meta b{color:var(--txt)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:14px;padding:18px 20px 60px}
+.card{position:relative;border:2px solid var(--line);border-radius:14px;
+  background:var(--panel);padding:12px 10px 10px;text-align:center;
+  /* Skip layout/paint off-screen: a coin pack is 200 cards and pack 1 is 200
+     more, most of them animated. The size hint stops the scrollbar jumping. */
+  content-visibility:auto;contain-intrinsic-size:auto 268px}
+.card.fmt-static  {--fmt:#22d3ee;--fmtInk:#9fe8f5;--fmtBg:#06121b;--fmtLine:#1c3a44}
+.card.fmt-animated{--fmt:#c4b5fd;--fmtInk:#ede9fe;--fmtBg:#140f28;--fmtLine:#4c3f7a}
+.card.fmt-video   {--fmt:#34d399;--fmtInk:#a7f3d0;--fmtBg:#04170f;--fmtLine:#1b4a38}
+.card.logo{border-color:#6b5316;--fmt:#fbbf24;--fmtInk:#fde68a;--fmtBg:#1a1508;--fmtLine:#5a4415}
+.hdr{display:flex;flex-direction:column;align-items:center;gap:3px;margin:0 0 8px}
+.pos{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--neon2);
+  background:#08131f;border:1px solid #1c3a44;border-radius:6px;padding:2px 6px;min-width:24px}
+.badge{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--fmtInk,#9fd);
+  background:var(--fmtBg,#06121b);border:1px solid var(--fmtLine,#1c3a44);
+  border-radius:6px;padding:2px 5px}
+.thumb{width:108px;height:108px;margin:3px auto 4px;border-radius:10px;display:flex;
+  align-items:center;justify-content:center;overflow:hidden;
+  outline:2px solid var(--fmt,#2b6f7d);outline-offset:2px;
+  box-shadow:inset 0 0 0 1px #00000026}
+.thumb img,.thumb video{max-width:104px;max-height:104px;display:block}
+.thumb.empty{background:#0a0e16;color:#61708a;font-size:11px}
+/* The glyph the sticker carries. Invisible in Telegram -- only the picture is
+   ever shown -- so the only place it can be checked against the art is here. */
+.glyph{font-size:20px;line-height:1.1;margin:6px 0 2px}
+.nm{font-size:11px;color:var(--muted);word-break:break-word;margin-bottom:6px}
+/* Both ids copy on click. The source id is the one an external map may still
+   point at, so it is as load-bearing as ours and gets the same affordance. */
+.id{display:block;font:11px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;
+  border-radius:6px;padding:3px 4px;margin-top:3px;cursor:copy;word-break:break-all;
+  border:1px solid transparent}
+.id:hover{border-color:var(--neon2);background:#0b1a26}
+.id.now{color:#c9d6e8}
+.id.was{color:#e0a86a}
+.id.mine{color:#8ab4f8}
+.id .k{display:block;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted)}
+.card.copied .id.hit{border-color:#22c55e;color:#86efac}
+
+/* The view-only half of the panel's header. Top/Bottom, the backdrop cycle and
+   the animation switch change nothing about the DATA -- they are how you SEE a
+   grid of a thousand emoji -- so leaving them out was over-stripping. */
+header .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+button{font:inherit;line-height:1.25;cursor:pointer;border-radius:10px;
+  border:1px solid var(--line);background:#131b25;color:var(--txt);padding:6px 11px}
+button:hover{border-color:var(--neon2)}
+.switch{display:inline-flex;align-items:center;gap:8px}
+.knob{width:26px;height:15px;border-radius:9px;background:#2b3a4c;position:relative;
+  transition:background .15s}
+.knob::after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;
+  border-radius:50%;background:#8fa0b8;transition:transform .15s,background .15s}
+.switch[aria-pressed="true"] .knob{background:#12603f}
+.switch[aria-pressed="true"] .knob::after{transform:translateX(11px);background:#34d399}
+.sep{width:1px;height:20px;background:var(--line)}
+/* Backdrops so black / hollow / faint emoji are all visible -- the same four
+   the panel offers, because the same emoji are being judged. */
+body.bg-checker .thumb{background-color:#828c9a;background-image:
+  linear-gradient(45deg,#464e5a 25%,transparent 25%),
+  linear-gradient(-45deg,#464e5a 25%,transparent 25%),
+  linear-gradient(45deg,transparent 75%,#464e5a 75%),
+  linear-gradient(-45deg,transparent 75%,#464e5a 75%);
+  background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
+body.bg-light .thumb{background:#f4f6f9;background-image:none}
+body.bg-dark  .thumb{background:#0a0e16;background-image:none}
+body.bg-gray  .thumb{background:#808a96;background-image:none}

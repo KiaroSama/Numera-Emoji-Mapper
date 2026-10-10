@@ -1,0 +1,85 @@
+{
+  "source": "d173116:pack_archive.names+rows+reports",
+  "cases": [
+    {
+      "name": "logo-known-and-unidentified",
+      "record": {
+        "name": "fixture_by_YourEmojiBot",
+        "title": "Fixture",
+        "fmt": "mixed"
+      },
+      "live": [
+        {
+          "custom_emoji_id": "111111111"
+        },
+        {
+          "custom_emoji_id": "222222222",
+          "emoji": "😀"
+        },
+        {
+          "custom_emoji_id": "333333333"
+        }
+      ],
+      "items": {
+        "s:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+          "path": "fixture.webp",
+          "fmt": "static",
+          "keywords": [
+            "one|two",
+            "line\nbreak"
+          ]
+        }
+      },
+      "keys": {
+        "222222222": "s:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expected": [
+        {
+          "position": 1,
+          "file": "001_logo.png",
+          "format": "static",
+          "premium_id": null,
+          "content_key": null,
+          "note": "brand logo, copied from the repo"
+        },
+        {
+          "position": 2,
+          "file": "002_static_aaaaaaaaaaaa.webp",
+          "format": "static",
+          "premium_id": "222222222",
+          "content_key": "s:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "emoji": "😀"
+        },
+        {
+          "position": 3,
+          "file": null,
+          "format": null,
+          "premium_id": "333333333",
+          "content_key": null,
+          "note": "not in the catalog (unidentified)"
+        }
+      ],
+      "history_markdown": "# fixture_by_YourEmojiBot\n\nPack: https://t.me/addemoji/fixture_by_YourEmojiBot\nEmoji in the pack: **3**\n\n`premium_id` is the id THIS pack's emoji has now -- the one to use in a\n`tg-emoji` tag. `content key` is the catalog's hash of the artwork, which\nsurvives a recolour and is how a file is matched back to its emoji.\n\n| # | file | format | premium_id | content key |\n|---|------|--------|------------|-------------|\n| 1 | `001_logo.png` | static | `-` | `brand logo` |\n| 2 | `002_static_aaaaaaaaaaaa.webp` | static | `222222222` | `s:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` |\n| 3 | `-` | - | `333333333` | `unidentified` |\n",
+      "manifest_markdown": "# Fixture\n\nPack: https://t.me/addemoji/fixture_by_YourEmojiBot  |  format: mixed  |  1 emoji\n\n| # | Name | Emoji ID |\n|---|------|----------|\n| 1 | one\\|two, line break | 222222222 |\n"
+    }
+  ],
+  "folders": [
+    {
+      "title": "Pack One",
+      "folder": "Pack One"
+    },
+    {
+      "title": "Bad:<\"/\\|?*\u0000 .",
+      "folder": "Bad_________"
+    },
+    {
+      "title": ". ",
+      "folder": "_"
+    },
+    {
+      "title": "دو 😀",
+      "folder": "دو 😀"
+    }
+  ],
+  "archive_name": "007_animated_bbbbbbbbbbbb.tgs"
+}

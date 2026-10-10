@@ -21,7 +21,7 @@ from PIL import Image
 
 
 
-from emojikit import make_emoji_pngs as mp
+from tests.reference import make_emoji_pngs as mp
 from emojikit import media
 
 

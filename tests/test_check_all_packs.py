@@ -23,7 +23,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "coins"))
 
-from emojikit.build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL)  # noqa: E402
+from tests.reference.build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL)  # noqa: E402
 from emojikit import media  # noqa: E402
 
 import check_all_packs as cap  # noqa: E402

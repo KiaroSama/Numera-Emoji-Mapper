@@ -35,7 +35,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 
-from emojikit import collection_migrate as cm  # noqa: E402
+from tests.reference import collection_migrate as cm  # noqa: E402
 from emojikit import packstate  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -267,7 +267,7 @@ class MigratedPathsStayDataRelative(MigrationCase):
 
     def test_rows_written_absolute_by_the_old_code_still_verify(self):
         """A journal begun by the old code is finished by the new one."""
-        from emojikit import migration_bundle
+        from tests.reference import migration_bundle
 
         def old_apply_files(db, files):
             for intent in files:

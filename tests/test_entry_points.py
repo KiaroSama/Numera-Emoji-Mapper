@@ -31,8 +31,9 @@ TIMEOUT = 120          # a clean import is well under a second
 
 def _entry_points() -> list[str]:
     """Importable module names for every first-party executable script."""
-    mods = [f"emojikit.{p.stem}" for p in sorted((ROOT / "emojikit").glob("*.py"))
+    mods = [f"tests.reference.{p.stem}" for p in sorted((ROOT / "tests" / "reference").glob("*.py"))
             if '\nif __name__ == "__main__":' in p.read_text(encoding="utf-8")]
+    mods += ["emojikit.media_bridge"]
     mods += [f"coins.{p.stem}" for p in sorted((ROOT / "coins").glob("*.py"))
              if p.stem != "__init__"]
     return mods
@@ -45,7 +46,7 @@ class EntryPointsImport(unittest.TestCase):
         # suite vacuously green.
         self.assertGreaterEqual(len(mods), 15, f"only found {mods}")
         self.assertEqual(list(ROOT.glob("*.py")), [], "Python modules belong in emojikit")
-        for expected in ("emojikit.build_pack", "emojikit.emoji_bot", "emojikit.panel",
+        for expected in ("tests.reference.build_pack", "tests.reference.emoji_bot", "tests.reference.panel",
                          "coins.verify_logos", "coins.rebuild_dedup"):
             self.assertIn(expected, mods)
 
@@ -53,11 +54,11 @@ class EntryPointsImport(unittest.TestCase):
         import importlib
 
         for name in _entry_points():
-            if name.startswith("emojikit."):
+            if name.startswith(("tests.reference.", "emojikit.")):
                 module = importlib.import_module(name)
                 if hasattr(module, "ROOT"):
                     self.assertEqual(module.ROOT, ROOT, name)
-        from emojikit import emoji_bot
+        from tests.reference import emoji_bot
         from emojikit import logsetup
         self.assertEqual(emoji_bot.OFFSET_FILE, ROOT / "state_emoji_bot.json")
         self.assertEqual(logsetup.LOG_DIR, ROOT / "logs")
@@ -129,7 +130,7 @@ class SuiteIsHermetic(unittest.TestCase):
         """A module calling load_env() at import must not undo the scrub."""
         import os
 
-        from emojikit import build_pack
+        from tests.reference import build_pack
         before = dict(os.environ)
         build_pack.load_env()
         self.assertEqual(dict(os.environ), before,

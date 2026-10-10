@@ -29,7 +29,7 @@ import json
 import time
 from pathlib import Path
 
-from emojikit.build_pack import (EXIT_PARTIAL, ingest_exit_code, load_env)
+from emojikit.cli_env import (EXIT_PARTIAL, ingest_exit_code, load_env)
 from emojikit.packstate import write_json_atomic
 from emojikit.telegram_api import Telegram
 from emojikit.logsetup import setup_logging

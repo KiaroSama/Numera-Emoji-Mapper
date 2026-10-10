@@ -25,8 +25,8 @@ from urllib import error, request
 from tests._panel_fixtures import _make_png
 
 
-from emojikit import panel as p
-from emojikit.catalog import Catalog
+from tests.reference import panel as p
+from tests.reference.catalog import Catalog
 
 
 class InertItemJson(unittest.TestCase):
@@ -283,7 +283,7 @@ class CatalogUnavailable(unittest.TestCase):
 
 class TheMediaMapIsNeverEmpty(unittest.TestCase):
     def test_a_reader_never_misses_a_key_both_maps_hold(self):
-        from emojikit.panel_save import replace_map
+        from tests.reference.panel_save import replace_map
         shared = {f"k{i}": i for i in range(200)}
         fresh = {f"k{i}": -i for i in range(100, 300)}
         missed, done = [], threading.Event()

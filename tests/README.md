@@ -2,7 +2,9 @@
 
 Build the required native module first with the project interpreter:
 `python scripts/build_native.py` (Rust 1.99+ and the platform linker required).
-CI builds a release wheel before every Python job that uses the catalog/panel.
+CI builds a release wheel and installed native executable before every Python job
+that uses the catalog/panel. Native command parity also requires the debug executable;
+CI builds it explicitly. See [native backend status](../docs/native-backend.md).
 `test_native_similarity.py` compares exact indices against source-generated
 fixtures, checks fixture drift, malformed inputs and missing-native failures.
 The Python oracle is test-only, never a production fallback. Regenerate fixtures
@@ -38,8 +40,11 @@ Four modules are the exception: `test_panel_browser.py`,
 `test_panel_queues.py`, `test_panel_curation.py` and `test_panel_perf.py` need
 playwright and a Chromium build, and they **raise** rather than skipping when
 those are missing — a browser test that reports green on a machine with no
-browser is worse than no browser test at all. All four reach the page through `_panel_browser_fixtures.py`, which is also what
-`test_ci_coverage.py` watches.
+browser is worse than no browser test at all. All four reach the actual Rust panel
+through `_panel_browser_fixtures.py`, using a throwaway catalog and an owned native
+server process. Startup polls `/api/ping` with a ten-second ceiling; teardown reaps
+the server's process tree. JavaScript timing/media fixtures and committed database
+assertions are unchanged. `test_ci_coverage.py` watches this shared harness.
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt

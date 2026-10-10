@@ -20,8 +20,8 @@ from urllib import request
 from tests._panel_fixtures import ROOT, _make_png
 
 
-from emojikit import panel as p
-from emojikit.catalog import Catalog
+from tests.reference import panel as p
+from tests.reference.catalog import Catalog
 
 
 class ThePanelScriptsShip(unittest.TestCase):

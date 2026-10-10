@@ -1,0 +1,266 @@
+{
+  "source": "d173116:panel_view.build_view",
+  "cases": [
+    {
+      "name": "hide-live",
+      "request": {
+        "items": [
+          {
+            "content_key": "s:a",
+            "fmt": "static",
+            "file_path": "a.png",
+            "emojis": [
+              "😀"
+            ],
+            "keywords": [
+              "premium-id:123"
+            ],
+            "sources": [],
+            "phash": 0,
+            "custom_emoji_id": null,
+            "uploaded": false,
+            "included": true
+          },
+          {
+            "content_key": "s:b",
+            "fmt": "video",
+            "file_path": "b.webm",
+            "emojis": [],
+            "keywords": [],
+            "sources": [],
+            "phash": null,
+            "custom_emoji_id": null,
+            "uploaded": true,
+            "included": false
+          },
+          {
+            "content_key": "s:c",
+            "fmt": "animated",
+            "file_path": "c.tgs",
+            "emojis": [
+              "✅"
+            ],
+            "keywords": [],
+            "sources": [],
+            "phash": null,
+            "custom_emoji_id": null,
+            "uploaded": false,
+            "included": true
+          }
+        ],
+        "published": [
+          "s:b",
+          "s:c"
+        ],
+        "published_sets": {
+          "s:b": "fixture1",
+          "s:c": "fixture2"
+        },
+        "keep_sets": {},
+        "show_published": false,
+        "branded": false,
+        "logo_path": ""
+      },
+      "expected": {
+        "view": [
+          {
+            "key": "s:a",
+            "fmt": "static",
+            "label": "premium-id:123",
+            "copyId": "123",
+            "emoji": "😀",
+            "included": true
+          }
+        ],
+        "by_key": {
+          "s:a": "a.png"
+        },
+        "hidden": 2
+      }
+    },
+    {
+      "name": "show-all",
+      "request": {
+        "items": [
+          {
+            "content_key": "s:a",
+            "fmt": "static",
+            "file_path": "a.png",
+            "emojis": [
+              "😀"
+            ],
+            "keywords": [
+              "premium-id:123"
+            ],
+            "sources": [],
+            "phash": 0,
+            "custom_emoji_id": null,
+            "uploaded": false,
+            "included": true
+          },
+          {
+            "content_key": "s:b",
+            "fmt": "video",
+            "file_path": "b.webm",
+            "emojis": [],
+            "keywords": [],
+            "sources": [],
+            "phash": null,
+            "custom_emoji_id": null,
+            "uploaded": true,
+            "included": false
+          },
+          {
+            "content_key": "s:c",
+            "fmt": "animated",
+            "file_path": "c.tgs",
+            "emojis": [
+              "✅"
+            ],
+            "keywords": [],
+            "sources": [],
+            "phash": null,
+            "custom_emoji_id": null,
+            "uploaded": false,
+            "included": true
+          }
+        ],
+        "published": [
+          "s:b",
+          "s:c"
+        ],
+        "published_sets": {
+          "s:b": "fixture1",
+          "s:c": "fixture2"
+        },
+        "keep_sets": {},
+        "show_published": true,
+        "branded": false,
+        "logo_path": ""
+      },
+      "expected": {
+        "view": [
+          {
+            "key": "s:a",
+            "fmt": "static",
+            "label": "premium-id:123",
+            "copyId": "123",
+            "emoji": "😀",
+            "included": true
+          },
+          {
+            "key": "s:b",
+            "fmt": "video",
+            "label": "b",
+            "copyId": "",
+            "emoji": "",
+            "included": false
+          },
+          {
+            "key": "s:c",
+            "fmt": "animated",
+            "label": "✅",
+            "copyId": "",
+            "emoji": "✅",
+            "included": true
+          }
+        ],
+        "by_key": {
+          "s:a": "a.png",
+          "s:b": "b.webm",
+          "s:c": "c.tgs"
+        },
+        "hidden": 0
+      }
+    },
+    {
+      "name": "selected-pack",
+      "request": {
+        "items": [
+          {
+            "content_key": "s:a",
+            "fmt": "static",
+            "file_path": "a.png",
+            "emojis": [
+              "😀"
+            ],
+            "keywords": [
+              "premium-id:123"
+            ],
+            "sources": [],
+            "phash": 0,
+            "custom_emoji_id": null,
+            "uploaded": false,
+            "included": true
+          },
+          {
+            "content_key": "s:b",
+            "fmt": "video",
+            "file_path": "b.webm",
+            "emojis": [],
+            "keywords": [],
+            "sources": [],
+            "phash": null,
+            "custom_emoji_id": null,
+            "uploaded": true,
+            "included": false
+          },
+          {
+            "content_key": "s:c",
+            "fmt": "animated",
+            "file_path": "c.tgs",
+            "emojis": [
+              "✅"
+            ],
+            "keywords": [],
+            "sources": [],
+            "phash": null,
+            "custom_emoji_id": null,
+            "uploaded": false,
+            "included": true
+          }
+        ],
+        "published": [
+          "s:b",
+          "s:c"
+        ],
+        "published_sets": {
+          "s:b": "fixture1",
+          "s:c": "fixture2"
+        },
+        "keep_sets": {
+          "fixture1": 2
+        },
+        "show_published": false,
+        "branded": false,
+        "logo_path": ""
+      },
+      "expected": {
+        "view": [
+          {
+            "key": "s:a",
+            "fmt": "static",
+            "label": "premium-id:123",
+            "copyId": "123",
+            "emoji": "😀",
+            "included": true
+          },
+          {
+            "key": "s:b",
+            "fmt": "video",
+            "label": "b",
+            "copyId": "",
+            "emoji": "",
+            "included": false,
+            "pack": 2
+          }
+        ],
+        "by_key": {
+          "s:a": "a.png",
+          "s:b": "b.webm"
+        },
+        "hidden": 1
+      }
+    }
+  ]
+}

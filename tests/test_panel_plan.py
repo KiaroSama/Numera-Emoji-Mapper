@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from emojikit.panel_plan import PLAN_NAME, build_plan, merge_plan, write_plan
+from tests.reference.panel_plan import PLAN_NAME, build_plan, merge_plan, write_plan
 
 
 def card(key, *, pack=None, included=True, label=None, logo=False):

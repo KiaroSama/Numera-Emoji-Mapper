@@ -33,7 +33,7 @@ from tests._media_fixtures import HAS_FFMPEG
 from PIL import Image
 
 from emojikit import identity, media, video_decode
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 from emojikit.errors import UndecodableVideo
 
 

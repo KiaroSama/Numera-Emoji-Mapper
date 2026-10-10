@@ -15,4 +15,4 @@ module-name = "emojikit._native"
 python-source = "."
 python-packages = ["emojikit"]
 include = [{ path = "native/Cargo.lock", format = "sdist" }]
-exclude = ["**/.env*", "**/secrets.md", "**/.ignoreme/**", "**/explain-AI.md", ".ai/**", ".claude/**", ".kiro/**", ".codex/**", ".agents/**", ".specify/**", "specs/**", "plans/**", "private/**", "collection/**", "packs/**", "logs/**", ".backups/**", "graphify-out/**", ".codebase-memory/**"]
+exclude = ["tests/**", "**/.env*", "**/secrets.md", "**/.ignoreme/**", "**/explain-AI.md", ".ai/**", ".claude/**", ".kiro/**", ".codex/**", ".agents/**", ".specify/**", "specs/**", "plans/**", "private/**", "collection/**", "packs/**", "logs/**", ".backups/**", "graphify-out/**", ".codebase-memory/**"]

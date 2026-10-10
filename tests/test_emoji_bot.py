@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 
-from emojikit import emoji_bot as b
+from tests.reference import emoji_bot as b
 
 
 def _msg(*cids):

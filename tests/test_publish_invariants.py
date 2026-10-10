@@ -27,10 +27,10 @@ from PIL import Image
 from tests._bc_fixtures import FakeTG, _make_png, _sticker
 
 
-from emojikit import build_collection as bc
-from emojikit.collection_state import MIXED, SetDrift
+from tests.reference import build_collection as bc
+from tests.reference.collection_state import MIXED, SetDrift
 from emojikit import identity
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 SET = "pks1_by_YourEmojiBot"
 

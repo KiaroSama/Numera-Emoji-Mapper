@@ -19,6 +19,7 @@ appear in that step".
 from __future__ import annotations
 
 import ast
+from functools import lru_cache
 import unittest
 from pathlib import Path
 
@@ -39,6 +40,11 @@ BROWSER_FIXTURE = "_panel_browser_fixtures"
 WINDOWS_MARKER = "RUNS_ON_NATIVE_WINDOWS"
 
 
+@lru_cache(maxsize=None)
+def _tree(path: Path, modified_ns: int) -> ast.Module:
+    return ast.parse(path.read_text(encoding="utf-8"), str(path))
+
+
 def _imports_harness(path: Path) -> bool:
     """An import, not a mention.
 
@@ -46,7 +52,7 @@ def _imports_harness(path: Path) -> bool:
     constant and imports nothing -- and it would match a docstring or a comment
     just as happily. The import graph is the real question, so ask the AST.
     """
-    tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
+    tree = _tree(path, path.stat().st_mtime_ns)
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
             if node.module and BROWSER_FIXTURE in node.module:
@@ -71,7 +77,7 @@ def _declares_windows(path: Path) -> bool:
     The same lesson the browser scan learned: a substring matches this file,
     which names the marker in a constant and claims nothing.
     """
-    tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
+    tree = _tree(path, path.stat().st_mtime_ns)
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(
                 isinstance(t, ast.Name) and t.id == WINDOWS_MARKER
@@ -109,7 +115,7 @@ _WINDOWS_SKIP_ALLOWED: dict[str, str] = {}
 
 
 def _skips_unless_windows(path: Path) -> bool:
-    tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
+    tree = _tree(path, path.stat().st_mtime_ns)
     for node in ast.walk(tree):
         if isinstance(node, ast.If):
             cond = ast.unparse(node.test)

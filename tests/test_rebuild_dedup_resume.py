@@ -19,7 +19,7 @@ from __future__ import annotations
 
 
 
-from emojikit import build_pack as bp
+from tests.reference import build_pack as bp
 from emojikit import telegram_api as tg_api
 from coins import rebuild_dedup as rd
 from coins import _dedup_plan as cfg

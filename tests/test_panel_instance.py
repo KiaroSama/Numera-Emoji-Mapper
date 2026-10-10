@@ -10,8 +10,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
 
-from emojikit import panel, panel_instance
-from emojikit.catalog import Catalog
+from tests.reference import panel, panel_instance
+from tests.reference.catalog import Catalog
 
 
 class ReopenPanel(unittest.TestCase):

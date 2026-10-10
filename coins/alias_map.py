@@ -15,7 +15,7 @@ import json
 import re
 from pathlib import Path
 
-from emojikit.build_pack import (EXIT_FAILED)
+from emojikit.cli_env import (EXIT_FAILED)
 from emojikit.packstate import (LockBusy, canonical_map_lock, write_json_atomic)
 from coins._inventory import parse_missing, refill_inventory
 # The one shared path of the keywords file, not a second hard-coded copy.

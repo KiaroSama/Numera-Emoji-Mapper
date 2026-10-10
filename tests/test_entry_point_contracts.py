@@ -31,10 +31,10 @@ ROOT = Path(__file__).resolve().parent.parent
 
 from PIL import Image  # noqa: E402
 
-from emojikit import fetch_pack  # noqa: E402
-from emojikit import make_emoji_pngs as m  # noqa: E402
-from emojikit import panel as p  # noqa: E402
-from emojikit.build_pack import EXIT_FAILED, EXIT_OK, EXIT_USAGE  # noqa: E402
+from tests.reference import fetch_pack  # noqa: E402
+from tests.reference import make_emoji_pngs as m  # noqa: E402
+from tests.reference import panel as p  # noqa: E402
+from tests.reference.build_pack import EXIT_FAILED, EXIT_OK, EXIT_USAGE  # noqa: E402
 from emojikit.media import TGS_MAX_UNPACKED  # noqa: E402
 from tests._cli_fixtures import DeadTelegram  # noqa: E402
 

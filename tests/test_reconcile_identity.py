@@ -27,9 +27,9 @@ from PIL import Image
 
 
 
-from emojikit import collection_reconcile as cr
+from tests.reference import collection_reconcile as cr
 from emojikit import identity
-from emojikit.catalog import Catalog
+from tests.reference.catalog import Catalog
 
 
 class NearCatalogMatchVerifiesBeforeItAttributes(unittest.TestCase):

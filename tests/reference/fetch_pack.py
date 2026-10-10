@@ -1,0 +1,260 @@
+"""Download emoji from existing Telegram custom-emoji packs into the catalog.
+
+Reads one or more source packs (by short name or ``t.me/addemoji/<name>`` link)
+via the Bot API, downloads every sticker, detects its format (static / animated
+/ video), deduplicates it by content, and stores it in the content-addressed
+catalog. Re-running is cheap and safe:
+
+* stickers whose Telegram ``file_unique_id`` was already ingested are skipped
+  without downloading again;
+* identical / near-identical media collapse onto a single catalog entry.
+
+Usage:
+  python -m emojikit.fetch_pack PACK [PACK ...] [--token-env GENERAL_BOT_TOKEN]
+                       [--data-dir collection] [--phash-threshold 5] [--limit N]
+
+PACK may be a bare set name (``coolpack_by_somebot``) or a full
+``https://t.me/addemoji/coolpack_by_somebot`` link.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+import re
+import tempfile
+from pathlib import Path
+
+from .build_pack import (EXIT_USAGE, REPAINT_MODES, ingest_exit_code,
+                        load_env, repaintable_gate)
+from emojikit.telegram_api import (Telegram)
+from emojikit import identity, media
+from .catalog import Catalog, DEFAULT_PHASH_THRESHOLD, phash_threshold_arg
+from .ingest import store_media
+from emojikit.logsetup import record_exit_code, redact, setup_logging
+
+ROOT = Path(__file__).resolve().parents[2]
+log = logging.getLogger("fetch_pack")
+
+
+# An emoji id, bare or as `premium-id:<digits>`. A set name can never look like
+# this: Telegram requires it to begin with a letter.
+_EMOJI_ID_ARG = re.compile(r"^(?:premium-id:)?(\d{5,})$")
+_IDS_PER_CALL = 200          # getCustomEmojiStickers' own limit
+
+
+def resolve_pack_args(tg: Telegram, args: list[str]) -> tuple[list[str], list[str]]:
+    """``(pack names, ids that name no pack)`` for a mix of names, links and ids.
+
+    Someone who likes an emoji usually has its id, not its pack's name; the
+    documented way to get from one to the other was a `python -c` one-liner
+    around the client's private call. Each pack appears once, in argument order.
+    """
+    names: list[str] = []
+    ids: list[str] = []
+    for raw in args:
+        m = _EMOJI_ID_ARG.match(raw.strip())
+        if m:
+            ids.append(m.group(1))
+        else:
+            names.append(pack_name(raw))
+    found: dict[str, str] = {}
+    unique = list(dict.fromkeys(ids))
+    for i in range(0, len(unique), _IDS_PER_CALL):
+        batch = unique[i:i + _IDS_PER_CALL]
+        for st in tg.call("getCustomEmojiStickers",
+                          data={"custom_emoji_ids": json.dumps(batch)}) or []:
+            if st.get("set_name"):
+                found[str(st.get("custom_emoji_id"))] = st["set_name"]
+    for cid in unique:
+        if cid in found:
+            names.append(found[cid])
+    return list(dict.fromkeys(names)), [cid for cid in unique if cid not in found]
+
+
+def pack_name(arg: str) -> str:
+    """Normalize a pack argument (link or bare name) to its short name."""
+    arg = arg.strip()
+    for prefix in ("https://t.me/addemoji/", "http://t.me/addemoji/",
+                   "t.me/addemoji/", "tg://addemoji?slug="):
+        if arg.startswith(prefix):
+            return arg[len(prefix):].split("?")[0].strip("/")
+    return arg
+
+
+def _media_path(data_dir: Path, fmt: str, content_key: str, ext: str | None = None) -> Path:
+    safe = content_key.replace(":", "_")
+    return data_dir / "media" / fmt / f"{safe}{ext or media.ext_for_format(fmt)}"
+
+
+def fetch_one(tg: Telegram, cat: Catalog, name: str, data_dir: Path,
+              tmp_dir: Path, limit: int = 0,
+              repaintable: str = "ask") -> dict[str, int]:
+    """Ingest a single pack; returns counts of new/dedup/skipped/failed.
+
+    ``limit`` bounds NEW catalog items, not stickers looked at: already-known
+    stickers are skipped for free, so scanning past them is what makes
+    ``--limit N`` actually deliver N new emoji on a re-run.
+    """
+    log.info("Fetching pack: %s", name)
+    sset = tg.get_sticker_set(name)
+    stickers = sset.get("stickers", [])
+    title = sset.get("title", name)
+    counts = {"new": 0, "dedup": 0, "skipped": 0, "failed": 0, "repaintable": 0}
+
+    # Asked once per pack, before any download. The flag is per STICKER even
+    # when the whole set is repaintable -- getStickerSet answers None at the set
+    # level -- so this reads the stickers, not sset.
+    repainted = [str(s.get("file_unique_id", "?")) for s in stickers
+                 if media.is_repaintable(s)]
+    if repainted and not repaintable_gate(repainted, mode=repaintable):
+        stickers = [s for s in stickers if not media.is_repaintable(s)]
+        counts["repaintable"] = len(repainted)
+
+    for i, st in enumerate(stickers):
+        if limit and counts["new"] >= limit:
+            break
+        fuid = str(st.get("file_unique_id", ""))
+        emoji = st.get("emoji")
+        emojis = [emoji] if emoji else []
+        keywords = list(st.get("keywords", []))  # usually empty for foreign packs
+
+        # Fast pre-dedup: already ingested this exact Telegram file -> no download.
+        known = cat.seen_file_unique_id(fuid) if fuid else None
+        if known:
+            cat.merge_labels(known, emojis=emojis, keywords=keywords,
+                             source=name, file_unique_id=fuid)
+            counts["dedup"] += 1
+            continue
+
+        fmt = media.telegram_sticker_format(st)
+        tmp = tmp_dir / f"{name}_{i}.dl"
+        try:
+            tg.download_file(st["file_id"], tmp)
+            # Our own encoding of their picture: publishing the downloaded bytes
+            # unchanged would make our sticker a bit-identical clone of theirs.
+            # Pixel-exact, so this is not a quality trade -- see
+            # media.reencode_in_place. It must run BEFORE the fingerprint, or
+            # the key would describe bytes that are no longer on disk.
+            media.reencode_in_place(tmp, fmt)
+            # One decode for both keys: separately, a video paid two ffmpeg
+            # launches over the same clip -- the priciest step in ingest,
+            # doubled, once per sticker of every fetched pack.
+            key, phash = identity.fingerprint(tmp, fmt)
+            ext = media.media_extension(tmp, fmt)
+            dest = store_media(tmp, _media_path(data_dir, fmt, key, ext), fmt, key,
+                               provenance={"source": name, "file_unique_id": fuid})
+            _, is_new = cat.add(content_key=key, fmt=fmt, file_path=dest,
+                                emojis=emojis, keywords=keywords, source=name,
+                                phash=phash, file_unique_id=fuid)
+            counts["new" if is_new else "dedup"] += 1
+        except Exception as exc:  # noqa: BLE001 - one bad sticker must not stop the run
+            log.warning("sticker %d of %s failed: %s", i, name, exc)
+            counts["failed"] += 1
+            tmp.unlink(missing_ok=True)
+        if (i + 1) % 50 == 0:
+            log.info("  %s: %d/%d processed", name, i + 1, len(stickers))
+
+    log.info("Pack %s (%s): %d stickers -> new=%d dedup=%d failed=%d "
+             "repaintable_skipped=%d", name, title, len(stickers), counts["new"],
+             counts["dedup"], counts["failed"], counts["repaintable"])
+    return counts
+
+
+def main(argv: list[str] | None = None) -> int:
+    load_env()
+    setup_logging("fetch_pack")
+    ap = argparse.ArgumentParser(description="Download Telegram emoji packs into the catalog.")
+    ap.add_argument("packs", nargs="+",
+                    help="Pack short names, addemoji links, or emoji ids "
+                         "(digits or premium-id:<digits>) -- an id fetches the "
+                         "whole pack it belongs to.")
+    ap.add_argument("--token-env", default="GENERAL_BOT_TOKEN",
+                    help="Env var holding the bot token (default GENERAL_BOT_TOKEN).")
+    ap.add_argument("--data-dir", default="collection", help="Catalog/media directory.")
+    # Validated by argparse, not by Catalog(): an out-of-range value raised
+    # ValueError from deep inside main() and killed the run with a traceback
+    # instead of the usage error every other bad argument produces.
+    ap.add_argument("--phash-threshold", type=phash_threshold_arg,
+                    default=DEFAULT_PHASH_THRESHOLD,
+                    help="Hamming distance for near-duplicate merging "
+                         "(-1 disables, else 0..16).")
+    ap.add_argument("--limit", type=int, default=0,
+                    help="Max NEW catalog items per pack; already-known stickers "
+                         "are skipped and do not count (0=all).")
+    ap.add_argument("--repaintable", choices=REPAINT_MODES, default="ask",
+                    help="Emoji Telegram repaints (they arrive black in our "
+                         "packs): ask (default), skip, or keep.")
+    args = ap.parse_args(argv)
+
+    # A negative limit is not "no limit": ``counts["new"] >= -1`` is true before
+    # the first sticker, so the loop breaks immediately and the run reports
+    # success having downloaded nothing.
+    if args.limit < 0:
+        log.error("--limit must be 0 or greater (got %d).", args.limit)
+        return EXIT_USAGE
+
+    token = os.environ.get(args.token_env, "")
+    if not token:
+        log.error("%s not set (env or .env).", args.token_env)
+        return 2
+
+    data_dir = (ROOT / args.data_dir) if not os.path.isabs(args.data_dir) else Path(args.data_dir)
+    tmp_dir = data_dir / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    tg = Telegram(token)
+    try:
+        bot = tg.get_me().get("username", "?")
+        log.info("Authenticated bot: @%s", bot)
+    except Exception as exc:  # noqa: BLE001
+        log.error("getMe failed: %s", redact(str(exc)))
+        return 2
+
+    try:
+        packs, unknown = resolve_pack_args(tg, args.packs)
+    except Exception as exc:  # noqa: BLE001 - reported with the token redacted
+        log.error("could not look up the emoji ids: %s", redact(str(exc)))
+        return 2
+    for cid in unknown:
+        # Counted as a failed pack below: an id that names nothing must not
+        # let the run exit 0.
+        log.error("emoji id %s belongs to no pack Telegram knows (or is not an id)", cid)
+
+    total = {"new": 0, "dedup": 0, "failed": 0, "repaintable": 0}
+    packs_failed = len(unknown)
+    with Catalog(data_dir / "catalog.db", phash_threshold=args.phash_threshold) as cat, \
+            tempfile.TemporaryDirectory(prefix="pack-", dir=tmp_dir) as scratch:
+        tmp_dir = Path(scratch)
+        for name in packs:
+            try:
+                c = fetch_one(tg, cat, name, data_dir, tmp_dir, args.limit,
+                              args.repaintable)
+            except RuntimeError as exc:
+                # A pack that never loaded is a failed item, not a no-op: only
+                # per-sticker failures were counted, so a run where every pack
+                # was misspelled or deleted ingested nothing and still exited 0.
+                log.error("pack %s failed: %s", name, redact(str(exc)))
+                packs_failed += 1
+                continue
+            for k in total:
+                total[k] += c[k]
+        stats = cat.stats()
+
+    log.info("TOTAL ingested: new=%d dedup=%d failed=%d packs_failed=%d "
+             "repaintable_skipped=%d", total["new"], total["dedup"],
+             total["failed"], packs_failed, total["repaintable"])
+    extra = f" packs_failed={packs_failed}" if packs_failed else ""
+    if total["repaintable"]:
+        extra += f" repaintable_skipped={total['repaintable']}"
+    print(f"Done. new={total['new']} dedup={total['dedup']} "
+          f"failed={total['failed']}{extra}", flush=True)
+    for fmt, s in sorted(stats.items()):
+        print(f"  catalog {fmt}: {s['total']} total ({s['pending']} pending upload)", flush=True)
+    return ingest_exit_code(total["new"] + total["dedup"], total["failed"] + packs_failed)
+
+
+if __name__ == "__main__":
+    raise SystemExit(record_exit_code(main()))

@@ -27,7 +27,7 @@ class PanelPage:
 
     def open(self, items=None, **kwargs):
         if items is None:
-            from emojikit.catalog import Catalog
+            from tests.reference.catalog import Catalog
             with Catalog(H.db) as cat:
                 cat.set_inclusion(set())
                 cat.set_order(sorted(it.content_key for it in cat.all_items()))

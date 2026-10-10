@@ -24,7 +24,7 @@ import unittest
 from tests import _panel_browser_fixtures as fx
 
 
-from emojikit import panel
+from tests.reference.collection_state import PER_SET
 from tests._panel_browser_fixtures import DENY_STORAGE, synth
 
 # Eight, because the drag and revision suites below reach for card six. One
@@ -505,7 +505,7 @@ class F06ThePackCountMatchesTheGrid(PanelInABrowser):
         return runs, (int(said.group(1)) if said and shown else 1), warn
 
     def test_F06_the_count_is_the_number_of_runs_the_grid_draws(self):
-        per = panel.PER_SET
+        per = PER_SET
         for ordinary in (per - 2, per - 1, per, 2 * per - 3, 2 * per - 2, 2 * per - 1):
             with self.subTest(ordinary=ordinary):
                 page = self.open(synth(ordinary, logo=True))
@@ -515,12 +515,12 @@ class F06ThePackCountMatchesTheGrid(PanelInABrowser):
                                  f"{said}: {warn!r}")
 
     def test_F06_without_a_logo_the_whole_set_is_available(self):
-        page = self.open(synth(panel.PER_SET))
+        page = self.open(synth(PER_SET))
         runs, said, _warn = self._packs(page)
         self.assertEqual((runs, said), (1, 1), "a logo that is not there took a slot")
 
     def test_F06_an_excluded_card_takes_no_slot(self):
-        per = panel.PER_SET
+        per = PER_SET
         page = self.open(synth(per, logo=True, excluded=range(3)))
         runs, said, _warn = self._packs(page)
         self.assertEqual((runs, said), (1, 1), "unticked cards were counted")
