@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import sys
 import threading
 import unittest
 from pathlib import Path
@@ -38,8 +37,7 @@ ROOT = Path(__file__).resolve().parent.parent
 from tests.reference import collection_migrate as cm  # noqa: E402
 from emojikit import packstate  # noqa: E402
 
-sys.path.insert(0, str(ROOT / "scripts"))
-import identity_repair as ir  # noqa: E402
+from tests.reference import identity_repair as ir  # noqa: E402
 
 
 class _Catalog:

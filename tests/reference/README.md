@@ -220,7 +220,8 @@ cutover gate. Runtime originals and immutable `tests/oracles` remain preserved.
 
 ## Integrated behavior integrity checkpoint
 
-`behavior.json` records the original SHA-256 and source-derived normalized AST
+`behavior.json` records canonical Git source SHA-256 (LF text, not mixed checkout
+line endings) and source-derived normalized AST
 behavior digest for each production-module reference. The normalization ignores
 imports and only ROOT/OFFSET_FILE assignments; it does not ignore function bodies,
 validation, exception handling, SQL, outputs or control flow. The integrator checked
