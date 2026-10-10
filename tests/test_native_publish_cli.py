@@ -132,6 +132,20 @@ class NativePublishCommand(unittest.TestCase):
                 self.assertEqual(result.stdout, capture.getvalue())
                 self.assertEqual(observed, ["getMe", "uploadStickerFile"])
                 self.assertFalse((data / "publish_plan_fixture.json").exists())
+                observed.clear()
+                answer = {"ok": True}  # Missing result is UNKNOWN, never a rejected file.
+                result = subprocess.run([str(BINARY), "build-collection", "--base", "fixture",
+                    "--title", "Fixture", "--mixed", "--no-brand-logo", "--user-id", "111111111",
+                    "--data-dir", str(data), "--preflight"], env=environment, cwd=folder,
+                    stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=10,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                with contextlib.redirect_stdout(io.StringIO()) as capture:
+                    expected_code = source["_report"](0, [], [], [(key, "missing.png", "Bot API success has no result")])
+                self.assertEqual(result.returncode, expected_code, result.stderr)
+                self.assertEqual(result.stdout, capture.getvalue())
+                self.assertEqual(observed, ["getMe", "uploadStickerFile"])
+                self.assertFalse((data / "publish_fixture.json").exists())
+                self.assertFalse((data / "publish_plan_fixture.json").exists())
             finally:
                 server.shutdown()
                 server.server_close()
