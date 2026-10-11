@@ -30,7 +30,13 @@ class NativePublicationFlow(unittest.TestCase):
     def test_restart_rejects_foreign_unrecorded_create_without_attributing_it(self):
         self._publication(False, foreign_create=True)
 
-    def _publication(self, branded, lost_response=False, foreign_create=False):
+    def test_explicit_into_pack_appends_without_recreating_the_family(self):
+        self._publication(False, target_mode="into")
+
+    def test_explicit_new_set_preserves_the_previous_pack(self):
+        self._publication(False, target_mode="new")
+
+    def _publication(self, branded, lost_response=False, foreign_create=False, target_mode=None):
         self.assertTrue(BINARY.is_file(), "build native executable before publication parity")
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
             folder = Path(folder).resolve()
@@ -57,6 +63,19 @@ class NativePublicationFlow(unittest.TestCase):
                     "sent": [], "sent_full": [], "skipped": [], "in_flight": {"key": key,
                     "operation": "create", "set_name": "fixture1_by_YourEmojiBot", "set_index": 1,
                     "title": "Fixture 1"}}), encoding="utf-8")
+            if target_mode:
+                old_key, old_hash = identity.fingerprint(logo_image, "static")
+                old_name = "fixture1_by_YourEmojiBot"
+                with Catalog(data / "catalog.db") as catalog:
+                    catalog.add(content_key=old_key, fmt="static", file_path=logo_image,
+                                emojis=["⭐"], phash=old_hash, file_unique_id="old-unique")
+                    catalog.mark_uploaded(old_key, "222222222", base="fixture", set_name=old_name)
+                live.append({"file_id": "old-file", "file_unique_id": "old-unique",
+                             "custom_emoji_id": "222222222"})
+                (data / "publish_fixture.json").write_text(json.dumps({"base": "fixture",
+                    "sets": [{"name": old_name, "fmt": "mixed", "index": 1, "keys": [old_key],
+                              "live": 1, "logo": False}], "sent": [old_name], "sent_full": [],
+                    "skipped": [], "in_flight": None}), encoding="utf-8")
             class Handler(BaseHTTPRequestHandler):
                 def setup(self):
                     super().setup()
@@ -74,7 +93,16 @@ class NativePublicationFlow(unittest.TestCase):
                         if not live:
                             self.reply({"ok": False, "description": "STICKERSET_INVALID"})
                             return
-                        result = {"name": "fixture1_by_YourEmojiBot", "stickers": live}
+                        form = parse_qs(body.decode("utf-8"))
+                        name = form["name"][0]
+                        if target_mode == "new" and name == "fixture2_by_YourEmojiBot":
+                            selected = live[1:]
+                            if not selected:
+                                self.reply({"ok": False, "description": "STICKERSET_INVALID"})
+                                return
+                        else:
+                            selected = live[:1] if target_mode == "new" else live
+                        result = {"name": name, "stickers": selected}
                     elif method == "createNewStickerSet":
                         self.server.test.assertIn(b"custom_emoji", body)
                         self.server.test.assertIn(logo_payload if branded else payload, body)
@@ -87,7 +115,7 @@ class NativePublicationFlow(unittest.TestCase):
                             return
                         result = True
                     elif method == "addStickerToSet":
-                        self.server.test.assertTrue(branded)
+                        self.server.test.assertTrue(branded or target_mode == "into")
                         self.server.test.assertIn(payload, body)
                         live.append({"file_id": "item-file", "file_unique_id": "item-unique",
                                      "custom_emoji_id": "111111111"})
@@ -97,7 +125,7 @@ class NativePublicationFlow(unittest.TestCase):
                         result = {"file_path": "logo.png" if branded and form["file_id"] == ["new-file"] else "fixture.png"}
                     elif method == "sendMessage":
                         form = parse_qs(body.decode("utf-8"))
-                        self.server.test.assertIn("Fixture 1", form["text"][0])
+                        self.server.test.assertIn("Fixture 2" if target_mode == "new" else "Fixture 1", form["text"][0])
                         result = {"message_id": 1}
                     else:
                         self.send_error(400)
@@ -123,6 +151,8 @@ class NativePublicationFlow(unittest.TestCase):
                     "NUMERA_TEST_API_BASE": f"http://127.0.0.1:{server.server_port}"}
                 command = [str(BINARY), "build-collection", "--base", "fixture", "--title", "Fixture",
                            "--mixed", "--no-brand-logo", "--user-id", "111111111", "--data-dir", str(data)]
+                if target_mode:
+                    command += ["--into-pack", "1"] if target_mode == "into" else ["--new-set"]
                 if branded:
                     command.remove("--no-brand-logo")
                     command += ["--per-set", "2"]
@@ -142,6 +172,27 @@ class NativePublicationFlow(unittest.TestCase):
                         self.assertFalse(catalog.is_published("fixture", key))
                     self.assertNotIn("createNewStickerSet", observed)
                     self.assertNotIn("sendMessage", observed)
+                    return
+                if target_mode:
+                    result = subprocess.run(command, cwd=folder, env=environment, encoding="utf-8",
+                        stdin=subprocess.DEVNULL, capture_output=True, timeout=30,
+                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    state = json.loads((data / "publish_fixture.json").read_text(encoding="utf-8"))
+                    self.assertIsNone(state["in_flight"])
+                    self.assertEqual(state["sets"][0]["keys"], [old_key, key] if target_mode == "into" else [old_key])
+                    self.assertEqual(state["sets"][0]["live"], 2 if target_mode == "into" else 1)
+                    if target_mode == "new":
+                        self.assertEqual(state["sets"][1]["keys"], [key])
+                        self.assertEqual(state["sets"][1]["name"], "fixture2_by_YourEmojiBot")
+                    else:
+                        self.assertEqual(len(state["sets"]), 1)
+                    self.assertEqual(observed.count("createNewStickerSet"), int(target_mode == "new"))
+                    self.assertEqual(observed.count("addStickerToSet"), int(target_mode == "into"))
+                    self.assertEqual(live[0]["custom_emoji_id"], "222222222", "old prefix identity changed")
+                    with Catalog(data / "catalog.db") as catalog:
+                        self.assertEqual(catalog.custom_emoji_id_for("fixture", old_key), "222222222")
+                        self.assertEqual(catalog.custom_emoji_id_for("fixture", key), "111111111")
                     return
                 for _ in range(2):
                     result = subprocess.run(command, cwd=folder, env=environment, encoding="utf-8",
