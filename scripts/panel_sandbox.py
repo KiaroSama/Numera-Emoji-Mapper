@@ -155,13 +155,18 @@ def serve_native(argv: list[str], *, lease_fd: int | None = None) -> int:
         from scripts.build_job import Job
         job = Job()
     environment = {**scrubbed_environment(), "PYO3_PYTHON": sys.executable}
-    if sys.platform == "linux":
+    if sys.platform in {"linux", "darwin"}:
         if lease_fd is None:
             raise RuntimeError("Native sandbox requires the clone's lifetime lease.")
         environment["NUMERA_SANDBOX_LEASE_FD"] = str(lease_fd)
-        stat = Path("/proc/self/stat").read_text(encoding="utf-8").rsplit(")", 1)[1].split()
+        if sys.platform == "darwin":
+            from scripts.darwin_process import birth
+            started = str(birth(os.getpid()))
+        else:
+            stat = Path("/proc/self/stat").read_text(encoding="utf-8").rsplit(")", 1)[1].split()
+            started = stat[19]
         environment["NUMERA_SANDBOX_PARENT_PID"] = str(os.getpid())
-        environment["NUMERA_SANDBOX_PARENT_START"] = stat[19]
+        environment["NUMERA_SANDBOX_PARENT_START"] = started
     child = None
     try:
         child = subprocess.Popen([str(executable), "panel", *argv], cwd=ROOT,
@@ -169,7 +174,7 @@ def serve_native(argv: list[str], *, lease_fd: int | None = None) -> int:
             stdin=subprocess.DEVNULL,
             creationflags=(subprocess.CREATE_NO_WINDOW | 4) if job else 0,
             start_new_session=not job,
-            **({"pass_fds": (lease_fd,)} if sys.platform == "linux" else {}))
+            **({"pass_fds": (lease_fd,)} if sys.platform in {"linux", "darwin"} else {}))
         if job:
             job.attach(child)
         try:

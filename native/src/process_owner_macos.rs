@@ -180,6 +180,19 @@ fn validate_identity(pid: i32, info: &BsdInfo) -> Result<(), String> {
     Ok(())
 }
 
+pub fn process_birth(pid: u32) -> Result<Option<u64>, String> {
+    let pid = i32::try_from(pid).map_err(|_| "Darwin parent PID out of range")?;
+    match bsd_info(pid)? {
+        Some(info) if info.status != SZOMB => info
+            .birth_sec
+            .checked_mul(1_000_000)
+            .and_then(|value| value.checked_add(info.birth_usec))
+            .map(Some)
+            .ok_or_else(|| "Darwin parent birth overflow".into()),
+        _ => Ok(None),
+    }
+}
+
 pub struct Tree {
     group: i32,
 }
