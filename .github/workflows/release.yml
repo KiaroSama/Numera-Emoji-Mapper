@@ -77,9 +77,27 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/.cache/apt/archives/partial" "$GITHUB_WORKSPACE/.cache/apt/lists/partial"
           sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" update
           sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" -o Dir::Cache::archives="$GITHUB_WORKSPACE/.cache/apt/archives" install -y --no-install-recommends ffmpeg libssl-dev pkg-config patchelf
-      - name: Install macOS media prerequisite
-        if: runner.os == 'macOS'
+      - name: Install Apple Silicon media prerequisite
+        if: matrix.platform == 'macos-arm64'
         run: brew install ffmpeg
+      - name: Install verified prebuilt Intel media prerequisite
+        if: matrix.platform == 'macos-x64'
+        shell: bash
+        run: |
+          mkdir -p .cache/ffmpeg .cache/gnupg
+          chmod 700 .cache/gnupg
+          export GNUPGHOME="$GITHUB_WORKSPACE/.cache/gnupg"
+          curl --fail --location --retry 2 --max-time 60 https://evermeet.cx/ffmpeg/0x1A660874.asc -o .cache/ffmpeg/key.asc
+          gpg --batch --import .cache/ffmpeg/key.asc
+          gpg --batch --with-colons --fingerprint 476C4B611A660874 | grep -q '20F6EA3E0CFD6B4C53447A73476C4B611A660874'
+          for binary in ffmpeg ffprobe; do
+            curl --fail --location --retry 2 --max-time 120 "https://evermeet.cx/ffmpeg/${binary}-9.0.2.zip" -o ".cache/ffmpeg/${binary}.zip"
+            curl --fail --location --retry 2 --max-time 60 "https://evermeet.cx/ffmpeg/${binary}-9.0.2.zip.sig" -o ".cache/ffmpeg/${binary}.zip.sig"
+            gpg --batch --verify ".cache/ffmpeg/${binary}.zip.sig" ".cache/ffmpeg/${binary}.zip"
+            unzip -o ".cache/ffmpeg/${binary}.zip" -d .cache/ffmpeg
+            chmod +x ".cache/ffmpeg/${binary}"
+          done
+          echo "$GITHUB_WORKSPACE/.cache/ffmpeg" >> "$GITHUB_PATH"
       - name: Install Windows media prerequisite
         if: runner.os == 'Windows'
         shell: pwsh
