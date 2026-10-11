@@ -82,5 +82,7 @@ def _utc_now() -> str:
 def write_json_atomic(path: Path, data) -> None:
     from emojikit import _native
     # Serialization is binding glue: Rust exclusively owns staging/fsync/permissions/replacement.
-    encoded = json.dumps(data, ensure_ascii=False, indent=1).encode("utf-8")
+    text = json.dumps(data, ensure_ascii=False, indent=1)
+    # The original text stream translated line endings on Windows before publishing bytes.
+    encoded = text.replace("\n", os.linesep).encode("utf-8")
     _native.state_write_bytes(str(Path(path)), encoded)
