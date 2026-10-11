@@ -209,6 +209,15 @@ impl Tree {
                     match bsd_info(pid)? {
                         None => continue,
                         Some(info) if info.status == SZOMB => continue,
+                        Some(info) if info.flags & 4 != 0 => {
+                            // PROC_FLAG_INEXIT can precede SZOMB after task teardown.
+                            // Keep ownership non-quiescent until the PID is gone/zombie.
+                            if info.pgid != self.group as u32 {
+                                return Err("Darwin codec member changed group during exit".into());
+                            }
+                            values.extend([pid as u64, info.birth_sec, info.birth_usec, 0, 0]);
+                            continue;
+                        }
                         Some(_) => {
                             return Err("Darwin codec member has no live CPU accounting".into());
                         }
