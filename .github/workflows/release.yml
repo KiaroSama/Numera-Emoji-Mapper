@@ -101,7 +101,7 @@ jobs:
           echo '8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e  ffmpeg.tar.xz' | shasum -a 256 -c -
           tar -xf ffmpeg.tar.xz
           cd ffmpeg-9.0.2
-          PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/lib/pkgconfig" ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-doc --disable-debug --disable-autodetect --disable-x86asm --enable-libvpx
+          PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/lib/pkgconfig" ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-doc --disable-debug --disable-autodetect --disable-x86asm --enable-libvpx --enable-zlib
           make -j2
           make install
           echo "$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/bin" >> "$GITHUB_PATH"
