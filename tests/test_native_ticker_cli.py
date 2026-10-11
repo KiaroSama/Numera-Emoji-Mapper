@@ -62,6 +62,9 @@ class NativeTickerCLI(unittest.TestCase):
             shutil.copy2(ROOT / "assets/panel.html", root / "assets/panel.html")
             shutil.copy2(ROOT / "pyproject.toml", root / "pyproject.toml")
             shutil.copytree(ROOT / "emojikit", root / "emojikit", ignore=shutil.ignore_patterns("__pycache__"))
+            for libraries in ROOT.glob("*.libs"):
+                if libraries.is_dir():
+                    shutil.copytree(libraries, root / libraries.name)
             executable = root / BINARY.name
             shutil.copy2(BINARY, executable)
             source = root / "source"
