@@ -19,6 +19,8 @@ from scripts import build_native  # noqa: E402
 
 def install() -> int:
     manifest = verify(ROOT)
+    if (ROOT / ".venv").exists() or (ROOT / ".venv").is_symlink():
+        raise ValueError("Existing installation preserved; extract the new package to a separate directory")
     environment = local_environment(ROOT)
     log = setup_logging("install_prebuilt")
     os.environ.update(environment)
