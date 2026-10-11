@@ -278,7 +278,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-        with:
           persist-credentials: false
       # run.ps1 and the other scripts are never executed in CI, so a syntax
       # error would ship unnoticed. Parse every tracked one; fail on any error.
