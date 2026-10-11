@@ -197,6 +197,55 @@ fn loopback_router_validates_mutations_and_persists_curation() {
             let count = socket.read(&mut bytes).unwrap();
             assert!(String::from_utf8_lossy(&bytes[..count]).starts_with("HTTP/1.1 413 "));
         }
+        {
+            use std::io::{Read, Write};
+            let mut socket = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            socket
+                .set_write_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            write!(socket, "POST /api/save HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nx-panel-token: fixture-token\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n").unwrap();
+            let mut bytes = [0; 256];
+            let count = socket.read(&mut bytes).unwrap();
+            assert!(String::from_utf8_lossy(&bytes[..count]).starts_with("HTTP/1.1 411 "));
+        }
+        // A linked asset cannot expose bytes outside the physical assets root.
+        let outside = root.join("outside");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::write(outside.join("outside.js"), b"private fixture bytes").unwrap();
+        let linked = root.join("assets/escape");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&outside, &linked).unwrap();
+        #[cfg(windows)]
+        {
+            let output = std::process::Command::new("cmd.exe")
+                .args(["/c", "mklink", "/J"])
+                .arg(&linked)
+                .arg(&outside)
+                .output()
+                .unwrap();
+            assert!(output.status.success());
+        }
+        assert_eq!(
+            client
+                .get(format!("{url}/static/escape/outside.js"))
+                .send()
+                .unwrap()
+                .status(),
+            404
+        );
+        std::fs::remove_dir(&linked).unwrap_or_else(|_| std::fs::remove_file(&linked).unwrap());
+        // Lexical traversal is refused regardless of link support on the platform.
+        assert_eq!(
+            client
+                .get(format!("{url}/static/%2e%2e%2foutside%2foutside.js"))
+                .send()
+                .unwrap()
+                .status(),
+            404
+        );
         let unknown = client
             .post(format!("{url}/api/save"))
             .header("x-panel-token", "fixture-token")
