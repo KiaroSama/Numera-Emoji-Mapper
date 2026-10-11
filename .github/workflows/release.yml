@@ -69,7 +69,8 @@ jobs:
           python -m venv .venv
           if [[ "$RUNNER_OS" == "Windows" ]]; then echo "$GITHUB_WORKSPACE/.venv/Scripts" >> "$GITHUB_PATH"; else echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"; fi
       - name: Install binary runtime and build tooling in the project
-        run: python -m pip install --only-binary=:all: -r requirements.txt -r requirements-coins.txt maturin==1.15.0
+        run: |
+          python -m pip install --only-binary=:all: -r requirements.txt -r requirements-coins.txt maturin==1.15.0
       - name: Install Linux media and TLS prerequisites
         if: runner.os == 'Linux'
         run: |
@@ -93,7 +94,8 @@ jobs:
       - name: Build matching extension and executable on hosted runner
         run: python scripts/build_native.py
       - name: Download binary-only dependencies for offline installation
-        run: python -m pip download --only-binary=:all: -r requirements.txt -r requirements-coins.txt --dest native/target/dependency-wheels
+        run: |
+          python -m pip download --only-binary=:all: -r requirements.txt -r requirements-coins.txt --dest native/target/dependency-wheels
       - name: Create checksummed public package
         shell: bash
         run: |
