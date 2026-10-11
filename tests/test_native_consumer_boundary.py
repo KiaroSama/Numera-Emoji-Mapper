@@ -67,7 +67,7 @@ class NativeConsumerBoundary(unittest.TestCase):
         import json
         sources = json.loads((ROOT / "tests/reference/behavior.json").read_text(encoding="utf-8"))["sources"]
         references = {p.name for p in (ROOT / "tests/reference").glob("*.py")
-                      if p.stem not in {"__init__", "identity_repair"}}
+                      if p.stem != "__init__"}
         self.assertEqual(set(sources), references)
         for name, evidence in sources.items():
             with self.subTest(reference=name):

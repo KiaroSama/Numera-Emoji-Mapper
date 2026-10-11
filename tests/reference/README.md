@@ -77,6 +77,14 @@ existing `tests/__init__.py` credential/network guard. This is namespace isolati
 for retired application code, not a standalone sandbox or independent codec/native
 compute oracle: retained shared leaves remain explicit runtime prerequisites.
 
+## Identity repair provenance
+
+`identity_repair.py` is included in `behavior.json`, pinned to the original
+`scripts/identity_repair.py` at `58c4443050b57f3f1b3ca9ac0ffaab0a0dbf3de4`.
+Relocation changes imports and ROOT and removes the standalone `sys.path` bootstrap;
+all remaining normalized source behavior is identical. The inventory test checks
+its original source hash and relocated behavior digest alongside the other references.
+
 ## Consumers and verification handoff
 
 The catalog cohort rewires `test_native_catalog.py` and
