@@ -39,17 +39,18 @@ It ships with two independent workflows that share the same engine:
 | <img src="assets/numera-coin-emoji-mapper-logo.png" alt="" width="42"> | **Crypto coins** | `TELEGRAM_BOT_TOKEN` | CoinGecko / CoinPaprika / CoinMarketCap logos | the original coin-logo packs |
 | <img src="assets/numera-emoji-mapper-logo.png" alt="" width="42"> | **General** | `GENERAL_BOT_TOKEN` (`@YourEmojiBot`) | any folder of images you provide | any non-coin emoji pack |
 
-The same scripts (`emojikit/make_emoji_pngs.py` + `emojikit/build_pack.py`) power both; only the
-source folder and the selected bot token differ.
+The installed Rust commands `make-emoji-pngs` and `build-pack` power both;
+only the source folder and selected bot token differ. Python retains exact media
+codecs and native-backed bindings for the unchanged coin-provider tools.
 
 > 📘 **[Full Guide (0 → 100) — docs/GUIDE.md](docs/GUIDE.md)** — complete
 > reference for every workflow and command, written for humans and AI agents.
 
 ## How it works
 
-1. **Prepare PNGs** — `emojikit/make_emoji_pngs.py` converts your images (SVG, PNG, JPG,
+1. **Prepare PNGs** — `make-emoji-pngs` converts your images (SVG, PNG, JPG,
    WEBP, GIF) into transparent 100×100 PNGs.
-2. **Build the pack** — `emojikit/build_pack.py` uploads those PNGs into Telegram
+2. **Build the pack** — `build-pack` uploads those PNGs into Telegram
    custom-emoji sets (max 200 per set), naming them `<base><n>_by_<botusername>`
    and sending you each finished pack's `https://t.me/addemoji/...` link.
 
@@ -61,16 +62,16 @@ source folder and the selected bot token differ.
   macOS 15+ Intel and Apple Silicon. Each target must pass its native CI package
   installation and media checks before its download is advertised as working.
   Alpine/musl and other CPU targets are not covered by these packages.
-- The native computation module is mandatory; there is no Python computation
-  fallback. The existing source checkout's production launcher remains unchanged
-  until full backend acceptance; see [native backend status](docs/native-backend.md).
+- The native executable and matching extension are mandatory; there is no Python
+  application fallback. The Windows menu and doctor use the installed backend;
+  final integrated retirement/package verification is still required. See
+  [native backend status](docs/native-backend.md).
 - A Telegram bot (create one with [@BotFather](https://t.me/BotFather))
 - Your numeric Telegram user id (the pack owner) — press **Start** on the bot once
-- Dependencies in `requirements.txt` (`pip install -r requirements.txt`) — this
-  is the **core Python** set (requests, Pillow, resvg-py, rlottie-python), used
-  alongside the required native module. The coin tool `coins/remap_ids.py` additionally needs numpy,
-  which lives in `requirements-coins.txt` (a ~20 MB wheel nobody building
-  ordinary packs has to install)
+- Ready packages install the core dependencies offline: Pillow, resvg-py and
+  rlottie-python for exact media; requests for retained coin-provider tools.
+  `coins/remap_ids.py` additionally uses NumPy (`requirements-coins.txt`),
+  unnecessary for ordinary packs. Source developers install these manifests.
 - **ffmpeg + ffprobe** on `PATH` — only required for **video** emoji (`.webm`).
   Install on Windows with `winget install Gyan.FFmpeg`. Static and animated
   workflows do not need it.
@@ -112,6 +113,8 @@ python3.11 scripts/install_prebuilt.py
 
 Run `scripts/launch_prebuilt.py panel` with that same `.venv` interpreter to
 open the curation panel, or pass another native command shown by `--help`.
+On Windows, `./run.ps1` opens the menu and `./run.ps1 -Check` runs the doctor;
+neither compiles Rust or silently falls back to old Python applications.
 Copy `.env.example` to `.env` and fill in your own configuration before using
 Telegram commands. Never overwrite an existing `.env` or collection during an
 update: extract the new package separately and retain your data/config backup.
@@ -149,27 +152,31 @@ a tool that needs one stops and names it. Keep your logo in the git-ignored
 
 ## Quick start — general emoji pack (new bot)
 
-Run module commands from the project root; `run.ps1` sets that directory for you.
+Run from the extracted package or installed checkout. `scripts/launch_prebuilt.py`
+selects its own environment/root; on Windows, `run.ps1` provides the same native
+commands through the menu and `run.ps1 -Check` verifies the installed runtime.
 
 ```powershell
 # Put your source images in a folder, e.g. input/myset/
-.venv\Scripts\python.exe -m emojikit.make_emoji_pngs --in input\myset --out build\myset
+.venv\Scripts\python.exe scripts\launch_prebuilt.py make-emoji-pngs --in input\myset --out build\myset
 
 # Validate without calling Telegram
-.venv\Scripts\python.exe -m emojikit.build_pack --base myset --title "My Emojis" `
+.venv\Scripts\python.exe scripts\launch_prebuilt.py build-pack --base myset --title "My Emojis" `
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji "😀" --dry-run
 
 # Build for real
-.venv\Scripts\python.exe -m emojikit.build_pack --base myset --title "My Emojis" `
+.venv\Scripts\python.exe scripts\launch_prebuilt.py build-pack --base myset --title "My Emojis" `
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji "😀"
 ```
 
 Optional: pass `--keywords path\to\keywords.csv` (columns `ticker,...,keywords`)
 to attach searchable keywords to each emoji. Without it, the file name is used.
 
-## `emojikit/build_pack.py` options
+## `build-pack` options
 
-Every option, with its default, is in the GUIDE's CLI reference, [§12.2](docs/GUIDE.md#122-emojikitbuild_packpy--upload-a-folder-of-pngs-to-emoji-sets) — one list, checked against the tool's own `--help` by `tests/test_cli_docs.py`, so it cannot drift the way a second copy here did. The ones you need first:
+Use `scripts/launch_prebuilt.py build-pack --help` with the package interpreter;
+the [GUIDE CLI reference](docs/guide-cli.md) explains the options
+and defaults. The ones you need first:
 `--base` and `--title` (required), `--source-dir`, `--token-env` (`TELEGRAM_BOT_TOKEN` announces as the coin bot, any other as the general bot) and `--dry-run`.
 
 Runs are **resumable**: progress is saved to `state_<base>.json`, so an
@@ -223,16 +230,16 @@ deduplicates at **ingest** time, not after publishing:
 
 ```powershell
 # 1. Download from one or more existing packs into the catalog
-.venv\Scripts\python.exe -m emojikit.fetch_pack https://t.me/addemoji/somepack_by_bot `
+.venv\Scripts\python.exe scripts\launch_prebuilt.py fetch-pack https://t.me/addemoji/somepack_by_bot `
     --token-env GENERAL_BOT_TOKEN
 
 # 2. (optional) Build extra emoji from your own files (auto static/video/animated)
-.venv\Scripts\python.exe -m emojikit.add_media --in input\myset --emoji 😀
+.venv\Scripts\python.exe scripts\launch_prebuilt.py add-media --in input\myset --emoji 😀
 
 # 3. Preview, then publish into new per-format packs (resumable)
-.venv\Scripts\python.exe -m emojikit.build_collection --base mypack --title "My Pack" `
+.venv\Scripts\python.exe scripts\launch_prebuilt.py build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN --dry-run
-.venv\Scripts\python.exe -m emojikit.build_collection --base mypack --title "My Pack" `
+.venv\Scripts\python.exe scripts\launch_prebuilt.py build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN
 ```
 
@@ -245,7 +252,7 @@ Sets are named `<base>s<n>_by_<bot>` (static), `<base>v<n>_by_<bot>` (video) and
 
 ## Numera Emoji Mapper bot (premium-emoji ID extractor)
 
-`emojikit/emoji_bot.py` runs the general bot interactively (long-polling) and extracts
+The native `emoji-bot` command runs the general bot interactively (long-polling) and extracts
 premium custom-emoji IDs with tap-to-copy buttons (Telegram `copy_text`):
 
 - Send the bot a **premium emoji** → it replies with the ID on a copy button.
@@ -255,7 +262,7 @@ premium custom-emoji IDs with tap-to-copy buttons (Telegram `copy_text`):
   from new posts. (Bots cannot read past channel history, only new posts.)
 
 ```powershell
-.venv\Scripts\python.exe -m emojikit.emoji_bot     # or run.ps1 -> C1
+.venv\Scripts\python.exe scripts\launch_prebuilt.py emoji-bot     # or run.ps1 -> C1
 ```
 
 ## Cloudflare Worker (both bots, hosted)
@@ -265,8 +272,8 @@ both bots in one Worker, each on its own path (`/tg/general`, `/tg/coin`) with
 its own webhook secret, answering only the ids in `ADMIN_USER_IDS`. It also
 exposes `POST /publish`, so a finished pack is announced **by the bot** in your
 channel rather than by this machine: set `WORKER_PUBLISH_URL` and
-`WORKER_PUBLISH_SECRET` in `.env` and **all three publishers** — `emojikit/build_pack.py`,
-`emojikit/build_collection.py` and `coins/rebuild_dedup.py` — route their links through
+`WORKER_PUBLISH_SECRET` in `.env` and **all three publishers** — `build-pack`,
+`build-collection` and `coins/rebuild_dedup.py` — route their links through
 it. Leave either unset and the existing direct path is used, unchanged.
 
 It keeps its own log: a D1 table of warnings, errors and publishes, capped at the
@@ -275,7 +282,7 @@ Workers Logs only, so a message to a bot costs no D1 write. Every line starts wi
 because both bots share the Worker, the table and the channel.
 
 > **A Telegram bot token can use `getUpdates` (polling) or a webhook — never
-> both.** Registering a webhook for a token stops `emojikit/emoji_bot.py` receiving
+> both.** Registering a webhook for a token stops `emoji-bot` receiving
 > anything on it; `deleteWebhook` hands it back. Run one or the other per token.
 
 Setup, secrets and deployment: [`worker/README.md`](worker/README.md).
@@ -290,7 +297,7 @@ npx wrangler deploy
 
 ## Curate panel (pick which emoji go into the pack)
 
-`emojikit/panel.py` opens a local dark neon-blue web panel showing every emoji in the
+The native `panel` command opens a local dark neon-blue web panel showing every emoji in the
 catalog as a large labelled card. All cards are selected by default; click one
 to toggle it (deselected = excluded from the next publish), Shift+click for a
 range, **drag** to set the publish order — each card shows its position,
@@ -298,8 +305,8 @@ and dragging to the top or bottom edge scrolls the page so you can move an
 item across the whole catalog in one go. **Click the `premium-id:` label
 to copy that id** to the clipboard — it does not toggle the card. Visually similar emoji start out next
 to each other so look-alikes are quick to deselect. Click **Save**, then
-`emojikit/build_collection.py` only publishes the included items, and
-`python -m emojikit.plan_apply` shows (and with `--apply` makes) the moves between
+`build-collection` only publishes the included items, and
+`plan-apply` shows (and with `--apply` makes) the moves between
 packs the saved layout asks for, at most 20 Telegram changes per run.
 
 **The grid is virtual**: only the rows near the viewport exist in the page,
@@ -349,10 +356,10 @@ tokens, labels, media IDs and arbitrary error text are excluded. Log delivery
 is bounded and does not block saving.
 
 ```powershell
-.venv\Scripts\python.exe -m emojikit.panel        # or run.ps1 -> B4
-.venv\Scripts\python.exe -m emojikit.panel --preview-fps 12
+.venv\Scripts\python.exe scripts\launch_prebuilt.py panel        # or run.ps1 -> B4
+.venv\Scripts\python.exe scripts\launch_prebuilt.py panel --preview-fps 12
 # Branding without a Telegram username lookup:
-.venv\Scripts\python.exe -m emojikit.panel --bot-username YourEmojiBot
+.venv\Scripts\python.exe scripts\launch_prebuilt.py panel --bot-username YourEmojiBot
 ```
 
 B4 reopens an existing panel on the requested port instead of starting a second
@@ -361,9 +368,11 @@ on that port is refused; use another port for a separate panel session.
 
 ## Crypto-coin workflow (one component: `coins/`)
 
-The crypto-coin tool is now a self-contained component under `coins/`. It reuses
-the shared engine in the package (`emojikit/build_pack.py`) and the coin bot
-(`TELEGRAM_BOT_TOKEN`). Its data, scripts and images all live under `coins/`.
+The crypto-coin tool is a self-contained component under `coins/`. Provider and
+coin-domain workflows remain Python; shared Telegram transport, upload proofs,
+locks, atomic state, announcements and table rendering use native-backed bindings.
+The generic `build-pack` command also supports the coin bot (`TELEGRAM_BOT_TOKEN`).
+Coin data, scripts and images all live under `coins/`.
 Run every tool as a module from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 
@@ -392,8 +401,8 @@ Convert coin logos to 100×100 PNGs (images live in `coins/logos/{svg,png}` →
 `coins/logos/emoji`):
 
 ```powershell
-.venv\Scripts\python.exe -m emojikit.make_emoji_pngs --in coins\logos\svg --out coins\logos\emoji
-.venv\Scripts\python.exe -m emojikit.make_emoji_pngs --in coins\logos\png --out coins\logos\emoji
+.venv\Scripts\python.exe scripts\launch_prebuilt.py make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
+.venv\Scripts\python.exe scripts\launch_prebuilt.py make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
 ```
 
 Then build/rebuild with the coin bot:
@@ -408,59 +417,23 @@ Then build/rebuild with the coin bot:
 
 ```
 Numera Emoji Mapper/                  # the whole project
-  emojikit/                    # command modules and shared toolkit
-    build_pack.py                # core engine: upload any source dir with any bot
-    make_emoji_pngs.py           # core engine: image -> 100x100 PNG (--in/--out)
-    fetch_pack.py                # collector: download Telegram packs -> catalog
-    fetch_emoji_ids.py           # collector: download specific emoji by id -> catalog
-    add_media.py                 # collector: build emoji from scratch -> catalog
-    build_collection.py          # collector: publish catalog -> new packs
-    sync_order.py                # reorder a LIVE pack to match the panel
-    pack_archive.py             # archived media reconciliation
-    pack_manifest.py            # pack roster and gallery CLI
-    pack_export.py              # one pack as a zip in slot order (pack_archive --export)
-    pack_rows.py                # the one renderer for every pack-list table
-    status.py                   # is the roster/archive current? (offline)
-    plan_status.py              # what the panel's saved plan would change (read-only)
-    plan_apply.py               # apply the saved plan to the live packs (--apply)
-    script_json.py              # JSON safe inside a <script> data block
-    panel.py                     # curate panel: the server, the page, the APIs
-    emoji_bot.py                 # bot: extract premium-emoji ids (tap-to-copy)
-    telegram_api.py           # the Bot API client + Telegram's caps
-    operator_config.py        # your identities from .env (no defaults)
-    packstate.py              # state-file shape + atomic write + pack lock
-    announce.py               # announce finished packs (Worker, or direct)
-    cli_env.py                # .env loading, safe_int_env, the shared exit codes
-    repaint_gate.py           # --repaintable: ask before ingesting repaintable emoji
-    collection_state.py       # its plan/resume state + the brand logo
-    collection_reconcile.py   # what is live in a set, and whose key it is
-    collection_preflight.py   # --preflight: ask Telegram to validate the queue
-    collection_notify.py      # announce a finished pack + write its manifest
-    collection_names.py       # pack base / name-length / --formats checks
-    collection_media_check.py # a queued file is readable and not blank
-    collection_migrate.py     # move EVERY reference to a content key, as one change
-    panel_view.py             # the panel's view model (build_view, ordering)
-    panel_save.py             # the panel's Save: validate the scope, then apply it
-    pack_gallery.py           # self-contained pack gallery rendering
-    ingest.py                 # verified dedup and collision-safe media storage
-    panel_preview.py          # bounded, sized thumbnail cache
-    panel_logging.py          # validated, bounded browser event logs
-    panel_plan.py             # the move plan (pack_plan.json): the intended layout
-    panel_instance.py         # find and reopen a panel already on the port
-    sandbox_clone.py          # an independent catalog copy for the sandbox panel
-    sqlite_snapshot.py        # SQLite backup with bounded BUSY/LOCKED retries
-    state_artifacts.py        # every key-bearing JSON a migration must rewrite
-    media_paths.py            # how items.file_path is stored (data-folder relative)
-    logsetup.py                # UTC file logging
-    media.py                   # format detect + static/video convert
-    media_lottie.py            # Lottie/.tgs: load, package, validate, preview
-    video_decode.py            # the video decoder choice + a frame cache
-    repaint.py                 # bake a tint into a Lottie or a static
-    identity.py                # content keys, perceptual hashes, same_image
-    catalog.py                 # content-addressed SQLite catalog (dedup)
-    maintenance.py             # canonical catalog writer/maintenance ownership
-    migration_bundle.py        # verified media intents and application rollback
-    errors.py                  # the media exception types (a leaf: no cycle)
+  native/                      # Rust-owned local backend
+    src/                       # SQLite, state, Telegram, CLI, panel, reports, recovery
+    runtime/                   # installed numera-emoji executable, not a build cache
+    tests/                     # native contract and platform acceptance
+  emojikit/                    # bounded Python compatibility, not CLI applications
+    media_bridge.py            # exact codec/identity IPC boundary
+    media.py media_lottie.py    # static/video/Lottie decode, convert, validate, preview
+    video_decode.py            # decoder selection and frame caching
+    identity.py repaint.py     # stable content identity and exact tint operations
+    telegram_api.py announce.py # native-backed coin transport/proof/announcement exports
+    packstate.py pack_rows.py   # native-backed leases, atomic state and table rendering
+    cli_env.py operator_config.py logsetup.py errors.py
+                               # shared coin/codec configuration, logging and errors
+    similarity.py              # required native compute bindings
+    sandbox_clone.py maintenance.py sqlite_snapshot.py
+    state_artifacts.py media_paths.py
+                               # development clone/snapshot/reference support
   worker/                      # Cloudflare Worker: both bots + /publish (TypeScript)
     src/                       # auth, telegram, emoji-id extraction, routing
     test/                      # vitest, fetch stubbed (never reaches Telegram)
@@ -470,7 +443,9 @@ Numera Emoji Mapper/                  # the whole project
   run.ps1                      # launcher (single-pack + collection workflows)
   scripts/run-actions.ps1      # the launcher's menu actions (dot-sourced by run.ps1)
   scripts/check.ps1            # byte-compile + full unit suite (also used by CI)
-  scripts/identity_repair.py   # report/migrate/recover/restore catalog identity
+  scripts/launch_prebuilt.py   # own environment -> installed native command
+  scripts/run-native.ps1       # menu/doctor native boundary (no Cargo)
+  docs/native-backend.md       # runtime boundaries, acceptance and rollback
   scripts/panel_sandbox.py     # the panel against a throwaway copy of the catalog
   requirements.txt
   requirements-dev.txt         # test-only: ruff + playwright (never at runtime)
@@ -507,7 +482,7 @@ suite — the same one CI runs, so local and CI results cannot drift:
 .\scripts\check.ps1
 .\scripts\check.ps1 -Tests test_catalog -SkipCompile -SkipLint   # chosen suites only
 .\run.ps1 -Check      # separate: environment doctor (venv, Python 3.11+, deps, ffmpeg, unset .env keys)
-.venv\Scripts\python.exe -m emojikit.status   # is the roster/archive current? offline, exit 3 if stale
+.venv\Scripts\python.exe scripts\launch_prebuilt.py status   # is the roster/archive current? offline, exit 3 if stale
 ```
 
 If anything the gate needs is missing, `check.ps1` prints that one install line

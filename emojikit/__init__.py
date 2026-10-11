@@ -1,21 +1,12 @@
-"""Numera Emoji Mapper core toolkit.
+"""Exact media codecs and native-backed shared APIs for the Rust local backend.
 
-A shared library for the collector, publishing workflows and local curation:
-
-- ``logsetup``  -- mandatory UTC file logging.
-- ``media``     -- format detection, content/perceptual hashing and conversion
-                   of images/animations into Telegram custom-emoji media
-                   (static PNG, animated TGS, video WEBM).
-- ``catalog``   -- a persistent, content-addressed SQLite catalog that
-                   deduplicates emoji at ingest time and tracks what has already
-                   been uploaded (idempotent, resumable, duplicate-proof).
-
-Run the command-line modules from the project root with ``python -m emojikit.NAME``.
-State, API, migration, gallery and panel implementations share this package.
+Application commands run through the installed numera-emoji executable.
+Retained coin tools use these codec, transport, state and logging boundaries;
+development helpers and test references are not production fallback applications.
 """
 
 from __future__ import annotations
 
 __version__ = "2.0.0"
 
-__all__ = ["logsetup", "media", "catalog"]
+__all__ = ["logsetup", "media"]

@@ -11,7 +11,9 @@ work when handed `--help` (emoji_bot starts polling, alias_map rewrites the map)
 
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -19,7 +21,14 @@ ROOT = Path(__file__).resolve().parent.parent
 
 from tests._cli_fixtures import cli_help  # noqa: E402
 
-GUIDE = ROOT / "docs" / "GUIDE.md"
+GUIDES = (ROOT / "docs/guide-cli.md", ROOT / "docs/guide-cli-panel-coin.md")
+NATIVE = {
+    "make-emoji-pngs", "build-pack", "fetch-pack", "fetch-emoji-ids", "add-media",
+    "build-collection", "sync-order", "pack-manifest", "pack-archive", "status", "panel",
+}
+from tests.test_native_local_cli import BINARY  # noqa: E402
+
+RUNS_ON_NATIVE_WINDOWS = True
 _FLAG = re.compile(r"(?<![\w-])--[a-z][a-z0-9-]*")
 
 # Flags a section mentions that are not its tool's own, each with the reason.
@@ -36,13 +45,12 @@ MENTIONED_NOT_OWNED = {
 
 def sections() -> dict[str, tuple[list[Path], str]]:
     """§12 subsection number -> (the tool files it documents, its text)."""
-    text = GUIDE.read_text(encoding="utf-8")
-    part = text[text.index("## 12. Full CLI reference"):text.index("\n## 13.")]
+    part = "\n".join(path.read_text(encoding="utf-8") for path in GUIDES)
     pieces = re.split(r"(?m)^### (12\.\w+) ", part)[1:]
     out = {}
     for num, body in zip(pieces[::2], pieces[1::2], strict=True):
         title = body.splitlines()[0]
-        files = [ROOT / "emojikit" / f"{m}.py" for m in re.findall(r"emojikit/(\w+)\.py", title)]
+        files = [name for name in re.findall(r"`([a-z][a-z-]+)`", title) if name in NATIVE]
         if "`coins/`" in title:
             files = [ROOT / "coins" / f"{m}.py"
                      for m in sorted(set(re.findall(r"coins[\\/](\w+)\.py", body)))]
@@ -67,18 +75,26 @@ class TheCliReferenceMatchesTheTools(unittest.TestCase):
     def test_the_scan_finds_the_sections(self):
         """A parser that matches nothing passes forever and proves nothing."""
         self.assertIn("12.2", self.sections)
-        self.assertEqual(self.sections["12.2"][0], [ROOT / "emojikit" / "build_pack.py"])
+        self.assertEqual(self.sections["12.2"][0], ["build-pack"])
         self.assertGreaterEqual(len(self.sections["12.8"][0]), 5, "the coin tools")
 
     def test_every_flag_is_documented_and_every_documented_flag_exists(self):
         for num, (files, body) in sorted(self.sections.items()):
-            tools = [f for f in files if _has_parser(f)]
+            tools = [f for f in files if isinstance(f, str) or _has_parser(f)]
             if not tools:
                 continue
             with self.subTest(section=num):
                 real: set[str] = set()
                 for tool in tools:
-                    real |= set(_FLAG.findall(cli_help(_target(tool), ROOT)))
+                    if isinstance(tool, str):
+                        result = subprocess.run([str(BINARY), tool, "--help"], cwd=ROOT,
+                            stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=5,
+                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        help_text = result.stdout
+                    else:
+                        help_text = cli_help(_target(tool), ROOT)
+                    real |= set(_FLAG.findall(help_text))
                 real.discard("--help")
                 documented = set(_FLAG.findall(body))
                 self.assertEqual(sorted(real - documented), [],

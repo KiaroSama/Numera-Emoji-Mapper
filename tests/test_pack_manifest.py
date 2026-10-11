@@ -256,7 +256,7 @@ class ThePageCarriesTheDataToo(unittest.TestCase):
         """The page inlines both frames' worth of data, so the ONLY thing
         stopping 150 simultaneous decodes is that the card starts on its still
         and the observer opts it in."""
-        page_src = Path("emojikit/pack_gallery.py").read_text(encoding="utf-8")
+        page_src = Path("tests/reference/pack_gallery.py").read_text(encoding="utf-8")
         self.assertIn('data-still="{still}"', page_src)
         self.assertIn("src=\"{still}\"", page_src, "an animated card must START on the still")
         self.assertIn("freezeAll()", page_src)
