@@ -84,4 +84,40 @@ fn cancellation_stops_descendant_before_workspace_removal() {
         let stat = std::fs::read_to_string(format!("/proc/{descendant}/stat"));
         assert!(stat.is_err() || stat.unwrap().rsplit_once(") ").unwrap().1.starts_with('Z'));
     }
+    #[cfg(target_os = "macos")]
+    {
+        #[link(name = "proc")]
+        unsafe extern "C" {
+            fn proc_pidinfo(
+                pid: i32,
+                flavor: i32,
+                arg: u64,
+                buffer: *mut std::ffi::c_void,
+                size: i32,
+            ) -> i32;
+            fn __error() -> *mut i32;
+        }
+        // Independent short-BSD flavor: four identity/status u32s, comm[16],
+        // then eight u32s. arg=1 includes zombies; denied accounting is not death.
+        let mut info = [0_u32; 16];
+        // SAFETY: thread-local errno and initialized aligned 64-byte ABI buffer.
+        let (count, errno) = unsafe {
+            *__error() = 0;
+            let count = proc_pidinfo(
+                descendant.try_into().unwrap(),
+                13,
+                1,
+                info.as_mut_ptr().cast(),
+                64,
+            );
+            (count, *__error())
+        };
+        if count == 0 {
+            assert_eq!(errno, 3, "cannot verify descendant death (expected ESRCH)");
+        } else {
+            assert_eq!(count, 64, "incomplete Darwin descendant accounting");
+            assert_eq!(info[0], descendant, "Darwin returned another PID");
+            assert_eq!(info[3], 5, "descendant survived owner cancellation");
+        }
+    }
 }

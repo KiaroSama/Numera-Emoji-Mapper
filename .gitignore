@@ -63,6 +63,7 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+/.cache/
 
 # Native computation build artifacts
 /native/target/

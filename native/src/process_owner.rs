@@ -391,13 +391,17 @@ mod platform {
     }
 }
 
-#[cfg(not(any(windows, target_os = "linux")))]
+#[cfg(target_os = "macos")]
+#[path = "process_owner_macos.rs"]
+mod platform;
+
+#[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
 mod platform {
     use super::*;
     pub struct Tree;
     impl Tree {
         pub fn sample(&self) -> Result<Vec<u64>, String> {
-            Err("codec process ownership supports Windows/Linux only".into())
+            Err("codec process ownership supports Windows/Linux/macOS only".into())
         }
         pub fn terminate(&self) -> Result<(), String> {
             Ok(())
@@ -408,7 +412,7 @@ mod platform {
     }
     pub fn spawn(_command: &mut Command) -> Result<(Child, Tree), String> {
         Err(
-            "codec process ownership supports Windows/Linux only; this platform is unverified"
+            "codec process ownership supports Windows/Linux/macOS only; this platform is unverified"
                 .into(),
         )
     }
