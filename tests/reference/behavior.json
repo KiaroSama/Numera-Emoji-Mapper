@@ -170,6 +170,24 @@
       "source": "emojikit/sync_order.py",
       "source_sha256": "4fb5523e41c2fb2524b93e12e0b78c355d4e0f6678872dd556965a36b5003650",
       "relocated_behavior_sha256": "358541b64b706956dc8d9faa45647ed0d81c091a4a934da0da01f91d1be59ef4"
+    },
+    "announce.py": {
+      "source": "emojikit/announce.py",
+      "source_revision": "872cf319af24e580e0b2f3a4ee8dbc72bb876d61",
+      "source_sha256": "b49f72d65f3ef62e3cb712d64b068474fe6b307753510314333be94a122fc6c1",
+      "relocated_behavior_sha256": "c13bc5a4106a9af5a48687857fb457b2f6f9dd8a1ee1dac6cd676ebb7de892cd"
+    },
+    "packstate.py": {
+      "source": "emojikit/packstate.py",
+      "source_revision": "872cf319af24e580e0b2f3a4ee8dbc72bb876d61",
+      "source_sha256": "9cb2d6c66680da81e5a0ffe43182388a24286f64071c4a55d51e655f3363d120",
+      "relocated_behavior_sha256": "23738c633aeee59dd018e7d2bcb8313b4562eb0eae11f32593a79b1ec48dfd2a"
+    },
+    "maintenance.py": {
+      "source": "emojikit/maintenance.py",
+      "source_revision": "872cf319af24e580e0b2f3a4ee8dbc72bb876d61",
+      "source_sha256": "b3fb5b17c2c71a97eb15291a2a5e7135ccbfbd8dfddb1f7cd88813173ce16423",
+      "relocated_behavior_sha256": "0bb4381c7eca281ab4fcfd203cfbfb2b6cb921de68f8790ced50f6c1614f7974"
     }
   }
 }

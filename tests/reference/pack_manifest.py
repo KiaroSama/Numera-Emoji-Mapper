@@ -46,7 +46,7 @@ from emojikit import operator_config
 from emojikit.pack_rows import markdown_table
 from emojikit import media
 from emojikit.logsetup import record_exit_code, setup_logging
-from emojikit.packstate import write_json_atomic
+from .packstate import write_json_atomic
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = ROOT / "packs"

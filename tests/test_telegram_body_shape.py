@@ -12,7 +12,7 @@ import unittest
 from unittest import mock
 
 
-from emojikit import telegram_api as tg_api
+from tests.oracles import telegram_api as tg_api
 
 
 class _Reply:

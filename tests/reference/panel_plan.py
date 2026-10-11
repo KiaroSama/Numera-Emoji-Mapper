@@ -21,7 +21,7 @@ from __future__ import annotations
 import datetime as _dt
 from pathlib import Path
 
-from emojikit.packstate import write_json_atomic
+from .packstate import write_json_atomic
 
 PLAN_NAME = "pack_plan.json"
 

@@ -2,9 +2,11 @@
 use serde_json::Value;
 fn cell(value: &str) -> String {
     let clean = value
+        .replace("\r\n", "\n")
         .replace(
             [
-                '\r', '\n', '\u{000b}', '\u{000c}', '\u{0085}', '\u{2028}', '\u{2029}',
+                '\r', '\n', '\u{000b}', '\u{000c}', '\u{001c}', '\u{001d}', '\u{001e}', '\u{0085}',
+                '\u{2028}', '\u{2029}',
             ],
             " ",
         )

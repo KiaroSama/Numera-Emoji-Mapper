@@ -7,6 +7,65 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
+pub fn worker(
+    config: &Config,
+    packs: &[Value],
+    bot: &str,
+    note: &str,
+    style: &str,
+    timeout: f64,
+) -> Result<(), String> {
+    if !timeout.is_finite() || timeout <= 0.0 {
+        return Err("Worker timeout must be positive finite seconds".into());
+    }
+    let timeout = Duration::try_from_secs_f64(timeout)
+        .map_err(|_| "Worker timeout is outside supported range")?;
+    let url = config.value("WORKER_PUBLISH_URL");
+    let secret = config.value("WORKER_PUBLISH_SECRET");
+    if url.is_empty() || secret.is_empty() {
+        return Err("WORKER_PUBLISH_URL and WORKER_PUBLISH_SECRET must both be set".into());
+    }
+    let parsed = reqwest::Url::parse(url).map_err(|_| "invalid worker publish URL")?;
+    if !["http", "https"].contains(&parsed.scheme())
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+    {
+        return Err("unsupported worker publish URL".into());
+    }
+    let hermetic = std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1");
+    if hermetic && !["127.0.0.1", "::1", "[::1]"].contains(&parsed.host_str().unwrap_or("")) {
+        return Err("native tests may connect only to numeric loopback hosts".into());
+    }
+    let mut builder = reqwest::blocking::Client::builder()
+        .timeout(timeout)
+        .connect_timeout(Duration::from_secs(15).min(timeout))
+        .redirect(reqwest::redirect::Policy::none())
+        .retry(reqwest::retry::never());
+    if hermetic {
+        builder = builder.no_proxy();
+    }
+    let client = builder
+        .build()
+        .map_err(|_| "cannot initialize worker announcement client")?;
+    let mut body = json!({"bot":bot,"packs":packs,"style":style});
+    if !note.is_empty() {
+        body["note"] = json!(note);
+    }
+    let response = client
+        .post(parsed)
+        .bearer_auth(secret)
+        .json(&body)
+        .send()
+        .map_err(|_| "worker announcement transport failed; outcome unknown")?;
+    if response.status() != reqwest::StatusCode::OK {
+        return Err(format!(
+            "worker announce failed (HTTP {})",
+            response.status().as_u16()
+        ));
+    }
+    Ok(())
+}
+
 pub fn packs(
     config: &Config,
     tg: &Telegram,
@@ -19,44 +78,7 @@ pub fn packs(
     let url = config.value("WORKER_PUBLISH_URL");
     let secret = config.value("WORKER_PUBLISH_SECRET");
     if !url.is_empty() && !secret.is_empty() {
-        let parsed = reqwest::Url::parse(url).map_err(|_| "invalid worker publish URL")?;
-        if !["http", "https"].contains(&parsed.scheme())
-            || !parsed.username().is_empty()
-            || parsed.password().is_some()
-        {
-            return Err("unsupported worker publish URL".into());
-        }
-        let hermetic = std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1");
-        if hermetic && !["127.0.0.1", "::1", "[::1]"].contains(&parsed.host_str().unwrap_or("")) {
-            return Err("native tests may connect only to numeric loopback hosts".into());
-        }
-        let mut builder = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .connect_timeout(Duration::from_secs(15))
-            .redirect(reqwest::redirect::Policy::none())
-            .retry(reqwest::retry::never());
-        if hermetic {
-            builder = builder.no_proxy();
-        }
-        let client = builder
-            .build()
-            .map_err(|_| "cannot initialize worker announcement client")?;
-        let mut body = json!({"bot":bot,"packs":packs,"style":style});
-        if !note.is_empty() {
-            body["note"] = json!(note);
-        }
-        let response = client
-            .post(parsed)
-            .bearer_auth(secret)
-            .json(&body)
-            .send()
-            .map_err(|_| "worker announcement transport failed; outcome unknown")?;
-        if response.status() != reqwest::StatusCode::OK {
-            return Err(format!(
-                "worker announce failed (HTTP {})",
-                response.status().as_u16()
-            ));
-        }
+        worker(config, packs, bot, note, style, 30.0)?;
         return Ok("the worker".into());
     }
     let destination = if config.value("PACK_LINKS_CHAT_ID").is_empty() {

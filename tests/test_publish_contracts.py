@@ -25,10 +25,10 @@ from unittest import mock
 from tests.reference import build_collection as bc
 from tests.reference import collection_state as cs
 from tests.reference import build_pack as bp
-from emojikit import announce
+from tests.reference import announce
 from tests.reference import collection_media_check, collection_notify
 from emojikit import media
-from emojikit.announce import (announce_packs)
+from tests.reference.announce import announce_packs
 from tests.reference.catalog import Catalog
 
 import io
@@ -250,9 +250,12 @@ class EveryPublisherSharesOneAnnouncer(unittest.TestCase):
 
     def test_the_single_pack_build_and_the_coin_rebuild_both_import_it(self):
         import coins.rebuild_dedup as rd
-        for mod in (collection_notify, bp, rd):
+        from emojikit.announce import announce_packs as native_announce
+        for mod in (collection_notify, bp):
             self.assertIs(mod.announce_packs, announce_packs,
-                          f"{mod.__name__} does not use the shared announcer")
+                          f"{mod.__name__} does not use the source announcer")
+        self.assertIs(rd.announce_packs, native_announce,
+                      "retained coin rebuild must use the native-backed announcer")
 
     def test_half_a_worker_config_takes_the_direct_path(self):
         # URL without secret is a half-finished setup. Routing to it anyway

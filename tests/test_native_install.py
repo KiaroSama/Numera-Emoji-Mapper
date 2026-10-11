@@ -14,6 +14,42 @@ RUNS_ON_NATIVE_WINDOWS = True
 
 
 class NativeInstall(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "PowerShell launcher boundary is Windows-only")
+    def test_installed_launcher_probe_and_refusal_work_without_cargo(self):
+        import sys
+        self.assertTrue(BINARY.is_file(), "native executable required")
+        with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
+            root = Path(folder).resolve() / "package with spaces"
+            (root / "native/runtime").mkdir(parents=True)
+            (root / "assets").mkdir()
+            (root / "scripts").mkdir()
+            shutil.copy2(BINARY, root / "native/runtime" / BINARY.name)
+            shutil.copy2(ROOT / "assets/panel.html", root / "assets/panel.html")
+            shutil.copy2(ROOT / "pyproject.toml", root / "pyproject.toml")
+            shutil.copy2(ROOT / "scripts/run-native.ps1", root / "scripts/run-native.ps1")
+            # This boundary fixture supplies only the verified executable route;
+            # the extracted installer/launch_prebuilt environment has its own real acceptance.
+            (root / "scripts/launch_prebuilt.py").write_text(
+                "import subprocess,sys\nfrom pathlib import Path\n"
+                "raise SystemExit(subprocess.call([str(Path(__file__).resolve().parents[1]/'native/runtime/numera-emoji.exe'),*sys.argv[1:]]))\n",
+                encoding="utf-8")
+            script = root / "probe.ps1"
+            script.write_text("param([string]$Python)\n$ScriptRoot=$PSScriptRoot\n"
+                "function Write-Err($m){[Console]::Error.WriteLine($m)}\n"
+                "function Invoke-Py($py,[string[]]$Argv){& $py @Argv; return [int]$LASTEXITCODE}\n"
+                ". (Join-Path $ScriptRoot 'scripts/run-native.ps1')\n"
+                "if(-not(Test-NativeRuntime $Python)){exit 1}\nexit 0\n", encoding="utf-8")
+            command = ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-File", str(script), sys.executable]
+            result = subprocess.run(command, cwd=folder, capture_output=True, encoding="utf-8",
+                stdin=subprocess.DEVNULL, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            (root / "native/runtime" / BINARY.name).unlink()
+            refused = subprocess.run(command, cwd=folder, capture_output=True, encoding="utf-8",
+                stdin=subprocess.DEVNULL, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW)
+            self.assertEqual(refused.returncode, 1)
+            self.assertIn("Installed native executable missing", refused.stderr)
+            self.assertFalse((root / "native/target").exists())
+
     def test_checkout_extension_keeps_repaired_wheel_libraries(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
             root = Path(folder) / "checkout"

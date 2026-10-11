@@ -127,6 +127,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     std::fs::create_dir_all(&output).map_err(|e| e.to_string())?;
     let display_output = output.clone();
     let output = output.canonicalize().map_err(|e| e.to_string())?;
+    let _output_owner =
+        crate::locks::Lease::acquire(&output.join(".convert.lock"), &crate::logging::iso_utc())
+            .map_err(|e| format!("conversion output is already owned: {e}"))?;
     let marker_root = if legacy {
         output.parent().ok_or("legacy output has no parent")?
     } else {

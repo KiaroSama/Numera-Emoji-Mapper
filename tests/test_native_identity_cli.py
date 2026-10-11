@@ -67,7 +67,7 @@ class NativeIdentityCLI(unittest.TestCase):
             self.assertEqual(database.read_bytes(), before)
             (data / "publish_plan_fixture.json").unlink()
             preview = run("migrate-video-keys")
-            with patch("emojikit.media_paths.resolve.__defaults__", (root,)), patch("emojikit.packstate.LOCK_DIR", root / ".locks"), contextlib.redirect_stdout(io.StringIO()) as output:
+            with patch("emojikit.media_paths.resolve.__defaults__", (root,)), patch("emojikit.packstate.LOCK_DIR", root / ".locks"), patch("tests.reference.packstate.LOCK_DIR", root / ".locks"), contextlib.redirect_stdout(io.StringIO()) as output:
                 expected_code = identity_repair.migrate(data, apply=False)
             self.assertEqual(preview.returncode, expected_code)
             self.assertEqual(preview.stdout, output.getvalue())

@@ -35,7 +35,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 
 from tests.reference import collection_migrate as cm  # noqa: E402
-from emojikit import packstate  # noqa: E402
+from tests.reference import packstate  # noqa: E402
 
 from tests.reference import identity_repair as ir  # noqa: E402
 

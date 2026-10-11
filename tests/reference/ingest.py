@@ -10,7 +10,7 @@ from pathlib import Path
 
 from emojikit import identity
 from emojikit.errors import MediaError
-from emojikit.packstate import write_json_atomic
+from .packstate import write_json_atomic
 from emojikit.similarity import near_indices
 
 

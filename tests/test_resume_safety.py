@@ -27,8 +27,8 @@ from unittest import mock
 
 from tests.reference import build_pack as bp
 from emojikit import telegram_api as tg_api
-from emojikit import packstate as ps
-from emojikit import announce
+from tests.reference import packstate as ps
+from tests.reference import announce
 from tests._pack_fixtures import _png
 
 
@@ -385,9 +385,12 @@ class LinksDestination(unittest.TestCase):
         """
         from tests.reference import build_collection, collection_notify
         import coins.rebuild_dedup as rd
-        for module in (bp, collection_notify, rd):
+        from emojikit.announce import announce_packs as native_announce
+        for module in (bp, collection_notify):
             self.assertIs(module.announce_packs, announce.announce_packs,
-                          f"{module.__name__} must use the shared announcer")
+                          f"{module.__name__} must use the source announcer")
+        self.assertIs(rd.announce_packs, native_announce,
+                      "retained coin rebuild must use the native-backed announcer")
         self.assertFalse(hasattr(build_collection, "links_chat_id"))
         self.assertFalse(hasattr(rd, "links_chat_id"))
 

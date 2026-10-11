@@ -225,22 +225,26 @@ class PosixStaleLockReclaim(unittest.TestCase):
     def test_no_such_process_is_reported_dead(self):
         with mock.patch.object(bp.os, "name", "posix"), \
              mock.patch.object(bp.os, "kill", side_effect=ProcessLookupError):
-            self.assertFalse(ps._lock_owner_is_alive(4242))
+            from tests.reference import packstate as source
+            self.assertFalse(source._lock_owner_is_alive(4242))
 
     def test_permission_denied_means_it_exists(self):
         with mock.patch.object(bp.os, "name", "posix"), \
              mock.patch.object(bp.os, "kill", side_effect=PermissionError):
-            self.assertTrue(ps._lock_owner_is_alive(4242))
+            from tests.reference import packstate as source
+            self.assertTrue(source._lock_owner_is_alive(4242))
 
     def test_unknown_failure_stays_conservative(self):
         with mock.patch.object(bp.os, "name", "posix"), \
              mock.patch.object(bp.os, "kill", side_effect=OSError("weird")):
-            self.assertTrue(ps._lock_owner_is_alive(4242))
+            from tests.reference import packstate as source
+            self.assertTrue(source._lock_owner_is_alive(4242))
 
     def test_a_running_process_is_alive(self):
         with mock.patch.object(bp.os, "name", "posix"), \
              mock.patch.object(bp.os, "kill", return_value=None):
-            self.assertTrue(ps._lock_owner_is_alive(4242))
+            from tests.reference import packstate as source
+            self.assertTrue(source._lock_owner_is_alive(4242))
 
 
 class CanonicalMapLock(unittest.TestCase):

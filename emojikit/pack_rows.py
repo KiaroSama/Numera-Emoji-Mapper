@@ -22,11 +22,13 @@ def _cell(value) -> str:
 
 def markdown_table(rows: list[dict], columns: list[tuple]) -> str:
     """Rows as a Markdown table. ``columns`` is ``[(key, title[, "right"]), ...]``."""
-    head = "| " + " | ".join(c[1] for c in columns) + " |"
-    rule = "|" + "|".join(("-" * max(len(c[1]), 1) + ":") if len(c) > 2 and c[2] == "right"
-                          else "-" * (len(c[1]) + 2) for c in columns) + "|"
-    body = ["| " + " | ".join(_cell(r.get(c[0])) for c in columns) + " |" for r in rows]
-    return "\n".join([head, rule, *body])
+    import json
+    from emojikit import _native
+    # Convert cells at the language boundary; Rust owns escaping and table structure.
+    keys = {column[0] for column in columns}
+    values = [{key: "" if row.get(key) is None else str(row.get(key)) for key in keys} for row in rows]
+    return _native.markdown_table_json(json.dumps(values, ensure_ascii=False),
+        [(column[0], column[1], len(column) > 2 and column[2] == "right") for column in columns])
 
 
 def keyword_cell(keywords: list[str]) -> str:

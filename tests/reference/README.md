@@ -218,6 +218,35 @@ migration, panel and builder counterparts blocked; selected native catalog and
 migration/source-restore cases passed. Those are selected seams, not the full
 cutover gate. Runtime originals and immutable `tests/oracles` remain preserved.
 
+## Announcement reference closure (2026-10-11)
+
+`announce.py` is copied from the canonical Git HEAD production source before native
+replacement. Only its Telegram type import points to `tests.oracles.telegram_api`;
+renderer, routing and timeout behavior are unchanged. Its canonical source SHA and
+normalized behavior digest are recorded in `behavior.json` using
+`tests._reference_behavior.digest`. Reference build_pack and collection_notify now
+import `.announce`; production coin modules continue importing the native-backed
+announcer. Source renderer/requests mocks explicitly import this reference, and
+RebuildCase injects it only at the fake coin test boundary. No production fallback
+or package alias is installed. The import-only changes leave existing behavior pins
+for the two application references unchanged.
+
+## State compatibility reference closure (2026-10-11)
+
+`packstate.py` preserves the canonical pre-replacement Git source with only ROOT
+adapted to repository parents[2]; `behavior.json` pins its explicit source revision,
+Git-LF hash and normalized AST digest. Atomic filesystem fault-injection tests and
+obsolete lock liveness helper tests use this reference. Public lock exclusion tests
+continue exercising native-backed production exports, with a new exported state
+fixture covering callback descriptor lifetime, interoperability and serialized bytes.
+Reference StateInvalid/LockBusy class identities differ deliberately; callers testing
+reference validation must catch those source classes, not production equivalents.
+The explicit `maintenance.py` source reference now imports `.packstate`; reference
+catalog/migration/state/publisher/archive/applier/reorder modules import `.maintenance`.
+Its canonical source revision/hash and import-normalized behavior digest are pinned
+in `behavior.json`. Source migration and panel ownership tests patch and catch this
+reference namespace; native exported/interoperability tests still use production APIs.
+
 ## Integrated behavior integrity checkpoint
 
 `behavior.json` records canonical Git source SHA-256 (LF text, not mixed checkout

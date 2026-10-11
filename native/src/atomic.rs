@@ -55,6 +55,14 @@ fn move_new_windows(source: &Path, destination: &Path) -> io::Result<()> {
 }
 
 pub fn write_json(path: &Path, value: &serde_json::Value) -> io::Result<()> {
+    let formatter = serde_json::ser::PrettyFormatter::with_indent(b" ");
+    let mut bytes = Vec::new();
+    let mut serializer = serde_json::Serializer::with_formatter(&mut bytes, formatter);
+    serde::Serialize::serialize(value, &mut serializer).map_err(io::Error::other)?;
+    write_bytes(path, &bytes)
+}
+
+pub fn write_bytes(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let parent = path
         .parent()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "state path has no parent"))?;
@@ -80,9 +88,7 @@ pub fn write_json(path: &Path, value: &serde_json::Value) -> io::Result<()> {
         }
     };
     let result = (|| {
-        let formatter = serde_json::ser::PrettyFormatter::with_indent(b" ");
-        let mut serializer = serde_json::Serializer::with_formatter(&mut file, formatter);
-        serde::Serialize::serialize(value, &mut serializer).map_err(io::Error::other)?;
+        file.write_all(bytes)?;
         file.flush()?;
         file.sync_all()?;
         match std::fs::metadata(path) {

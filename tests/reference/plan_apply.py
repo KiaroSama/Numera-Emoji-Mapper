@@ -43,8 +43,8 @@ from .collection_state import (DEFAULT_EMOJI, MIXED, PER_SET, BrandLogo,
                                        load_json, load_state, save_json)
 from emojikit.errors import FloodWaitTooLong, OperatorConfigMissing
 from emojikit.logsetup import record_exit_code, redact, register_secret, setup_logging
-from emojikit.maintenance import writer
-from emojikit.packstate import LockBusy, exclusive_lock
+from .maintenance import writer
+from .packstate import LockBusy, exclusive_lock
 from .panel_plan import PlanError, read_plan, target_map
 from .plan_status import EXIT_PENDING
 from emojikit.telegram_api import BotApiError, LiveStateUnknown, SetState, Telegram

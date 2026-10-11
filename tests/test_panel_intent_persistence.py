@@ -16,8 +16,8 @@ from PIL import Image
 from emojikit import identity
 from tests.reference import panel, panel_save
 from tests.reference.catalog import Catalog
-from emojikit.maintenance import maintenance
-from emojikit.packstate import LockBusy
+from tests.reference.maintenance import maintenance
+from tests.reference.packstate import LockBusy
 from tests.reference.panel_plan import PLAN_NAME, merge_plan
 
 

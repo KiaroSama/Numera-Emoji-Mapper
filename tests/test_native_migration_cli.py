@@ -138,7 +138,7 @@ class NativeMigrationCLI(unittest.TestCase):
             legacy_result = json.loads(result.stdout.strip())
             legacy_bundle = Path(legacy_result["bundle"])
             from tests.reference import collection_migrate
-            with patch.object(media_paths.resolve, "__defaults__", (root,)), patch("emojikit.packstate.LOCK_DIR", root / ".locks"):
+            with patch.object(media_paths.resolve, "__defaults__", (root,)), patch("emojikit.packstate.LOCK_DIR", root / ".locks"), patch("tests.reference.packstate.LOCK_DIR", root / ".locks"):
                 collection_migrate.restore_migration(data, legacy_bundle, apply=True)
             self.assertEqual(source.read_bytes(), original)
             if real_video == "generated":
@@ -168,7 +168,7 @@ class NativeMigrationCLI(unittest.TestCase):
         signed = phash if phash < 1 << 63 else phash - (1 << 64)
         mapping = {old_key: new_key}
         journal = data / "identity-migration.journal.json"
-        with patch.object(media_paths.resolve, "__defaults__", (root,)), patch("emojikit.packstate.LOCK_DIR", root / ".locks"):
+        with patch.object(media_paths.resolve, "__defaults__", (root,)), patch("emojikit.packstate.LOCK_DIR", root / ".locks"), patch("tests.reference.packstate.LOCK_DIR", root / ".locks"):
             backup = cm.backup_catalog(data / "catalog.db")
             files = bundle.plan_files(data / "catalog.db", mapping)
             after = cm._remap(state, mapping)

@@ -16,12 +16,12 @@ from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from emojikit import packstate
+from . import packstate
 from emojikit import identity
 from emojikit import media_paths
 from . import migration_bundle as bundle
 from emojikit import sqlite_snapshot, state_artifacts
-from emojikit.maintenance import JOURNAL_NAME, maintenance
+from .maintenance import JOURNAL_NAME, maintenance
 # The signed-storage conversion is imported, never re-implemented: a 64-bit
 # hash that overflowed SQLite's signed range once dropped rows from this very
 # catalog, and a second copy of that arithmetic is how the two drift apart.

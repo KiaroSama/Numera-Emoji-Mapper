@@ -26,7 +26,8 @@ import requests
 from PIL import Image
 
 from tests.reference import build_collection as bc
-from emojikit.telegram_api import (AmbiguousUploadError, Telegram)
+from emojikit.telegram_api import AmbiguousUploadError, Telegram
+from tests.oracles.telegram_api import AmbiguousUploadError as SourceAmbiguousUploadError
 from emojikit import identity
 from tests.reference.catalog import Catalog
 
@@ -160,7 +161,8 @@ class VerifiedRetryTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def _tg(self, server) -> Telegram:
-        tg = Telegram("TESTTOKEN")
+        from tests.oracles.telegram_api import Telegram as SourceTelegram
+        tg = SourceTelegram("TESTTOKEN")
         tg.s = server
         return tg
 
@@ -195,7 +197,7 @@ class VerifiedRetryTest(unittest.TestCase):
         tg = self._tg(srv)
         # Downloads fail, so no comparison is possible.
         tg.download_file = mock.Mock(side_effect=RuntimeError("download failed"))
-        with self.assertRaises(AmbiguousUploadError):
+        with self.assertRaises(SourceAmbiguousUploadError):
             tg.add_sticker(1, "pack1", self.png, "😀", "kw", expected_before=1)
         self.assertEqual(srv.add_calls, 1, "must not re-send while unresolved")
 
@@ -215,7 +217,7 @@ class VerifiedRetryTest(unittest.TestCase):
         srv = _FakeServer(fail_first_add="after_apply")
         srv.probe_fails = True
         tg = self._tg(srv)
-        with self.assertRaises(AmbiguousUploadError):
+        with self.assertRaises(SourceAmbiguousUploadError):
             tg.add_sticker(1, "pack1", self.png, "😀", "kw", expected_before=1)
         self.assertEqual(srv.add_calls, 1)              # ambiguity never re-sends
 

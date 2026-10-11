@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from emojikit import packstate as ps
+from tests.reference import packstate as ps
 
 RUNS_ON_NATIVE_WINDOWS = True
 

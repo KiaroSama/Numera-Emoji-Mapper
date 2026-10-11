@@ -74,7 +74,12 @@ class NativeConsumerBoundary(unittest.TestCase):
                 reference = ROOT / "tests/reference" / name
                 self.assertEqual(digest(reference.read_text(encoding="utf-8")), evidence["relocated_behavior_sha256"])
                 source = ROOT / evidence["source"]
-                if source.exists():
+                if evidence.get("source_revision"):
+                    import subprocess
+                    original = subprocess.run(["git", "show", f"{evidence['source_revision']}:{evidence['source']}"],
+                        cwd=ROOT, stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=5, check=True).stdout
+                    self.assertEqual(hashlib.sha256(original.encode("utf-8")).hexdigest(), evidence["source_sha256"])
+                elif source.exists():
                     self.assertEqual(hashlib.sha256(source.read_text(encoding="utf-8").encode("utf-8")).hexdigest(),
                                      evidence["source_sha256"])
         ledger = (ROOT / "tests/oracles/README.md").read_text(encoding="utf-8")

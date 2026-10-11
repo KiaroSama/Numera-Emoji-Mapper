@@ -22,6 +22,9 @@ class NativeBotPolling(unittest.TestCase):
     def test_ambiguous_rich_send_never_sends_a_plain_duplicate(self):
         self._polling(True)
 
+    def test_handler_dead_letter_persists_cursor_and_restart_does_not_resend(self):
+        self._polling("dead-letter")
+
     def _polling(self, ambiguous):
         self.assertTrue(BINARY.is_file(), "native executable required")
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as directory:
@@ -62,6 +65,9 @@ class NativeBotPolling(unittest.TestCase):
                         result = [{"custom_emoji_id": "222222222", "emoji": "⭐"}]
                     elif method == "sendMessage":
                         replies.append(form["text"][0])
+                        if ambiguous == "dead-letter":
+                            self.reply({"ok": False, "description": "fixture reply refused"})
+                            return
                         if len(replies) == 1:
                             if ambiguous:
                                 import socket
@@ -94,6 +100,19 @@ class NativeBotPolling(unittest.TestCase):
                     stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=20,
                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
                 self.assertEqual(result.returncode, 4, result.stderr)
+                if ambiguous == "dead-letter":
+                    self.assertEqual(json.loads((fixture / "state_emoji_bot.json").read_text(encoding="utf-8")), {"offset": 8})
+                    self.assertEqual(len(replies), 2, "dead-letter restart must not resend either rejected reply")
+                    self.assertIn("dead-lettering update", result.stderr)
+                    observed.clear()
+                    restarted = subprocess.run([str(executable), "emoji-bot"], cwd=directory, env=environment,
+                        stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=10,
+                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                    self.assertEqual(restarted.returncode, 4, restarted.stderr)
+                    self.assertEqual([form["offset"] for method, form in observed if method == "getUpdates"], [["8"]])
+                    self.assertFalse(any(method == "getCustomEmojiStickers" for method, _ in observed))
+                    self.assertEqual(len(replies), 2, "dead-letter restart must not resend either rejected reply")
+                    return
                 if ambiguous:
                     self.assertEqual(json.loads((fixture / "state_emoji_bot.json").read_text(encoding="utf-8")),
                                      {"offset": 8}, "reported unresolved outcome did not persist its cursor")

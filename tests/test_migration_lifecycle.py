@@ -21,13 +21,13 @@ from urllib import error, request
 
 from tests.reference import collection_migrate as cm
 from emojikit import media_paths
-from emojikit import packstate
+from tests.reference import packstate
 from tests.reference.collection_state import _lock_path
 from tests.test_identity_migration import MigrationCase
 from tests.reference import identity_repair as ir
 from tests.reference import migration_bundle as bundle
 from tests.reference.catalog import Catalog
-from emojikit.maintenance import maintenance
+from tests.reference.maintenance import maintenance
 
 
 
@@ -263,7 +263,7 @@ class MigrationCannotCertifyDamage(MigrationCase):
                             raise KeyboardInterrupt()
                         return result
 
-                    with self.decode(), mock.patch.object(packstate, "write_json_atomic", fail_write), \
+                    with self.decode(), mock.patch.object(cm.packstate, "write_json_atomic", fail_write), \
                             mock.patch.object(cm, "_apply_database", fail_database), \
                             self.assertRaises(KeyboardInterrupt):
                         self.cli("migrate-video-keys", "--apply")

@@ -20,7 +20,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 
-from emojikit import announce  # noqa: E402
+from tests.reference import announce  # noqa: E402
 from tests.reference import emoji_bot  # noqa: E402
 
 FIXTURES = ROOT / "tests" / "fixtures" / "contracts"

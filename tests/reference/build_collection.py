@@ -33,8 +33,8 @@ from pathlib import Path
 
 from . import collection_preflight
 from .build_pack import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL, EXIT_USAGE, ingest_exit_code, load_env, safe_int_env)
-from emojikit.packstate import (LockBusy, exclusive_lock)
-from emojikit.maintenance import writer
+from .packstate import (LockBusy, exclusive_lock)
+from .maintenance import writer
 from emojikit.telegram_api import (AmbiguousUploadError, LiveStateUnknown, SetState, Telegram)
 from .catalog import Catalog
 from emojikit.logsetup import record_exit_code, redact, register_secret, setup_logging
