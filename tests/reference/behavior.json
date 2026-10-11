@@ -1,6 +1,12 @@
 {
   "normalization": "canonical AST JSON; ignore imports and ROOT/OFFSET_FILE assignments and empty type_params only",
   "sources": {
+    "identity_repair.py": {
+      "source": "scripts/identity_repair.py",
+      "source_revision": "58c4443050b57f3f1b3ca9ac0ffaab0a0dbf3de4",
+      "source_sha256": "544f267ab1d893d4583989cd580379c80ba9ea4e67aae54fe27bd6e01bea78e5",
+      "relocated_behavior_sha256": "9dda6310d1660019acf9d61c9582294dc18f53bef41d0a32e4c358e142fad30d"
+    },
     "add_media.py": {
       "source": "emojikit/add_media.py",
       "source_sha256": "59588f4c7c7e9eb41eb2048396afbf729bf15c03199e9e11278857f8e953592a",

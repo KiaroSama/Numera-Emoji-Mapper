@@ -64,6 +64,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 /.cache/
+/.ci-work/
 
 # Native computation build artifacts
 /native/target/
