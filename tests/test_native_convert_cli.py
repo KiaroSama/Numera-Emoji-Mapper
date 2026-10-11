@@ -17,6 +17,50 @@ RUNS_ON_NATIVE_WINDOWS = True
 
 
 class NativeConvertCLI(unittest.TestCase):
+    def test_limit_and_failed_replacement_preserve_existing_output(self):
+        self.assertTrue(BINARY.is_file(), "native executable required")
+        with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
+            root = Path(folder).resolve() / "fixture-root"
+            (root / "assets").mkdir(parents=True)
+            shutil.copy2(ROOT / "assets/panel.html", root / "assets/panel.html")
+            shutil.copy2(ROOT / "pyproject.toml", root / "pyproject.toml")
+            shutil.copytree(ROOT / "emojikit", root / "emojikit", ignore=shutil.ignore_patterns("__pycache__"))
+            executable = root / BINARY.name
+            shutil.copy2(BINARY, executable)
+            source_dir, output = root / "input", root / "output"
+            source_dir.mkdir()
+            source = source_dir / "art.png"
+            shutil.copy2(ROOT / "assets/numera-emoji-mapper-logo.png", source)
+            original = source.read_bytes()
+            shutil.copy2(source, source_dir / "other.png")
+            environment = {**os.environ, "PYO3_PYTHON": sys.executable}
+
+            def run(*args):
+                return subprocess.run([str(executable), "make-emoji-pngs", "--in", str(source_dir),
+                                       "--out", str(output), *args], cwd=folder, env=environment,
+                                      stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8",
+                                      timeout=30, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+
+            invalid = run("--limit", "-1")
+            self.assertEqual(invalid.returncode, 2, invalid.stderr)
+            self.assertFalse(output.exists(), "invalid arguments must refuse before creating output")
+            limited = run("--limit", "1")
+            self.assertEqual(limited.returncode, 0, limited.stderr)
+            self.assertEqual(sorted(path.name for path in output.glob("*.png")), ["art.png"])
+            self.assertEqual(source.read_bytes(), original)
+            prior = (output / "art.png").read_bytes()
+            # A physical directory at the destination cannot be atomically replaced by a PNG.
+            (output / "other.png").mkdir()
+            protected = output / "other.png/keep.bin"
+            protected.write_bytes(b"previous durable output")
+            refused = run()
+            self.assertEqual(refused.returncode, 2, refused.stderr)
+            self.assertEqual(protected.read_bytes(), b"previous durable output")
+            self.assertEqual((output / "art.png").read_bytes(), prior)
+            self.assertEqual(source.read_bytes(), original)
+            self.assertEqual((source_dir / "other.png").read_bytes(), original)
+            self.assertEqual(list((output / ".native-codec").iterdir()), [], "failed staging must be reaped")
+
     def test_rgb_output_is_rebuilt_as_exact_rgba_then_reused(self):
         self.assertTrue(BINARY.is_file(), "native executable required")
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
