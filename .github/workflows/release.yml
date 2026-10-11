@@ -93,7 +93,7 @@ jobs:
           echo '1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a  libvpx.tar.gz' | shasum -a 256 -c -
           tar -xzf libvpx.tar.gz
           cd libvpx-1.17.0
-          ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-examples --disable-tools --disable-unit-tests --disable-docs --disable-asm
+          ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-examples --disable-tools --disable-unit-tests --disable-docs --target=generic-gnu
           make -j2
           make install
           cd ..
