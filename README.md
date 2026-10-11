@@ -64,8 +64,8 @@ codecs and native-backed bindings for the unchanged coin-provider tools.
   Alpine/musl and other CPU targets are not covered by these packages.
 - The native executable and matching extension are mandatory; there is no Python
   application fallback. The Windows menu and doctor use the installed backend;
-  final integrated retirement/package verification is still required. See
-  [native backend status](docs/native-backend.md).
+  integrated retirement and all four platform package checks have passed. See
+  [native backend evidence and limitations](docs/native-backend.md#verification-status-and-limitations).
 - A Telegram bot (create one with [@BotFather](https://t.me/BotFather))
 - Your numeric Telegram user id (the pack owner) — press **Start** on the bot once
 - Ready packages install the core dependencies offline: Pillow, resvg-py and
