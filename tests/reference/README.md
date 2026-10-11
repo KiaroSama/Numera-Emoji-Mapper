@@ -1,9 +1,14 @@
 # Test-only legacy backend references
 
-This package is the bounded feature013 T051 catalog/migration/panel foundation,
-not a production fallback or permission to remove Python applications. Import modules
-explicitly under `tests.reference`. Production originals stay intact until full
-parity, rollback and cutover gates pass.
+This package is feature013's test-only source-derived application reference corpus,
+not a production fallback. Import modules explicitly under `tests.reference`.
+Production counterparts were retired after parity, rollback and cutover gates;
+original Git source revisions and immutable oracles remain preserved.
+
+The dated cohort descriptions below record the incremental adaptation history,
+not current pending work. Final core acceptance at `0811e9b` verifies reference
+integrity and isolation after retirement; native runtime packages exclude these
+references. See [native backend evidence](../../docs/native-backend.md#verification-status-and-limitations).
 
 ## Provenance
 

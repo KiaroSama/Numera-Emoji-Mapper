@@ -2,8 +2,8 @@
 
 The installed Rust backend is now the primary local command path. The Windows
 menu and doctor invoke it; superseded Python application modules have been
-retired from production. This is an ownership change, not a claim that final
-integrated source-retirement and package acceptance has already passed.
+retired from production. Final integrated source-retirement acceptance and all
+four platform package checks have passed; the revision-bound evidence is below.
 See [ADR 0003](adr/0003-rust-local-backend.md) for the decision and rollback boundary.
 
 ## Ready-package installation
@@ -121,14 +121,20 @@ its owner stops the process tree after 120 seconds without marker progress or a
 
 ## Verification status and limitations
 
-The pre-retirement core revision a71d7d7 passed all six jobs. The earlier runtime
-58c4443 passed core and all four package targets; copied real catalog readback,
-private-copy migration/native restore/source rollback and fresh offline installation
-have separate evidence. The native-wired Windows doctor/conversion/missing-binary
-tracer passed in 26.364 seconds, and a retained coin manifest command passed through
-actual loopback HTTP/native bindings. These results do not certify subsequent
-source retirement, documentation edits or the final minimal package. Final exact-
-revision core/package checks and post-retirement installed paths remain required.
+Final integrated core [run 38174075123](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/runs/38174075123)
+at `0811e9b` passed all six jobs after production retirement: Python 3.11/3.12/3.14,
+Windows native safety, the native-backed browser suite and Worker checks.
+Four-platform [package run 38173007469](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/runs/38173007469)
+at `c010464` passed actual extracted installation, CLI, exact media, retained coin
+manifest and lifecycle checks. The later `0811e9b` changes only the lock-test source
+inventory; production/package inputs are unchanged. Tag publication was skipped.
+
+Copied real catalog readback and private-copy native migration/restore/source rollback
+have separate local evidence. After removing disposable build and verification
+extractions, the retained Windows installation passed its actual doctor, native CLI,
+real 100×100 PNG conversion and coin entry-point checks. Protected input and runtime
+hashes were unchanged; no Cargo build or live Telegram mutation was used. Recovery
+copies, source history and required test fixtures were preserved.
 
 Persistent acceptance includes source-generated fixtures, actual CLI/loopback
 cases, native-server-backed browser suites, exact PNG/TGS/VP9 codecs, cross-language
