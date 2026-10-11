@@ -5,9 +5,32 @@ the production entry point until command, recovery, rollback and platform accept
 are complete. Development commands are not permission to test against live packs
 or the operator's catalog.
 
-## Build and installation
+## Ready-package installation
 
-Use the selected project interpreter with Rust 1.99+ and the platform linker:
+Normal users download the matching archive from a successful **Prebuilt packages**
+workflow run, or from release assets after a versioned release has passed every
+platform job. See [README installation](../README.md#install-a-ready-built-package--no-local-rust-build).
+Windows x64, Linux x64 (glibc 2.39+) and macOS 15+ Intel/Apple Silicon are the
+package targets. Python 3.11 and FFmpeg/FFprobe remain runtime prerequisites;
+Rust/Cargo and a source build are not required for package installation.
+
+The archive includes the executable, matching abi3 wheel, binary dependency
+wheels and public assets. `scripts/install_prebuilt.py` installs offline with
+`--only-binary=:all:` and checks the manifest, platform, hashes and package-local
+virtual environment. `scripts/launch_prebuilt.py` selects that environment;
+Windows retains a private Job until the native child exits. Owned temporary and
+cache paths stay under the extracted folder's `logs/tmp/` and `.cache/`, with
+linked/reparse escape paths refused. Hosted build caches likewise stay inside
+the CI checkout. No operator configuration, data or build tree is shipped.
+
+Package smoke tests do not replace the complete migration acceptance ledger.
+Successful package delivery alone does not authorize primary cutover or deleting
+legacy production source, rollback evidence or operator files.
+
+## Developer build and installation
+
+Only contributors changing Rust source need the selected project interpreter,
+Rust 1.99+ and the platform linker:
 
 ```powershell
 .venv\Scripts\python.exe scripts\build_native.py

@@ -62,7 +62,11 @@ media.to_static_png(root/'assets/numera-emoji-mapper-logo.png',root/'logs/art.pn
 with Image.open(root/'logs/art.png') as image: assert image.size==(100,100)
 media_lottie.lottie_still_webp(root/'logs/fixture.tgs',root/'logs/motion.webp',size=72)
 with Image.open(root/'logs/motion.webp') as image: assert image.size==(72,72)
-media.to_video_webm(root/'logs/art.png',root/'logs/art.webm')
+try:
+ media.to_video_webm(root/'logs/art.png',root/'logs/art.webm')
+except __import__('subprocess').CalledProcessError as error:
+ print(error.stderr.decode('utf-8',errors='replace') if isinstance(error.stderr,bytes) else error.stderr,file=__import__('sys').stderr)
+ raise
 media.validate_video(root/'logs/art.webm')
 print('actual PNG/TGS/VP9 codecs and package-local paths verified')
 ''', encoding="utf-8")
