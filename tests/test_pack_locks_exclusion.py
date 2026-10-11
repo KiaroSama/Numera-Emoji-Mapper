@@ -78,8 +78,9 @@ try:
             os._exit(9)
         time.sleep(HOLD)
         note("exit")
-except ps.LockBusy:
+except ps.LockBusy as exc:
     note("busy")
+    print(str(exc), file=sys.stderr, flush=True)
     sys.exit(3)
 '''
 
@@ -96,6 +97,7 @@ class _LockHarness(unittest.TestCase):
         self.child = self.dir / "child.py"
         self.child.write_text(CHILD, encoding="utf-8")
         self.procs: list[subprocess.Popen] = []
+        self.child_outputs: list[tuple[int, str]] = []
 
     def tearDown(self):
         # Every child must be gone BEFORE the directory is removed: Windows
@@ -121,7 +123,8 @@ class _LockHarness(unittest.TestCase):
 
     def wait_all(self):
         for p in self.procs:
-            p.communicate(timeout=CHILD_TIMEOUT)
+            output, _ = p.communicate(timeout=CHILD_TIMEOUT)
+            self.child_outputs.append((p.returncode, output))
 
     def intervals(self):
         """[(pid, enter, exit)] for every child that believed it held the lock."""
@@ -176,7 +179,7 @@ class OnlyOneProcessHoldsTheLock(_LockHarness):
             self.spawn(start_at=start)
         self.wait_all()
         spans = self.intervals()
-        self.assertGreaterEqual(len(spans), 1)
+        self.assertGreaterEqual(len(spans), 1, f"no child acquired: {self.child_outputs}")
         self.assertNeverTwoOwners(spans)
 
     def test_a_live_holder_is_never_displaced_however_old_the_record_looks(self):

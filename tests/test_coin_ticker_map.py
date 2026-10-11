@@ -107,9 +107,9 @@ class AliasMapAmbiguity(unittest.TestCase):
         """
         path = self.tmp / "ticker_to_id.json"
         original = json.loads(path.read_text("utf-8"))
-        # os.replace is the last step of write_json_atomic and nothing else in
-        # this run uses it: failing it simulates dying just before publication.
-        with mock.patch("os.replace", side_effect=OSError("interrupted")), \
+        # Fail the native persistence boundary; mocking Python os.replace no
+        # longer reaches the writer. Real replacement refusal is tested separately.
+        with mock.patch("emojikit._native.state_write_bytes", side_effect=OSError("interrupted")), \
                 mock.patch.multiple(self.mod, ROOT=self.tmp,
                                     KEYWORDS_CSV=self.tmp / "keywords.csv",
                                     INV=self.tmp / "inv.md",

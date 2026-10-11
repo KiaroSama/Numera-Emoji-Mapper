@@ -39,8 +39,13 @@ impl Lease {
             .write(true)
             .create(true)
             .truncate(false)
-            .open(path)?;
-        take(&file)?;
+            .open(path)
+            .map_err(|error| {
+                io::Error::new(error.kind(), format!("lock file open failed: {error}"))
+            })?;
+        take(&file).map_err(|error| {
+            io::Error::new(error.kind(), format!("OS lock acquisition failed: {error}"))
+        })?;
         let result = (|| {
             let record = serde_json::to_vec(
                 &serde_json::json!({"pid":std::process::id(),"started":started,
@@ -61,7 +66,10 @@ impl Lease {
         })();
         if let Err(e) = result {
             let _ = release(&file);
-            return Err(e);
+            return Err(io::Error::new(
+                e.kind(),
+                format!("lock holder record write failed: {e}"),
+            ));
         }
         Ok(Self { file })
     }
