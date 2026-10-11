@@ -55,13 +55,15 @@ source folder and the selected bot token differ.
 
 ## Requirements
 
-- Python 3.11+
-- **Required Rust computation module** (`emojikit._native`): install Rust 1.99+
-  and the platform linker, then run `python scripts/build_native.py` with the
-  project interpreter. Windows needs the MSVC C++ build tools. There is no
-  Python computation fallback. The installer also builds and installs the native
-  development executable outside Cargo build output. The production launcher remains
-  Python until full backend acceptance; see [native backend status](docs/native-backend.md).
+- **Prebuilt packages:** Python **3.11** for the bundled offline dependency wheels.
+  Rust, Cargo and C++ build tools are **not end-user prerequisites**.
+- **Supported package targets:** Windows x64, Linux x64 (Ubuntu 24.04+ / glibc 2.39+),
+  macOS 15+ Intel and Apple Silicon. Each target must pass its native CI package
+  installation and media checks before its download is advertised as working.
+  Alpine/musl and other CPU targets are not covered by these packages.
+- The native computation module is mandatory; there is no Python computation
+  fallback. The existing source checkout's production launcher remains unchanged
+  until full backend acceptance; see [native backend status](docs/native-backend.md).
 - A Telegram bot (create one with [@BotFather](https://t.me/BotFather))
 - Your numeric Telegram user id (the pack owner) — press **Start** on the bot once
 - Dependencies in `requirements.txt` (`pip install -r requirements.txt`) — this
@@ -73,20 +75,58 @@ source folder and the selected bot token differ.
   Install on Windows with `winget install Gyan.FFmpeg`. Static and animated
   workflows do not need it.
 
-## Setup
+## Install a ready-built package — no local Rust build
+
+1. Open [Releases](https://github.com/KiaroSama/Numera-Emoji-Mapper/releases)
+   and download the matching `numera-emoji-mapper-<version>-<platform>.zip`
+   plus its `.zip.sha256` file. During backend development, tested archives are
+   available under **Artifacts** on a successful
+   [Prebuilt packages run](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml).
+   CI artifacts require a GitHub sign-in. The older `v2.0.0` release currently
+   has no binary assets; do not mistake its source ZIP for a ready-built package.
+2. Verify the ZIP against the accompanying SHA256, then extract it to its own
+   folder. Install Python 3.11 and, for video, FFmpeg/FFprobe. Packages include
+   the matching executable, native wheel and binary dependency wheels; setup
+   does not invoke Cargo or compile anything.
+3. Open a terminal in the extracted folder and run the installer for your OS.
+
+**Windows:**
 
 ```powershell
-# 1. Create a virtual environment and install deps
-py -3.11 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-.venv\Scripts\python.exe scripts\build_native.py
-# working on the crypto-coin component too? add the coin extra:
-# .venv\Scripts\python.exe -m pip install -r requirements-coins.txt
-
-# 2. Configure secrets
-copy .env.example .env
-# then edit .env and fill in the tokens / owner id
+py -3.11 scripts\install_prebuilt.py
 ```
+
+```powershell
+.venv\Scripts\python.exe scripts\launch_prebuilt.py --help
+```
+
+**Linux / macOS:**
+
+```bash
+python3.11 scripts/install_prebuilt.py
+```
+
+```bash
+.venv/bin/python scripts/launch_prebuilt.py --help
+```
+
+Run `scripts/launch_prebuilt.py panel` with that same `.venv` interpreter to
+open the curation panel, or pass another native command shown by `--help`.
+Copy `.env.example` to `.env` and fill in your own configuration before using
+Telegram commands. Never overwrite an existing `.env` or collection during an
+update: extract the new package separately and retain your data/config backup.
+
+**All application temp and cache files stay inside this folder:** `logs/tmp/`
+and `.cache/`; the environment lives in `.venv/`. Installation and launching
+bind child-process temp/pip/bytecode caches to these paths and reject linked
+cache directories. Ready packages contain no Cargo build tree. Existing local
+build caches are removed only after the current installation/rollback gates pass.
+
+### Developer source build (not required for package users)
+
+Only contributors building modified Rust source need Rust 1.99+, a platform
+linker (MSVC C++ tools on Windows), and `scripts/build_native.py`. Public ready
+packages are built and tested on hosted CI, not on the user's workstation.
 
 `.env` keys (see `.env.example`):
 

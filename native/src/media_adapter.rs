@@ -16,7 +16,7 @@ pub struct MediaAdapter {
 
 impl MediaAdapter {
     pub async fn call(&self, request: Value) -> Result<Value, String> {
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
         verify_inherited_group_bridge(&self.root)?;
         let codec_config = crate::config::Config::load(self.root.clone())?;
         let ffmpeg_timeout = codec_config.integer("EMOJI_FFMPEG_TIMEOUT", 300, 1, i64::MAX);
@@ -120,17 +120,17 @@ impl MediaAdapter {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn verify_inherited_group_bridge(root: &Path) -> Result<(), String> {
     // This explicit protocol marker is added only with the Python _run flag
     // implementation. Legacy codecs start FFmpeg in a new session and escape PGID.
     let source = std::fs::read_to_string(root.join("emojikit/media.py"))
-        .map_err(|_| "cannot verify Linux codec containment capability".to_owned())?;
+        .map_err(|_| "cannot verify POSIX codec containment capability".to_owned())?;
     if !source
         .lines()
         .any(|line| line.trim() == "NATIVE_CODEC_GROUP_VERSION = 1")
     {
-        return Err("Linux codec bridge needs inherited-group protocol1 in media._run; refusing unowned FFmpeg".into());
+        return Err("POSIX codec bridge needs inherited-group protocol1 in media._run; refusing unowned FFmpeg".into());
     }
     Ok(())
 }

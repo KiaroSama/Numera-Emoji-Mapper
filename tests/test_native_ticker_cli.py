@@ -48,7 +48,13 @@ class NativeTickerCLI(unittest.TestCase):
     def test_configured_logo_first_and_restart_without_duplicate(self):
         self._build(True)
 
-    def _build(self, branded):
+    def test_interrupted_add_finds_ours_before_a_foreign_tail(self):
+        self._build(False, recovery="foreign-tail")
+
+    def test_removal_masking_interrupted_add_does_not_upload_again(self):
+        self._build(False, recovery="masked-growth")
+
+    def _build(self, branded, recovery=None):
         self.assertTrue(BINARY.is_file(), "native executable required")
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as directory:
             root = Path(directory).resolve() / "fixture-root"
@@ -68,6 +74,16 @@ class NativeTickerCLI(unittest.TestCase):
             logo_payload = (root / "logo.png").read_bytes()
             observed = []
             live = []
+            if recovery:
+                if recovery == "foreign-tail":
+                    live.append({"file_id": "foreign-file", "file_unique_id": "foreign-unique", "custom_emoji_id": "333333333"})
+                live.append({"file_id": "item-file", "file_unique_id": "item-unique", "custom_emoji_id": "222222222"})
+                if recovery == "foreign-tail":
+                    live.append({"file_id": "foreign-tail", "file_unique_id": "tail-unique", "custom_emoji_id": "444444444"})
+                (root / "state_fixture.json").write_text(json.dumps({"base": "fixture", "per_set": 200,
+                    "sets": [{"name": "fixture1_by_YourEmojiBot", "index": 1, "count": 1, "title": "Fixture 1"}],
+                    "done": [], "sent": ["fixture1_by_YourEmojiBot"], "in_flight": {"key": "fixture", "operation": "add",
+                    "set_name": "fixture1_by_YourEmojiBot", "set_index": 1, "expected_before": 1}}), encoding="utf-8")
             class Handler(BaseHTTPRequestHandler):
                 def setup(self):
                     super().setup()
@@ -102,7 +118,7 @@ class NativeTickerCLI(unittest.TestCase):
                         live.append({"file_id": "item-file", "file_unique_id": "item-unique", "custom_emoji_id": "222222222"})
                         result = True
                     elif method == "getFile":
-                        result = {"file_path": "logo.png" if branded and b"new-file" in body else "fixture.png"}
+                        result = {"file_path": "logo.png" if b"foreign-" in body or branded and b"new-file" in body else "fixture.png"}
                     elif method == "sendMessage":
                         result = {"message_id": 1}
                     else:
@@ -128,20 +144,21 @@ class NativeTickerCLI(unittest.TestCase):
                                "PYO3_PYTHON": sys.executable, "NUMERA_TEST_API_BASE": f"http://127.0.0.1:{server.server_port}"}
                 command = [str(executable), "build-pack", "--base", "fixture", "--title", "Fixture", "--source-dir", str(source),
                            "--token-env", "GENERAL_BOT_TOKEN", "--user-id", "111111111"]
+                expected_count = len(live) if recovery else 2 if branded else 1
                 for _ in range(2):
                     result = subprocess.run(command, cwd=directory, env=environment, stdin=subprocess.DEVNULL,
                         capture_output=True, encoding="utf-8", timeout=30,
                         creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertIn("\nDONE. 1 total emojis across 1 set(s).", result.stdout)
-                    self.assertTrue(result.stdout.endswith(f"  https://t.me/addemoji/fixture1_by_YourEmojiBot  ({2 if branded else 1})\n"))
-                self.assertEqual(observed.count("createNewStickerSet"), 1)
+                    self.assertTrue(result.stdout.endswith(f"  https://t.me/addemoji/fixture1_by_YourEmojiBot  ({expected_count})\n"))
+                self.assertEqual(observed.count("createNewStickerSet"), 0 if recovery else 1)
                 self.assertEqual(observed.count("addStickerToSet"), 1 if branded else 0)
-                self.assertEqual(observed.count("sendMessage"), 1)
+                self.assertEqual(observed.count("sendMessage"), 0 if recovery else 1)
                 state = json.loads((root / "state_fixture.json").read_text(encoding="utf-8"))
                 self.assertEqual(state["done"], ["fixture"])
                 self.assertIsNone(state["in_flight"])
-                self.assertEqual(state["sets"][0]["count"], 2 if branded else 1)
+                self.assertEqual(state["sets"][0]["count"], expected_count)
                 self.assertEqual(state["sent"], ["fixture1_by_YourEmojiBot"])
                 self.assertFalse((root / "collection").exists())
                 self.assertFalse(list((root / "logs").glob("ticker-codec-*")))

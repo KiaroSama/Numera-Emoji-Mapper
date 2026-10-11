@@ -1,0 +1,137 @@
+name: Prebuilt packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/*prebuilt*.py
+      - scripts/package_native.py
+      - native/**
+      - pyproject.toml
+      - requirements*.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prebuilt-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Package ${{ matrix.platform }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            platform: windows-x64
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: macos-15-intel
+            platform: macos-x64
+          - os: macos-15
+            platform: macos-arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      CARGO_BUILD_JOBS: "2"
+      PYO3_PYTHON: python
+      PYTHONUTF8: "1"
+      MACOSX_DEPLOYMENT_TARGET: "15.0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Bind all build temp and cache paths inside this checkout
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from scripts.local_environment import environment
+          local = environment(Path.cwd(), build=True)
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              for key in ('TEMP', 'TMP', 'TMPDIR', 'PIP_CACHE_DIR', 'XDG_CACHE_HOME', 'PYTHONPYCACHEPREFIX', 'CARGO_HOME', 'CARGO_TARGET_DIR', 'RUSTUP_HOME', 'CCACHE_DIR', 'SCCACHE_DIR', 'HOMEBREW_CACHE', 'HOMEBREW_TEMP', 'npm_config_cache'):
+                  output.write(f'{key}={local[key]}\n')
+          PY
+      - name: Select supported Rust toolchain in the checkout
+        run: rustup default 1.99.0
+      - name: Create isolated project build environment
+        shell: bash
+        run: |
+          python -m venv .venv
+          if [[ "$RUNNER_OS" == "Windows" ]]; then echo "$GITHUB_WORKSPACE/.venv/Scripts" >> "$GITHUB_PATH"; else echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"; fi
+      - name: Install binary runtime and build tooling in the project
+        run: python -m pip install --only-binary=:all: -r requirements.txt -r requirements-coins.txt maturin==1.15.0
+      - name: Install Linux media and TLS prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/.cache/apt/archives/partial" "$GITHUB_WORKSPACE/.cache/apt/lists/partial"
+          sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" update
+          sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" -o Dir::Cache::archives="$GITHUB_WORKSPACE/.cache/apt/archives" install -y --no-install-recommends ffmpeg libssl-dev pkg-config patchelf
+      - name: Install macOS media prerequisite
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+      - name: Install Windows media prerequisite
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg --yes --no-progress --cache-location="$env:GITHUB_WORKSPACE\.cache\chocolatey"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $env:PATH = [Environment]::GetEnvironmentVariable('PATH','Machine') + ';' + $env:PATH
+            "PATH=$env:PATH" >> $env:GITHUB_ENV
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) { throw 'FFmpeg and FFprobe are required' }
+      - name: Build matching extension and executable on hosted runner
+        run: python scripts/build_native.py
+      - name: Download binary-only dependencies for offline installation
+        run: python -m pip download --only-binary=:all: -r requirements.txt -r requirements-coins.txt --dest native/target/dependency-wheels
+      - name: Create checksummed public package
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then binary=native/runtime/numera-emoji.exe; else binary=native/runtime/numera-emoji; fi
+          wheels=(native/target/wheels/*.whl)
+          test "${#wheels[@]}" -eq 1
+          python scripts/package_native.py --executable "$binary" --wheel "${wheels[0]}" --dependencies native/target/dependency-wheels --out dist
+      - name: Verify project-local temp/cache confinement
+        run: python -m unittest tests.test_prebuilt_environment -v
+      - name: Native lifecycle and storage acceptance
+        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test ownership --test atomic_failure --test media_config -- --test-threads=2
+      - name: Install and exercise extracted package without source/build tree
+        run: python -m tests._prebuilt_smoke
+      - name: Upload ready downloads and checksums
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: numera-emoji-mapper-${{ matrix.platform }}
+          path: |
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: numera-emoji-mapper-*
+          path: dist
+          merge-multiple: true
+      - name: Attach verified packages to the versioned release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/*.zip dist/*.sha256 --repo "$GITHUB_REPOSITORY"
