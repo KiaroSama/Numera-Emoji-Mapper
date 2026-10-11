@@ -27,7 +27,7 @@ def marker_state(marker: Path):
 def run(source: Path, output: Path, stdout: Path, stderr: Path) -> int:
     executable = ROOT / "native/runtime" / ("numera-emoji.exe" if os.name == "nt" else "numera-emoji")
     if not executable.is_file():
-        raise RuntimeError("Installed native converter missing; run scripts/build_native.py first.")
+        raise RuntimeError("Installed native converter missing; install a verified prebuilt package first.")
     job = None
     if os.name == "nt":
         from scripts.build_job import Job

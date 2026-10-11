@@ -49,12 +49,12 @@ def package(root: Path, executable: Path, wheel: Path, dependencies: Path, outpu
     with tempfile.TemporaryDirectory(prefix="package-", dir=output) as temp:
         stage = Path(temp) / stem
         stage.mkdir()
-        members = [Path(name) for name in ("LICENSE", "README.md", "requirements.txt", "requirements-coins.txt", "pyproject.toml", ".env.example")]
+        members = [Path(name) for name in ("LICENSE", "README.md", "run.ps1", "requirements.txt", "requirements-coins.txt", "pyproject.toml", ".env.example")]
         # Source allowlist: caches, operator media/config and test references never enter.
         members += [p.relative_to(root) for folder, pattern in (("emojikit", "*.py"), ("assets", "*"), ("coins", "*.py"))
                     for p in (root / folder).glob(pattern) if p.is_file()]
-        members += [Path("coins/keywords.csv")]
-        members += [Path("scripts") / name for name in ("install_prebuilt.py", "prebuilt_manifest.py", "launch_prebuilt.py", "local_environment.py", "build_native.py", "build_job.py")]
+        members += [Path("coins") / name for name in ("keywords.csv", "run_convert.ps1", "run_rebuild_loop.ps1")]
+        members += [Path("scripts") / name for name in ("install_prebuilt.py", "prebuilt_manifest.py", "launch_prebuilt.py", "local_environment.py", "build_native.py", "build_job.py", "run-actions.ps1", "run-native.ps1", "native_convert_owner.py")]
         for relative in members:
             source = root / relative
             if source.is_symlink() or not source.is_file():

@@ -1,27 +1,30 @@
-"""run.ps1 only passes flags the tools still accept.
+"""The primary launcher passes only supported native command flags.
 
-The launcher builds argument lists for seven CLIs and nothing read it: renaming
-a flag in any tool broke the menu only at run time, mid-workflow. This reads
-the launcher's `@('-m','emojikit.<name>', ...)` arrays and asks each module's
-own --help whether every flag it is handed exists.
+The actual executable's help validates menu arguments; an empty scanner must
+fail rather than silently certifying a launcher that invokes retired applications.
 """
 
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
 from tests._cli_fixtures import cli_help  # noqa: E402
+from tests.test_native_local_cli import BINARY  # noqa: E402
+
+RUNS_ON_NATIVE_WINDOWS = True
 
 # The menu lives in run.ps1; its actions, which build the argument lists,
 # in the script run.ps1 dot-sources.
 LAUNCHER = (ROOT / "run.ps1", ROOT / "scripts" / "run-actions.ps1")
 
-_MODULE_ARRAY = re.compile(r"@\(\s*'-m'\s*,\s*'emojikit\.(\w+)'([^)]*)\)")
-_ASSIGN = re.compile(r"(\$\w+)\s*=\s*@\(\s*'-m'\s*,\s*'emojikit\.(\w+)'")
+_MODULE_ARRAY = re.compile(r"@\(\s*'([a-z][a-z-]*)'([^)]*)\)")
+_ASSIGN = re.compile(r"(\$\w+)\s*=\s*@\(\s*'([a-z][a-z-]*)'")
 _APPEND = re.compile(r"(\$\w+)\s*\+=\s*@\(([^)]*)\)")
 _ARRAY = re.compile(r"@\(([^)]*)\)")
 _FLAG = re.compile(r"'(--[a-z][a-z0-9-]*)'")
@@ -57,23 +60,25 @@ class TheLauncherPassesOnlyRealFlags(unittest.TestCase):
 
     def test_the_scan_finds_the_launchers_modules(self):
         """A regex that matches nothing passes forever and proves nothing."""
-        for module in ("build_pack", "build_collection", "panel", "fetch_pack",
-                       "fetch_emoji_ids", "sync_order", "pack_manifest",
-                       "pack_archive", "status"):
-            self.assertIn(module, self.flags)
+        for command in ("build-pack", "build-collection", "panel", "fetch-pack",
+                        "fetch-emoji-ids", "sync-order", "pack-manifest",
+                        "pack-archive", "status", "make-emoji-pngs", "add-media", "emoji-bot"):
+            self.assertIn(command, self.flags)
         self.assertIn("--with-pack", self.flags["panel"])
-        self.assertIn("--token-env", self.flags["fetch_pack"])
+        self.assertIn("--token-env", self.flags["fetch-pack"])
+        self.assertNotIn("'emojikit.", self.text)
 
     def test_every_flag_is_in_its_modules_help(self):
         for module, flags in sorted(self.flags.items()):
             if not flags:
                 continue            # nothing passed, nothing to check (emoji_bot)
             with self.subTest(module=module):
-                text = cli_help(f"tests.reference.{module}", ROOT)
-                missing = sorted(f for f in flags if f not in text)
-                self.assertEqual(missing, [],
-                                 f"run.ps1 passes {missing} to emojikit.{module}, "
-                                 f"which no longer accepts it")
+                result = subprocess.run([str(BINARY), module, "--help"], cwd=ROOT,
+                    stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=5,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                missing = sorted(f for f in flags if f not in result.stdout)
+                self.assertEqual(missing, [], f"run.ps1 passes unsupported {missing} to {module}")
 
     def test_the_coin_rebuild_default_command_still_exists(self):
         """run.ps1 starts coins/rebuild_dedup.py with no argument: `all`."""

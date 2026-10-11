@@ -1,8 +1,8 @@
 # The launcher's menu actions, dot-sourced by run.ps1 (not run on its own).
 #
 # Every input prompt supports {back=0, quit=exit}: 0 aborts to the menu, exit
-# quits. Each Python launch is logged (command + exit code) via Invoke-Py.
-# Uses run.ps1's helpers (Ask, Ask-YesNo, Invoke-Py, Write-*) and $ScriptRoot.
+# quits. Each native or coin launch is logged (command + exit code) via Invoke-Py.
+# Uses run.ps1's helpers (Ask, Ask-YesNo, Invoke-Native, Invoke-Py, Write-*) and $ScriptRoot.
 
 # 'mixed', 'per-format', 'new' (no sets yet) or 'ambiguous' for a pack family,
 # read from the publisher's own state file. A family started one way refuses
@@ -39,13 +39,13 @@ function Action-BuildGeneral ($py) {
           if (-not $yn) { Write-Info "Cancelled."; return 'ok' }
           $build = Join-Path 'build' $st.base
           Write-Step "Converting images -> $build ..."
-          if ((Invoke-Py $py @('-m','emojikit.make_emoji_pngs','--in',$st.inDir,'--out',$build)) -ne 0) {
+          if ((Invoke-Native $py @('make-emoji-pngs','--in',$st.inDir,'--out',$build)) -ne 0) {
               Write-Err "Conversion failed."; return 'ok' }
           Write-Step "Dry-run preview ..."
-          if ((Invoke-Py $py @('-m','emojikit.build_pack','--base',$st.base,'--title',$st.title,'--source-dir',$build,
+          if ((Invoke-Native $py @('build-pack','--base',$st.base,'--title',$st.title,'--source-dir',$build,
                                '--token-env','GENERAL_BOT_TOKEN','--emoji',$st.emoji,'--dry-run')) -ne 0) {
               Write-Err "Dry-run failed (check .env / source)."; return 'ok' }
-          if ((Invoke-Py $py @('-m','emojikit.build_pack','--base',$st.base,'--title',$st.title,'--source-dir',$build,
+          if ((Invoke-Native $py @('build-pack','--base',$st.base,'--title',$st.title,'--source-dir',$build,
                                '--token-env','GENERAL_BOT_TOKEN','--emoji',$st.emoji)) -eq 0) {
               Write-Ok "Pack build finished." } else { Write-Err "Build failed." }
           'ok' }.GetNewClosure()
@@ -62,9 +62,9 @@ function Action-ConvertOnly ($py) {
           $st.inDir = $v; 'ok' }.GetNewClosure(),
         { $v = Ask "Output folder (blank = <folder>_emoji)"; if ($v -eq '0') { return 'back' }
           $st.outDir = $v
-          $argv = @('-m','emojikit.make_emoji_pngs','--in',$st.inDir)
+          $argv = @('make-emoji-pngs','--in',$st.inDir)
           if (-not [string]::IsNullOrWhiteSpace($st.outDir)) { $argv += @('--out',$st.outDir) }
-          Invoke-PyReport $py $argv "Conversion"
+          Invoke-NativeReport $py $argv "Conversion"
           'ok' }.GetNewClosure()
     )
     Run-Wizard $steps | Out-Null
@@ -108,7 +108,7 @@ function Action-CollectPacks ($py) {
           $st.packs += $line.Trim(); return 'stay' }.GetNewClosure(),
         { $v = Ask "Token env var (default GENERAL_BOT_TOKEN)"; if ($v -eq '0') { return 'back' }
           $tokenEnv = if ([string]::IsNullOrWhiteSpace($v)) { 'GENERAL_BOT_TOKEN' } else { $v }
-          Invoke-PyReport $py (@('-m','emojikit.fetch_pack') + $st.packs + @('--token-env',$tokenEnv)) "Collect"
+          Invoke-NativeReport $py (@('fetch-pack') + $st.packs + @('--token-env',$tokenEnv)) "Collect"
           'ok' }.GetNewClosure()
     )
     Run-Wizard $steps | Out-Null
@@ -127,7 +127,7 @@ function Action-AddMedia ($py) {
           $st.inDir = $v; 'ok' }.GetNewClosure(),
         { $v = Ask "Associated standard emoji (default 😀)"; if ($v -eq '0') { return 'back' }
           if (-not [string]::IsNullOrWhiteSpace($v)) { $st.emoji = $v }
-          Invoke-PyReport $py @('-m','emojikit.add_media','--in',$st.inDir,'--emoji',$st.emoji) "Add media"
+          Invoke-NativeReport $py @('add-media','--in',$st.inDir,'--emoji',$st.emoji) "Add media"
           'ok' }.GetNewClosure()
     )
     Run-Wizard $steps | Out-Null
@@ -149,7 +149,7 @@ function Action-PublishCollection ($py) {
           # its own; a new one is asked, with the mixed family recommended.
           $mode = Get-FamilyMode $st.base
           if ($mode -eq 'ambiguous') {
-              Write-Err "collection\publish_$($st.base).json records both mixed and per-format sets; run build_collection by hand."
+              Write-Err "collection\publish_$($st.base).json records both mixed and per-format sets; inspect it before running build-collection."
               return 'back' }
           if ($mode -eq 'new') {
               $yn = Ask-YesNo "Publish as ONE mixed family (recommended)?"; if ($yn -is [string]) { return 'back' }
@@ -162,7 +162,7 @@ function Action-PublishCollection ($py) {
           # The exit code, not a guess: a usage error, a missing operator key or
           # a busy lock all failed here, and "run a collect step first?" pointed
           # away from every one of them.
-          $code = Invoke-Py $py (@('-m','emojikit.build_collection','--base',$st.base,'--title',$st.title,
+          $code = Invoke-Native $py (@('build-collection','--base',$st.base,'--title',$st.title,
                                '--token-env',$st.tokenEnv,'--dry-run') + $st.mode)
           if ($code -ne 0) {
               Write-Err "Dry-run failed (exit $code) - see the error above; exit 2 is a usage or configuration problem."; return 'ok' }
@@ -170,10 +170,10 @@ function Action-PublishCollection ($py) {
           # single file it refuses used to surface at whatever minute of a
           # 45-minute publish it happened to reach; this finds it in about one.
           Write-Step "Preflight: asking Telegram to validate every queued file ..."
-          if ((Invoke-Py $py (@('-m','emojikit.build_collection','--base',$st.base,'--title',$st.title,
+          if ((Invoke-Native $py (@('build-collection','--base',$st.base,'--title',$st.title,
                                '--token-env',$st.tokenEnv,'--preflight') + $st.mode)) -ne 0) {
               Write-Err "Preflight refused a file. Nothing was published."; return 'ok' }
-          if ((Invoke-Py $py (@('-m','emojikit.build_collection','--base',$st.base,'--title',$st.title,
+          if ((Invoke-Native $py (@('build-collection','--base',$st.base,'--title',$st.title,
                                '--token-env',$st.tokenEnv) + $st.mode)) -eq 0) {
               Write-Ok "Collection published." } else { Write-Err "Publish failed." }
           'ok' }.GetNewClosure()
@@ -196,7 +196,7 @@ function Action-Panel ($py) {
         } catch { }
     }
     $packs = $packs | Sort-Object -Unique
-    $panelArgs = @('-m','emojikit.panel')
+    $panelArgs = @('panel')
     if ($packs.Count -gt 0) {
         $answer = Ask-YesNo ("Also show the " + $packs.Count + " pack(s) already published, so they can be rearranged?")
         # NOTE: compare by type, not -eq 'back' -- Ask-YesNo can return a bare
@@ -210,14 +210,14 @@ function Action-Panel ($py) {
         if ($answer) { foreach ($n in $packs) { $panelArgs += @('--with-pack', "$n") } }
     }
     Write-Info "Opening the curation panel in your browser..."
-    Invoke-PyReport $py $panelArgs "Web panel"
+    Invoke-NativeReport $py $panelArgs "Web panel"
 }
 
 function Action-RunBot ($py) {
     Write-Title "Run the Numera Emoji Mapper bot (premium-emoji ID extractor)"
     Write-Info "Send the bot a premium emoji or a post with emoji, or add it to a channel/group."
     Write-Info "Press Ctrl+C to stop the bot."
-    Invoke-PyReport $py @('-m','emojikit.emoji_bot') "Bot"
+    Invoke-NativeReport $py @('emoji-bot') "Bot"
 }
 
 function Action-Check ($py) {
@@ -249,9 +249,9 @@ function Action-CollectIds ($py) {
               if ($st.ids.Count -eq 0) { Write-Warn "No ids entered."; return 'back' }
               return 'ok' }
           $st.ids += $line.Trim(); return 'stay' }.GetNewClosure(),
-        { $argv = @('-m','emojikit.fetch_emoji_ids')
+        { $argv = @('fetch-emoji-ids')
           foreach ($id in $st.ids) { $argv += @('--id', $id) }
-          Invoke-PyReport $py $argv "Collect by id"
+          Invoke-NativeReport $py $argv "Collect by id"
           'ok' }.GetNewClosure()
     )
     Run-Wizard $steps | Out-Null
@@ -263,34 +263,34 @@ function Action-ReorderPack ($py) {
     if ($base -eq '0' -or [string]::IsNullOrWhiteSpace($base)) { return }
     $n = Ask "Pack number (blank = every pack)"
     if ($n -eq '0') { return }
-    $argv = @('-m','emojikit.sync_order','--base',$base)
+    $argv = @('sync-order','--base',$base)
     if (-not [string]::IsNullOrWhiteSpace($n)) { $argv += @('--pack', $n.Trim()) }
     Write-Step "Report only: what would move ..."
-    if ((Invoke-Py $py $argv) -ne 0) { Write-Err "The report failed; nothing was moved."; return }
+    if ((Invoke-Native $py $argv) -ne 0) { Write-Err "The report failed; nothing was moved."; return }
     $yn = Ask-YesNoDefaultNo "Apply these moves to the live pack?"
     if ($yn -is [string] -or -not $yn) { Write-Info "Nothing was moved."; return }
-    Invoke-PyReport $py ($argv + @('--apply')) "Reorder"
+    Invoke-NativeReport $py ($argv + @('--apply')) "Reorder"
 }
 
 function Action-Roster ($py) {
     Write-Title "Pack roster (packs/): check, then refresh if stale"
-    $code = Invoke-Py $py @('-m','emojikit.pack_manifest','--check')
+    $code = Invoke-Native $py @('pack-manifest','--check')
     if ($code -eq 0) { Write-Ok "The roster is current."; return }
     $yn = Ask-YesNo "Refresh it now (reads the live packs)?"
     if ($yn -is [string] -or -not $yn) { return }
-    Invoke-PyReport $py @('-m','emojikit.pack_manifest','--refresh') "Roster refresh"
+    Invoke-NativeReport $py @('pack-manifest','--refresh') "Roster refresh"
 }
 
 function Action-Archive ($py) {
     Write-Title "Pack archive: check, then sync if stale"
-    $code = Invoke-Py $py @('-m','emojikit.pack_archive','--check')
+    $code = Invoke-Native $py @('pack-archive','--check')
     if ($code -eq 0) { Write-Ok "The archive is current."; return }
     $yn = Ask-YesNoDefaultNo "Sync it now (moves every FULL pack's media to the archive)?"
     if ($yn -is [string] -or -not $yn) { return }
-    Invoke-PyReport $py @('-m','emojikit.pack_archive','--sync') "Archive sync"
+    Invoke-NativeReport $py @('pack-archive','--sync') "Archive sync"
 }
 
 function Action-Status ($py) {
     Write-Title "Status: is everything current? (offline, read-only)"
-    Invoke-PyReport $py @('-m','emojikit.status') "Status"
+    Invoke-NativeReport $py @('status') "Status"
 }

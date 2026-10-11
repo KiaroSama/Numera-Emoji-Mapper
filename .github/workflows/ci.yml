@@ -343,7 +343,7 @@ jobs:
           tests.test_entry_point_contracts tests.test_panel_sandbox
           tests.test_sandbox_lifecycle tests.test_atomic_state_files
           tests.test_media_paths tests.test_media_bounds tests.test_native_similarity
-          tests.test_native_state tests.test_native_catalog tests.test_native_real_catalog tests.test_native_command_help tests.test_native_package tests.test_native_consumer_boundary tests.test_native_install tests.test_build_process_owner tests.test_media_boundary
+          tests.test_native_state tests.test_native_catalog tests.test_native_real_catalog tests.test_native_command_help tests.test_native_package tests.test_native_consumer_boundary tests.test_native_install tests.test_launcher_contract tests.test_cli_docs tests.test_build_process_owner tests.test_media_boundary
           tests.test_native_storage_recovery tests.test_native_plan_steps
           tests.test_native_telegram tests.test_native_telegram_compat tests.test_native_announce_compat tests.test_native_state_compat tests.test_native_panel tests.test_native_ingest
           tests.test_native_reconcile tests.test_native_local_cli tests.test_native_fetch_cli tests.test_native_collect_partial

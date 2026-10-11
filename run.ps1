@@ -284,12 +284,18 @@ function Ensure-Environment {
         Write-Warn ".venv not found."
         $base = Find-BasePython
         if (-not $base) {
-            Write-Err "No Python found. Install Python 3.11+ (winget install Python.Python.3.12)."
+            Write-Err "No Python found. Prebuilt packages require Python 3.11 (winget install Python.Python.3.11)."
             return $null
         }
         if (-not (Confirm-YesDefault "Create .venv and install dependencies now?")) {
             Write-Err "Cannot continue without a virtual environment."
             return $null
+        }
+        if (Test-Path -LiteralPath (Join-Path $ScriptRoot 'package.json') -PathType Leaf) {
+            Write-Step "Installing the bundled binary runtime ..."
+            $code = Invoke-Py (Get-Command $base.Exe).Source ($base.Args + @((Join-Path $ScriptRoot 'scripts/install_prebuilt.py')))
+            if ($code -ne 0) { Write-Err "Package installation failed (exit $code)."; return $null }
+            return (Get-PythonExe)
         }
         Write-Step "Creating .venv ..."
         # Out-Host, or venv's chatter would be returned alongside $py.
@@ -303,14 +309,9 @@ function Ensure-Environment {
 # Returns $true only when the requirements install succeeded; the caller aborts
 # otherwise instead of opening a menu whose every action would fail.
 function Install-Deps ($py) {
-    Write-Step "Installing requirements ..."
-    Invoke-Py $py @('-m','pip','install','--upgrade','pip') | Out-Null   # self-upgrade is best-effort
-    $code = Invoke-Py $py @('-m','pip','install','-r',(Join-Path $ScriptRoot 'requirements.txt'))
-    if ($code -eq 0) {
-        $code = Invoke-Py $py @((Join-Path $ScriptRoot 'scripts/build_native.py'))
-        if ($code -eq 0) { Write-Ok "Dependencies and Rust module installed."; return $true }
-    }
-    Write-Err "Dependency install failed (exit $code)."
+    Write-Err 'Automatic source compilation is not a normal installation step.'
+    Write-Info 'Extract a verified prebuilt package to a new directory and run scripts/install_prebuilt.py.'
+    Write-Info 'Contributors may explicitly build source with scripts/build_native.py; the menu never invokes Cargo.'
     return $false
 }
 
@@ -319,7 +320,7 @@ function Install-Deps ($py) {
 # would tell every general-pack user their environment is broken.
 function Test-Deps ($py) {
     & $py -c "import requests,PIL,resvg_py; from emojikit.similarity import require_native; require_native()" *> $null
-    return ($LASTEXITCODE -eq 0)
+    return ($LASTEXITCODE -eq 0 -and (Test-NativeRuntime $py))
 }
 
 function Test-CoinDeps ($py) {
@@ -380,6 +381,7 @@ function Test-Ffmpeg {
 # The menu's actions live in scripts\run-actions.ps1, dot-sourced so they see
 # this script's helpers and $ScriptRoot. Split out to keep this file under the
 # project's size ceiling as the menu grows.
+. (Join-Path $ScriptRoot 'scripts\run-native.ps1')
 . (Join-Path $ScriptRoot 'scripts\run-actions.ps1')
 
 # --- Menu -----------------------------------------------------------------
@@ -462,7 +464,7 @@ if ($Check) {
     if (Test-Ffmpeg) { Log-Ok "ffmpeg present (video emoji enabled)." }
     else { Write-Warn "ffmpeg not found: video emoji disabled (winget install Gyan.FFmpeg)." }
     if (-not (Test-Deps $py)) {
-        Write-Err "Dependencies or required Rust module missing. Install requirements, then run: python scripts/build_native.py (Rust 1.99+ required)."
+        Write-Err "Codec dependencies or native executable missing. Install a verified prebuilt package in a fresh directory; see README."
         Write-Log 'INFO' 'doctor: exit 1'
         exit 1
     }

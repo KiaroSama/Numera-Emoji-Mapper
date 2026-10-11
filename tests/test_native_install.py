@@ -50,6 +50,58 @@ class NativeInstall(unittest.TestCase):
             self.assertIn("Installed native executable missing", refused.stderr)
             self.assertFalse((root / "native/target").exists())
 
+    @unittest.skipUnless(os.name == "nt", "primary PowerShell launcher is Windows-only")
+    def test_primary_doctor_and_conversion_use_installed_runtime_without_cargo(self):
+        import sys
+        from PIL import Image
+        self.assertTrue(BINARY.is_file(), "native executable required")
+        with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
+            root = Path(folder).resolve() / "primary package with spaces"
+            (root / "native/runtime").mkdir(parents=True)
+            (root / "scripts").mkdir()
+            (root / ".venv/Scripts").mkdir(parents=True)
+            shutil.copy2(BINARY, root / "native/runtime" / BINARY.name)
+            shutil.copy2(ROOT / "run.ps1", root / "run.ps1")
+            shutil.copy2(ROOT / "pyproject.toml", root / "pyproject.toml")
+            environment = subprocess.run([sys.executable, "-m", "venv", "--without-pip",
+                "--system-site-packages", str(root / ".venv")], cwd=folder, stdin=subprocess.DEVNULL,
+                capture_output=True, encoding="utf-8", timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+            self.assertEqual(environment.returncode, 0, environment.stderr)
+            shutil.copytree(ROOT / "assets", root / "assets")
+            shutil.copytree(ROOT / "emojikit", root / "emojikit", ignore=shutil.ignore_patterns("__pycache__"))
+            for name in ("run-actions.ps1", "run-native.ps1", "launch_prebuilt.py", "local_environment.py", "build_job.py"):
+                shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
+            command = ["powershell.exe", "-NoLogo", "-NoProfile", "-File", str(root / "run.ps1"), "-NoRelaunch"]
+            import sysconfig
+            env = {**os.environ, "PYO3_PYTHON": str(root / ".venv/Scripts/python.exe"),
+                   "PYTHONPATH": os.pathsep.join((str(root), sysconfig.get_path("purelib")))}
+            def invoke(*arguments, input=None):
+                return subprocess.run([*command, *arguments], cwd=folder, env=env, input=input,
+                    capture_output=True, encoding="utf-8", timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+            probe = subprocess.run([str(root / ".venv/Scripts/python.exe"), "-c",
+                "import requests,PIL,resvg_py; from emojikit.similarity import require_native; require_native()"],
+                cwd=root, env=env, stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=10,
+                creationflags=subprocess.CREATE_NO_WINDOW)
+            self.assertEqual(probe.returncode, 0, probe.stderr)
+            checked = invoke("-Check")
+            self.assertEqual(checked.returncode, 0, checked.stderr)
+            self.assertIn("Environment check complete", checked.stdout)
+            source = root / "input with spaces"
+            source.mkdir()
+            shutil.copy2(ROOT / "assets/numera-emoji-mapper-logo.png", source / "art.png")
+            output = root / "output with spaces"
+            converted = invoke(input=f"a2\n{source}\n{output}\nexit\n")
+            self.assertEqual(converted.returncode, 0, converted.stderr)
+            with Image.open(output / "art.png") as image:
+                self.assertEqual(image.size, (100, 100))
+            self.assertIn("Conversion finished", converted.stdout)
+            binary = root / "native/runtime" / BINARY.name
+            binary.unlink()
+            refused = invoke("-Check")
+            self.assertEqual(refused.returncode, 1)
+            self.assertIn("Installed native executable missing", refused.stdout)
+            self.assertFalse((root / "native/target").exists())
+
     def test_checkout_extension_keeps_repaired_wheel_libraries(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
             root = Path(folder) / "checkout"

@@ -40,7 +40,7 @@ $marker   = Join-Path $emojiDir '.svg_cur'
 foreach ($required in @($py, $convert, $owner)) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
         Write-Host "[watchdog] required file not found: $required"
-        Write-Host "[watchdog] create the project venv, install requirements and run scripts/build_native.py first (see README)."
+        Write-Host "[watchdog] install a verified prebuilt package first (see README); no Rust/Cargo build is required."
         exit 2
     }
 }
