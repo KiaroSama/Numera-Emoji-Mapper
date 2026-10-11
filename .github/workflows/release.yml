@@ -131,7 +131,7 @@ jobs:
       - name: Verify project-local temp/cache confinement
         run: python -m unittest tests.test_prebuilt_environment -v
       - name: Native lifecycle and storage acceptance
-        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test ownership --test atomic_failure --test media_config --test sandbox_lease --test sandbox_lease_windows -- --test-threads=2
+        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test darwin_exit --test ownership --test atomic_failure --test media_config --test sandbox_lease --test sandbox_lease_windows -- --test-threads=2
       - name: Sandbox wrapper death and owned clone reclamation
         shell: bash
         run: |
