@@ -80,24 +80,31 @@ jobs:
       - name: Install Apple Silicon media prerequisite
         if: matrix.platform == 'macos-arm64'
         run: brew install ffmpeg
-      - name: Install verified prebuilt Intel media prerequisite
+      # Homebrew no longer provides an Intel bottle, and the signed binary
+      # mirror rate-limits signatures. Build only this CI prerequisite from
+      # checksum-pinned upstream releases; package users never compile it.
+      - name: Build Intel media prerequisite on hosted CI
         if: matrix.platform == 'macos-x64'
         shell: bash
         run: |
-          mkdir -p .cache/ffmpeg .cache/gnupg
-          chmod 700 .cache/gnupg
-          export GNUPGHOME="$GITHUB_WORKSPACE/.cache/gnupg"
-          curl --fail --location --retry 5 --retry-delay 15 --retry-max-time 240 --max-time 60 https://evermeet.cx/ffmpeg/0x1A660874.asc -o .cache/ffmpeg/key.asc
-          gpg --batch --import .cache/ffmpeg/key.asc
-          gpg --batch --with-colons --fingerprint 476C4B611A660874 | grep -q '20F6EA3E0CFD6B4C53447A73476C4B611A660874'
-          for binary in ffmpeg ffprobe; do
-            curl --fail --location --retry 5 --retry-delay 15 --retry-max-time 240 --max-time 120 "https://evermeet.cx/ffmpeg/${binary}-9.0.2.zip" -o ".cache/ffmpeg/${binary}.zip"
-            curl --fail --location --retry 5 --retry-delay 15 --retry-max-time 240 --max-time 60 "https://evermeet.cx/ffmpeg/${binary}-9.0.2.zip.sig" -o ".cache/ffmpeg/${binary}.zip.sig"
-            gpg --batch --verify ".cache/ffmpeg/${binary}.zip.sig" ".cache/ffmpeg/${binary}.zip"
-            unzip -o ".cache/ffmpeg/${binary}.zip" -d .cache/ffmpeg
-            chmod +x ".cache/ffmpeg/${binary}"
-          done
-          echo "$GITHUB_WORKSPACE/.cache/ffmpeg" >> "$GITHUB_PATH"
+          mkdir -p .cache/ffmpeg
+          cd .cache/ffmpeg
+          curl --fail --location --retry 2 --max-time 120 https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz -o libvpx.tar.gz
+          echo '1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a  libvpx.tar.gz' | shasum -a 256 -c -
+          tar -xzf libvpx.tar.gz
+          cd libvpx-1.17.0
+          ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-examples --disable-tools --disable-unit-tests --disable-docs --disable-asm
+          make -j2
+          make install
+          cd ..
+          curl --fail --location --retry 2 --max-time 120 https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz -o ffmpeg.tar.xz
+          echo '8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e  ffmpeg.tar.xz' | shasum -a 256 -c -
+          tar -xf ffmpeg.tar.xz
+          cd ffmpeg-9.0.2
+          PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/lib/pkgconfig" ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-doc --disable-debug --disable-autodetect --disable-x86asm --enable-libvpx
+          make -j2
+          make install
+          echo "$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/bin" >> "$GITHUB_PATH"
       - name: Install Windows media prerequisite
         if: runner.os == 'Windows'
         shell: pwsh
