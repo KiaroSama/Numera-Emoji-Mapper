@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import sys
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,13 +22,34 @@ def main() -> int:
         print("Prebuilt runtime is not installed; run scripts/install_prebuilt.py first.", file=sys.stderr)
         return 2
     if Path(sys.prefix).resolve() != (ROOT / ".venv").resolve():
-        os.execv(str(python), [str(python), str(Path(__file__).resolve()), *sys.argv[1:]])
+        return launch([str(python), str(Path(__file__).resolve()), *sys.argv[1:]])
     if os.name != "nt":
         executable.chmod(0o755)
     # Bind even hermetic native commands to this package, never an inherited build interpreter.
     os.environ["PYO3_PYTHON"] = str(python)
     os.chdir(ROOT)
-    os.execv(str(executable), [str(executable), *sys.argv[1:]])
+    return launch([str(executable), *sys.argv[1:]])
+
+
+def launch(command: list[str]) -> int:
+    if os.name == "nt":
+        # CRT exec on Windows spawns asynchronously; preserve captured output and exit status.
+        from scripts.build_job import Job
+        job = Job()
+        child = None
+        try:
+            child = subprocess.Popen(command, creationflags=4)  # CREATE_SUSPENDED
+            job.attach(child)
+            return child.wait()
+        finally:
+            try:
+                job.finish()
+            finally:
+                if child is not None:
+                    if child.poll() is None:
+                        child.kill()
+                    child.wait(timeout=10)
+    os.execv(command[0], command)
     return 2
 
 
