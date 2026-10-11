@@ -34,6 +34,8 @@ PACK_LOCK = "exclusive_lock"
 SOURCES = sorted(
     [p for p in (ROOT / "emojikit").glob("*.py")
      if '\nif __name__ == "__main__":' in p.read_text(encoding="utf-8")]
+    + [p for p in (ROOT / "tests/reference").glob("*.py")
+       if '\nif __name__ == "__main__":' in p.read_text(encoding="utf-8")]
     + list((ROOT / "coins").glob("*.py"))
 )
 
