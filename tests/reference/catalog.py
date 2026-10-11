@@ -29,7 +29,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from emojikit import media_paths
-from emojikit.maintenance import writer
+from .maintenance import writer
 from emojikit.similarity import require_native
 
 from .ingest import catalog_identity

@@ -32,7 +32,7 @@ from urllib.parse import unquote
 from .collection_state import PER_SET
 from .panel_plan import (PlanError, overlay_targets, read_plan)
 from .catalog import Catalog
-from emojikit.packstate import LockBusy
+from .packstate import LockBusy
 from emojikit.logsetup import record_exit_code, setup_logging
 from .panel_logging import ClientEventLog
 from .panel_instance import reopen_existing, session_identity

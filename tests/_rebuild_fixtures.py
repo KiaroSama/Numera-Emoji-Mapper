@@ -27,6 +27,8 @@ from emojikit import telegram_api as tg_api  # noqa: E402
 from emojikit import packstate as ps  # noqa: E402
 from coins import rebuild_dedup as rd  # noqa: E402
 from coins import _dedup_plan as cfg  # noqa: E402
+from tests.reference import announce as source_announce  # noqa: E402
+from tests.oracles.telegram_api import Telegram as SourceTelegram  # noqa: E402
 
 
 def _image(key: str) -> Image.Image:
@@ -119,7 +121,7 @@ class FakeTelegram:
     # a fake that answers it would be testing itself. It only needs
     # download_file, which this class provides, and returns None (unverifiable)
     # for anything it cannot read -- exactly like it does against Telegram.
-    _sticker_matches = tg_api.Telegram._sticker_matches
+    _sticker_matches = SourceTelegram._sticker_matches
 
     # --- mutations ------------------------------------------------------ #
     def add_sticker(self, user_id, name, png, emoji, kw, *, expected_before=None):
@@ -202,6 +204,7 @@ class RebuildCase(unittest.TestCase):
             mock.patch.object(cfg, "LOCK", self.dir / "state.json.lock"),
             mock.patch.object(cfg, "USER_ID", 42),
             mock.patch.object(rd.time, "sleep", lambda s: None),
+            mock.patch.object(rd, "announce_packs", source_announce.announce_packs),
         ]
         for p in patches:
             p.start()

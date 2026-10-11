@@ -34,8 +34,8 @@ from pathlib import Path
 from .collection_state import (_lock_path, _state_path, load_state,
                               save_json)
 from .build_pack import (EXIT_FAILED, EXIT_OK, EXIT_USAGE, load_env)
-from emojikit.packstate import (LockBusy, exclusive_lock)
-from emojikit.maintenance import writer
+from .packstate import (LockBusy, exclusive_lock)
+from .maintenance import writer
 from emojikit.telegram_api import (Telegram)
 from .catalog import Catalog
 from emojikit.logsetup import record_exit_code, setup_logging

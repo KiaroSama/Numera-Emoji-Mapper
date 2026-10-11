@@ -16,10 +16,10 @@ from pathlib import Path
 
 from PIL import Image
 
-from emojikit.packstate import (write_json_atomic)
+from .packstate import (write_json_atomic)
 from emojikit import media
 from .catalog import Catalog
-from emojikit.maintenance import writer
+from .maintenance import writer
 
 log = logging.getLogger("build_collection")
 

@@ -25,7 +25,7 @@ from unittest import mock
 import requests
 
 from tests.reference import build_pack as bp
-from emojikit import telegram_api as tg_api
+from tests.oracles import telegram_api as tg_api
 from emojikit import packstate as ps
 from tests._pack_fixtures import _png
 
@@ -425,6 +425,8 @@ class BookkeepingFollowsLiveState(unittest.TestCase):
              mock.patch.object(bp, "setup_logging", lambda *a, **k: None), \
              mock.patch.dict("os.environ", {"FAKE_TOKEN": "x"}, clear=False), \
              mock.patch.object(bp, "Telegram", return_value=self._tg(server)), \
+             mock.patch.object(bp, "AmbiguousUploadError", tg_api.AmbiguousUploadError), \
+             mock.patch.object(bp, "SetState", tg_api.SetState), \
              mock.patch.object(bp.time, "sleep", lambda s: None):
             return bp.main()
 

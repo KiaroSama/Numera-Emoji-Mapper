@@ -29,7 +29,7 @@ from tests.reference.collection_state import _lock_path, _state_path, load_state
 from emojikit.packstate import exclusive_lock
 from tests.reference.panel_plan import read_plan
 from emojikit.errors import FloodWaitTooLong
-from emojikit.telegram_api import LiveStateUnknown, SetState, Telegram
+from emojikit.telegram_api import LiveStateUnknown, SetState
 
 BASE, BOT = "cryptoemoji", "YourEmojiBot"
 
@@ -427,7 +427,8 @@ class ClientFloodCeiling(unittest.TestCase):
     """Telegram.call: over the ceiling it raises instead of sleeping."""
 
     def _client(self, retry_after: int, ceiling):
-        tg = Telegram("123:test")
+        from tests.oracles.telegram_api import Telegram as SourceTelegram
+        tg = SourceTelegram("123:test")
         tg.max_flood_wait = ceiling
         answers = iter([{"ok": False, "description": f"Too Many Requests: retry after "
                          f"{retry_after}", "parameters": {"retry_after": retry_after}},
@@ -437,7 +438,7 @@ class ClientFloodCeiling(unittest.TestCase):
 
     def test_a_wait_over_the_ceiling_raises_without_sleeping(self):
         tg = self._client(900, 300)
-        with mock.patch("emojikit.telegram_api.time.sleep") as sleep, \
+        with mock.patch("tests.oracles.telegram_api.time.sleep") as sleep, \
                 contextlib.redirect_stdout(io.StringIO()), \
                 self.assertRaises(FloodWaitTooLong) as ctx:
             tg.call("deleteStickerFromSet", data={"sticker": "x"})
@@ -446,7 +447,7 @@ class ClientFloodCeiling(unittest.TestCase):
 
     def test_a_wait_under_the_ceiling_is_still_honoured(self):
         tg = self._client(20, 300)
-        with mock.patch("emojikit.telegram_api.time.sleep") as sleep, \
+        with mock.patch("tests.oracles.telegram_api.time.sleep") as sleep, \
                 contextlib.redirect_stdout(io.StringIO()):
             self.assertTrue(tg.call("deleteStickerFromSet", data={"sticker": "x"}))
         sleep.assert_called_once_with(21)

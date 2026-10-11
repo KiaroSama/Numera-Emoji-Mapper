@@ -70,6 +70,22 @@ settings (currently `EMOJI_FFMPEG_TIMEOUT`); exported environment settings take
 precedence over project `.env`, while child dotenv loading and credentials remain
 disabled. JavaScript UI and the Cloudflare Worker remain unchanged.
 
+## Retained coin compatibility
+
+Retained coin-provider tools use thin Python exports backed by Rust for Telegram
+transport, retries, upload attribution and announcements. Exact image comparison
+still uses the codec boundary. Public exception distinctions and the
+`add_sticker` return contract (`int` after verified recovery, otherwise `None`)
+remain; an unanswered mutation without `expected_before` fails closed rather
+than being blindly retried. Worker announcements are never retried or silently
+sent directly after an unknown outcome.
+
+Conversion takes an exclusive lease on its output directory before inspecting
+resume markers or replacing files. A competing converter refuses without changing
+existing output. Recovery acceptance includes test-executable-only persisted-stage
+barriers; no production executable or extension includes that fault-injection path.
+These compatibility changes do not by themselves complete the primary cutover gate.
+
 ## Isolated development consumers
 
 `scripts/panel_sandbox.py` runs the installed native panel against an independently

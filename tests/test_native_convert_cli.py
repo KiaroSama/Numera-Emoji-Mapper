@@ -61,6 +61,65 @@ class NativeConvertCLI(unittest.TestCase):
             self.assertEqual((source_dir / "other.png").read_bytes(), original)
             self.assertEqual(list((output / ".native-codec").iterdir()), [], "failed staging must be reaped")
 
+    @unittest.skipUnless(os.name == "nt", "Windows denies replacement of an opened file without delete sharing")
+    def test_failed_same_file_replacement_keeps_previous_png_and_source(self):
+        import ctypes
+        from ctypes import wintypes
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                      wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        kernel.CreateFileW.restype = wintypes.HANDLE
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel.CloseHandle.restype = wintypes.BOOL
+        with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
+            folder = Path(folder).resolve()
+            source, output = folder / "source", folder / "output"
+            source.mkdir()
+            output.mkdir()
+            original = source / "art.png"
+            shutil.copy2(ROOT / "assets/numera-emoji-mapper-logo.png", original)
+            target = output / "art.png"
+            with Image.open(original) as image:
+                image.convert("RGB").resize((100, 100)).save(target)
+            before = target.read_bytes(), original.read_bytes()
+            handle = kernel.CreateFileW(str(target), 0x80000000, 1 | 2, None, 3, 0, None)
+            self.assertNotEqual(handle, ctypes.c_void_p(-1).value)
+            try:
+                result = subprocess.run([str(BINARY), "make-emoji-pngs", "--in", str(source), "--out", str(output)],
+                    cwd=folder, env={**os.environ, "PYO3_PYTHON": sys.executable}, stdin=subprocess.DEVNULL,
+                    capture_output=True, encoding="utf-8", timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual((target.read_bytes(), original.read_bytes()), before)
+                self.assertEqual(list((output / ".native-codec").iterdir()), [])
+            finally:
+                self.assertTrue(kernel.CloseHandle(handle))
+
+    def test_competing_output_owner_refuses_before_touching_markers_or_png(self):
+        from emojikit.packstate import exclusive_lock
+        self.assertTrue(BINARY.is_file(), "native executable required")
+        with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
+            folder = Path(folder).resolve()
+            source = folder / "source"
+            output = folder / "output"
+            source.mkdir()
+            output.mkdir()
+            shutil.copy2(ROOT / "assets/numera-emoji-mapper-logo.png", source / "art.png")
+            prior = output / "art.png"
+            prior.write_bytes(b"previous output awaiting repair")
+            marker = output / ".svg_cur"
+            marker.write_text("previous attempt", encoding="utf-8")
+            before = {path: path.read_bytes() for path in (prior, marker, source / "art.png")}
+            with exclusive_lock(output / ".convert.lock"):
+                result = subprocess.run([str(BINARY), "make-emoji-pngs", "--in", str(source), "--out", str(output)],
+                    cwd=folder, env={**os.environ, "PYO3_PYTHON": sys.executable},
+                    stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8", timeout=10,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertIn("conversion output is already owned", result.stderr)
+            self.assertEqual({path: path.read_bytes() for path in before}, before)
+            self.assertFalse((output / ".svg_skip.txt").exists())
+            self.assertFalse((output / ".native-codec").exists())
+
     def test_rgb_output_is_rebuilt_as_exact_rgba_then_reused(self):
         self.assertTrue(BINARY.is_file(), "native executable required")
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:

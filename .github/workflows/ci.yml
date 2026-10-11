@@ -47,6 +47,8 @@ jobs:
         working-directory: worker
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v7
@@ -96,6 +98,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -166,6 +170,8 @@ jobs:
         python-version: ["3.11", "3.12", "3.14"]
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
@@ -271,6 +277,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
+        with:
           persist-credentials: false
       # run.ps1 and the other scripts are never executed in CI, so a syntax
       # error would ship unnoticed. Parse every tracked one; fail on any error.
@@ -318,6 +326,12 @@ jobs:
           CARGO_BUILD_JOBS: "2"
         run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_commit --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test atomic_failure --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store --test media_config -- --test-threads=1
 
+      - name: Native process-death migration replay
+        env:
+          PYO3_PYTHON: python
+          CARGO_BUILD_JOBS: "2"
+        run: cargo test --manifest-path native/Cargo.toml --locked --lib -- --test-threads=1
+
       - name: Native lock, migration, HTTP persistence, identity and CLI regressions
         env:
           PYO3_PYTHON: python
@@ -332,7 +346,7 @@ jobs:
           tests.test_media_paths tests.test_media_bounds tests.test_native_similarity
           tests.test_native_state tests.test_native_catalog tests.test_native_real_catalog tests.test_native_command_help tests.test_native_package tests.test_native_consumer_boundary tests.test_native_install tests.test_build_process_owner tests.test_media_boundary
           tests.test_native_storage_recovery tests.test_native_plan_steps
-          tests.test_native_telegram tests.test_native_panel tests.test_native_ingest
+          tests.test_native_telegram tests.test_native_telegram_compat tests.test_native_announce_compat tests.test_native_state_compat tests.test_native_panel tests.test_native_ingest
           tests.test_native_reconcile tests.test_native_local_cli tests.test_native_fetch_cli tests.test_native_collect_partial
           tests.test_native_publish_cli tests.test_native_publication tests.test_native_video_visibility tests.test_native_bot
           tests.test_native_bot_poll tests.test_native_preview_codec tests.test_native_plan_cli tests.test_native_plan_status_cli tests.test_native_convert_cli tests.test_native_remove_cli

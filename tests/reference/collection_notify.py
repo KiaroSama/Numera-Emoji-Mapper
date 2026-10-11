@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from emojikit.announce import announce_packs
+from .announce import announce_packs
 from .catalog import Catalog
 from .collection_state import _state_path, save_json
 from emojikit.logsetup import redact

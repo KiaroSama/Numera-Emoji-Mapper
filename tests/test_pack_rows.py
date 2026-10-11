@@ -29,6 +29,12 @@ class TheSharedRenderer(unittest.TestCase):
                                          [("a", "A"), ("b", "B")])
         self.assertEqual(table.splitlines()[2], f"| {ESCAPED} | — |")
 
+    def test_source_splitlines_and_alignment_match_native_table(self):
+        from tests.oracles import pack_rows as source
+        rows = [{"a": "one\r\ntwo\x1cnext", "b": True}, {"a": "", "b": 123}]
+        columns = [("a", "Label"), ("b", "Count", "right")]
+        self.assertEqual(pack_rows.markdown_table(rows, columns), source.markdown_table(rows, columns))
+
     def test_every_keyword_is_kept(self):
         self.assertEqual(pack_rows.keyword_cell(["a", "", "b", "c"]), "a, b, c")
 

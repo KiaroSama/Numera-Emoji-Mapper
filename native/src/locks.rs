@@ -27,6 +27,9 @@ pub struct Lease {
     file: File,
 }
 impl Lease {
+    pub fn clone_file(&self) -> io::Result<File> {
+        self.file.try_clone()
+    }
     pub fn acquire(path: &Path, started: &str) -> io::Result<Self> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;

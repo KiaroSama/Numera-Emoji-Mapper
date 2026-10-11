@@ -3,6 +3,7 @@
 use pyo3::prelude::*;
 
 pub mod announce;
+pub mod announce_bindings;
 pub mod archive_catalog;
 pub mod archive_check;
 pub mod archive_cli;
@@ -39,6 +40,8 @@ pub mod media_adapter;
 pub mod media_store;
 pub mod migration_apply;
 pub mod migration_bundle;
+#[cfg(test)]
+mod migration_crash_tests;
 pub mod migration_database;
 pub mod migration_files;
 pub mod migration_provenance;
@@ -52,6 +55,8 @@ pub mod panel_events;
 pub mod panel_http;
 pub mod panel_preview;
 pub mod panel_save;
+#[cfg(test)]
+mod panel_save_tests;
 pub mod panel_session;
 pub mod panel_view;
 pub mod paths;
@@ -66,6 +71,7 @@ pub mod publish_cli;
 pub mod publish_collection;
 pub mod python_repr;
 pub mod reconcile;
+pub mod report_bindings;
 pub mod resume;
 pub mod roster;
 pub mod roster_cli;
@@ -75,53 +81,18 @@ pub mod roster_provenance;
 pub mod sandbox_lease;
 pub mod sqlite_snapshot;
 pub mod state_artifacts;
+pub mod state_bindings;
 pub mod status;
 pub mod sync_order;
 pub mod telegram;
+pub mod telegram_bindings;
 pub mod ticker_build;
 pub mod ticker_keywords;
 pub mod ticker_recovery;
 pub mod ticker_state;
 pub mod upload_effect;
 
-#[pyclass]
-struct NativeTelegram {
-    client: telegram::Telegram,
-}
-
-#[pymethods]
-impl NativeTelegram {
-    #[new]
-    fn new(token: String, base: String) -> PyResult<Self> {
-        telegram::Telegram::new(token, base)
-            .map(|client| Self { client })
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
-    }
-    fn read_call(&self, py: Python<'_>, method: String, data: String) -> PyResult<String> {
-        let data: std::collections::BTreeMap<String, String> = serde_json::from_str(&data)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-        py.detach(|| {
-            let value = self
-                .client
-                .read_call(&method, &data)
-                .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
-            serde_json::to_string(&value)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
-        })
-    }
-    fn probe(&self, py: Python<'_>, name: String) -> PyResult<String> {
-        py.detach(|| {
-            let (state, value) = self.client.probe(&name);
-            let state = match state {
-                telegram::SetState::Exists => "exists",
-                telegram::SetState::Missing => "missing",
-                telegram::SetState::Unknown => "unknown",
-            };
-            serde_json::to_string(&serde_json::json!([state, value]))
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
-        })
-    }
-}
+use telegram_bindings::NativeTelegram;
 
 #[pyfunction]
 fn roster_row_json(request: String) -> PyResult<String> {
@@ -404,9 +375,15 @@ fn near_indices(
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("API_VERSION", 1)?;
+    m.add_function(wrap_pyfunction!(announce_bindings::announce_packs_json, m)?)?;
     m.add_function(wrap_pyfunction!(bot_json, m)?)?;
     m.add_function(wrap_pyfunction!(roster_row_json, m)?)?;
+    m.add_function(wrap_pyfunction!(report_bindings::markdown_table_json, m)?)?;
     m.add_class::<NativeLease>()?;
+    m.add_class::<state_bindings::NativeStateLease>()?;
+    m.add_function(wrap_pyfunction!(state_bindings::state_validate_json, m)?)?;
+    m.add_function(wrap_pyfunction!(state_bindings::state_intent_json, m)?)?;
+    m.add_function(wrap_pyfunction!(state_bindings::state_write_bytes, m)?)?;
     m.add_class::<NativeCatalog>()?;
     m.add_class::<NativeTelegram>()?;
     m.add_function(wrap_pyfunction!(panel_view_json, m)?)?;

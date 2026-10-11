@@ -29,7 +29,6 @@ import requests  # noqa: E402
 from PIL import Image, ImageOps  # noqa: E402
 
 from tests.reference import build_pack as bp  # noqa: E402
-from emojikit import telegram_api as tg_api  # noqa: E402
 from emojikit import packstate as ps  # noqa: E402
 from tests.reference.build_pack import EXIT_FAILED, EXIT_OK, EXIT_USAGE  # noqa: E402
 from tests._cli_fixtures import _load_standalone, _noise_png_bytes  # noqa: E402
@@ -211,7 +210,11 @@ class VerifyLogosFix(unittest.TestCase):
     def _session(self, before, after, **kw):
         session = ReplaceSession(before, after, source=self.src,
                                  uploaded=self.live, **kw)
-        tg = tg_api.Telegram("unit-test-token")
+        from tests.oracles.telegram_api import Telegram as SourceTelegram
+        tg = SourceTelegram("unit-test-token")
+        state_type = self.mod.SetState
+        original_probe = tg.probe_set_state
+        tg.probe_set_state = lambda name: (lambda result: (state_type(result[0].value), result[1]))(original_probe(name))
         tg.s = session
         return tg, session
 

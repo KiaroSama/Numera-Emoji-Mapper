@@ -11,9 +11,9 @@ import os
 import sqlite3
 from pathlib import Path
 
-from emojikit.packstate import write_json_atomic
+from .packstate import write_json_atomic
 
-from emojikit.maintenance import canonical_directory
+from .maintenance import canonical_directory
 from emojikit import media_paths, sqlite_snapshot, state_artifacts
 
 VERSION = 2

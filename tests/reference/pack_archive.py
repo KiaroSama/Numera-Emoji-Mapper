@@ -44,8 +44,8 @@ from emojikit import media_paths, operator_config
 from .collection_state import PER_SET
 from emojikit.errors import OperatorConfigMissing
 from emojikit import logsetup
-from emojikit.packstate import LockBusy, write_json_atomic
-from emojikit.maintenance import writer
+from .packstate import LockBusy, write_json_atomic
+from .maintenance import writer
 from emojikit.pack_rows import keyword_cell, markdown_table
 
 ROOT = Path(__file__).resolve().parents[2]

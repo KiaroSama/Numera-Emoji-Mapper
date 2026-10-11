@@ -211,6 +211,21 @@ fn loopback_router_validates_mutations_and_persists_curation() {
             let count = socket.read(&mut bytes).unwrap();
             assert!(String::from_utf8_lossy(&bytes[..count]).starts_with("HTTP/1.1 411 "));
         }
+        // Real HTTP body starvation must time out rather than holding a connection forever.
+        {
+            use std::io::{Read, Write};
+            let mut socket = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(35)))
+                .unwrap();
+            socket
+                .set_write_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            write!(socket, "POST /api/save HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nx-panel-token: fixture-token\r\nContent-Type: application/json\r\nContent-Length: 10\r\nConnection: close\r\n\r\n{{").unwrap();
+            let mut bytes = [0; 256];
+            let count = socket.read(&mut bytes).unwrap();
+            assert!(String::from_utf8_lossy(&bytes[..count]).starts_with("HTTP/1.1 408 "));
+        }
         // A linked asset cannot expose bytes outside the physical assets root.
         let outside = root.join("outside");
         std::fs::create_dir(&outside).unwrap();

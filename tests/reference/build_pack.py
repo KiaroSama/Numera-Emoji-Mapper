@@ -41,7 +41,7 @@ import time
 from pathlib import Path
 
 
-from emojikit.announce import announce_packs
+from .announce import announce_packs
 from emojikit import operator_config
 from emojikit.logsetup import redact, register_secret, setup_logging
 # Re-exported: these used to live here, and many modules import them from here.
@@ -49,7 +49,7 @@ from emojikit.cli_env import (EXIT_FAILED, EXIT_OK, EXIT_PARTIAL,  # noqa: F401
                               EXIT_USAGE, _under_a_test_runner, ingest_exit_code,
                               load_env, safe_int_env)
 from .repaint_gate import REPAINT_MODES, repaintable_gate  # noqa: F401
-from emojikit.packstate import (LockBusy, StateInvalid, _intent_key,
+from .packstate import (LockBusy, StateInvalid, _intent_key,
                        exclusive_lock, make_intent,
                        pack_family_lock_path, validate_state_shape,
                        write_json_atomic)

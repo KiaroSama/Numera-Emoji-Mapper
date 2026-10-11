@@ -53,7 +53,10 @@ pub fn journal(data: &Path) -> Result<Option<Value>, String> {
 pub fn stage(data: &Path, doc: &mut Value, name: &str) -> Result<(), String> {
     doc["stage"] = json!(name);
     crate::atomic::write_json(&data.join("identity-migration.journal.json"), doc)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    #[cfg(test)]
+    crate::migration_crash_tests::barrier(name);
+    Ok(())
 }
 fn backup(data: &Path) -> Result<PathBuf, String> {
     let stamp = chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
