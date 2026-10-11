@@ -1,5 +1,5 @@
-//! Non-Linux platforms use the wrapper's private native Job, not an inherited flock.
-#[cfg(not(target_os = "linux"))]
+//! Windows uses the wrapper's private native Job, not an inherited flock.
+#[cfg(windows)]
 #[test]
 fn no_inherited_flock_on_the_windows_job_path() {
     assert!(

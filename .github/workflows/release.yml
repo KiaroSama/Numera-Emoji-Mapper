@@ -131,7 +131,14 @@ jobs:
       - name: Verify project-local temp/cache confinement
         run: python -m unittest tests.test_prebuilt_environment -v
       - name: Native lifecycle and storage acceptance
-        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test ownership --test atomic_failure --test media_config -- --test-threads=2
+        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test ownership --test atomic_failure --test media_config --test sandbox_lease --test sandbox_lease_windows -- --test-threads=2
+      - name: Sandbox wrapper death and owned clone reclamation
+        shell: bash
+        run: |
+          mkdir -p native/target/debug
+          if [[ "$RUNNER_OS" == "Windows" ]]; then binary=numera-emoji.exe; else binary=numera-emoji; fi
+          cp "native/runtime/$binary" "native/target/debug/$binary"
+          python -m unittest tests.test_sandbox_lifecycle.CloneBoundaries.test_real_wrapper_http_save_changes_only_the_owned_clone -v
       - name: Install and exercise extracted package without source/build tree
         run: python -m tests._prebuilt_smoke
       - name: Upload ready downloads and checksums

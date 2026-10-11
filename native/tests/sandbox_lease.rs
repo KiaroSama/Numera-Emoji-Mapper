@@ -1,6 +1,6 @@
 //! The inherited open-file description excludes reclaimers until native ownership ends.
-#[cfg(target_os = "linux")]
-mod linux {
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod posix {
     use _native::sandbox_lease;
     use sha2::{Digest, Sha256};
     use std::os::fd::AsRawFd;
@@ -93,14 +93,21 @@ mod linux {
             .open(&path)
             .unwrap();
         assert_eq!(unsafe { flock(file.as_raw_fd(), 2 | 4) }, 0);
-        let stat = std::fs::read_to_string("/proc/self/stat").unwrap();
-        let birth = stat
+        #[cfg(target_os = "linux")]
+        let birth = std::fs::read_to_string("/proc/self/stat")
+            .unwrap()
             .rsplit_once(')')
             .unwrap()
             .1
             .split_whitespace()
             .nth(19)
-            .unwrap();
+            .unwrap()
+            .to_owned();
+        #[cfg(target_os = "macos")]
+        let birth = _native::process_owner::process_birth(std::process::id())
+            .unwrap()
+            .unwrap()
+            .to_string();
         let wrong = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -108,12 +115,12 @@ mod linux {
             .unwrap();
         assert_eq!(unsafe { fcntl(wrong.as_raw_fd(), 2, 0) }, 0);
         let wrong_child = Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", "linux::inherited_lease_child", "--nocapture"])
+            .args(["--exact", "posix::inherited_lease_child", "--nocapture"])
             .env("NUMERA_TEST_LEASE_ROOT", &root)
             .env("NUMERA_TEST_WRONG_OFD", "1")
             .env("NUMERA_SANDBOX_LEASE_FD", wrong.as_raw_fd().to_string())
             .env("NUMERA_SANDBOX_PARENT_PID", std::process::id().to_string())
-            .env("NUMERA_SANDBOX_PARENT_START", birth)
+            .env("NUMERA_SANDBOX_PARENT_START", &birth)
             .spawn()
             .unwrap();
         let mut wrong_owner = Owner(wrong_child, root.join("unused"));
@@ -133,11 +140,11 @@ mod linux {
         drop(wrong);
         assert_eq!(unsafe { fcntl(file.as_raw_fd(), 2, 0) }, 0); // Fixture-only handoff.
         let child = Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", "linux::inherited_lease_child", "--nocapture"])
+            .args(["--exact", "posix::inherited_lease_child", "--nocapture"])
             .env("NUMERA_TEST_LEASE_ROOT", &root)
             .env("NUMERA_SANDBOX_LEASE_FD", file.as_raw_fd().to_string())
             .env("NUMERA_SANDBOX_PARENT_PID", std::process::id().to_string())
-            .env("NUMERA_SANDBOX_PARENT_START", birth)
+            .env("NUMERA_SANDBOX_PARENT_START", &birth)
             .spawn()
             .unwrap();
         let mut owner = Owner(child, root.clone());

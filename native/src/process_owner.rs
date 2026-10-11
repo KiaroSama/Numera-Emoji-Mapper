@@ -395,6 +395,9 @@ mod platform {
 #[path = "process_owner_macos.rs"]
 mod platform;
 
+#[cfg(target_os = "macos")]
+pub use platform::process_birth;
+
 #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
 mod platform {
     use super::*;

@@ -1,5 +1,5 @@
-//! Keep the wrapper's inherited Linux flock until all clone access has stopped.
-#[cfg(target_os = "linux")]
+//! Keep the wrapper's inherited POSIX flock until all clone access has stopped.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 #[allow(unsafe_code)]
 pub fn inherit(data: &std::path::Path) -> Result<Option<std::fs::File>, String> {
     use sha2::{Digest, Sha256};
@@ -31,7 +31,7 @@ pub fn inherit(data: &std::path::Path) -> Result<Option<std::fs::File>, String> 
     unsafe extern "C" {
         fn fcntl(fd: i32, command: i32, ...) -> i32;
     }
-    let flags = unsafe { fcntl(fd, 3) }; // F_GETFL on Linux.
+    let flags = unsafe { fcntl(fd, 3) }; // F_GETFL on Linux and Darwin.
     if flags < 0 || flags & 3 != 2 {
         // O_ACCMODE / O_RDWR.
         return Err("sandbox lifetime descriptor is not an open read-write file".into());
@@ -111,7 +111,7 @@ pub fn inherit(data: &std::path::Path) -> Result<Option<std::fs::File>, String> 
     Ok(Some(file))
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 pub fn inherit(_data: &std::path::Path) -> Result<Option<std::fs::File>, String> {
     Ok(None)
 }

@@ -69,6 +69,21 @@ pub async fn detect_bot(token: &str, base: &str) -> Option<String> {
 }
 
 pub async fn sandbox_parent_ended() {
+    #[cfg(target_os = "macos")]
+    if let (Ok(parent), Ok(birth)) = (
+        std::env::var("NUMERA_SANDBOX_PARENT_PID"),
+        std::env::var("NUMERA_SANDBOX_PARENT_START"),
+    ) {
+        if let (Ok(parent), Ok(birth)) = (parent.parse::<u32>(), birth.parse::<u64>()) {
+            loop {
+                if !matches!(crate::process_owner::process_birth(parent), Ok(Some(current)) if current == birth)
+                {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        }
+    }
     #[cfg(target_os = "linux")]
     {
         let parent = std::env::var("NUMERA_SANDBOX_PARENT_PID")

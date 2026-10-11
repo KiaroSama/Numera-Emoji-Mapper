@@ -75,8 +75,9 @@ disabled. JavaScript UI and the Cloudflare Worker remain unchanged.
 `scripts/panel_sandbox.py` runs the installed native panel against an independently
 copied catalog, with scrubbed credentials and an explicit argument allowlist. It
 retains the clone's lifetime lease until its child has stopped. Windows uses a
-private kill-on-close Job; Linux passes the same locked file description to the
-native server and monitors the wrapper's PID and start time. Neither process
+private kill-on-close Job; Linux and macOS pass the same locked file description
+to the native server and monitor the wrapper's PID and start time (Darwin uses
+libproc birth identity). Neither process
 adopts a listener for another clone.
 
 `coins/run_convert.ps1` uses the installed `make-emoji-pngs` command for both SVG
