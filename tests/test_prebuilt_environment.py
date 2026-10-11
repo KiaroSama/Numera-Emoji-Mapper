@@ -4,6 +4,7 @@ import os
 import tempfile
 import subprocess
 import unittest
+from unittest.mock import patch
 
 from scripts.local_environment import confined_directory, environment
 
@@ -11,6 +12,19 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PrebuiltEnvironment(unittest.TestCase):
+    def test_existing_installation_refuses_before_writing(self):
+        from scripts import install_prebuilt
+        with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
+            root = Path(folder)
+            (root / ".venv").mkdir()
+            prior = root / ".venv/pyvenv.cfg"
+            prior.write_bytes(b"previous working environment")
+            with patch.object(install_prebuilt, "ROOT", root), patch.object(install_prebuilt, "verify", return_value={}):
+                with self.assertRaisesRegex(ValueError, "Existing installation preserved"):
+                    install_prebuilt.install()
+            self.assertEqual(prior.read_bytes(), b"previous working environment")
+            self.assertEqual(sorted(path.name for path in root.iterdir()), [".venv"])
+
     def test_owned_temp_and_caches_override_external_values(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
             root = Path(folder).resolve()

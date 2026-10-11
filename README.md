@@ -115,6 +115,9 @@ open the curation panel, or pass another native command shown by `--help`.
 Copy `.env.example` to `.env` and fill in your own configuration before using
 Telegram commands. Never overwrite an existing `.env` or collection during an
 update: extract the new package separately and retain your data/config backup.
+The installer refuses an existing `.venv` before changing it, preserving the old
+installation. If a first installation fails, use a fresh extracted folder rather
+than overwriting an environment whose state is uncertain.
 
 **All application temp and cache files stay inside this folder:** `logs/tmp/`
 and `.cache/`; the environment lives in `.venv/`. Installation and launching

@@ -46,6 +46,15 @@ def main() -> int:
         run([sys.executable, str(extracted / "scripts/install_prebuilt.py")], parent, env, 240)
         python = extracted / (".venv/Scripts/python.exe" if os.name == "nt" else ".venv/bin/python")
         launch = extracted / "scripts/launch_prebuilt.py"
+        # A repeated install must refuse before altering the working environment.
+        preserved = [extracted / ".venv/pyvenv.cfg", *extracted.joinpath("emojikit").glob("_native*.pyd"),
+                     *extracted.joinpath("emojikit").glob("_native*.so")]
+        before = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in preserved}
+        retry = subprocess.run([str(python), str(extracted / "scripts/install_prebuilt.py")],
+                               cwd=parent, env=env, stdin=subprocess.DEVNULL, capture_output=True,
+                               encoding="utf-8", timeout=30)
+        assert retry.returncode == 1 and "Existing installation preserved" in retry.stderr
+        assert before == {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in preserved}
         assert "numera-emoji" in run([str(python), str(launch), "--help"], parent, env).stdout
         run([str(python), "-c", "from emojikit.similarity import require_native; require_native()"], extracted, env)
         fixture = extracted / "logs" / "fixture.tgs"
