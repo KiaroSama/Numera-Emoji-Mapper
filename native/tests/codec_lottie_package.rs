@@ -24,7 +24,10 @@ fn source_tgs_package_is_deterministic_and_failed_output_is_not_published() {
     for case in cases {
         let source = root.join(case["input"].as_str().unwrap());
         let output = directory.join(format!("{}.tgs", case["name"].as_str().unwrap()));
-        let actual = _native::codec_lottie_package::package(&source, &output);
+        let actual = _native::codec_worker::execute(&serde_json::json!({
+            "operation":"convert","source":source,"output":output,
+            "format":"animated","target_format":"animated"
+        }));
         if let Some(expected) = case.get("expected") {
             actual.unwrap();
             let bytes = std::fs::read(&output).unwrap();

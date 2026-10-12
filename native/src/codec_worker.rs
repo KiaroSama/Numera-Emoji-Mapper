@@ -60,6 +60,25 @@ pub fn execute(request: &Value) -> Result<Value, String> {
     ) {
         return Err("unsupported native codec operation".into());
     }
+    if request.get("format").and_then(Value::as_str) == Some("animated") {
+        let source = path_field(request, "source")?;
+        return match operation {
+            "fingerprint" => crate::codec_lottie_identity::fingerprint(&source),
+            "convert"
+                if request.get("target_format").and_then(Value::as_str) == Some("animated") =>
+            {
+                let output = request
+                    .get("output")
+                    .and_then(Value::as_str)
+                    .filter(|path| !path.is_empty())
+                    .map(PathBuf::from)
+                    .ok_or("output must be a non-empty path")?;
+                crate::codec_lottie_package::package(&source, &output)?;
+                crate::codec_lottie_identity::fingerprint(&output)
+            }
+            _ => Err("animated codec operation is not yet supported".into()),
+        };
+    }
     if request.get("format").and_then(Value::as_str) != Some("static") {
         return Err("static codec operation requires static format".into());
     }
