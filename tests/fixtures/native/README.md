@@ -26,6 +26,10 @@ They cover an initial migration slice, not the whole source test inventory.
   Locks, atomic file writes, inventory parsing/refill and the CLI are not
   exercised by this pure-policy fixture.
 
+- `static-reencode.json`: source lossless WEBP re-encoding with `exact=True`,
+  including RGB under fully transparent pixels and idempotent repeat. Hashes
+  cover source-encoded bytes and every decoded RGBA byte; only owned copies are
+  modified by the test.
 - `static-compare.json`: pinned `emojikit.identity.same_image` results for
   equal/near/different colour, invisible RGB and corrupt inputs. Unknown remains
   null, not false. This static contract must not be applied to video timelines.

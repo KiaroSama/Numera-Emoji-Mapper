@@ -195,6 +195,46 @@ pub fn to_static_png(source: &Path, output: &Path) -> Result<Value, String> {
     )
 }
 
+fn lossless_webp(py: Python<'_>, path: &Path) -> PyResult<Vec<u8>> {
+    let module = py.import("PIL.Image")?;
+    let source = OpenImage(module.call_method1("open", (path.to_path_buf(),))?);
+    let rgba = source.0.call_method1("convert", ("RGBA",))?;
+    let buffer = OpenImage(py.import("io")?.call_method0("BytesIO")?);
+    let options = PyDict::new(py);
+    options.set_item("format", "WEBP")?;
+    options.set_item("lossless", true)?;
+    options.set_item("quality", 100)?;
+    options.set_item("method", 6)?;
+    options.set_item("exact", true)?;
+    rgba.call_method("save", (&buffer.0,), Some(&options))?;
+    Ok(buffer
+        .0
+        .call_method0("getvalue")?
+        .cast_into::<PyBytes>()?
+        .as_bytes()
+        .to_vec())
+}
+
+pub fn reencode_static(path: &Path) -> Result<bool, String> {
+    if !path.is_absolute()
+        || !std::fs::symlink_metadata(path)
+            .is_ok_and(|m| m.is_file() && !m.file_type().is_symlink())
+    {
+        return Err("static reencode source must be an absolute regular non-symlink file".into());
+    }
+    let before = std::fs::read(path).map_err(|_| "cannot read static reencode source")?;
+    Python::initialize();
+    let Some(bytes) = Python::attach(|py| lossless_webp(py, path).ok()) else {
+        return Ok(false);
+    };
+    if bytes == before {
+        return Ok(false);
+    }
+    crate::atomic::write_bytes(path, &bytes)
+        .map_err(|_| "cannot replace static reencode source")?;
+    Ok(true)
+}
+
 fn comparison_pixels(py: Python<'_>, path: &Path) -> PyResult<Vec<u8>> {
     let module = py.import("PIL.Image")?;
     let source = OpenImage(module.call_method1("open", (path.to_path_buf(),))?);
