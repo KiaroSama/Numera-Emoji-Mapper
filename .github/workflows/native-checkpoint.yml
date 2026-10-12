@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install unchanged external static codec
-        run: python -m pip install --only-binary=:all: Pillow==12.3.0
+        run: "python -m pip install --only-binary=:all: Pillow==12.3.0"
       - name: Select supported compiler and check components
         run: |
           rustup default 1.99.0
