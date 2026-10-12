@@ -50,7 +50,13 @@ pub fn execute(request: &Value) -> Result<Value, String> {
         .ok_or("unsupported media operation")?;
     if !matches!(
         operation,
-        "image_info" | "dimensions" | "fingerprint" | "convert" | "compare" | "same_image"
+        "image_info"
+            | "dimensions"
+            | "fingerprint"
+            | "convert"
+            | "compare"
+            | "same_image"
+            | "prepare"
     ) {
         return Err("unsupported native codec operation".into());
     }
@@ -58,6 +64,16 @@ pub fn execute(request: &Value) -> Result<Value, String> {
         return Err("static codec operation requires static format".into());
     }
     let source = path_field(request, "source")?;
+    if operation == "prepare" {
+        let reencode = request.get("reencode").cloned().unwrap_or(json!(false));
+        let reencode = reencode.as_bool().ok_or("reencode must be boolean")?;
+        if request.get("tint").is_some() {
+            return Err("static tint preparation is not yet supported".into());
+        }
+        if reencode {
+            crate::codec_image::reencode_static(&source)?;
+        }
+    }
     if matches!(operation, "compare" | "same_image") {
         let other = path_field(request, "other")?;
         if operation == "compare"
