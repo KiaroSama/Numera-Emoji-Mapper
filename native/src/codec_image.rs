@@ -195,6 +195,46 @@ pub fn to_static_png(source: &Path, output: &Path) -> Result<Value, String> {
     )
 }
 
+fn comparison_pixels(py: Python<'_>, path: &Path) -> PyResult<Vec<u8>> {
+    let module = py.import("PIL.Image")?;
+    let source = OpenImage(module.call_method1("open", (path.to_path_buf(),))?);
+    let lanczos = module.getattr("Resampling")?.getattr("LANCZOS")?;
+    let normalized = source
+        .0
+        .call_method1("convert", ("RGBA",))?
+        .call_method1("resize", ((64, 64), lanczos))?;
+    pixels(&premultiplied(py, &module, &normalized)?)
+}
+
+pub fn same_image(a: &Path, b: &Path) -> Option<bool> {
+    let a_info = inspect_and_fingerprint(a).ok()?;
+    let b_info = inspect_and_fingerprint(b).ok()?;
+    if a_info["content_key"] == b_info["content_key"] {
+        return Some(true);
+    }
+    let distance = (a_info["phash"].as_u64()? ^ b_info["phash"].as_u64()?).count_ones();
+    if distance > 6 {
+        return Some(false);
+    }
+    Python::attach(|py| {
+        let x = comparison_pixels(py, a).ok()?;
+        let y = comparison_pixels(py, b).ok()?;
+        if x.len() != 64 * 64 * 4 || x.len() != y.len() {
+            return None;
+        }
+        let mut totals = [0_u64; 4];
+        for (index, (left, right)) in x.iter().zip(&y).enumerate() {
+            totals[index % 4] += u64::from(left.abs_diff(*right));
+        }
+        let mean = totals
+            .iter()
+            .map(|sum| *sum as f64 / (64.0 * 64.0))
+            .sum::<f64>()
+            / 4.0;
+        Some(mean <= 8.0)
+    })
+}
+
 pub fn inspect_and_fingerprint(path: &Path) -> Result<Value, String> {
     if !path.is_absolute()
         || !std::fs::symlink_metadata(path)

@@ -50,7 +50,7 @@ pub fn execute(request: &Value) -> Result<Value, String> {
         .ok_or("unsupported media operation")?;
     if !matches!(
         operation,
-        "image_info" | "dimensions" | "fingerprint" | "convert"
+        "image_info" | "dimensions" | "fingerprint" | "convert" | "compare" | "same_image"
     ) {
         return Err("unsupported native codec operation".into());
     }
@@ -58,6 +58,20 @@ pub fn execute(request: &Value) -> Result<Value, String> {
         return Err("static codec operation requires static format".into());
     }
     let source = path_field(request, "source")?;
+    if matches!(operation, "compare" | "same_image") {
+        let other = path_field(request, "other")?;
+        if operation == "compare"
+            && std::fs::metadata(&source).ok().map(|m| m.len())
+                == std::fs::metadata(&other).ok().map(|m| m.len())
+            && std::fs::read(&source)
+                .ok()
+                .zip(std::fs::read(&other).ok())
+                .is_some_and(|(a, b)| a == b)
+        {
+            return Ok(json!(true));
+        }
+        return Ok(json!(crate::codec_image::same_image(&source, &other)));
+    }
     if operation == "convert" {
         if request.get("target_format").and_then(Value::as_str) != Some("static") {
             return Err("invalid target format".into());
