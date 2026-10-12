@@ -4,6 +4,12 @@ These expected values come from the pinned source revision
 `1a36a968b006236bd0665a1da65c541938c06061`, not from the replacement Rust code.
 They cover an initial migration slice, not the whole source test inventory.
 
+- `video-codec.json`: five pinned real VP8/VP9 byte fixtures over opaque,
+  translucent, extensionless and single-frame inputs. Probe fields, alpha-safe
+  decoder arguments, frozen 10 fps RGBA hashes and content keys are source
+  observations. Encoded fixtures are synthetic artwork, not the final real-media
+  acceptance corpus. Timeline comparison, decoder/cache failure recovery and
+  conversion remain outside this initial seam.
 - `media-format.json`: 22 pinned byte-header/extension detections and eight
   collision-key observations. Magic bytes take priority over extension hints;
   JSON without a hint stays unknown. This is not video decoding or local CLI

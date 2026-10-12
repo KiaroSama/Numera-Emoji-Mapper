@@ -18,8 +18,10 @@ The initial static-image/identity/conversion, SVG renderer binding, pure Lottie
 tint/bounded TGS loading/canonical animated identity/loaded-document validation
 and Lottie preview/file-preparation/file-validation/vector-comparison handling,
 static preview/tint/tri-state comparison, source media detection/collision keys
-and coin-alias/inventory-text
-slices are additive and use
+and coin-alias/inventory-text slices are additive. An initial video seam owns
+FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream; full
+video comparison, caching, conversion and worker integration remain pending.
+These slices use
 pinned source-generated fixtures. The internal `codec-worker` entry point is
 not yet the production media adapter. Its limited hosted checkpoint is build
 and seam evidence only, not complete parity, a new installable release or

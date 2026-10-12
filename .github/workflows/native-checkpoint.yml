@@ -36,6 +36,8 @@ jobs:
           python-version: "3.11"
       - name: Install unchanged external static codec
         run: "python -m pip install --only-binary=:all: Pillow==12.3.0 resvg-py==0.5.0 rlottie-python==1.3.8"
+      - name: Install external video codecs
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Select supported compiler and check components
         run: |
           rustup default 1.99.0
@@ -84,7 +86,7 @@ jobs:
           export NUMERA_LOTTIE_PREVIEW_ORACLE="$PWD/logs/checkpoint/lottie-preview-source.json"
           bounded format cargo fmt --manifest-path native/Cargo.toml --check
           bounded lint cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
-          bounded seams cargo test --manifest-path native/Cargo.toml --locked --test codec_format --test codec_static --test codec_compare --test codec_reencode --test codec_static_tint --test codec_static_preview --test codec_worker --test codec_worker_ipc --test coin_aliases --test codec_tint --test codec_lottie_validate --test codec_lottie_file --test codec_lottie_load --test codec_lottie_package --test codec_lottie_identity --test codec_lottie_preview --test codec_lottie_prepare --test coin_inventory -- --test-threads=2
+          bounded seams cargo test --manifest-path native/Cargo.toml --locked --test codec_video --test codec_format --test codec_static --test codec_compare --test codec_reencode --test codec_static_tint --test codec_static_preview --test codec_worker --test codec_worker_ipc --test coin_aliases --test codec_tint --test codec_lottie_validate --test codec_lottie_file --test codec_lottie_load --test codec_lottie_package --test codec_lottie_identity --test codec_lottie_preview --test codec_lottie_prepare --test coin_inventory -- --test-threads=2
       - name: Preserve bounded checkpoint diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

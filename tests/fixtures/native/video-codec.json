@@ -1,0 +1,115 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/video_decode.py": "bab9579240a23bb8ee59c1a66e496586ca881398bb4d82e956e2fb6c2b3ff13a",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89"
+  },
+  "cases": [
+    {
+      "input": "tests/fixtures/native/video-codec/opaque.webm",
+      "input_sha256": "9ad49bae33aec4cc5e754476800285ddc0f7f7ba4738e39e1f4245d87e4551e1",
+      "expected": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 10.0,
+        "has_audio": false,
+        "container": "matroska,webm",
+        "decoder_args": [
+          "-c:v",
+          "libvpx-vp9"
+        ],
+        "frame_bytes": 163840,
+        "rgba_sha256": "7cae73765ab8408268f0a31a7b39c4bb1a3e04daed2ca82718c406b6aacecf67",
+        "content_key": "v:7cae73765ab8408268f0a31a7b39c4bb",
+        "phash": 0
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/alpha.webm",
+      "input_sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "expected": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 10.0,
+        "has_audio": false,
+        "container": "matroska,webm",
+        "decoder_args": [
+          "-c:v",
+          "libvpx-vp9"
+        ],
+        "frame_bytes": 163840,
+        "rgba_sha256": "85e56926e47d16bc4f70572dfcc4a0275f575cdd55b9f9a3ddc1c7e56a6b4f94",
+        "content_key": "v:85e56926e47d16bc4f70572dfcc4a027",
+        "phash": 0
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/extensionless",
+      "input_sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "expected": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 10.0,
+        "has_audio": false,
+        "container": "matroska,webm",
+        "decoder_args": [
+          "-c:v",
+          "libvpx-vp9"
+        ],
+        "frame_bytes": 163840,
+        "rgba_sha256": "85e56926e47d16bc4f70572dfcc4a0275f575cdd55b9f9a3ddc1c7e56a6b4f94",
+        "content_key": "v:85e56926e47d16bc4f70572dfcc4a027",
+        "phash": 0
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/vp8.webm",
+      "input_sha256": "25002b26244c4a3a5ff62a862152c15a67e88b2a33ef4c8825c216be1ca30db7",
+      "expected": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp8",
+        "fps": 10.0,
+        "has_audio": false,
+        "container": "matroska,webm",
+        "decoder_args": [
+          "-c:v",
+          "libvpx"
+        ],
+        "frame_bytes": 163840,
+        "rgba_sha256": "55bad622a9f79bfd3643618a7257ce7ba684d1d5017ebc58fa6edc42854ff48e",
+        "content_key": "v:55bad622a9f79bfd3643618a7257ce7b",
+        "phash": 0
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/single.webm",
+      "input_sha256": "09b6b934a16829435db84a9791672ff05f3a975a6e59af5ad352480a5a378252",
+      "expected": {
+        "width": 100,
+        "height": 100,
+        "duration": 0.1,
+        "codec": "vp9",
+        "fps": 10.0,
+        "has_audio": false,
+        "container": "matroska,webm",
+        "decoder_args": [
+          "-c:v",
+          "libvpx-vp9"
+        ],
+        "frame_bytes": 16384,
+        "rgba_sha256": "2ee0961745c42682745a661896ce80d2c0dc7075074c5eb70c4a8c96dc99af3a",
+        "content_key": "v:2ee0961745c42682745a661896ce80d2",
+        "phash": 0
+      }
+    }
+  ]
+}
