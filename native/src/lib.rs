@@ -21,6 +21,7 @@ pub mod codec_image;
 pub mod codec_lottie_identity;
 pub mod codec_lottie_load;
 pub mod codec_lottie_package;
+pub mod codec_lottie_preview;
 pub mod codec_lottie_validate;
 pub mod codec_svg;
 pub mod codec_tint;

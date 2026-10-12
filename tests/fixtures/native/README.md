@@ -54,6 +54,13 @@ They cover an initial migration slice, not the whole source test inventory.
 - `coin-inventory.json`: source normalization, safe ticker aliases and text
   refill/count/newline behavior with string IDs. Header parsing, non-string ID
   formatting, file writes and locks remain outside this verified slice.
+- `lottie-preview.json`: actual pinned source renders through rlottie-python 1.3.8
+  and Pillow 12.3.0: still, moving circle and one-native-frame clips. Records
+  WebP bytes, decoded frames and durations. These are synthetic artwork inputs,
+  not full real-world animation coverage. CI regenerates an independent source
+  oracle on its own platform and compares target bytes to that source; committed
+  Windows observations remain unchanged. The short clip must retain its native
+  rate rather than producing an empty sampled frame list.
 - `lottie-validation.json`: pinned `validate_tgs` policy with already-decoded
   document and file stat/magic/load seams; 84 source cases cover timeline,
   numeric coercion, required fields and nested subtract-mask refusal. This is
