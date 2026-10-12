@@ -36,7 +36,9 @@ fn source_detection_and_collision_lookup_contract_is_preserved() {
             .as_str()
             .unwrap()
             .as_bytes()
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
             .collect::<Vec<_>>()
     };
