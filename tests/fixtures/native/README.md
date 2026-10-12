@@ -33,6 +33,18 @@ They cover an initial migration slice, not the whole source test inventory.
 - `static-compare.json`: pinned `emojikit.identity.same_image` results for
   equal/near/different colour, invisible RGB and corrupt inputs. Unknown remains
   null, not false. This static contract must not be applied to video timelines.
+- `tgs-load.json`: seven pinned source cases over actual gzip files and plain
+  JSON. Includes corrupt gzip, malformed UTF-8/JSON, non-object roots and an
+  8 MiB expansion refusal. `.tgs` inputs are binary gzip fixtures, including
+  intentionally malformed binary data; they must never be transcoded as UTF-8.
+  Their hashes and expected decoder errors verify this binary-format boundary.
+  The malformed header is stored as UTF-8 Base64 (`corrupt.tgs.b64`) because
+  repository text classification cannot recognize its truncated binary header;
+  the test decodes it into owned scratch and verifies the original byte hash.
+  No encoding exception or hook bypass is used.
+- `coin-inventory.json`: source normalization, safe ticker aliases and text
+  refill/count/newline behavior with string IDs. Header parsing, non-string ID
+  formatting, file writes and locks remain outside this verified slice.
 - `lottie-validation.json`: pinned `validate_tgs` policy with already-decoded
   document and file stat/magic/load seams; 84 source cases cover timeline,
   numeric coercion, required fields and nested subtract-mask refusal. This is

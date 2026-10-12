@@ -1,0 +1,52 @@
+{
+  "baseline_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "46985e570f4d9e7ee8c9ae0d326f0517033a3a3822f3b9d594ca07a30a079f47",
+  "python_version": "3.11.9",
+  "unicode_version": "14.0.0",
+  "oracle": "pinned source AST functions/constants; in-memory Path read/write, environment empty/sockets refused",
+  "norm": [
+    {"input": "Foo Network (BSC)","expected": "foonetwork"},
+    {"input": "The USD Coin","expected": "theusdcoin"},
+    {"input": "İstanbul Koin","expected": "istanbulkoin"},
+    {"input": "A(B(C)D) Token","expected": "adtoken"},
+    {"input": "A (x\ny) B","expected": "axyb"},
+    {"input": "A (x\r y) B","expected": "ab"},
+    {"input": "ＦＯＯ","expected": ""},
+    {"input": "Straße","expected": "strae"},
+    {"input": "abc-123","expected": "abc123"}
+  ],
+  "base_ticker": [
+    {"input": "avaxc","expected": "avax"},
+    {"input": "bttc","expected": "btt"},
+    {"input": "kibabsc","expected": "kiba"},
+    {"input": "ghc","expected": "ghc"},
+    {"input": "zbc","expected": "zbc"},
+    {"input": "xop","expected": "xop"},
+    {"input": "xxop","expected": "xx"},
+    {"input": "mainnet","expected": "mainnet"},
+    {"input": "abcmainnet","expected": "abc"},
+    {"input": "ABCBSC","expected": "ABCBSC"},
+    {"input": "🧩op","expected": "🧩op"},
+    {"input": "🧩🧩op","expected": "🧩🧩"},
+    {"input": "abcavax","expected": "abc"},
+    {"input": "abcerc20","expected": "abc"}
+  ],
+  "refill": [
+    {"text": "ticker: ABC\n  premium-id: stale\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: ABC\n  premium-id: 111\n","filled": 1,"total": 1}},
+    {"text": "ticker: abc\npremium-id: old\npremium-id: untouched\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: abc\npremium-id: 111\npremium-id: untouched\n","filled": 1,"total": 1}},
+    {"text": "ticker: missing\npremium-id: stale\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: missing\npremium-id:\n","filled": 0,"total": 1}},
+    {"text": "ticker: abc\nticker: xyz\n\tpremium-id: old\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: abc\nticker: xyz\n\tpremium-id:\n","filled": 0,"total": 2}},
+    {"text": "premium-id: before\n  ticker: abc \n unrelated\n premium-id: old\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "premium-id: before\n  ticker: abc \n unrelated\n premium-id: 111\n","filled": 1,"total": 1}},
+    {"text": "ticker: abc\r\n premium-id: stale\r\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: abc\r\n premium-id: 111\n","filled": 1,"total": 1}},
+    {"text": "ticker: abc\n\u001cpremium-id: old\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: abc\n\u001cpremium-id: 111\n","filled": 1,"total": 1}},
+    {"text": "ticker: \n premium-id: old\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: \n premium-id:\n","filled": 0,"total": 1}},
+    {"text": " ticker: \t\n premium-id: old\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": " ticker: \t\n premium-id:\n","filled": 0,"total": 1}},
+    {"text": "ticker: ABC\npremium-id: x\nticker: xyz\npremium-id: y","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: ABC\npremium-id: 111\nticker: xyz\npremium-id:","filled": 1,"total": 2}},
+    {"text": "TICKER: abc\npremium-id: stale\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "TICKER: abc\npremium-id: stale\n","filled": 0,"total": 0}},
+    {"text": "ticker: abc\npremium-id:   ","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: abc\npremium-id: 111","filled": 1,"total": 1}},
+    {"text": "ticker: abc\npremium-id:  stale\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: abc\npremium-id: 111\n","filled": 1,"total": 1}},
+    {"text": "ticker: abc\n  premium-id: stale end\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: abc\n  premium-id: 111\n","filled": 1,"total": 1}},
+    {"text": "ticker: İ\npremium-id: old\n","mapping": {"abc": "111","xyz": "","i̇": "222"},"expected": {"text": "ticker: İ\npremium-id: 222\n","filled": 1,"total": 1}}
+  ],
+  "missing_header_pending": true
+}

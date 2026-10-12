@@ -15,7 +15,7 @@ fn error(kind: &'static str, message: impl Into<String>) -> AliasError {
     }
 }
 
-pub fn normalize_name(name: &str) -> String {
+pub fn strip_parentheses_lower(name: &str) -> String {
     let lower = name.to_lowercase();
     let mut stripped = String::with_capacity(lower.len());
     let mut rest = lower.as_str();
@@ -34,6 +34,10 @@ pub fn normalize_name(name: &str) -> String {
     }
     stripped.push_str(rest);
     stripped
+}
+
+pub fn normalize_name(name: &str) -> String {
+    strip_parentheses_lower(name)
         .split(|c: char| !c.is_ascii_lowercase() && !c.is_ascii_digit())
         .filter(|word| {
             !matches!(
