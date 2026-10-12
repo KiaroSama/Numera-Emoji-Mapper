@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import io
 from pathlib import Path
 import subprocess
 import tempfile
@@ -23,16 +24,18 @@ def main() -> None:
         capture_output=True, check=True, timeout=5, stdin=subprocess.DEVNULL,
     ).stdout
     assert hashlib.sha256(source).hexdigest() == SOURCE_SHA
-    names = {"_trim", "fit_100", "_load_image", "is_blank_image", "to_static_png"}
+    names = {"_trim", "fit_100", "render_svg", "_load_image", "is_blank_image", "to_static_png"}
     tree = ast.parse(source.decode("utf-8"))
     nodes = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in nodes} == names
     namespace = {"Image": Image, "SIZE": 100, "VISIBLE_ALPHA": 10,
-                 "BLANK_MAX_VISIBLE": 8, "Path": Path, "MediaError": RuntimeError}
+                 "BLANK_MAX_VISIBLE": 8, "Path": Path, "MediaError": RuntimeError, "io": io}
     # Only pinned source AST is executable here; the target is never imported.
     exec(compile(ast.Module(body=nodes, type_ignores=[]), "pinned/media.py", "exec"), namespace)
     original = json.loads((ROOT / "tests/fixtures/native/static-convert.json").read_text(encoding="utf-8"))
     cases = []
+    (ROOT / "logs/tmp").mkdir(parents=True, exist_ok=True)
+    (ROOT / "logs/checkpoint").mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="png source oracle ", dir=ROOT / "logs/tmp") as folder:
         for case in original["cases"]:
             path = ROOT / case["input"]
@@ -57,7 +60,7 @@ def main() -> None:
     original["Pillow"] = Image.__version__
     destination = ROOT / "logs/checkpoint/static-convert-source.json"
     destination.write_text(json.dumps(original, indent=2) + "\n", encoding="utf-8")
-    print("Pinned source conversion oracle: four cases; pixels and refusals unchanged.")
+    print(f"Pinned source conversion oracle: {len(cases)} cases; pixels and refusals unchanged.")
 
 
 if __name__ == "__main__":

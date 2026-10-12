@@ -14,7 +14,8 @@ coin-domain, test, generator and tooling code. Browser assets and the entire
 Cloudflare Worker remain unchanged; third-party codec implementations remain
 external dependencies.
 
-The first static-image/identity/conversion and pure coin-alias slice is additive and uses
+The initial static-image/identity/conversion, SVG renderer binding, pure Lottie
+tint and coin-alias slices are additive and use
 pinned source-generated fixtures. The internal `codec-worker` entry point is
 not yet the production media adapter. Its limited hosted checkpoint is build
 and seam evidence only, not complete parity, a new installable release or

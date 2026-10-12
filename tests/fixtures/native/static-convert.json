@@ -54,6 +54,21 @@
         "png_sha256": "2d7a9bd610575c62cf74ca343e92eaa45fc5b58dc870a629dba7b67fe8d1849b",
         "rgba_sha256": "e1c83b771e7affc6e4284a64e599f6d48750e8337915a8dbd3c0a093c91cf37f"
       }
+    },
+    {
+      "name": "gradient",
+      "input": "tests/fixtures/native/static-codec/gradient.svg",
+      "input_sha256": "aa5302ea8a6b25bec1c979e575716a5e32fc8a8e963c2b937045ac4baf650532",
+      "expected": {
+        "size": [
+          100,
+          100
+        ],
+        "mode": "RGBA",
+        "bytes": 2064,
+        "png_sha256": "ad5cc9c3268bda466b2866f62aa064852ff982b28b37f68153c437e9134693ea",
+        "rgba_sha256": "c7f99f323da774d1c14f83a4676fea96227fcb6adaf0be25ca85bf96b2547d0f"
+      }
     }
   ]
 }

@@ -10,7 +10,7 @@ They cover an initial migration slice, not the whole source test inventory.
   of the repository's public artwork; other inputs exercise opaque pixels,
   invisible RGB under transparency and alpha boundaries. Source revision/hash
   are recorded in the fixture. This does not cover SVG, Lottie or VP9.
-- `static-convert.json`: the same four inputs through pinned
+- `static-convert.json`: the four raster inputs and a synthetic gradient SVG through pinned
   `emojikit.media.to_static_png`, with exact PNG-byte and decoded-RGBA hashes,
   size/mode and blank-image refusal. Output preservation is checked separately
   by the native test. These are Pillow 12.3.0 Windows source outputs, not target hashes.
@@ -25,6 +25,11 @@ They cover an initial migration slice, not the whole source test inventory.
   The fixture covers 12 normalization, eight grouping and six error cases.
   Locks, atomic file writes, inventory parsing/refill and the CLI are not
   exercised by this pure-policy fixture.
+
+- `lottie-tint.json`: pinned `emojikit/repaint.py` pure source AST under
+  CPython 3.11.9; tint parsing/errors, boolean numeric quirks, solid/keyframed
+  colours and gradient opacity preservation. This does not cover animation
+  rendering, gzip packaging, file replacement or runtime cancellation.
 
 Original executable sources remain in Git history. Fixture regeneration must
 retrieve and verify that exact source and runtime before executing a hermetic,
