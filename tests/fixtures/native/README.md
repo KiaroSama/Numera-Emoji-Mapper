@@ -50,6 +50,12 @@ They cover an initial migration slice, not the whole source test inventory.
   expansion limits and truncated gzip errors propagate rather than becoming keys.
   Nonfinite JSON files intentionally exercise CPython's non-standard JSON support.
   No raster phash is invented for vector artwork.
+- `lottie-file.json`: seven pinned real-file validation observations and six
+  vector comparison pairs. Size and gzip magic precede decoding; truncated gzip
+  is distinct from malformed JSON. The oversized malformed header is stored as
+  UTF-8 Base64 and decoded into owned scratch with its original byte hash checked.
+  Canonical equality is true, vector mismatch stays unknown, and only `compare`
+  has the byte-identical shortcut.
 - `tgs-prepare.json`: five pinned source file observations: Unicode re-gzip,
   colour tint, corrupt-input preservation and compressed size-cap refusals for
   both re-encode and tint. Repeat return values and output bytes are checked;

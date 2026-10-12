@@ -3,6 +3,12 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
+pub fn same_image(a: &Path, b: &Path) -> Option<bool> {
+    let a = fingerprint(a).ok()?;
+    let b = fingerprint(b).ok()?;
+    (a["content_key"] == b["content_key"]).then_some(true)
+}
+
 pub fn fingerprint(path: &Path) -> Result<Value, String> {
     let bytes = match crate::codec_lottie_load::canonical_bytes(path) {
         Ok(bytes) => bytes,

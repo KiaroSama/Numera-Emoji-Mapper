@@ -16,7 +16,7 @@ external dependencies.
 
 The initial static-image/identity/conversion, SVG renderer binding, pure Lottie
 tint/bounded TGS loading/canonical animated identity/loaded-document validation
-and Lottie preview/file-preparation handling,
+and Lottie preview/file-preparation/file-validation/vector-comparison handling,
 static preview/tint/tri-state comparison, source media detection/collision keys
 and coin-alias/inventory-text
 slices are additive and use
