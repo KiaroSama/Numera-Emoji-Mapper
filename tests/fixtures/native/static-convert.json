@@ -1,0 +1,59 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+  "source": "emojikit.media.to_static_png",
+  "Pillow": "12.3.0",
+  "cases": [
+    {
+      "name": "public-logo",
+      "input": "tests/fixtures/native/static-codec/public-logo.png",
+      "input_sha256": "6f85376de3893dfa1e78045ce264103b0055acec400dd8a35222405d5c4f6951",
+      "expected": {
+        "size": [
+          100,
+          100
+        ],
+        "mode": "RGBA",
+        "bytes": 18926,
+        "png_sha256": "6516c02d3e209bb2567b471e198a469a867e4834cc08d20674ca65df3e3182bf",
+        "rgba_sha256": "5ee0faa7c2dfa0bc29655b4c215b1de1ae132c521cd29d266d37ac3a9a401f86"
+      }
+    },
+    {
+      "name": "opaque",
+      "input": "tests/fixtures/native/static-codec/opaque.png",
+      "input_sha256": "186ee151bdd1301c0e6c82e4e18550d248d4be36b8a0ae4c37ec6b91d44622f4",
+      "expected": {
+        "size": [
+          100,
+          100
+        ],
+        "mode": "RGBA",
+        "bytes": 201,
+        "png_sha256": "309ddcbe7866d91087bccf52c7ddb3ea46097bd7b3abb4cea6b1c21c6eac54bc",
+        "rgba_sha256": "88fce390f3cd8c7688a859863fd30a82465351402475ae82f0e5eecc4fe6bffd"
+      }
+    },
+    {
+      "name": "transparent-rgb",
+      "input": "tests/fixtures/native/static-codec/transparent-rgb.png",
+      "input_sha256": "07618aaae1edc16ce6a01933b9f5148ea14b0b6638b58e0c75a26a33559956c0",
+      "error": "transparent-rgb.png: image is blank (no visible pixels)"
+    },
+    {
+      "name": "alpha-edge",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "size": [
+          100,
+          100
+        ],
+        "mode": "RGBA",
+        "bytes": 2090,
+        "png_sha256": "2d7a9bd610575c62cf74ca343e92eaa45fc5b58dc870a629dba7b67fe8d1849b",
+        "rgba_sha256": "e1c83b771e7affc6e4284a64e599f6d48750e8337915a8dbd3c0a093c91cf37f"
+      }
+    }
+  ]
+}

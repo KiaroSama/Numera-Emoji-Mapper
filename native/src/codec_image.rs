@@ -1,9 +1,13 @@
 //! Rust-owned static identity policy using unchanged external Pillow codec APIs.
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyBytes, PyDict};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+use std::io::Write;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_OUTPUT: AtomicU64 = AtomicU64::new(0);
 
 struct OpenImage<'py>(Bound<'py, PyAny>);
 
@@ -85,6 +89,101 @@ fn inspect(py: Python<'_>, path: &Path) -> PyResult<Value> {
     })()
     .ok();
     Ok(json!({"size":[size.0,size.1],"mode":mode,"blank":blank,"content_key":key,"phash":phash}))
+}
+
+fn fitted_png(py: Python<'_>, path: &Path) -> PyResult<(Vec<u8>, Vec<u8>, bool)> {
+    let module = py.import("PIL.Image")?;
+    let source = OpenImage(module.call_method1("open", (path.to_path_buf(),))?);
+    let rgba = source.0.call_method1("convert", ("RGBA",))?;
+    let alpha = rgba.call_method1("getchannel", ("A",))?;
+    let bounds = alpha.call_method0("getbbox")?;
+    let trimmed = if bounds.is_none() {
+        rgba
+    } else {
+        rgba.call_method1("crop", (bounds,))?
+    };
+    let (width, height) = trimmed.getattr("size")?.extract::<(u32, u32)>()?;
+    let canvas = module.call_method1("new", ("RGBA", (100, 100), (0, 0, 0, 0)))?;
+    if width != 0 && height != 0 {
+        let scale = (100.0 / f64::from(width)).min(100.0 / f64::from(height));
+        let w = (f64::from(width) * scale).round_ties_even().max(1.0) as u32;
+        let h = (f64::from(height) * scale).round_ties_even().max(1.0) as u32;
+        let lanczos = module.getattr("Resampling")?.getattr("LANCZOS")?;
+        let resized = trimmed.call_method1("resize", ((w, h), lanczos))?;
+        // No mask: the source preserves straight RGB and alpha rather than compositing twice.
+        canvas.call_method1("paste", (resized, ((100 - w) / 2, (100 - h) / 2)))?;
+    }
+    let rgba = pixels(&canvas)?;
+    let blank = rgba
+        .iter()
+        .skip(3)
+        .step_by(4)
+        .filter(|&&alpha| alpha > 10)
+        .count()
+        <= 8;
+    if blank {
+        return Ok((Vec::new(), rgba, true));
+    }
+    let buffer = OpenImage(py.import("io")?.call_method0("BytesIO")?);
+    let options = PyDict::new(py);
+    options.set_item("format", "PNG")?;
+    options.set_item("optimize", true)?;
+    canvas.call_method("save", (&buffer.0,), Some(&options))?;
+    let bytes = buffer
+        .0
+        .call_method0("getvalue")?
+        .cast_into::<PyBytes>()?
+        .as_bytes()
+        .to_vec();
+    Ok((bytes, rgba, false))
+}
+
+pub fn to_static_png(source: &Path, output: &Path) -> Result<Value, String> {
+    if !source.is_absolute()
+        || !std::fs::symlink_metadata(source)
+            .is_ok_and(|m| m.is_file() && !m.file_type().is_symlink())
+    {
+        return Err("static codec source must be an absolute regular non-symlink file".into());
+    }
+    if !output.is_absolute() || std::fs::symlink_metadata(output).is_ok() {
+        return Err("conversion output must be absolute and must not already exist".into());
+    }
+    Python::initialize();
+    let (bytes, rgba, blank) = Python::attach(|py| {
+        fitted_png(py, source).map_err(|_| "external static conversion failed".to_owned())
+    })?;
+    if blank {
+        return Err(format!(
+            "{}: image is blank (no visible pixels)",
+            source
+                .file_name()
+                .ok_or("source has no filename")?
+                .to_string_lossy()
+        ));
+    }
+    let parent = output.parent().ok_or("conversion output has no parent")?;
+    std::fs::create_dir_all(parent).map_err(|_| "cannot create conversion output directory")?;
+    let (staged, mut file) = loop {
+        let id = NEXT_OUTPUT.fetch_add(1, Ordering::Relaxed);
+        let path = parent.join(format!(".static-png-{}-{id}.tmp", std::process::id()));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(file) => break (path, file),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(_) => return Err("cannot stage static conversion".into()),
+        }
+    };
+    let persisted = file.write_all(&bytes).and_then(|_| file.sync_all());
+    drop(file);
+    let result = persisted.and_then(|_| crate::atomic::publish_new(&staged, output));
+    let _ = std::fs::remove_file(staged);
+    result.map_err(|_| "cannot publish exclusive static conversion")?;
+    Ok(
+        json!({"size":[100,100],"mode":"RGBA","bytes":bytes.len(),"png_sha256":digest_hex(&bytes),"rgba_sha256":digest_hex(&rgba)}),
+    )
 }
 
 pub fn inspect_and_fingerprint(path: &Path) -> Result<Value, String> {
