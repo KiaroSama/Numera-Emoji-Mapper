@@ -33,6 +33,12 @@ They cover an initial migration slice, not the whole source test inventory.
 - `static-compare.json`: pinned `emojikit.identity.same_image` results for
   equal/near/different colour, invisible RGB and corrupt inputs. Unknown remains
   null, not false. This static contract must not be applied to video timelines.
+- `animated-key.json`: 11 source observations with verified source/runtime hashes:
+  canonical ordering, duplicate keys, Unicode, nonfinite numbers, negative zero,
+  large integers and corrupt JSON/UTF-8 raw-byte fallback. Non-object roots,
+  expansion limits and truncated gzip errors propagate rather than becoming keys.
+  Nonfinite JSON files intentionally exercise CPython's non-standard JSON support.
+  No raster phash is invented for vector artwork.
 - `tgs-package.json`: pinned source Unicode/deterministic gzip package bytes,
   wrong canvas and nested subtract-mask refusal. Native publication additionally
   preserves existing output and refuses to publish failed candidates.

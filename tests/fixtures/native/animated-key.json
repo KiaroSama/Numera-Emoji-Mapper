@@ -1,0 +1,109 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89",
+    "emojikit/media_lottie.py": "5112b55f21d4d241ffe9660d5294de20487d4ea1e9772188fb6bd125f7fef63b"
+  },
+  "runtime": "3.11.9",
+  "source": "emojikit.identity.fingerprint animated",
+  "cases": [
+    {
+      "input": "tests/fixtures/native/tgs-package/valid.json",
+      "input_sha256": "98c87aa14eff37f85f1bb7193e244f5ddecb424a00d77838e8f7375fc056dce5",
+      "expected": {
+        "content_key": "a:75a9be12b20be285545019b2cb7b9e70",
+        "phash": null,
+        "fmt": "animated",
+        "extension": ".tgs"
+      }
+    },
+    {
+      "input": "tests/fixtures/native/tgs-load/valid.tgs",
+      "input_sha256": "7eab5f062ab6ff2b69178b0086356f9fa361ac0f755b4448e05c97c713376135",
+      "expected": {
+        "content_key": "a:41ea34408fd2333f67e125c74de36383",
+        "phash": null,
+        "fmt": "animated",
+        "extension": ".tgs"
+      }
+    },
+    {
+      "input": "tests/fixtures/native/tgs-load/invalid-json.tgs",
+      "input_sha256": "5975249916cf2897128ebef9852d860710bcd91e34d4bf0b09d3e1711d2a9d3c",
+      "expected": {
+        "content_key": "a:5975249916cf2897128ebef9852d8607",
+        "phash": null,
+        "fmt": "animated",
+        "extension": ".tgs"
+      }
+    },
+    {
+      "input": "tests/fixtures/native/tgs-load/root-list.tgs",
+      "input_sha256": "61663fde99b3394d71653f41c19fe91269442622a4a6695f8352a70fbf5ca4c1",
+      "error_kind": "MediaError",
+      "error": "root-list.tgs: Lottie root is list, expected an object"
+    },
+    {
+      "input": "tests/fixtures/native/tgs-load/expansion.tgs",
+      "input_sha256": "c2157d0aa365e20c8e9a010c8e344e0e3fa0f0fea9951f5121ff0bc8eefd1fd1",
+      "error_kind": "MediaError",
+      "error": "expansion.tgs: Lottie expands beyond 8388608 bytes"
+    },
+    {
+      "input": "tests/fixtures/native/animated-key/nonfinite.json",
+      "input_sha256": "fc2b14b2a6c6daecc8808bf50e3df255a3b3d25625bf11f3e4b200e7fd769191",
+      "expected": {
+        "content_key": "a:bf49a819033400123e1a630b1ba7970c",
+        "phash": null,
+        "fmt": "animated",
+        "extension": ".tgs"
+      }
+    },
+    {
+      "input": "tests/fixtures/native/animated-key/numbers.json",
+      "input_sha256": "de0a8d0a08e471e0b6154689b6b25299d2634eda82dc57fa2c7ca81fe18f540a",
+      "expected": {
+        "content_key": "a:09fbd9b51bb151272ded24d1fa8905d3",
+        "phash": null,
+        "fmt": "animated",
+        "extension": ".tgs"
+      }
+    },
+    {
+      "input": "tests/fixtures/native/animated-key/ordered.json",
+      "input_sha256": "5f23bdab8e196e6325b9a485ef36eb015bc37d05800cacba1b3284ac1fe2a617",
+      "expected": {
+        "content_key": "a:0442545ce05520ae7fa7c1cd3120eb97",
+        "phash": null,
+        "fmt": "animated",
+        "extension": ".tgs"
+      }
+    },
+    {
+      "input": "tests/fixtures/native/animated-key/ordered-equivalent.json",
+      "input_sha256": "156c14aabac87ce75dc31bb9ddef2480a74c48bfc48ca83cb10dbb8dfe04ac0a",
+      "expected": {
+        "content_key": "a:0442545ce05520ae7fa7c1cd3120eb97",
+        "phash": null,
+        "fmt": "animated",
+        "extension": ".tgs"
+      }
+    },
+    {
+      "input": "tests/fixtures/native/animated-key/invalid-utf8.tgs",
+      "input_sha256": "b07e63134810f5083112f3b8be86eaed95c45c1cfdea9d9c901af87434284621",
+      "expected": {
+        "content_key": "a:b07e63134810f5083112f3b8be86eaed",
+        "phash": null,
+        "fmt": "animated",
+        "extension": ".tgs"
+      }
+    },
+    {
+      "input": "tests/fixtures/native/animated-key/truncated.tgs",
+      "input_sha256": "9d1011ce9a9221ec2cbde2cc63ce50401fda24a6ffbf96a97b55552cc9e035e3",
+      "error_kind": "EOFError",
+      "error": "Compressed file ended before the end-of-stream marker was reached"
+    }
+  ]
+}
