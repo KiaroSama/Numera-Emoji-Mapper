@@ -28,6 +28,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
@@ -75,6 +76,8 @@ jobs:
             cat "$output"
             return "$code"
           }
+          bounded source python -m tests._static_convert_oracle
+          export NUMERA_STATIC_CONVERT_ORACLE="$PWD/logs/checkpoint/static-convert-source.json"
           bounded format cargo fmt --manifest-path native/Cargo.toml --check
           bounded lint cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
           bounded seams cargo test --manifest-path native/Cargo.toml --locked --test codec_static --test codec_worker --test codec_worker_ipc --test coin_aliases -- --test-threads=2

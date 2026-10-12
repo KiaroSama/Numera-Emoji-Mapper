@@ -9,9 +9,14 @@ fn static_conversion_preserves_source_png_pixels_and_blank_refusal() {
         .parent()
         .unwrap()
         .to_path_buf();
-    let fixture: Value = serde_json::from_str(include_str!(
-        "../../tests/fixtures/native/static-convert.json"
-    ))
+    let fixture: Value = serde_json::from_slice(
+        &std::fs::read(
+            std::env::var_os("NUMERA_STATIC_CONVERT_ORACLE")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| root.join("tests/fixtures/native/static-convert.json")),
+        )
+        .unwrap(),
+    )
     .unwrap();
     assert_eq!(
         fixture["source_revision"],

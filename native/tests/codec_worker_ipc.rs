@@ -105,9 +105,16 @@ fn executable_codec_envelope_is_owned_bounded_and_exclusive() {
                 let response: Value = serde_json::from_slice(&bytes).unwrap();
                 assert_eq!(response["ok"], expected_code == 0);
                 if index == 3 {
-                    let conversion: Value = serde_json::from_str(include_str!(
-                        "../../tests/fixtures/native/static-convert.json"
-                    ))
+                    let conversion: Value = serde_json::from_slice(
+                        &std::fs::read(
+                            std::env::var_os("NUMERA_STATIC_CONVERT_ORACLE")
+                                .map(PathBuf::from)
+                                .unwrap_or_else(|| {
+                                    root.join("tests/fixtures/native/static-convert.json")
+                                }),
+                        )
+                        .unwrap(),
+                    )
                     .unwrap();
                     let golden = conversion["cases"]
                         .as_array()

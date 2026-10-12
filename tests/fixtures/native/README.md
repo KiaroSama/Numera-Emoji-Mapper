@@ -13,7 +13,12 @@ They cover an initial migration slice, not the whole source test inventory.
 - `static-convert.json`: the same four inputs through pinned
   `emojikit.media.to_static_png`, with exact PNG-byte and decoded-RGBA hashes,
   size/mode and blank-image refusal. Output preservation is checked separately
-  by the native test. These are Pillow 12.3.0 source outputs, not target hashes.
+  by the native test. These are Pillow 12.3.0 Windows source outputs, not target hashes.
+  PNG compression bytes can differ across external platform codec builds even
+  when decoded pixels are identical. During migration, the hosted checkpoint
+  regenerates the pinned source result on its runner, verifies unchanged RGBA
+  hashes/refusals and compares target bytes to that independent same-runner
+  source oracle. It never replaces the committed expectation with target output.
 - `coin-aliases.json`: CPython 3.11.9, Unicode 14.0.0; pinned `coins/alias_map.py`
   AST `DROP`, `norm` and `main`, with in-memory map/CSV/missing-row I/O seams.
   Expected map order, messages, ambiguity and errors are source observations.
