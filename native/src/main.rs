@@ -121,6 +121,20 @@ const COMMANDS: &[&str] = &[
 ];
 fn main() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args
+        .first()
+        .is_some_and(|command| command == "codec-worker")
+    {
+        return match root() {
+            Ok(root) => {
+                std::process::ExitCode::from(_native::codec_worker::run(&root, &args[1..]) as u8)
+            }
+            Err(error) => {
+                eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                std::process::ExitCode::from(2)
+            }
+        };
+    }
     if args.is_empty() || args == ["--help"] || args == ["-h"] {
         println!(
             "Numera Emoji Mapper native backend\nUsage: numera-emoji COMMAND [OPTIONS]\nCommands: panel {}\nUse COMMAND --help for options (emoji-bot uses environment configuration).",

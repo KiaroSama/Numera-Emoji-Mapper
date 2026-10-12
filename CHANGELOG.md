@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Initial Rust-owned static codec identity, internal worker envelope and pure
+  coin-alias policy, with pinned source fixtures and a limited hosted migration
+  checkpoint. Production media dispatch is unchanged; full migration and source
+  retirement remain pending.
+
 - Native catalog, Telegram transport, publisher, bot, panel, maintenance and
   reporting commands, with source-oracle recovery/rollback tests and offline
   platform packages. Replaced Python application counterparts are retired;

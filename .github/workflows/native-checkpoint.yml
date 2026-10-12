@@ -1,0 +1,88 @@
+name: Native migration checkpoint
+
+on:
+  push:
+    branches: [feature/first-party-rust]
+    paths:
+      - native/**
+      - tests/fixtures/native/**
+      - .github/workflows/native-checkpoint.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-checkpoint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  codec-alias:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: "2"
+      PYO3_PYTHON: python
+      PYTHONUTF8: "1"
+      NUMERA_EMOJI_MAPPER_NO_DOTENV: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install unchanged external static codec
+        run: python -m pip install --only-binary=:all: Pillow==12.3.0
+      - name: Select supported compiler and check components
+        run: |
+          rustup default 1.99.0
+          rustup component add rustfmt clippy
+      - name: Bounded compile, lint and public seam tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs/checkpoint logs/tmp .cache
+          export TEMP="$PWD/logs/tmp" TMP="$PWD/logs/tmp" TMPDIR="$PWD/logs/tmp"
+          export PYTHONHOME="$pythonLocation"
+          export PYTHONPATH="$pythonLocation/lib/python3.11/site-packages"
+          export PYTHONNOUSERSITE=1 PYTHONSAFEPATH=1
+          export LD_LIBRARY_PATH="$pythonLocation/lib:${LD_LIBRARY_PATH:-}"
+          bounded() {
+            local pid code started advanced size previous=0
+            local output="$PWD/logs/checkpoint/$1.log"
+            shift
+            setsid "$@" >"$output" 2>&1 &
+            pid=$!
+            started=$SECONDS
+            advanced=$started
+            trap 'kill -KILL -- -"$pid" 2>/dev/null || :; wait "$pid" 2>/dev/null || :' EXIT INT TERM
+            while kill -0 "$pid" 2>/dev/null; do
+              size=$(stat -c %s "$output")
+              if (( size != previous )); then advanced=$SECONDS; previous=$size; fi
+              if (( SECONDS-started >= 900 || SECONDS-advanced >= 180 )); then
+                kill -KILL -- -"$pid" 2>/dev/null || :
+                wait "$pid" 2>/dev/null || :
+                cat "$output"
+                echo '::error::checkpoint exceeded wall/idle bound'
+                exit 124
+              fi
+              sleep 1
+            done
+            code=0
+            wait "$pid" || code=$?
+            kill -KILL -- -"$pid" 2>/dev/null || :
+            trap - EXIT INT TERM
+            cat "$output"
+            return "$code"
+          }
+          bounded format cargo fmt --manifest-path native/Cargo.toml --check
+          bounded lint cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
+          bounded seams cargo test --manifest-path native/Cargo.toml --locked --test codec_static --test codec_worker --test codec_worker_ipc --test coin_aliases -- --test-threads=2
+      - name: Preserve bounded checkpoint diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: native-codec-alias-checkpoint
+          path: logs/checkpoint/*.log
+          if-no-files-found: warn
+          retention-days: 7

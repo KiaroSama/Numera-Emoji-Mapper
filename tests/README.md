@@ -12,6 +12,12 @@ with `python -m tests._similarity_oracle`; changes require reviewing source pari
 Rust formatting, clippy, unit checks and a repeated benchmark run once in the
 3.11 build job; native parity also runs on Windows and Python 3.12/3.14.
 
+The expanded first-party Rust migration has a separate limited hosted checkpoint
+for static codec identity, the internal worker envelope and pure coin aliases.
+It runs only the new public seams, with pinned [source fixtures](fixtures/native/README.md).
+It does not replace the main suite, four-platform acceptance or source-retirement
+gates. No production codec adapter is switched by this checkpoint.
+
 Run from the repository root:
 
 ```powershell
