@@ -6,6 +6,20 @@ retired from production. Final integrated source-retirement acceptance and all
 four platform package checks have passed; the revision-bound evidence is below.
 See [ADR 0003](adr/0003-rust-local-backend.md) for the decision and rollback boundary.
 
+## Expanded first-party migration (in progress)
+
+The accepted backend migration above does not mean the whole repository is
+Rust-owned. A subsequent migration includes the remaining local media/identity,
+coin-domain, test, generator and tooling code. Browser assets and the entire
+Cloudflare Worker remain unchanged; third-party codec implementations remain
+external dependencies.
+
+The first static-image/identity and pure coin-alias slice is additive and uses
+pinned source-generated fixtures. The internal `codec-worker` entry point is
+not yet the production media adapter. Its limited hosted checkpoint is build
+and seam evidence only, not complete parity, a new installable release or
+permission to remove the old source. Existing installed packages remain active.
+
 ## Ready-package installation
 
 Download a matching archive and checksum from a successful **Prebuilt packages**
