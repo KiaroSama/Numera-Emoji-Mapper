@@ -31,7 +31,7 @@ fn executable_codec_envelope_is_owned_bounded_and_exclusive() {
         .enable_all()
         .build()
         .unwrap();
-    for (index, request, existing, expected_code) in [
+    for (index, mut request, existing, expected_code) in [
         (
             0,
             json!({"operation":"fingerprint","source":source,"format":"static"}),
@@ -50,11 +50,21 @@ fn executable_codec_envelope_is_owned_bounded_and_exclusive() {
             true,
             2,
         ),
+        (
+            3,
+            json!({"operation":"convert","source":source,"format":"static","target_format":"static"}),
+            false,
+            0,
+        ),
     ] {
         let workspace = directory.join(index.to_string());
         std::fs::create_dir(&workspace).unwrap();
         let input = workspace.join("request.json");
         let output = workspace.join("response.json");
+        let converted = workspace.join("converted.png");
+        if index == 3 {
+            request["output"] = json!(converted);
+        }
         _native::atomic::write_json(&input, &request).unwrap();
         if existing {
             std::fs::write(&output, b"preserve").unwrap();
@@ -94,7 +104,29 @@ fn executable_codec_envelope_is_owned_bounded_and_exclusive() {
             } else {
                 let response: Value = serde_json::from_slice(&bytes).unwrap();
                 assert_eq!(response["ok"], expected_code == 0);
-                if expected_code == 0 {
+                if index == 3 {
+                    let conversion: Value = serde_json::from_str(include_str!(
+                        "../../tests/fixtures/native/static-convert.json"
+                    ))
+                    .unwrap();
+                    let golden = conversion["cases"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .find(|case| case["name"] == "alpha-edge")
+                        .unwrap();
+                    use sha2::{Digest, Sha256};
+                    let bytes = std::fs::read(&converted).unwrap();
+                    assert_eq!(
+                        Sha256::digest(&bytes)
+                            .iter()
+                            .map(|byte| format!("{byte:02x}"))
+                            .collect::<String>(),
+                        golden["expected"]["png_sha256"]
+                    );
+                    assert_eq!(response["result"]["fmt"], "static");
+                    assert_eq!(response["result"]["extension"], ".png");
+                } else if expected_code == 0 {
                     assert_eq!(
                         response["result"],
                         json!({"content_key":expected["expected"]["content_key"],"phash":expected["expected"]["phash"],"fmt":"static","extension":".png"})

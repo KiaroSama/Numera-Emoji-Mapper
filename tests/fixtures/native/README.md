@@ -10,6 +10,10 @@ They cover an initial migration slice, not the whole source test inventory.
   of the repository's public artwork; other inputs exercise opaque pixels,
   invisible RGB under transparency and alpha boundaries. Source revision/hash
   are recorded in the fixture. This does not cover SVG, Lottie or VP9.
+- `static-convert.json`: the same four inputs through pinned
+  `emojikit.media.to_static_png`, with exact PNG-byte and decoded-RGBA hashes,
+  size/mode and blank-image refusal. Output preservation is checked separately
+  by the native test. These are Pillow 12.3.0 source outputs, not target hashes.
 - `coin-aliases.json`: CPython 3.11.9, Unicode 14.0.0; pinned `coins/alias_map.py`
   AST `DROP`, `norm` and `main`, with in-memory map/CSV/missing-row I/O seams.
   Expected map order, messages, ambiguity and errors are source observations.

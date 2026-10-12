@@ -48,13 +48,29 @@ pub fn execute(request: &Value) -> Result<Value, String> {
         .get("operation")
         .and_then(Value::as_str)
         .ok_or("unsupported media operation")?;
-    if !matches!(operation, "image_info" | "dimensions" | "fingerprint") {
+    if !matches!(
+        operation,
+        "image_info" | "dimensions" | "fingerprint" | "convert"
+    ) {
         return Err("unsupported native codec operation".into());
     }
     if request.get("format").and_then(Value::as_str) != Some("static") {
         return Err("static codec operation requires static format".into());
     }
     let source = path_field(request, "source")?;
+    if operation == "convert" {
+        if request.get("target_format").and_then(Value::as_str) != Some("static") {
+            return Err("invalid target format".into());
+        }
+        let output = request
+            .get("output")
+            .and_then(Value::as_str)
+            .filter(|path| !path.is_empty())
+            .map(PathBuf::from)
+            .ok_or("output must be a non-empty path")?;
+        crate::codec_image::to_static_png(&source, &output)?;
+        return execute(&json!({"operation":"fingerprint","source":output,"format":"static"}));
+    }
     let info = crate::codec_image::inspect_and_fingerprint(&source)?;
     Ok(match operation {
         "image_info" => json!({"size":info["size"],"mode":info["mode"],"blank":info["blank"]}),
@@ -149,7 +165,15 @@ pub fn run(root: &Path, arguments: &[String]) -> i32 {
         }
         let operation = serde_json::from_slice::<Value>(&bytes)
             .map_err(|_| "invalid codec request JSON".to_owned())
-            .and_then(|request| execute(&request));
+            .and_then(|request| {
+                if let Some(output) = request.get("output").and_then(Value::as_str) {
+                    let output = Path::new(output);
+                    if !output.is_absolute() || envelope_parent(root, output)? != response_parent {
+                        return Err("codec output must stay in its owned envelope directory".into());
+                    }
+                }
+                execute(&request)
+            });
         let success = operation.is_ok();
         let response = match operation {
             Ok(value) => json!({"ok":true,"result":value}),
