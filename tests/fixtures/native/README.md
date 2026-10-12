@@ -4,6 +4,10 @@ These expected values come from the pinned source revision
 `1a36a968b006236bd0665a1da65c541938c06061`, not from the replacement Rust code.
 They cover an initial migration slice, not the whole source test inventory.
 
+- `media-format.json`: 22 pinned byte-header/extension detections and eight
+  collision-key observations. Magic bytes take priority over extension hints;
+  JSON without a hint stays unknown. This is not video decoding or local CLI
+  target-format selection. Collision keys retain the final sampled lookup bucket.
 - `static-codec.json`: Pillow 12.3.0; original
   `emojikit.identity.fingerprint` and `emojikit.media.is_blank_image` outputs.
   Input hashes protect the four PNGs. The public-logo input is an unchanged copy

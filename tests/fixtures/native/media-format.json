@@ -1,0 +1,242 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89"
+  },
+  "cases": [
+    {
+      "name": "ebml.bin",
+      "header_hex": "1a45dfa3",
+      "expected": {
+        "header_format": "video",
+        "format": "video",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "gzip.png",
+      "header_hex": "1f8b",
+      "expected": {
+        "header_format": "animated",
+        "format": "animated",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "png.tgs",
+      "header_hex": "89504e470d0a1a0a",
+      "expected": {
+        "header_format": "static",
+        "format": "static",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "gif.bin",
+      "header_hex": "474946383961",
+      "expected": {
+        "header_format": "static",
+        "format": "static",
+        "extension": ".gif"
+      }
+    },
+    {
+      "name": "gif87.bin",
+      "header_hex": "474946383761",
+      "expected": {
+        "header_format": "static",
+        "format": "static",
+        "extension": ".gif"
+      }
+    },
+    {
+      "name": "false-gif.bin",
+      "header_hex": "47494677726f6e67",
+      "expected": {
+        "header_format": "unknown",
+        "format": "unknown",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "webp.bin",
+      "header_hex": "524946460000000057454250",
+      "expected": {
+        "header_format": "static",
+        "format": "static",
+        "extension": ".webp"
+      }
+    },
+    {
+      "name": "riff.bin",
+      "header_hex": "5249464677726f6e67",
+      "expected": {
+        "header_format": "unknown",
+        "format": "unknown",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "truncated.bin",
+      "header_hex": "52494646",
+      "expected": {
+        "header_format": "unknown",
+        "format": "unknown",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "unknown.json",
+      "header_hex": "7b7d",
+      "expected": {
+        "header_format": "unknown",
+        "format": "unknown",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "upper.PNG",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "static",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.tgs",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "animated",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.mp4",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "video",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.svg",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "static",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.apng",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "static",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.mov",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "video",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.mkv",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "video",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.m4v",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "video",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.avi",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "video",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.JPEG",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "static",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "hint.bmp",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "static",
+        "extension": ".png"
+      }
+    },
+    {
+      "name": "empty.bin",
+      "header_hex": "",
+      "expected": {
+        "header_format": "unknown",
+        "format": "unknown",
+        "extension": ".png"
+      }
+    }
+  ],
+  "collision_input_hex": "696e646570656e64656e7420636f6c6c6973696f6e20696e70757400ff",
+  "collisions": [
+    {
+      "key": "s:lookup",
+      "expected": "s:a57fce486fa341498e53bc8e11d2c8a6:lookup"
+    },
+    {
+      "key": "v:old:lookup",
+      "expected": "v:a57fce486fa341498e53bc8e11d2c8a6:lookup"
+    },
+    {
+      "key": "a:one:two:tail",
+      "expected": "a:a57fce486fa341498e53bc8e11d2c8a6:tail"
+    },
+    {
+      "key": "no-colon",
+      "expected": "no-colon:a57fce486fa341498e53bc8e11d2c8a6:"
+    },
+    {
+      "key": ":empty",
+      "expected": ":a57fce486fa341498e53bc8e11d2c8a6:empty"
+    },
+    {
+      "key": "v:",
+      "expected": "v:a57fce486fa341498e53bc8e11d2c8a6:"
+    },
+    {
+      "key": "\u96ea:\u53c2\u7167",
+      "expected": "\u96ea:a57fce486fa341498e53bc8e11d2c8a6:\u53c2\u7167"
+    },
+    {
+      "key": "",
+      "expected": ":a57fce486fa341498e53bc8e11d2c8a6:"
+    }
+  ]
+}

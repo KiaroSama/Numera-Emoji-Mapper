@@ -17,6 +17,7 @@ pub mod brand_logo;
 pub mod browser_open;
 pub mod catalog;
 pub mod catalog_read;
+pub mod codec_format;
 pub mod codec_image;
 pub mod codec_lottie_identity;
 pub mod codec_lottie_load;
