@@ -23,7 +23,7 @@ fn static_conversion_preserves_source_png_pixels_and_blank_refusal() {
         "1a36a968b006236bd0665a1da65c541938c06061"
     );
     let cases = fixture["cases"].as_array().unwrap();
-    assert_eq!(cases.len(), 4);
+    assert_eq!(cases.len(), 5);
     let directory = root
         .join("logs")
         .join(format!("static conversion {}", std::process::id()));

@@ -241,6 +241,8 @@ jobs:
         run: |
           cargo fmt --manifest-path native/Cargo.toml --check
           cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
+          python -m tests._static_convert_oracle
+          export NUMERA_STATIC_CONVERT_ORACLE="$PWD/logs/checkpoint/static-convert-source.json"
           cargo test --manifest-path native/Cargo.toml --locked -- --test-threads=2
 
       - name: Similarity benchmark and parity

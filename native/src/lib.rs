@@ -18,6 +18,8 @@ pub mod browser_open;
 pub mod catalog;
 pub mod catalog_read;
 pub mod codec_image;
+pub mod codec_svg;
+pub mod codec_tint;
 pub mod codec_worker;
 pub mod coin_aliases;
 pub mod collection_manifest;

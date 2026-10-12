@@ -13,7 +13,7 @@ fn printable(c: char) -> bool {
     let index = ranges.partition_point(|range| range[1] < code);
     ranges.get(index).is_none_or(|range| range[0] > code)
 }
-fn quoted(text: &str) -> String {
+pub fn quoted(text: &str) -> String {
     let quote = if text.contains('\'') && !text.contains('"') {
         '"'
     } else {

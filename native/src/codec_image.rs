@@ -93,7 +93,16 @@ fn inspect(py: Python<'_>, path: &Path) -> PyResult<Value> {
 
 fn fitted_png(py: Python<'_>, path: &Path) -> PyResult<(Vec<u8>, Vec<u8>, bool)> {
     let module = py.import("PIL.Image")?;
-    let source = OpenImage(module.call_method1("open", (path.to_path_buf(),))?);
+    let source = OpenImage(
+        if path
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("svg"))
+        {
+            crate::codec_svg::load_rgba(py, path)?
+        } else {
+            module.call_method1("open", (path.to_path_buf(),))?
+        },
+    );
     let rgba = source.0.call_method1("convert", ("RGBA",))?;
     let alpha = rgba.call_method1("getchannel", ("A",))?;
     let bounds = alpha.call_method0("getbbox")?;
