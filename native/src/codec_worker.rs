@@ -84,11 +84,29 @@ pub fn execute(request: &Value) -> Result<Value, String> {
             | "same_image"
             | "preview"
             | "prepare"
+            | "collision"
     ) {
         return Err("unsupported native codec operation".into());
     }
-    if request.get("format").and_then(Value::as_str) == Some("animated") {
-        let source = path_field(request, "source")?;
+    let source = path_field(request, "source")?;
+    let format = match request.get("format") {
+        None | Some(Value::Null | Value::Bool(false)) => crate::codec_format::detect(&source)?,
+        Some(Value::String(value)) if value.is_empty() => crate::codec_format::detect(&source)?,
+        Some(Value::String(value)) => value.as_str(),
+        _ => return Err("unsupported media format".into()),
+    };
+    if !matches!(format, "static" | "animated" | "video") && operation != "convert" {
+        return Err("unsupported media format".into());
+    }
+    if operation == "collision" {
+        let key = request
+            .get("key")
+            .and_then(Value::as_str)
+            .filter(|key| !key.is_empty())
+            .ok_or("collision requires a content key")?;
+        return crate::codec_format::collision_key(&source, key).map(Value::String);
+    }
+    if format == "animated" {
         return match operation {
             "fingerprint" => crate::codec_lottie_identity::fingerprint(&source),
             "prepare" => {
@@ -131,10 +149,9 @@ pub fn execute(request: &Value) -> Result<Value, String> {
             _ => Err("animated codec operation is not yet supported".into()),
         };
     }
-    if request.get("format").and_then(Value::as_str) != Some("static") {
-        return Err("static codec operation requires static format".into());
+    if format != "static" && operation != "convert" {
+        return Err("video codec operation is not yet supported".into());
     }
-    let source = path_field(request, "source")?;
     if operation == "preview" {
         let (size, _, _) = preview_parameters(request)?;
         let output = request
@@ -191,18 +208,7 @@ pub fn execute(request: &Value) -> Result<Value, String> {
         "image_info" => json!({"size":info["size"],"mode":info["mode"],"blank":info["blank"]}),
         "dimensions" => info["size"].clone(),
         _ => {
-            let mut header = [0_u8; 16];
-            let count = std::fs::File::open(&source)
-                .and_then(|mut input| input.read(&mut header))
-                .map_err(|_| "cannot read static media header".to_owned())?;
-            let header = &header[..count];
-            let extension = if header.starts_with(b"RIFF") && header.get(8..12) == Some(b"WEBP") {
-                ".webp"
-            } else if header.starts_with(b"GIF") {
-                ".gif"
-            } else {
-                ".png"
-            };
+            let extension = crate::codec_format::extension(&source, "static")?;
             json!({"content_key":info["content_key"],"phash":info["phash"],"fmt":"static","extension":extension})
         }
     })
