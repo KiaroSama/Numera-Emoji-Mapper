@@ -26,6 +26,13 @@ They cover an initial migration slice, not the whole source test inventory.
   Locks, atomic file writes, inventory parsing/refill and the CLI are not
   exercised by this pure-policy fixture.
 
+- `static-compare.json`: pinned `emojikit.identity.same_image` results for
+  equal/near/different colour, invisible RGB and corrupt inputs. Unknown remains
+  null, not false. This static contract must not be applied to video timelines.
+- `lottie-validation.json`: pinned `validate_tgs` policy with already-decoded
+  document and file stat/magic/load seams; 84 source cases cover timeline,
+  numeric coercion, required fields and nested subtract-mask refusal. This is
+  not gzip, JSON decoder, renderer or exception-class parity.
 - `lottie-tint.json`: pinned `emojikit/repaint.py` pure source AST under
   CPython 3.11.9; tint parsing/errors, boolean numeric quirks, solid/keyframed
   colours and gradient opacity preservation. This does not cover animation

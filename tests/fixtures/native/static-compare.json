@@ -1,0 +1,56 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89",
+  "source": "emojikit.identity.same_image",
+  "Pillow": "12.3.0",
+  "cases": [
+    {
+      "name": "red-red",
+      "a": "tests/fixtures/native/static-compare/red.png",
+      "b": "tests/fixtures/native/static-compare/red.png",
+      "a_sha256": "21ab8a45d6f3388cd1b1db02505679e783cbf7ac934eba1e41a3dfc422c4585e",
+      "b_sha256": "21ab8a45d6f3388cd1b1db02505679e783cbf7ac934eba1e41a3dfc422c4585e",
+      "expected": true
+    },
+    {
+      "name": "red-near-red",
+      "a": "tests/fixtures/native/static-compare/red.png",
+      "b": "tests/fixtures/native/static-compare/near-red.png",
+      "a_sha256": "21ab8a45d6f3388cd1b1db02505679e783cbf7ac934eba1e41a3dfc422c4585e",
+      "b_sha256": "f4efc09b0ef3c3bb89aeaaf68fd4b72b510884da58a570169dd4cdf4fde87e8f",
+      "expected": true
+    },
+    {
+      "name": "red-green",
+      "a": "tests/fixtures/native/static-compare/red.png",
+      "b": "tests/fixtures/native/static-compare/green.png",
+      "a_sha256": "21ab8a45d6f3388cd1b1db02505679e783cbf7ac934eba1e41a3dfc422c4585e",
+      "b_sha256": "26e69256a5f9d530adc4caf209bc6f816c990f10e4b15dcf99b93b19c04997cf",
+      "expected": false
+    },
+    {
+      "name": "hidden-a-hidden-b",
+      "a": "tests/fixtures/native/static-compare/hidden-a.png",
+      "b": "tests/fixtures/native/static-compare/hidden-b.png",
+      "a_sha256": "0d74e746acfa40af607e5815c602de996584585a10d547c73f03fd6fe956e5bc",
+      "b_sha256": "da6dc070a3d82b4f1ea21295465bf3012ca04dfbf232c13da7084e42b3594f25",
+      "expected": true
+    },
+    {
+      "name": "red-corrupt",
+      "a": "tests/fixtures/native/static-compare/red.png",
+      "b": "tests/fixtures/native/static-compare/corrupt.png",
+      "a_sha256": "21ab8a45d6f3388cd1b1db02505679e783cbf7ac934eba1e41a3dfc422c4585e",
+      "b_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "expected": null
+    },
+    {
+      "name": "corrupt-corrupt",
+      "a": "tests/fixtures/native/static-compare/corrupt.png",
+      "b": "tests/fixtures/native/static-compare/corrupt.png",
+      "a_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "b_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "expected": null
+    }
+  ]
+}
