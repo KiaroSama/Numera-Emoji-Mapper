@@ -195,10 +195,19 @@ pub fn to_static_png(source: &Path, output: &Path) -> Result<Value, String> {
     )
 }
 
-fn lossless_webp(py: Python<'_>, path: &Path) -> PyResult<Vec<u8>> {
+fn lossless_webp(py: Python<'_>, path: &Path, tint: Option<[u8; 3]>) -> PyResult<Vec<u8>> {
     let module = py.import("PIL.Image")?;
     let source = OpenImage(module.call_method1("open", (path.to_path_buf(),))?);
-    let rgba = source.0.call_method1("convert", ("RGBA",))?;
+    let rgba = OpenImage(source.0.call_method1("convert", ("RGBA",))?);
+    let flat = if let Some([r, g, b]) = tint {
+        let size = rgba.0.getattr("size")?;
+        let flat = OpenImage(module.call_method1("new", ("RGBA", size, (r, g, b, 255)))?);
+        let alpha = OpenImage(rgba.0.call_method1("getchannel", ("A",))?);
+        flat.0.call_method1("putalpha", (&alpha.0,))?;
+        flat
+    } else {
+        rgba
+    };
     let buffer = OpenImage(py.import("io")?.call_method0("BytesIO")?);
     let options = PyDict::new(py);
     options.set_item("format", "WEBP")?;
@@ -206,7 +215,7 @@ fn lossless_webp(py: Python<'_>, path: &Path) -> PyResult<Vec<u8>> {
     options.set_item("quality", 100)?;
     options.set_item("method", 6)?;
     options.set_item("exact", true)?;
-    rgba.call_method("save", (&buffer.0,), Some(&options))?;
+    flat.0.call_method("save", (&buffer.0,), Some(&options))?;
     Ok(buffer
         .0
         .call_method0("getvalue")?
@@ -224,7 +233,7 @@ pub fn reencode_static(path: &Path) -> Result<bool, String> {
     }
     let before = std::fs::read(path).map_err(|_| "cannot read static reencode source")?;
     Python::initialize();
-    let Some(bytes) = Python::attach(|py| lossless_webp(py, path).ok()) else {
+    let Some(bytes) = Python::attach(|py| lossless_webp(py, path, None).ok()) else {
         return Ok(false);
     };
     if bytes == before {
@@ -232,6 +241,21 @@ pub fn reencode_static(path: &Path) -> Result<bool, String> {
     }
     crate::atomic::write_bytes(path, &bytes)
         .map_err(|_| "cannot replace static reencode source")?;
+    Ok(true)
+}
+
+pub fn repaint_static(path: &Path, rgb: [u8; 3]) -> Result<bool, String> {
+    if !path.is_absolute()
+        || !std::fs::symlink_metadata(path)
+            .is_ok_and(|m| m.is_file() && !m.file_type().is_symlink())
+    {
+        return Err("static tint source must be an absolute regular non-symlink file".into());
+    }
+    Python::initialize();
+    let Some(bytes) = Python::attach(|py| lossless_webp(py, path, Some(rgb)).ok()) else {
+        return Ok(false);
+    };
+    crate::atomic::write_bytes(path, &bytes).map_err(|_| "cannot replace static tint source")?;
     Ok(true)
 }
 
