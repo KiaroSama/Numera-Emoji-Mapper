@@ -85,6 +85,7 @@ pub fn execute(request: &Value) -> Result<Value, String> {
             | "preview"
             | "prepare"
             | "collision"
+            | "usable"
     ) {
         return Err("unsupported native codec operation".into());
     }
@@ -106,8 +107,30 @@ pub fn execute(request: &Value) -> Result<Value, String> {
             .ok_or("collision requires a content key")?;
         return crate::codec_format::collision_key(&source, key).map(Value::String);
     }
+    if matches!(operation, "compare" | "same_image") && format != "video" {
+        let other = path_field(request, "other")?;
+        if operation == "compare"
+            && std::fs::metadata(&source).ok().map(|m| m.len())
+                == std::fs::metadata(&other).ok().map(|m| m.len())
+            && std::fs::read(&source)
+                .ok()
+                .zip(std::fs::read(&other).ok())
+                .is_some_and(|(a, b)| a == b)
+        {
+            return Ok(json!(true));
+        }
+        return Ok(json!(if format == "animated" {
+            crate::codec_lottie_identity::same_image(&source, &other)
+        } else {
+            crate::codec_image::same_image(&source, &other)
+        }));
+    }
     if format == "animated" {
         return match operation {
+            "usable" => {
+                crate::codec_lottie_validate::validate_file(&source)?;
+                Ok(json!(true))
+            }
             "fingerprint" => crate::codec_lottie_identity::fingerprint(&source),
             "prepare" => {
                 let reencode = request.get("reencode").cloned().unwrap_or(json!(false));
@@ -176,20 +199,6 @@ pub fn execute(request: &Value) -> Result<Value, String> {
             }
         }
     }
-    if matches!(operation, "compare" | "same_image") {
-        let other = path_field(request, "other")?;
-        if operation == "compare"
-            && std::fs::metadata(&source).ok().map(|m| m.len())
-                == std::fs::metadata(&other).ok().map(|m| m.len())
-            && std::fs::read(&source)
-                .ok()
-                .zip(std::fs::read(&other).ok())
-                .is_some_and(|(a, b)| a == b)
-        {
-            return Ok(json!(true));
-        }
-        return Ok(json!(crate::codec_image::same_image(&source, &other)));
-    }
     if operation == "convert" {
         if request.get("target_format").and_then(Value::as_str) != Some("static") {
             return Err("invalid target format".into());
@@ -207,6 +216,7 @@ pub fn execute(request: &Value) -> Result<Value, String> {
     Ok(match operation {
         "image_info" => json!({"size":info["size"],"mode":info["mode"],"blank":info["blank"]}),
         "dimensions" => info["size"].clone(),
+        "usable" => json!(info["blank"] == false),
         _ => {
             let extension = crate::codec_format::extension(&source, "static")?;
             json!({"content_key":info["content_key"],"phash":info["phash"],"fmt":"static","extension":extension})

@@ -161,6 +161,35 @@ fn iterable(value: Option<&Value>) -> Result<Vec<Value>, String> {
     }
 }
 
+pub fn validate_file(path: &std::path::Path) -> Result<(), String> {
+    use std::io::Read;
+    let filename = path
+        .file_name()
+        .ok_or("TGS source has no filename")?
+        .to_string_lossy();
+    let size = std::fs::metadata(path)
+        .map_err(|_| "cannot inspect TGS source")?
+        .len();
+    if size > 65536 {
+        return Err(format!("{filename}: TGS {size} > 65536 bytes"));
+    }
+    let mut magic = [0_u8; 2];
+    let count = std::fs::File::open(path)
+        .and_then(|mut file| file.read(&mut magic))
+        .map_err(|_| "cannot read TGS source")?;
+    if count != 2 || magic != [0x1f, 0x8b] {
+        return Err(format!("{filename}: TGS must be gzip-compressed Lottie"));
+    }
+    let document = crate::codec_lottie_load::load(path).map_err(|error| {
+        if error.raw_fallback {
+            format!("{filename}: not a valid TGS/Lottie ({})", error.message)
+        } else {
+            error.message
+        }
+    })?;
+    validate_document(&document, &filename, size)
+}
+
 pub fn validate_document(data: &Value, filename: &str, compressed_size: u64) -> Result<(), String> {
     if compressed_size > 65536 {
         return Err(format!("{filename}: TGS {compressed_size} > 65536 bytes"));
