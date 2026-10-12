@@ -76,7 +76,7 @@ fn inspect(py: Python<'_>, path: &Path) -> PyResult<Value> {
             ));
         }
         let mut bits = 0_u64;
-        for row in bytes.chunks_exact(9) {
+        for row in bytes.as_chunks::<9>().0 {
             for pair in row.windows(2) {
                 bits = (bits << 1) | u64::from(pair[0] > pair[1]);
             }
