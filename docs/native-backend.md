@@ -15,7 +15,8 @@ Cloudflare Worker remain unchanged; third-party codec implementations remain
 external dependencies.
 
 The initial static-image/identity/conversion, SVG renderer binding, pure Lottie
-tint/bounded TGS loading/canonical animated identity/loaded-document validation,
+tint/bounded TGS loading/canonical animated identity/loaded-document validation
+and Lottie preview rendering,
 static tri-state comparison and coin-alias/inventory-text
 slices are additive and use
 pinned source-generated fixtures. The internal `codec-worker` entry point is
