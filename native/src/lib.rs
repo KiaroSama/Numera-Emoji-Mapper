@@ -19,6 +19,7 @@ pub mod catalog;
 pub mod catalog_read;
 pub mod codec_image;
 pub mod codec_lottie_load;
+pub mod codec_lottie_package;
 pub mod codec_lottie_validate;
 pub mod codec_svg;
 pub mod codec_tint;

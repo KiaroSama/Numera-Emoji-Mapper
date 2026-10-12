@@ -33,6 +33,9 @@ They cover an initial migration slice, not the whole source test inventory.
 - `static-compare.json`: pinned `emojikit.identity.same_image` results for
   equal/near/different colour, invisible RGB and corrupt inputs. Unknown remains
   null, not false. This static contract must not be applied to video timelines.
+- `tgs-package.json`: pinned source Unicode/deterministic gzip package bytes,
+  wrong canvas and nested subtract-mask refusal. Native publication additionally
+  preserves existing output and refuses to publish failed candidates.
 - `tgs-load.json`: seven pinned source cases over actual gzip files and plain
   JSON. Includes corrupt gzip, malformed UTF-8/JSON, non-object roots and an
   8 MiB expansion refusal. `.tgs` inputs are binary gzip fixtures, including
