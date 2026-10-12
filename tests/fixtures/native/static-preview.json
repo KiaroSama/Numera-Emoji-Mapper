@@ -1,0 +1,67 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7",
+  "Pillow": "12.3.0",
+  "cases": [
+    {
+      "name": "public-logo",
+      "input": "tests/fixtures/native/static-codec/public-logo.png",
+      "input_sha256": "6f85376de3893dfa1e78045ce264103b0055acec400dd8a35222405d5c4f6951",
+      "size": 52,
+      "fps": 15,
+      "still": false,
+      "expected": {
+        "bytes": 4666,
+        "sha256": "3bbeeca0cc02c36892881f9c77b8e9b99d996fc89583604b76590ae857efe119",
+        "size": [
+          52,
+          52
+        ],
+        "rgba_sha256": "ea4ed4bfbcf273c3dccfa2e1b664a882470aa35ac98854632f5bc29e764fed4f"
+      }
+    },
+    {
+      "name": "alpha-edge",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "size": 52,
+      "fps": 15,
+      "still": false,
+      "expected": {
+        "bytes": 56,
+        "sha256": "e405f97b1678f990d1acd8de73564e2de947636a085dafd5ea18e8db9bd28f8e",
+        "size": [
+          13,
+          9
+        ],
+        "rgba_sha256": "4eaa88897ff04f7b9e4207b2536d6ae6b17c5fd508a8359f821d20553c5c7a26"
+      }
+    },
+    {
+      "name": "hidden-rgb",
+      "input": "tests/fixtures/native/static-codec/transparent-rgb.png",
+      "input_sha256": "07618aaae1edc16ce6a01933b9f5148ea14b0b6638b58e0c75a26a33559956c0",
+      "size": 52,
+      "fps": 15,
+      "still": false,
+      "expected": {
+        "bytes": 36,
+        "sha256": "86ae1dc8f3cb0200040ada5c5bcadf9dd5baa3a07e3afccd773434427c614e2c",
+        "size": [
+          13,
+          9
+        ],
+        "rgba_sha256": "f00539bb7c9b3069639807e216a5f4b221123750dad34af902fc12c70d3554b7"
+      }
+    },
+    {
+      "name": "corrupt",
+      "input": "tests/fixtures/native/static-compare/corrupt.png",
+      "input_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "size": 52,
+      "fps": 15,
+      "still": false,
+      "error_kind": "UnidentifiedImageError"
+    }
+  ]
+}

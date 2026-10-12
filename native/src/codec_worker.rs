@@ -40,6 +40,32 @@ fn path_field(request: &Value, field: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+fn preview_parameters(request: &Value) -> Result<(u32, u32, bool), String> {
+    request
+        .get("key")
+        .and_then(Value::as_str)
+        .filter(|key| !key.contains(['/', '\\']))
+        .ok_or("invalid preview parameters")?;
+    let size = request.get("size").cloned().unwrap_or(json!(104));
+    let fps = request.get("fps").cloned().unwrap_or(json!(15));
+    let still = request.get("still").cloned().unwrap_or(json!(false));
+    let size = size
+        .as_u64()
+        .and_then(|v| u32::try_from(v).ok())
+        .filter(|v| matches!(v, 52 | 72 | 104))
+        .ok_or("invalid preview parameters")?;
+    let fps = fps
+        .as_u64()
+        .and_then(|v| u32::try_from(v).ok())
+        .filter(|v| (1..=30).contains(v))
+        .ok_or("invalid preview parameters")?;
+    Ok((
+        size,
+        fps,
+        still.as_bool().ok_or("invalid preview parameters")?,
+    ))
+}
+
 pub fn execute(request: &Value) -> Result<Value, String> {
     if !request.is_object() {
         return Err("expected a media request object".into());
@@ -81,23 +107,7 @@ pub fn execute(request: &Value) -> Result<Value, String> {
                 crate::codec_lottie_identity::fingerprint(&source)
             }
             "preview" => {
-                request
-                    .get("key")
-                    .and_then(Value::as_str)
-                    .filter(|key| !key.contains(['/', '\\']))
-                    .ok_or("invalid preview parameters")?;
-                let size = request.get("size").cloned().unwrap_or(json!(104));
-                let fps = request.get("fps").cloned().unwrap_or(json!(15));
-                let still = request.get("still").cloned().unwrap_or(json!(false));
-                let size = size
-                    .as_u64()
-                    .and_then(|v| u32::try_from(v).ok())
-                    .ok_or("invalid preview parameters")?;
-                let fps = fps
-                    .as_u64()
-                    .and_then(|v| u32::try_from(v).ok())
-                    .ok_or("invalid preview parameters")?;
-                let still = still.as_bool().ok_or("invalid preview parameters")?;
+                let (size, fps, still) = preview_parameters(request)?;
                 let output = request
                     .get("output")
                     .and_then(Value::as_str)
@@ -126,7 +136,14 @@ pub fn execute(request: &Value) -> Result<Value, String> {
     }
     let source = path_field(request, "source")?;
     if operation == "preview" {
-        return Err("static preview operation is not yet supported".into());
+        let (size, _, _) = preview_parameters(request)?;
+        let output = request
+            .get("output")
+            .and_then(Value::as_str)
+            .filter(|path| !path.is_empty())
+            .map(PathBuf::from)
+            .ok_or("output must be a non-empty path")?;
+        return crate::codec_image::preview_static(&source, &output, size);
     }
     if operation == "prepare" {
         let reencode = request.get("reencode").cloned().unwrap_or(json!(false));

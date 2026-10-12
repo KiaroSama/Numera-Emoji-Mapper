@@ -30,6 +30,10 @@ They cover an initial migration slice, not the whole source test inventory.
   including RGB under fully transparent pixels and idempotent repeat. Hashes
   cover source-encoded bytes and every decoded RGBA byte; only owned copies are
   modified by the test.
+- `static-preview.json`: four pinned source observations for public artwork,
+  alpha edges, invisible RGB and corrupt files. Byte/pixel hashes and aspect/no-
+  enlargement behavior preserve the source's default BICUBIC thumbnail contract;
+  gallery thumbnails use a different filter and remain outside this slice.
 - `static-tint.json`: four pinned source observations over opaque, alpha-edge,
   invisible RGB and corrupt raster inputs. Exact lossless WEBP/RGBA/alpha hashes,
   repeat return values and corrupt-byte preservation are verified on owned copies.
