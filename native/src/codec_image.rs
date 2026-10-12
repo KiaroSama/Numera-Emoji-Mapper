@@ -259,6 +259,68 @@ pub fn repaint_static(path: &Path, rgb: [u8; 3]) -> Result<bool, String> {
     Ok(true)
 }
 
+pub fn preview_static(source: &Path, output: &Path, size: u32) -> Result<Value, String> {
+    if !source.is_absolute()
+        || !std::fs::symlink_metadata(source)
+            .is_ok_and(|m| m.is_file() && !m.file_type().is_symlink())
+    {
+        return Err("static preview source must be an absolute regular non-symlink file".into());
+    }
+    if !matches!(size, 52 | 72 | 104) {
+        return Err("invalid preview parameters".into());
+    }
+    if !output.is_absolute() || std::fs::symlink_metadata(output).is_ok() {
+        return Err("preview output must be absolute and must not already exist".into());
+    }
+    Python::initialize();
+    let bytes = Python::attach(|py| -> PyResult<Vec<u8>> {
+        let image = OpenImage(
+            py.import("PIL.Image")?
+                .call_method1("open", (source.to_path_buf(),))?,
+        );
+        let rgba = OpenImage(image.0.call_method1("convert", ("RGBA",))?);
+        rgba.0.call_method1("thumbnail", ((size, size),))?;
+        let buffer = OpenImage(py.import("io")?.call_method0("BytesIO")?);
+        let options = PyDict::new(py);
+        options.set_item("lossless", true)?;
+        options.set_item("exact", true)?;
+        rgba.0
+            .call_method("save", (&buffer.0, "WEBP"), Some(&options))?;
+        Ok(buffer
+            .0
+            .call_method0("getvalue")?
+            .cast_into::<PyBytes>()?
+            .as_bytes()
+            .to_vec())
+    })
+    .map_err(|_| "external static preview rendering failed")?;
+    let parent = output.parent().ok_or("preview output has no parent")?;
+    std::fs::create_dir_all(parent).map_err(|_| "cannot create preview directory")?;
+    let (staged, mut file) = loop {
+        let id = NEXT_OUTPUT.fetch_add(1, Ordering::Relaxed);
+        let path = parent.join(format!(".static-preview-{}-{id}.tmp", std::process::id()));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(file) => break (path, file),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(_) => return Err("cannot stage static preview".into()),
+        }
+    };
+    let persisted = file.write_all(&bytes).and_then(|_| file.sync_all());
+    drop(file);
+    let result = persisted.and_then(|_| crate::atomic::publish_new(&staged, output));
+    match std::fs::remove_file(&staged) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(_) => return Err("cannot clean staged static preview".into()),
+    }
+    result.map_err(|_| "cannot publish exclusive static preview")?;
+    Ok(json!({"bytes":bytes.len()}))
+}
+
 fn comparison_pixels(py: Python<'_>, path: &Path) -> PyResult<Vec<u8>> {
     let module = py.import("PIL.Image")?;
     let source = OpenImage(module.call_method1("open", (path.to_path_buf(),))?);
