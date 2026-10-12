@@ -144,9 +144,8 @@ pub async fn capture(
                     match std::fs::metadata(path) {
                         Ok(metadata) if metadata.len() <= ceiling => {}
                         Ok(_) => {
-                            return Poll::Ready(
-                                Err("codec capture exceeds its output limit".into()),
-                            );
+                            let error = "codec capture exceeds its output limit".into();
+                            return Poll::Ready(Err(error));
                         }
                         Err(_) => return Poll::Ready(Err("cannot inspect codec capture".into())),
                     }
