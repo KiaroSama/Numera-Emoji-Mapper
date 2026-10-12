@@ -74,8 +74,24 @@ fn video_probe_and_frozen_stream_match_pinned_source() {
         }
         assert_ne!(keys[0], keys[1], "opacity is part of video identity");
         assert_eq!(keys[1], keys[2], "extensionless VP9 must keep alpha");
-        let corrupt = root.join("tests/fixtures/native/static-compare/corrupt.png");
+        let refusal: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/native/video-probe-error.json"
+        ))
+        .unwrap();
+        assert_eq!(refusal["source_revision"], fixture["source_revision"]);
+        assert_eq!(
+            refusal["source_sha256"],
+            fixture["source_sha256"]["emojikit/media.py"]
+        );
+        assert_eq!(refusal["expected_failure"], true);
+        let corrupt = root.join(refusal["input"].as_str().unwrap());
+        let digest = Sha256::digest(std::fs::read(&corrupt).unwrap())
+            .iter()
+            .map(|v| format!("{v:02x}"))
+            .collect::<String>();
+        assert_eq!(digest, refusal["input_sha256"]);
         assert!(decoder.probe(&corrupt).await.is_err());
+        assert!(decoder.decoder_args(&corrupt).await.is_err());
         assert!(decoder.frames_rgba(&corrupt, 0).await.is_err());
         assert!(
             decoder

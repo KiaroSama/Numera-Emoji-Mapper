@@ -10,6 +10,9 @@ They cover an initial migration slice, not the whole source test inventory.
   observations. Encoded fixtures are synthetic artwork, not the final real-media
   acceptance corpus. Timeline comparison, decoder/cache failure recovery and
   conversion remain outside this initial seam.
+- `video-probe-error.json`: pinned source refusal for an actual truncated WebM,
+  with input/source hashes. Probe failure is not inferred from a raster decoder
+  failure: FFprobe can recognize a damaged PNG container without decoding pixels.
 - `media-format.json`: 22 pinned byte-header/extension detections and eight
   collision-key observations. Magic bytes take priority over extension hints;
   JSON without a hint stays unknown. This is not video decoding or local CLI
