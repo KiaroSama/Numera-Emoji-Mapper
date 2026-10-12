@@ -65,6 +65,21 @@ pub fn execute(request: &Value) -> Result<Value, String> {
         let source = path_field(request, "source")?;
         return match operation {
             "fingerprint" => crate::codec_lottie_identity::fingerprint(&source),
+            "prepare" => {
+                let reencode = request.get("reencode").cloned().unwrap_or(json!(false));
+                let reencode = reencode.as_bool().ok_or("reencode must be boolean")?;
+                if reencode {
+                    crate::codec_lottie_prepare::rewrite(&source, None)?;
+                }
+                if let Some(tint) = request.get("tint") {
+                    let tint = tint.as_str().ok_or("tint must be #RRGGBB")?;
+                    let rgb = crate::codec_tint::parse_tint(tint)?;
+                    if !crate::codec_lottie_prepare::rewrite(&source, Some(rgb))? {
+                        return Err("requested tint could not be applied".into());
+                    }
+                }
+                crate::codec_lottie_identity::fingerprint(&source)
+            }
             "preview" => {
                 request
                     .get("key")

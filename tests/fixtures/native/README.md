@@ -39,6 +39,11 @@ They cover an initial migration slice, not the whole source test inventory.
   expansion limits and truncated gzip errors propagate rather than becoming keys.
   Nonfinite JSON files intentionally exercise CPython's non-standard JSON support.
   No raster phash is invented for vector artwork.
+- `tgs-prepare.json`: five pinned source file observations: Unicode re-gzip,
+  colour tint, corrupt-input preservation and compressed size-cap refusals for
+  both re-encode and tint. Repeat return values and output bytes are checked;
+  only test-owned copies are rewritten. The larger synthetic JSON is required
+  to exercise a genuine 64 KiB compressed limit, not a mocked encoder result.
 - `tgs-package.json`: pinned source Unicode/deterministic gzip package bytes,
   wrong canvas and nested subtract-mask refusal. Native publication additionally
   preserves existing output and refuses to publish failed candidates.
