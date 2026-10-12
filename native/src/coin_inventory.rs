@@ -54,16 +54,16 @@ pub fn refill(mapping: &BTreeMap<String, String>, text: &str) -> Refilled {
                 continue;
             }
         }
-        if body.starts_with("premium-id:") {
-            if let Some(ticker) = current.take() {
-                let id = mapping.get(&ticker).map(String::as_str).unwrap_or("");
-                let prefix = &line[..line.len() - body.len()];
-                *line = format!("{prefix}premium-id: {id}")
-                    .trim_end_matches(whitespace)
-                    .to_owned();
-                if !id.is_empty() {
-                    filled += 1;
-                }
+        if body.starts_with("premium-id:")
+            && let Some(ticker) = current.take()
+        {
+            let id = mapping.get(&ticker).map(String::as_str).unwrap_or("");
+            let prefix = &line[..line.len() - body.len()];
+            *line = format!("{prefix}premium-id: {id}")
+                .trim_end_matches(whitespace)
+                .to_owned();
+            if !id.is_empty() {
+                filled += 1;
             }
         }
     }
