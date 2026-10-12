@@ -131,11 +131,15 @@ pub fn execute(request: &Value) -> Result<Value, String> {
     if operation == "prepare" {
         let reencode = request.get("reencode").cloned().unwrap_or(json!(false));
         let reencode = reencode.as_bool().ok_or("reencode must be boolean")?;
-        if request.get("tint").is_some() {
-            return Err("static tint preparation is not yet supported".into());
-        }
         if reencode {
             crate::codec_image::reencode_static(&source)?;
+        }
+        if let Some(tint) = request.get("tint") {
+            let tint = tint.as_str().ok_or("tint must be #RRGGBB")?;
+            let rgb = crate::codec_tint::parse_tint(tint)?;
+            if !crate::codec_image::repaint_static(&source, rgb)? {
+                return Err("requested tint could not be applied".into());
+            }
         }
     }
     if matches!(operation, "compare" | "same_image") {

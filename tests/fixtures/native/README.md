@@ -30,6 +30,9 @@ They cover an initial migration slice, not the whole source test inventory.
   including RGB under fully transparent pixels and idempotent repeat. Hashes
   cover source-encoded bytes and every decoded RGBA byte; only owned copies are
   modified by the test.
+- `static-tint.json`: four pinned source observations over opaque, alpha-edge,
+  invisible RGB and corrupt raster inputs. Exact lossless WEBP/RGBA/alpha hashes,
+  repeat return values and corrupt-byte preservation are verified on owned copies.
 - `static-compare.json`: pinned `emojikit.identity.same_image` results for
   equal/near/different colour, invisible RGB and corrupt inputs. Unknown remains
   null, not false. This static contract must not be applied to video timelines.
