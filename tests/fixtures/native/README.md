@@ -56,6 +56,14 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-rebuild-recovery.json`: eighteen pinned interrupted-create/add traces.
+  Create shape/content proof precedes adoption; add proof considers only the
+  recorded suffix, never count growth or a prior identical sticker. Unknown,
+  foreign/unreadable art, duplicate hits and missing sources retain the intent;
+  proven absence rolls back the cursor. State/save/report/download order is source
+  evidence, not complete build-command acceptance. A separate bounded loopback
+  disk adapter checks actual same-image create adoption, persisted restart,
+  malformed live-read preservation and temporary-proof cleanup without mutations.
 - `coin-rebuild-map.json`: eight pinned source map/admission effect snapshots.
   Reordered content, current aliases, provider overlap/top-ups, diagnostic
   identity candidates, lost-alias candidates and reviewed/unreviewed crowds

@@ -1,0 +1,1299 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "17771c6245dedf36d6c66deba99bb6405a624505962f74251f7f5a7f7e4eb54f",
+  "cases": [
+    {
+      "name": "create proven",
+      "input": {
+        "operation": "create",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [],
+        "order": [],
+        "cursor": 1,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 0,
+          "phase": "upload"
+        }
+      },
+      "cum": 0,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1",
+              "live": 1
+            }
+          ],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 1,
+          "in_flight": null
+        },
+        "total": 1,
+        "error": null,
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "compare",
+            "f"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1",
+                  "live": 1
+                }
+              ],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 1,
+              "in_flight": null
+            }
+          ]
+        ],
+        "output": "  resume: adopted s1, created before the interruption\n  resume: aaa did land before the interruption\n"
+      }
+    },
+    {
+      "name": "create already recorded",
+      "input": {
+        "operation": "create",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": true
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [],
+        "cursor": 1,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 0,
+          "phase": "upload"
+        }
+      },
+      "cum": 1,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 1,
+          "in_flight": null
+        },
+        "total": 1,
+        "error": null,
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "compare",
+            "f"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1"
+                }
+              ],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 1,
+              "in_flight": null
+            }
+          ]
+        ],
+        "output": "  resume: aaa did land before the interruption\n"
+      }
+    },
+    {
+      "name": "create absent",
+      "input": {
+        "operation": "create",
+        "status": "missing",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [],
+        "order": [],
+        "cursor": 1,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 0,
+          "phase": "upload"
+        }
+      },
+      "cum": 0,
+      "expected": {
+        "state": {
+          "sets": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null
+        },
+        "total": 0,
+        "error": null,
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "save",
+            {
+              "sets": [],
+              "order": [],
+              "cursor": 0,
+              "in_flight": null
+            }
+          ]
+        ],
+        "output": "  resume: aaa did not land; retrying\n"
+      }
+    },
+    {
+      "name": "create unknown",
+      "input": {
+        "operation": "create",
+        "status": "unknown",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [],
+        "order": [],
+        "cursor": 1,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 0,
+          "phase": "upload"
+        }
+      },
+      "cum": 0,
+      "expected": {
+        "state": {
+          "sets": [],
+          "order": [],
+          "cursor": 1,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "create",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 0,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "live state of s1 is unknown; cannot tell whether the in-flight create landed",
+        "events": [
+          [
+            "probe",
+            "s1"
+          ]
+        ],
+        "output": ""
+      }
+    },
+    {
+      "name": "create empty",
+      "input": {
+        "operation": "create",
+        "status": "exists",
+        "stickers": [],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [],
+        "order": [],
+        "cursor": 1,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 0,
+          "phase": "upload"
+        }
+      },
+      "cum": 0,
+      "expected": {
+        "state": {
+          "sets": [],
+          "order": [],
+          "cursor": 1,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "create",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 0,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "s1 exists but holds 0 sticker(s); the create that made it leaves exactly one, so this is not the set this rebuild created. Inspect that pack: if its first sticker IS aaa.png, another tool added to a set this rebuild had just made -- record it by hand in 'sets' (index 1, name s1), set 'in_flight' to null and append 'aaa' to 'order'. If it is NOT ours, the name collides with another pack: rename this family's base, or delete that set, then re-run",
+        "events": [
+          [
+            "probe",
+            "s1"
+          ]
+        ],
+        "output": ""
+      }
+    },
+    {
+      "name": "create foreign",
+      "input": {
+        "operation": "create",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": false,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [],
+        "order": [],
+        "cursor": 1,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 0,
+          "phase": "upload"
+        }
+      },
+      "cum": 0,
+      "expected": {
+        "state": {
+          "sets": [],
+          "order": [],
+          "cursor": 1,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "create",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 0,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "s1 exists but its first sticker is not aaa.png; refusing to adopt a set this rebuild did not create",
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "compare",
+            "f"
+          ]
+        ],
+        "output": ""
+      }
+    },
+    {
+      "name": "create unreadable",
+      "input": {
+        "operation": "create",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": null,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [],
+        "order": [],
+        "cursor": 1,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 0,
+          "phase": "upload"
+        }
+      },
+      "cum": 0,
+      "expected": {
+        "state": {
+          "sets": [],
+          "order": [],
+          "cursor": 1,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "create",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 0,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "s1 exists but its first sticker could not be compared with aaa.png; refusing to adopt a set on an unverified identity",
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "compare",
+            "f"
+          ]
+        ],
+        "output": ""
+      }
+    },
+    {
+      "name": "create two stickers",
+      "input": {
+        "operation": "create",
+        "status": "exists",
+        "stickers": [
+          {
+            "file_id": "f"
+          },
+          {
+            "file_id": "g"
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [],
+        "order": [],
+        "cursor": 1,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 0,
+          "phase": "upload"
+        }
+      },
+      "cum": 0,
+      "expected": {
+        "state": {
+          "sets": [],
+          "order": [],
+          "cursor": 1,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "create",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 0,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "s1 exists but holds 2 sticker(s); the create that made it leaves exactly one, so this is not the set this rebuild created. Inspect that pack: if its first sticker IS aaa.png, another tool added to a set this rebuild had just made -- record it by hand in 'sets' (index 1, name s1), set 'in_flight' to null and append 'aaa' to 'order'. If it is NOT ours, the name collides with another pack: rename this family's base, or delete that set, then re-run",
+        "events": [
+          [
+            "probe",
+            "s1"
+          ]
+        ],
+        "output": ""
+      }
+    },
+    {
+      "name": "create missing source",
+      "input": {
+        "operation": "create",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": true,
+        "known": false
+      },
+      "state": {
+        "sets": [],
+        "order": [],
+        "cursor": 1,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 0,
+          "phase": "upload"
+        }
+      },
+      "cum": 0,
+      "expected": {
+        "state": {
+          "sets": [],
+          "order": [],
+          "cursor": 1,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "create",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 0,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "s1 exists but its first sticker could not be compared with aaa.png; refusing to adopt a set on an unverified identity",
+        "events": [
+          [
+            "probe",
+            "s1"
+          ]
+        ],
+        "output": ""
+      }
+    },
+    {
+      "name": "add own",
+      "input": {
+        "operation": "add",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "seed",
+            "file_id": "seed",
+            "hash": 0
+          },
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 255
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [
+          "seed"
+        ],
+        "cursor": 2,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 1,
+          "phase": "upload"
+        }
+      },
+      "cum": 2,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "seed",
+            "aaa"
+          ],
+          "cursor": 2,
+          "in_flight": null
+        },
+        "total": 2,
+        "error": null,
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "download",
+            "f"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1"
+                }
+              ],
+              "order": [
+                "seed",
+                "aaa"
+              ],
+              "cursor": 2,
+              "in_flight": null
+            }
+          ]
+        ],
+        "output": "  resume: aaa did land before the interruption\n"
+      }
+    },
+    {
+      "name": "add foreign",
+      "input": {
+        "operation": "add",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "seed",
+            "file_id": "seed",
+            "hash": 0
+          },
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 511
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [
+          "seed"
+        ],
+        "cursor": 2,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 1,
+          "phase": "upload"
+        }
+      },
+      "cum": 2,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "seed"
+          ],
+          "cursor": 1,
+          "in_flight": null
+        },
+        "total": 2,
+        "error": null,
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "download",
+            "f"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1"
+                }
+              ],
+              "order": [
+                "seed"
+              ],
+              "cursor": 1,
+              "in_flight": null
+            }
+          ]
+        ],
+        "output": "  resume: aaa did not land; retrying\n"
+      }
+    },
+    {
+      "name": "add absent",
+      "input": {
+        "operation": "add",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "seed",
+            "file_id": "seed",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [
+          "seed"
+        ],
+        "cursor": 2,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 1,
+          "phase": "upload"
+        }
+      },
+      "cum": 1,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "seed"
+          ],
+          "cursor": 1,
+          "in_flight": null
+        },
+        "total": 1,
+        "error": null,
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1"
+                }
+              ],
+              "order": [
+                "seed"
+              ],
+              "cursor": 1,
+              "in_flight": null
+            }
+          ]
+        ],
+        "output": "  resume: aaa did not land; retrying\n"
+      }
+    },
+    {
+      "name": "add source before expected is not proof",
+      "input": {
+        "operation": "add",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "seed",
+            "file_id": "seed",
+            "hash": 0
+          },
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 65535
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [
+          "seed"
+        ],
+        "cursor": 2,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 1,
+          "phase": "upload"
+        }
+      },
+      "cum": 2,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "seed"
+          ],
+          "cursor": 1,
+          "in_flight": null
+        },
+        "total": 2,
+        "error": null,
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "download",
+            "f"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1"
+                }
+              ],
+              "order": [
+                "seed"
+              ],
+              "cursor": 1,
+              "in_flight": null
+            }
+          ]
+        ],
+        "output": "  resume: aaa did not land; retrying\n"
+      }
+    },
+    {
+      "name": "add unknown",
+      "input": {
+        "operation": "add",
+        "status": "unknown",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [
+          "seed"
+        ],
+        "cursor": 2,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 1,
+          "phase": "upload"
+        }
+      },
+      "cum": 1,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "seed"
+          ],
+          "cursor": 2,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "add",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 1,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "live state of s1 is unknown; cannot tell whether the in-flight aaa landed",
+        "events": [
+          [
+            "probe",
+            "s1"
+          ]
+        ],
+        "output": ""
+      }
+    },
+    {
+      "name": "add missing set",
+      "input": {
+        "operation": "add",
+        "status": "missing",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [
+          "seed"
+        ],
+        "cursor": 2,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 1,
+          "phase": "upload"
+        }
+      },
+      "cum": 1,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "seed"
+          ],
+          "cursor": 1,
+          "in_flight": null
+        },
+        "total": 1,
+        "error": null,
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1"
+                }
+              ],
+              "order": [
+                "seed"
+              ],
+              "cursor": 1,
+              "in_flight": null
+            }
+          ]
+        ],
+        "output": "  resume: aaa did not land; retrying\n"
+      }
+    },
+    {
+      "name": "add missing source",
+      "input": {
+        "operation": "add",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": true,
+        "known": false
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [
+          "seed"
+        ],
+        "cursor": 2,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 1,
+          "phase": "upload"
+        }
+      },
+      "cum": 1,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "seed"
+          ],
+          "cursor": 2,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "add",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 1,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "cannot check the in-flight aaa: its set name or source image is gone",
+        "events": [],
+        "output": ""
+      }
+    },
+    {
+      "name": "add unreadable",
+      "input": {
+        "operation": "add",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "seed",
+            "file_id": "seed",
+            "hash": 0
+          },
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0,
+            "error": true
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [
+          "seed"
+        ],
+        "cursor": 2,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 1,
+          "phase": "upload"
+        }
+      },
+      "cum": 2,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "seed"
+          ],
+          "cursor": 2,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "add",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 1,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "sticker cid in s1 could not be read (controlled decode failure)",
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "download",
+            "f"
+          ]
+        ],
+        "output": ""
+      }
+    },
+    {
+      "name": "add duplicate",
+      "input": {
+        "operation": "add",
+        "status": "exists",
+        "stickers": [
+          {
+            "custom_emoji_id": "seed",
+            "file_id": "seed",
+            "hash": 0
+          },
+          {
+            "custom_emoji_id": "cid",
+            "file_id": "f",
+            "hash": 0
+          },
+          {
+            "custom_emoji_id": "cid2",
+            "file_id": "g",
+            "hash": 0
+          }
+        ],
+        "same": true,
+        "missing": false,
+        "known": false
+      },
+      "state": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "s1",
+            "title": "Fixture 1"
+          }
+        ],
+        "order": [
+          "seed"
+        ],
+        "cursor": 2,
+        "in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "s1",
+          "set_index": 1,
+          "expected_before": 1,
+          "phase": "upload"
+        }
+      },
+      "cum": 3,
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "order": [
+            "seed"
+          ],
+          "cursor": 2,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "add",
+            "set_name": "s1",
+            "set_index": 1,
+            "expected_before": 1,
+            "phase": "upload"
+          }
+        },
+        "total": null,
+        "error": "2 live stickers carry aaa.png; the pack already contains a duplicate",
+        "events": [
+          [
+            "probe",
+            "s1"
+          ],
+          [
+            "download",
+            "f"
+          ],
+          [
+            "download",
+            "g"
+          ]
+        ],
+        "output": ""
+      }
+    }
+  ]
+}

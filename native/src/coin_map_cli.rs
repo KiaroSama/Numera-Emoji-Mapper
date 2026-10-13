@@ -38,7 +38,7 @@ fn rows(path: &Path) -> Result<Vec<Value>, String> {
         })
         .collect()
 }
-fn tickers(text: &str) -> BTreeSet<String> {
+pub(crate) fn tickers(text: &str) -> BTreeSet<String> {
     let lower = text.to_lowercase();
     let mut rest = lower.as_str();
     let mut out = BTreeSet::new();
