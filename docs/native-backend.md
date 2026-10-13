@@ -71,6 +71,12 @@ sweep. Its current fixture seam uses real image bytes with fake HTTP/virtual wai
 additive `coin-fetch-logos [pages] [--coin-dir DIR]` connects the pooled native
 HTTP transport. Default 40 pages, invalid arguments fail before networking, and
 paging failure exits 3. Full live command, errors and platform parity remain pending.
+Additive `coin-fetch-paprika` / `coin-fetch-cmc` connect native admission,
+search/cache, image conversion and shared publisher. Exact `--dry` publishes
+and downloads nothing; Paprika supports `--retry-unmatched` and persists answered
+searches. Unknown searches remain partial; live runs require the token before
+provider work. They are not authorized live-test commands and full end-to-end,
+source-case and platform acceptance remains pending.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use

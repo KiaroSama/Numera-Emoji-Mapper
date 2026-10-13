@@ -122,6 +122,8 @@ const COMMANDS: &[&str] = &[
     "coin-enhance-map",
     "coin-build-keywords",
     "coin-fetch-logos",
+    "coin-fetch-paprika",
+    "coin-fetch-cmc",
 ];
 fn main() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -153,6 +155,13 @@ fn main() -> std::process::ExitCode {
             let log = RunLog::open(&root, &args[0], config.secret_values());
             let result = if matches!(args[0].as_str(), "coin-alias-map" | "coin-enhance-map") {
                 _native::coin_map_cli::run(&config, &args[0], &args[1..], &log)
+            } else if matches!(args[0].as_str(), "coin-fetch-paprika" | "coin-fetch-cmc") {
+                _native::coin_provider_cli::run(
+                    &config,
+                    args[0].trim_start_matches("coin-fetch-"),
+                    &args[1..],
+                    &log,
+                )
             } else if args[0] == "coin-fetch-logos" {
                 _native::coin_gecko_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-build-keywords" {
