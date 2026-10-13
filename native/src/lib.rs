@@ -48,6 +48,7 @@ pub mod coin_keywords_cli;
 pub mod coin_map_cli;
 pub mod coin_paprika;
 pub mod coin_plan;
+pub mod coin_provider_cli;
 pub mod coin_provider_effects;
 pub mod coin_provider_policy;
 pub mod coin_provider_proof;

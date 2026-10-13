@@ -41,6 +41,32 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
         (7, "coin-fetch-logos", vec!["0".into()], 2),
         (8, "coin-fetch-logos", vec!["notanumber".into()], 2),
         (9, "coin-fetch-logos", vec!["--typo".into()], 2),
+        (10, "coin-fetch-paprika", vec!["--help".into()], 0),
+        (11, "coin-fetch-cmc", vec!["--help".into()], 0),
+        (12, "coin-fetch-paprika", vec!["--dryy".into()], 2),
+        (13, "coin-fetch-cmc", vec!["--dr".into()], 2),
+        (14, "coin-fetch-cmc", vec!["--retry-unmatched".into()], 2),
+        (15, "coin-fetch-paprika", vec![], 2),
+        (
+            16,
+            "coin-fetch-paprika",
+            vec![
+                "--dry".into(),
+                "--coin-dir".into(),
+                coins.to_string_lossy().into_owned(),
+            ],
+            0,
+        ),
+        (
+            17,
+            "coin-fetch-cmc",
+            vec![
+                "--dry".into(),
+                "--coin-dir".into(),
+                coins.to_string_lossy().into_owned(),
+            ],
+            0,
+        ),
         (
             2,
             "coin-alias-map",
@@ -59,6 +85,13 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
             &json!({"btc":"111111111","other":"preserved"}),
         )
         .unwrap();
+        if index >= 16 {
+            std::fs::write(
+                coins.join("currency-emoji-inventory.md"),
+                b"## Bitcoin - Bitcoin\nticker: btc\npremium-id:\n",
+            )
+            .unwrap();
+        }
         let work = scratch.join(format!("run{index}"));
         std::fs::create_dir(&work).unwrap();
         let output = scratch.join(format!("stdout{index}.txt"));
@@ -67,9 +100,16 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
         cmd.arg(command)
             .args(arguments)
             .env("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1")
+            .env("COIN_PACK_BASE", "cryptoemoji")
+            .env("COIN_PACK_TITLE", "Fixture")
+            .env_remove("TELEGRAM_BOT_TOKEN")
+            .env_remove("CMC_API_KEY")
             .stdin(Stdio::null())
             .stdout(Stdio::from(std::fs::File::create(&output).unwrap()))
             .stderr(Stdio::from(std::fs::File::create(&errors).unwrap()));
+        if index == 17 {
+            cmd.env("CMC_API_KEY", "synthetic-cli-key");
+        }
         let mut owner = OwnedProcess::spawn(&mut cmd, work).unwrap();
         let code = runtime
             .block_on(owner.wait(Duration::from_secs(10), Duration::from_secs(5)))

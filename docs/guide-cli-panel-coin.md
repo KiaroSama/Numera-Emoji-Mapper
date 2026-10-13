@@ -382,6 +382,15 @@ precedence and keyword CSV retains prior names. Paging failure exits 3. This
 command contacts CoinGecko/image hosts but never Telegram; it is not available
 in the accepted installed package yet.
 
+Additive `coin-fetch-paprika [--dry] [--retry-unmatched] [--coin-dir DIR]` and
+`coin-fetch-cmc [--dry] [--coin-dir DIR]` wire the native provider/search/codec/
+publisher seams. Exact dry mode stops before downloads or Telegram; Paprika
+still saves answered search-cache entries. Unanswered searches exit 3, rejected
+CMC credentials stop naming the key, and live token admission precedes provider
+work. **Without `--dry` these commands can publish to Telegram**; test only with
+isolated loopback fixtures until full migration/package acceptance. Existing
+installed launchers and retained Python commands have not been switched.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |
