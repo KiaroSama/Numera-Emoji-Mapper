@@ -37,6 +37,10 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
         (1, "coin-alias-map", vec!["--help".into()], 0),
         (4, "coin-build-keywords", vec!["--help".into()], 0),
         (5, "coin-build-keywords", vec!["--typo".into()], 2),
+        (6, "coin-fetch-logos", vec!["--help".into()], 0),
+        (7, "coin-fetch-logos", vec!["0".into()], 2),
+        (8, "coin-fetch-logos", vec!["notanumber".into()], 2),
+        (9, "coin-fetch-logos", vec!["--typo".into()], 2),
         (
             2,
             "coin-alias-map",
