@@ -56,6 +56,11 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-plan-disk.json`: independent actual source plan/shared-report observations
+  from a reused sparse-alpha PNG, duplicate chain artwork, empty/corrupt inputs,
+  inventory representative preference and quoted CSV keyword loading. Source/input
+  hashes protect provenance. Native disk tests additionally refuse corrupt frozen
+  plans and preserve prior files; full plan crash/concurrency acceptance is pending.
 - `coin-rebuild-recovery.json`: eighteen pinned interrupted-create/add traces.
   Create shape/content proof precedes adoption; add proof considers only the
   recorded suffix, never count growth or a prior identical sticker. Unknown,
