@@ -72,6 +72,7 @@ pub mod coin_replace_proof;
 pub mod coin_replace_publish;
 pub mod coin_replace_recovery;
 pub mod coin_state;
+pub mod coin_verify_cli;
 pub mod collection_manifest;
 pub mod collection_names;
 pub mod collection_notify;

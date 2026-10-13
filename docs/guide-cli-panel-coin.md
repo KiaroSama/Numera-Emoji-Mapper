@@ -419,6 +419,16 @@ Family-before-map leases protect the whole live-read/replace workflow. NumPy 2.4
 remains the supported external numerical runtime for Python 3.11; later 2.5.4
 requires 3.12+. Installed/runtime and full source/platform acceptance are pending.
 
+Additive `coin-verify-logos --emoji-dir DIR` defaults to review only: `--top 100`,
+`--threshold 20`. Use `--map`, `--state` and `--token-env` for isolated inputs.
+Review flags are not proof of wrong artwork. Repair explicitly requires `--fix
+--only a,b`, configured token and positive `PACK_OWNER_USER_ID`; immutable upload
+bytes, before/after CID proof and downloaded-image proof precede promotion/map
+repoint. Unknown results retain target-bound intent/source and stop further repairs.
+**`--fix` mutates Telegram**; use only explicitly approved operator targets after
+full acceptance, not as an agent live-test command. The migration checkpoint
+uses loopback fixtures; installed runtime and full source/platform gates are pending.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |
