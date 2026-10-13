@@ -16,10 +16,29 @@ fn gallery_artwork_and_animation_flags_match_source() {
         .parent()
         .unwrap()
         .to_path_buf();
-    let fixture: Value = serde_json::from_str(include_str!(
+    let committed: Value = serde_json::from_str(include_str!(
         "../../tests/fixtures/native/gallery-codec.json"
     ))
     .unwrap();
+    let fixture: Value = std::env::var_os("NUMERA_GALLERY_CODEC_ORACLE")
+        .map(PathBuf::from)
+        .map(|path| serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap())
+        .unwrap_or_else(|| committed.clone());
+    assert_eq!(fixture["source_sha256"], committed["source_sha256"]);
+    assert_eq!(
+        fixture["cases"].as_array().unwrap().len(),
+        committed["cases"].as_array().unwrap().len()
+    );
+    for (source, original) in fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(committed["cases"].as_array().unwrap())
+    {
+        for field in ["input", "input_sha256", "format", "still", "animation_info"] {
+            assert_eq!(source[field], original[field]);
+        }
+    }
     assert_eq!(
         fixture["source_revision"],
         "1a36a968b006236bd0665a1da65c541938c06061"

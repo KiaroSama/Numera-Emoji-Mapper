@@ -11,6 +11,8 @@ They cover an initial migration slice, not the whole source test inventory.
 - `gallery-codec.json`: five pinned gallery outputs: 88px static LANCZOS/lossy65,
   animated still/moving 88px/9fps/lossy65, raw video copy and source animation-info
   booleans. This is distinct from the panel preview's BICUBIC/lossless policy.
+  Animated gallery output compares to the independently pinned renderer source
+  on the same platform; committed Windows bytes are retained, not replaced.
 - `video-operations.json`: actual pinned source VP9 conversion pixels/probe fields,
   lossless stream-copy preparation and WebP preview bytes. Container bytes are not
   deterministic across muxer runs; decoded frames and exact same-platform preview

@@ -83,7 +83,24 @@ def main() -> None:
     destination = ROOT / ("tests/fixtures/native/lottie-preview.json" if "--generate" in sys.argv
                           else "logs/checkpoint/lottie-preview-source.json")
     destination.write_text(json.dumps(observed, indent=2) + "\n", encoding="utf-8")
-    print(f"Pinned Lottie source oracle: {len(cases)} cases; no target output used.")
+    gallery = json.loads((ROOT / "tests/fixtures/native/gallery-codec.json").read_text(encoding="utf-8"))
+    assert gallery["source_revision"] == REVISION
+    assert gallery["source_sha256"]["emojikit/media_lottie.py"] == SOURCE_SHA
+    with tempfile.TemporaryDirectory(prefix="gallery source oracle ", dir=ROOT / "logs/tmp") as folder:
+        for index, case in enumerate(gallery["cases"]):
+            if case["format"] != "animated":
+                continue
+            path = ROOT / case["input"]
+            assert hashlib.sha256(path.read_bytes()).hexdigest() == case["input_sha256"]
+            output = Path(folder) / f"{index}.webp"
+            options = {"size": 88, "quality": 65}
+            if not case["still"]:
+                options["fps"] = 9
+            namespace["lottie_still_webp" if case["still"] else "lottie_preview_webp"](path, output, **options)
+            case["sha256"] = hashlib.sha256(output.read_bytes()).hexdigest()
+            case["bytes"] = output.stat().st_size
+    (ROOT / "logs/checkpoint/gallery-codec-source.json").write_text(json.dumps(gallery, indent=2) + "\n", encoding="utf-8")
+    print(f"Pinned Lottie source oracle: {len(cases)} cases plus gallery; no target output used.")
 
 
 if __name__ == "__main__":
