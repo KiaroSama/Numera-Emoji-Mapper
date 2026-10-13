@@ -56,6 +56,13 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-audit.json`: seven pinned cache/list/download/report traces with virtual
+  waits and independent durable snapshots. Deleted IDs leave totals, decode errors
+  retry instead of becoming blanks, locations come from live order, distinct CIDs
+  sharing a hash form duplicate groups, listing exhaustion preserves earlier
+  progress and does not publish a partial report. Source test names accompany
+  selected observations. Initial native policy only; real codec/download/public
+  command, complete original assertions and process-death acceptance are pending.
 - `coin-manifest.json`: five independent pinned coin-report observations using
   the retained pure source table oracle, not a native-backed Python binding.
   Live order, sorted aliases, unmapped IDs, empty/title fallback, primitive IDs,

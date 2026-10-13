@@ -1,0 +1,411 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "f62da85bd939464a2673a758740cab9001ae0920a000df32f7827d42485b5272",
+  "cases": [
+    {
+      "input": {
+        "cache": {
+          "a": {
+            "hash": "H1",
+            "blank": false
+          },
+          "b": {
+            "hash": "H2",
+            "blank": false
+          },
+          "gone": {
+            "hash": "H1",
+            "blank": false
+          }
+        },
+        "sets": {
+          "s1": [
+            "a",
+            "b"
+          ]
+        },
+        "analysis": {},
+        "source_test": "tests.test_check_all_packs.CheckAllPacksTest.test_deleted_sticker_leaves_totals_and_duplicate_groups"
+      },
+      "expected": {
+        "code": 0,
+        "writes": [
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            },
+            "b": {
+              "hash": "H2",
+              "blank": false
+            },
+            "gone": {
+              "hash": "H1",
+              "blank": false
+            }
+          },
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            },
+            "b": {
+              "hash": "H2",
+              "blank": false
+            }
+          }
+        ],
+        "calls": [
+          "s1"
+        ],
+        "downloads": [],
+        "waits": [],
+        "reports": [
+          "live stickers: 2\nanalysed: 2\nFAILED (retried on next run): 0\nBLANK stickers: 0\nDUPLICATE image groups: 0 (extra duplicate stickers: 0)"
+        ]
+      }
+    },
+    {
+      "input": {
+        "cache": {},
+        "sets": {
+          "s1": [
+            "a",
+            "b"
+          ]
+        },
+        "analysis": {
+          "a": [
+            "H1",
+            false
+          ],
+          "b": "decode refused"
+        },
+        "source_test": "tests.test_check_all_packs.CheckAllPacksTest.test_analyse_failure_is_an_error_that_is_retried_not_a_blank"
+      },
+      "expected": {
+        "code": 3,
+        "writes": [
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            },
+            "b": {
+              "error": "decode refused"
+            }
+          },
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            },
+            "b": {
+              "error": "decode refused"
+            }
+          }
+        ],
+        "calls": [
+          "s1"
+        ],
+        "downloads": [
+          "a",
+          "b"
+        ],
+        "waits": [
+          0.03,
+          0.03
+        ],
+        "reports": [
+          "live stickers: 2\nanalysed: 1\nFAILED (retried on next run): 1\n  failed cid=b set=1 pos=1 (decode refused)\nBLANK stickers: 0\nDUPLICATE image groups: 0 (extra duplicate stickers: 0)"
+        ]
+      }
+    },
+    {
+      "input": {
+        "cache": {
+          "a": {
+            "hash": "H1",
+            "blank": false
+          },
+          "b": {
+            "error": "decode refused"
+          }
+        },
+        "sets": {
+          "s1": [
+            "a",
+            "b"
+          ]
+        },
+        "analysis": {
+          "b": [
+            "H2",
+            false
+          ]
+        }
+      },
+      "expected": {
+        "code": 0,
+        "writes": [
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            },
+            "b": {
+              "hash": "H2",
+              "blank": false
+            }
+          },
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            },
+            "b": {
+              "hash": "H2",
+              "blank": false
+            }
+          }
+        ],
+        "calls": [
+          "s1"
+        ],
+        "downloads": [
+          "b"
+        ],
+        "waits": [
+          0.03
+        ],
+        "reports": [
+          "live stickers: 2\nanalysed: 2\nFAILED (retried on next run): 0\nBLANK stickers: 0\nDUPLICATE image groups: 0 (extra duplicate stickers: 0)"
+        ]
+      }
+    },
+    {
+      "input": {
+        "cache": {},
+        "sets": {
+          "s1": [
+            "a",
+            "b",
+            "c"
+          ]
+        },
+        "analysis": {
+          "a": [
+            "H1",
+            false
+          ],
+          "b": [
+            "HB",
+            true
+          ],
+          "c": [
+            "H1",
+            false
+          ]
+        },
+        "source_test": "tests.test_check_all_packs.CheckAllPacksTest.test_blank_sticker_is_still_reported_with_live_position"
+      },
+      "expected": {
+        "code": 0,
+        "writes": [
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            },
+            "b": {
+              "hash": "HB",
+              "blank": true
+            },
+            "c": {
+              "hash": "H1",
+              "blank": false
+            }
+          },
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            },
+            "b": {
+              "hash": "HB",
+              "blank": true
+            },
+            "c": {
+              "hash": "H1",
+              "blank": false
+            }
+          }
+        ],
+        "calls": [
+          "s1"
+        ],
+        "downloads": [
+          "a",
+          "b",
+          "c"
+        ],
+        "waits": [
+          0.03,
+          0.03,
+          0.03
+        ],
+        "reports": [
+          "live stickers: 3\nanalysed: 3\nFAILED (retried on next run): 0\nBLANK stickers: 1\n  blank cid=b set=1 pos=1\nDUPLICATE image groups: 1 (extra duplicate stickers: 1)\n  hash H1: set1/pos0/cida, set1/pos2/cidc"
+        ]
+      }
+    },
+    {
+      "input": {
+        "cache": {},
+        "sets": {
+          "s1": [
+            "a"
+          ]
+        },
+        "analysis": {
+          "a": [
+            "H1",
+            false
+          ]
+        },
+        "failures": {
+          "s1": 2
+        },
+        "source_test": "tests.test_check_all_packs.CheckAllPacksListingRetry.test_a_throttled_listing_is_retried_instead_of_ending_the_run"
+      },
+      "expected": {
+        "code": 0,
+        "writes": [
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            }
+          },
+          {
+            "a": {
+              "hash": "H1",
+              "blank": false
+            }
+          }
+        ],
+        "calls": [
+          "s1",
+          "s1",
+          "s1"
+        ],
+        "downloads": [
+          "a"
+        ],
+        "waits": [
+          2,
+          4,
+          0.03
+        ],
+        "reports": [
+          "live stickers: 1\nanalysed: 1\nFAILED (retried on next run): 0\nBLANK stickers: 0\nDUPLICATE image groups: 0 (extra duplicate stickers: 0)"
+        ]
+      }
+    },
+    {
+      "input": {
+        "cache": {
+          "gone": {
+            "hash": "old",
+            "blank": true
+          }
+        },
+        "sets": {
+          "s1": [
+            "a"
+          ],
+          "s2": [
+            "b"
+          ]
+        },
+        "analysis": {
+          "a": [
+            "H1",
+            false
+          ]
+        },
+        "failures": {
+          "s2": 99
+        },
+        "source_test": "tests.test_check_all_packs.CheckAllPacksListingRetry.test_work_already_analysed_survives_a_set_that_will_not_list"
+      },
+      "expected": {
+        "code": 4,
+        "writes": [
+          {
+            "gone": {
+              "hash": "old",
+              "blank": true
+            },
+            "a": {
+              "hash": "H1",
+              "blank": false
+            }
+          },
+          {
+            "gone": {
+              "hash": "old",
+              "blank": true
+            },
+            "a": {
+              "hash": "H1",
+              "blank": false
+            }
+          }
+        ],
+        "calls": [
+          "s1",
+          "s2",
+          "s2",
+          "s2",
+          "s2"
+        ],
+        "downloads": [
+          "a"
+        ],
+        "waits": [
+          0.03,
+          2,
+          4,
+          6,
+          8
+        ],
+        "reports": []
+      }
+    },
+    {
+      "input": {
+        "cache": {},
+        "sets": {
+          "s1": []
+        },
+        "analysis": {}
+      },
+      "expected": {
+        "code": 0,
+        "writes": [
+          {},
+          {}
+        ],
+        "calls": [
+          "s1"
+        ],
+        "downloads": [],
+        "waits": [],
+        "reports": [
+          "live stickers: 0\nanalysed: 0\nFAILED (retried on next run): 0\nBLANK stickers: 0\nDUPLICATE image groups: 0 (extra duplicate stickers: 0)"
+        ]
+      }
+    }
+  ]
+}
