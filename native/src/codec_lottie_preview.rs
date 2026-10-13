@@ -19,7 +19,14 @@ impl Drop for Image<'_> {
     }
 }
 
-fn render(source: &Path, staged: &Path, size: u32, fps: u32, still: bool) -> Result<(), String> {
+fn render(
+    source: &Path,
+    staged: &Path,
+    size: u32,
+    fps: u32,
+    still: bool,
+    quality: u32,
+) -> Result<(), String> {
     let document = crate::codec_lottie_load::load(source).map_err(|error| error.message)?;
     let text = serde_json::to_string(&document).map_err(|_| "cannot serialize preview document")?;
     Python::initialize();
@@ -44,14 +51,14 @@ fn render(source: &Path, staged: &Path, size: u32, fps: u32, still: bool) -> Res
             )?);
             let encoding = PyDict::new(py);
             encoding.set_item("lossless", false)?;
-            encoding.set_item("quality", 60)?;
+            encoding.set_item("quality", quality)?;
             encoding.set_item("method", 4)?;
             frame
                 .0
                 .call_method("save", (staged.to_path_buf(),), Some(&encoding))?;
         } else {
             options.set_item("lossless", false)?;
-            options.set_item("quality", 60)?;
+            options.set_item("quality", quality)?;
             options.set_item("method", 4)?;
             let duration = animation
                 .0
@@ -99,6 +106,21 @@ pub fn preview(
     if !matches!(size, 52 | 72 | 104) || !(1..=30).contains(&fps) {
         return Err("invalid preview parameters".into());
     }
+    preview_encoded(source, output, size, fps, still, 60)
+}
+
+pub fn gallery(source: &Path, output: &Path, still: bool) -> Result<Value, String> {
+    preview_encoded(source, output, 88, 9, still, 65)
+}
+
+fn preview_encoded(
+    source: &Path,
+    output: &Path,
+    size: u32,
+    fps: u32,
+    still: bool,
+    quality: u32,
+) -> Result<Value, String> {
     if !output.is_absolute() || std::fs::symlink_metadata(output).is_ok() {
         return Err("preview output must be absolute and must not already exist".into());
     }
@@ -106,7 +128,7 @@ pub fn preview(
     std::fs::create_dir_all(parent).map_err(|_| "cannot create preview output directory")?;
     let staged = stage(parent)?;
     let result = (|| {
-        render(source, &staged, size, fps, still)?;
+        render(source, &staged, size, fps, still, quality)?;
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)

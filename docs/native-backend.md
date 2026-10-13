@@ -26,6 +26,8 @@ blank sampling, VP9 conversion, stream-copy preparation and WebP preview are
 covered at independent source-fixture seams. Internal worker video fingerprint,
 comparison, validation, preparation, conversion and preview dispatch are being
 connected; the production adapter and installed packages remain unchanged.
+Gallery thumbnails and animation metadata are also being mapped at their own
+source-fixture seam, retaining their distinct filters/sizes/quality.
 Full failure/platform and original-case parity remain pending.
 These slices use
 pinned source-generated fixtures. The internal `codec-worker` entry point is

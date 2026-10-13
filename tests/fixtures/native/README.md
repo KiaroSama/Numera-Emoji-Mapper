@@ -8,6 +8,9 @@ They cover an initial migration slice, not the whole source test inventory.
   33 ms single-frame clips. Source dHash values prove the first frame belongs to
   the frozen 10 fps stream rather than native frame zero; the short clip records
   an actual successful-empty sample followed by native-frame retry.
+- `gallery-codec.json`: five pinned gallery outputs: 88px static LANCZOS/lossy65,
+  animated still/moving 88px/9fps/lossy65, raw video copy and source animation-info
+  booleans. This is distinct from the panel preview's BICUBIC/lossless policy.
 - `video-operations.json`: actual pinned source VP9 conversion pixels/probe fields,
   lossless stream-copy preparation and WebP preview bytes. Container bytes are not
   deterministic across muxer runs; decoded frames and exact same-platform preview

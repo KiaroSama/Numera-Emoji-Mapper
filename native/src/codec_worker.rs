@@ -99,6 +99,8 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
             | "prepare"
             | "collision"
             | "usable"
+            | "gallery_thumb"
+            | "animation_info"
     ) {
         return Err("unsupported native codec operation".into());
     }
@@ -111,6 +113,31 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
     };
     if !matches!(format, "static" | "animated" | "video") && operation != "convert" {
         return Err("unsupported media format".into());
+    }
+    if operation == "animation_info" {
+        return Ok(json!(crate::codec_image::animation_info(&source)));
+    }
+    if operation == "gallery_thumb" {
+        let output = output_field(request)?;
+        let still = request.get("still").cloned().unwrap_or(json!(false));
+        let still = still.as_bool().ok_or("gallery still must be boolean")?;
+        return match format {
+            "animated" => crate::codec_lottie_preview::gallery(&source, &output, still),
+            "video" => {
+                if !output.is_absolute() || std::fs::symlink_metadata(&output).is_ok() {
+                    return Err("gallery output already exists".into());
+                }
+                let bytes = std::fs::read(&source).map_err(|_| "cannot read gallery video")?;
+                let staged = crate::codec_video_encode::Staged::new(&output, "webm")?;
+                let result = std::fs::write(&staged.0, &bytes)
+                    .map_err(|_| "cannot stage gallery video".to_owned())
+                    .and_then(|_| staged.publish(&output))
+                    .map(|bytes| json!({"bytes":bytes}));
+                staged.clean()?;
+                result
+            }
+            _ => crate::codec_image::gallery_static(&source, &output),
+        };
     }
     if operation == "collision" {
         let key = request
