@@ -305,6 +305,44 @@ mod platform {
         group: i32,
     }
 
+    fn process_stat(result: std::io::Result<String>) -> Result<Option<String>, String> {
+        match result {
+            Ok(value) => Ok(Some(value)),
+            // proc_single_show returns ESRCH when the task exits after enumeration.
+            Err(error)
+                if error.kind() == ErrorKind::NotFound || error.raw_os_error() == Some(3) =>
+            {
+                Ok(None)
+            }
+            Err(error) => Err(format!(
+                "cannot verify codec process-group membership: kind={:?} errno={:?}",
+                error.kind(),
+                error.raw_os_error()
+            )),
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::process_stat;
+        #[test]
+        fn disappeared_task_is_not_an_accounting_failure_but_permission_and_io_are() {
+            assert_eq!(
+                process_stat(Ok("record".into())).unwrap(),
+                Some("record".into())
+            );
+            for errno in [2, 3] {
+                assert_eq!(
+                    process_stat(Err(std::io::Error::from_raw_os_error(errno))).unwrap(),
+                    None
+                );
+            }
+            for errno in [5, 13] {
+                assert!(process_stat(Err(std::io::Error::from_raw_os_error(errno))).is_err());
+            }
+        }
+    }
+
     impl Tree {
         pub fn sample(&self) -> Result<Vec<u64>, String> {
             let mut values = Vec::new();
@@ -320,10 +358,8 @@ mod platform {
                     continue;
                 };
                 let path = entry.path().join("stat");
-                let stat = match std::fs::read_to_string(&path) {
-                    Ok(value) => value,
-                    Err(error) if error.kind() == ErrorKind::NotFound => continue,
-                    Err(_) => return Err("cannot verify codec process-group membership".into()),
+                let Some(stat) = process_stat(std::fs::read_to_string(&path))? else {
+                    continue;
                 };
                 let (_, fields) = stat
                     .rsplit_once(") ")
