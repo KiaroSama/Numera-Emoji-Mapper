@@ -56,6 +56,18 @@ fn executable_codec_envelope_is_owned_bounded_and_exclusive() {
             false,
             0,
         ),
+        (
+            4,
+            json!({"operation":"fingerprint","source":root.join("tests/fixtures/native/video-fingerprint/fast30.webm"),"format":"video"}),
+            false,
+            0,
+        ),
+        (
+            5,
+            json!({"operation":"same_image","source":root.join("tests/fixtures/native/video-timeline/blue.webm"),"other":root.join("tests/fixtures/native/video-timeline/spiked.webm"),"format":"video"}),
+            false,
+            0,
+        ),
     ] {
         let workspace = directory.join(index.to_string());
         std::fs::create_dir(&workspace).unwrap();
@@ -133,6 +145,22 @@ fn executable_codec_envelope_is_owned_bounded_and_exclusive() {
                     );
                     assert_eq!(response["result"]["fmt"], "static");
                     assert_eq!(response["result"]["extension"], ".png");
+                } else if index == 4 {
+                    let video: Value = serde_json::from_str(include_str!(
+                        "../../tests/fixtures/native/video-fingerprint.json"
+                    ))
+                    .unwrap();
+                    assert_eq!(
+                        response["result"]["content_key"],
+                        video["cases"][0]["expected"]["content_key"]
+                    );
+                    assert_eq!(
+                        response["result"]["phash"],
+                        video["cases"][0]["expected"]["phash"]
+                    );
+                    assert_eq!(response["result"]["fmt"], "video");
+                } else if index == 5 {
+                    assert_eq!(response["result"], false);
                 } else if expected_code == 0 {
                     assert_eq!(
                         response["result"],
