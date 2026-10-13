@@ -178,6 +178,24 @@ fn png_bytes(py: Python<'_>, image: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
         .to_vec())
 }
 
+pub fn audit_image(data: &[u8]) -> Result<(String, bool), String> {
+    Python::initialize();
+    Python::attach(|py| -> PyResult<(String, bool)> {
+        let buffer = OpenImage(
+            py.import("io")?
+                .call_method1("BytesIO", (PyBytes::new(py, data),))?,
+        );
+        let module = py.import("PIL.Image")?;
+        let source = OpenImage(module.call_method1("open", (&buffer.0,))?);
+        let rgba = OpenImage(source.0.call_method1("convert", ("RGBA",))?);
+        let blank = blank_rgba(&pixels(&rgba.0)?);
+        let lanczos = module.getattr("Resampling")?.getattr("LANCZOS")?;
+        let normalized = OpenImage(rgba.0.call_method1("resize", ((64, 64), lanczos))?);
+        Ok((digest_hex(&pixels(&normalized.0)?)[..24].into(), blank))
+    })
+    .map_err(|_| "cannot decode coin audit image".into())
+}
+
 pub fn provider_png(data: &[u8], output: &Path) -> Result<bool, String> {
     if !output.is_absolute() || std::fs::symlink_metadata(output).is_ok() {
         return Err("provider image output must be absolute and must not already exist".into());

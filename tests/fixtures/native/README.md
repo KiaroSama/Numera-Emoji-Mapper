@@ -61,8 +61,11 @@ They cover an initial migration slice, not the whole source test inventory.
   retry instead of becoming blanks, locations come from live order, distinct CIDs
   sharing a hash form duplicate groups, listing exhaustion preserves earlier
   progress and does not publish a partial report. Source test names accompany
-  selected observations. Initial native policy only; real codec/download/public
-  command, complete original assertions and process-death acceptance are pending.
+  selected observations. `coin-audit-image.json` adds seven real source pixel
+  hash/blank/error cases, reusing unchanged provider-image inputs. Native command
+  loopback covers one download, persisted retry/cache, current live positions and
+  no second download after success. Full original assertions, arbitrary primitive
+  coercion, process-death and installed-platform acceptance are pending.
 - `coin-manifest.json`: five independent pinned coin-report observations using
   the retained pure source table oracle, not a native-backed Python binding.
   Live order, sorted aliases, unmapped IDs, empty/title fallback, primitive IDs,

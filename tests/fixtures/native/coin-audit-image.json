@@ -1,0 +1,71 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_hashes": {
+    "coins/check_all_packs.py": "f62da85bd939464a2673a758740cab9001ae0920a000df32f7827d42485b5272",
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53"
+  },
+  "cases": [
+    {
+      "input": "tests/fixtures/native/provider-image/visible-0-alpha-255.png",
+      "data": null,
+      "input_sha256": "a22b9d6429f74727c26f599bd3d58ac8280a1f164f96a8af7014e0b6ac0ad07d",
+      "expected": {
+        "hash": "4fe7b59af6de3b665b67788c",
+        "blank": true
+      }
+    },
+    {
+      "input": "tests/fixtures/native/provider-image/visible-8-alpha-255.png",
+      "data": null,
+      "input_sha256": "53cbc16b12ec7f9e1a31828600b732e67f42112fc9d4ffbfe30e448c31d794ae",
+      "expected": {
+        "hash": "ff63f14346c804acf62bb868",
+        "blank": true
+      }
+    },
+    {
+      "input": "tests/fixtures/native/provider-image/visible-9-alpha-255.png",
+      "data": null,
+      "input_sha256": "ff7301a08899225a5f0b24218e725b87697e56e98e0e00db7658e38972953d7f",
+      "expected": {
+        "hash": "b732aca865ca0100db4ef898",
+        "blank": false
+      }
+    },
+    {
+      "input": "tests/fixtures/native/provider-image/visible-9-alpha-10.png",
+      "data": null,
+      "input_sha256": "83917e6c7fa9db08725292108c9c64a9c0b12ae7e447b09b07a565ea9b1c4d73",
+      "expected": {
+        "hash": "cb9b71092143c2191809188b",
+        "blank": true
+      }
+    },
+    {
+      "input": "tests/fixtures/native/provider-image/visible-9-alpha-11.png",
+      "data": null,
+      "input_sha256": "df4b70bfa380c839d42d1e29066df050deba8ea4e220ca6c50f21ed096f89d8a",
+      "expected": {
+        "hash": "254ca65582659440e05bc7be",
+        "blank": false
+      }
+    },
+    {
+      "input": "tests/fixtures/native/provider-image/visible-16-alpha-128.png",
+      "data": null,
+      "input_sha256": "541bd6f38518536d7bc147323a246f8876661bcaef84d8b66ce281ce860f4fb0",
+      "expected": {
+        "hash": "150654cb87170b34e72b5f20",
+        "blank": false
+      }
+    },
+    {
+      "input": null,
+      "data": "not an image",
+      "input_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "expected": {
+        "error_type": "UnidentifiedImageError"
+      }
+    }
+  ]
+}

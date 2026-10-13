@@ -125,6 +125,7 @@ const COMMANDS: &[&str] = &[
     "coin-fetch-paprika",
     "coin-fetch-cmc",
     "coin-write-manifests",
+    "coin-check-packs",
 ];
 fn main() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -172,6 +173,8 @@ fn main() -> std::process::ExitCode {
                     &args[1..],
                     &log,
                 )
+            } else if args[0] == "coin-check-packs" {
+                _native::coin_audit_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-write-manifests" {
                 _native::coin_manifest_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-fetch-logos" {

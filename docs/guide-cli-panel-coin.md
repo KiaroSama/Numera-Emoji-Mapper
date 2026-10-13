@@ -399,6 +399,15 @@ family lease. The chosen token variable is redacted. Unknown live readback stops
 before changing prior reports; per-file Markdown/index replacement is atomic,
 not a transaction across all report files. Full source/platform acceptance is pending.
 
+Additive `coin-check-packs [--coin-dir DIR]` (default project `coins/`) reads
+`rebuild_dedup_state.json`, resumes `pack_audit4.json` and atomically writes
+`pack_audit4_report.txt`. It reads/downloads Telegram media only; no pack/map
+mutation. Failed decode/downloads retry on the next run, current live IDs drive
+locations/totals and deleted cache IDs are pruned only after complete listings.
+Each set and every 100 new analyses checkpoint; four exhausted listing attempts
+preserve progress and exit 4 without replacing the report. Partial image analysis
+exits 3, all failed analyses exit 4. Full source/platform acceptance is pending.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |
