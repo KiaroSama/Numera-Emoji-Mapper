@@ -382,7 +382,10 @@ Additive `coin-write-manifests` writes read-only live coin reports with
 `--out-dir`, `--state`, `--map` and `--token-env`; full migration acceptance
 and installed-runtime activation remain pending. Additive `coin-check-packs
 [--coin-dir DIR]` resumes a live read-only blank/duplicate audit; failed images
-remain retryable and incomplete listings never replace the report.
+remain retryable and incomplete listings never replace the report. Additive
+`coin-remap-ids --emoji-dir DIR` rebuilds mappings by content, dry by default;
+calibrated `--apply` preserves a backup and refuses ambiguous/incomplete results.
+It makes no Telegram mutations; full acceptance and installed activation are pending.
 Run the retained Python tools as modules from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 

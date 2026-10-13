@@ -91,6 +91,18 @@ retryable errors, not blanks. Duplicate groups require distinct live IDs with th
 same normalized pixel hash. Exhausted set listings preserve progress and refuse
 a partial report. It makes no Telegram mutation; full original-case/error,
 process-death and platform acceptance remain pending.
+Additive `coin-remap-ids --emoji-dir DIR` matches 16px RGB-on-black plus alpha
+signatures by content. It reads live sets and checkpoints the manifest-keyed
+cache; it never changes Telegram packs. `--apply` requires finite calibrated
+`--max-distance > 0`; `--min-margin` defaults to that cutoff. Incomplete or
+ambiguous work writes `--candidates`, not the canonical map. Accepted replacements
+hold the family lease across the live read and the map lease across old-map
+backup/replacement; an existing `.prebroken.json` is never overwritten. `--state`,
+`--cache`, `--out`, `--candidates` and `--token-env` select isolated inputs/outputs.
+Dry mode still updates the signature cache, not the map. Numerical calls use the
+unchanged external NumPy API; 2.4.6 is the latest Python 3.11-compatible release
+(2.5.4 requires Python 3.12+). Full original-case/BLAS/platform/crash acceptance
+and installed activation remain pending.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use
