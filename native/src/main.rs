@@ -126,6 +126,7 @@ const COMMANDS: &[&str] = &[
     "coin-fetch-cmc",
     "coin-write-manifests",
     "coin-check-packs",
+    "coin-remap-ids",
 ];
 fn main() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -155,7 +156,7 @@ fn main() -> std::process::ExitCode {
             let root = root()?;
             let config = Config::load(root.clone())?;
             let mut secrets = config.secret_values();
-            if args[0] == "coin-write-manifests" {
+            if matches!(args[0].as_str(), "coin-write-manifests" | "coin-remap-ids") {
                 for option in args[1..].windows(2).filter(|pair| pair[0] == "--token-env") {
                     let token = config.value(&option[1]);
                     if !token.is_empty() {
@@ -173,6 +174,8 @@ fn main() -> std::process::ExitCode {
                     &args[1..],
                     &log,
                 )
+            } else if args[0] == "coin-remap-ids" {
+                _native::coin_remap_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-check-packs" {
                 _native::coin_audit_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-write-manifests" {

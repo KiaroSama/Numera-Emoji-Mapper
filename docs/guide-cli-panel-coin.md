@@ -408,6 +408,17 @@ Each set and every 100 new analyses checkpoint; four exhausted listing attempts
 preserve progress and exit 4 without replacing the report. Partial image analysis
 exits 3, all failed analyses exit 4. Full source/platform acceptance is pending.
 
+Additive `coin-remap-ids --emoji-dir DIR` exposes `--token-env`, `--state`,
+`--cache`, `--out`, `--candidates`, `--max-distance`, `--min-margin` and `--apply`.
+It reads live IDs/manifest signatures and matches source artwork by content,
+never slot position. Dry mode writes signature cache only. Apply needs a finite
+positive calibrated cutoff; margin defaults to cutoff, ambiguous or incomplete
+work exits 3 and writes candidates without canonical-map replacement. A successful
+replacement keeps the original map bytes in a never-overwritten `.prebroken.json`.
+Family-before-map leases protect the whole live-read/replace workflow. NumPy 2.4.6
+remains the supported external numerical runtime for Python 3.11; later 2.5.4
+requires 3.12+. Installed/runtime and full source/platform acceptance are pending.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |
