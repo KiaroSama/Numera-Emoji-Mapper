@@ -127,6 +127,17 @@ pub fn replace(
     crate::coin_manifest::output_path(&family)?;
     let _family = crate::locks::Lease::acquire(&family, &crate::logging::utc())
         .map_err(|_| "replacement family is busy or unavailable")?;
+    replace_locked(files, tg, ticker, coin_name, bytes, user)
+}
+
+pub(crate) fn replace_locked(
+    files: &Files,
+    tg: &Telegram,
+    ticker: &str,
+    coin_name: &str,
+    bytes: &[u8],
+    user: u64,
+) -> Result<bool, String> {
     if !crate::coin_replace_disk::recover_locked(files, tg)? {
         return Err("previous replacement remains unresolved".into());
     }
@@ -185,6 +196,7 @@ pub fn replace(
     let Some((name, position, old_file, before)) = location else {
         return Ok(false);
     };
+    // source() owns the filename validator, including an explicit CLI ticker.
     let mut stage = crate::coin_provider_stage::Stage::new(&files.images)?;
     let prepared = stage.source(ticker)?;
     let raw_dir = stage.directory().join("png");

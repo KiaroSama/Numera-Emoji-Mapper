@@ -103,6 +103,16 @@ Dry mode still updates the signature cache, not the map. Numerical calls use the
 unchanged external NumPy API; 2.4.6 is the latest Python 3.11-compatible release
 (2.5.4 requires Python 3.12+). Full original-case/BLAS/platform/crash acceptance
 and installed activation remain pending.
+Additive `coin-verify-logos --emoji-dir DIR` defaults to review only (`--top 100`,
+`--threshold 20`). Inverted/white-flattened comparisons tolerate deliberate
+restyling; flags are not proof of wrong art. Repair requires exact `--fix --only
+ a,b`, token and positive owner ID. It reuses the native replacement intent,
+private original/prepared staging, immutable upload bytes and verified-retry
+transport. Unknown confirmation preserves intent/source and stops further fixes;
+map/state targets must match recovery. `--map`, `--state`, `--token-env` retain
+isolated input selection. **Repair can mutate Telegram packs**; no live testing
+is authorized by the command or checkpoint. Full original-case/provider/CLI,
+crash/platform and installed acceptance remain pending.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use

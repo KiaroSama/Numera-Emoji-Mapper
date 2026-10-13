@@ -41,6 +41,30 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
         (7, "coin-fetch-logos", vec!["0".into()], 2),
         (8, "coin-fetch-logos", vec!["notanumber".into()], 2),
         (9, "coin-fetch-logos", vec!["--typo".into()], 2),
+        (28, "coin-verify-logos", vec!["--help".into()], 0),
+        (29, "coin-verify-logos", vec!["--typo".into()], 2),
+        (30, "coin-verify-logos", vec!["--fix".into()], 2),
+        (
+            31,
+            "coin-verify-logos",
+            vec![
+                "--emoji-dir".into(),
+                coins.to_string_lossy().into_owned(),
+                "--fix".into(),
+            ],
+            2,
+        ),
+        (
+            32,
+            "coin-verify-logos",
+            vec![
+                "--emoji-dir".into(),
+                coins.to_string_lossy().into_owned(),
+                "--top".into(),
+                "0".into(),
+            ],
+            0,
+        ),
         (24, "coin-remap-ids", vec!["--help".into()], 0),
         (25, "coin-remap-ids", vec!["--apply".into()], 2),
         (

@@ -386,6 +386,9 @@ remain retryable and incomplete listings never replace the report. Additive
 `coin-remap-ids --emoji-dir DIR` rebuilds mappings by content, dry by default;
 calibrated `--apply` preserves a backup and refuses ambiguous/incomplete results.
 It makes no Telegram mutations; full acceptance and installed activation are pending.
+Additive `coin-verify-logos --emoji-dir DIR` is review-only unless explicit
+`--fix --only` selects repairs; fixing mutates Telegram and requires separate
+operator authorization. Full source/platform/installed acceptance is pending.
 Run the retained Python tools as modules from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 
