@@ -56,6 +56,14 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-manifest.json`: five independent pinned coin-report observations using
+  the retained pure source table oracle, not a native-backed Python binding.
+  Live order, sorted aliases, unmapped IDs, empty/title fallback, primitive IDs,
+  Unicode and hostile pipe/newline cells are byte-exact. The original coin-table
+  assertion is named in provenance; arbitrary container/float coercion remains
+  unaccepted. Separate owned-file/actual loopback-command tests cover unknown
+  readback preservation, atomic outputs, source-file preservation and custom-token
+  error redaction; no live Telegram calls or installed runtime switch.
 - `provider-publish.json`: eight pinned source top-up traces at controlled
   live/hash/upload/proof/promotion/persistence seams. Includes full-set rollover,
   rejected/ambiguous/unknown mutation, verified absence, unknown readback and

@@ -378,6 +378,9 @@ The expanded migration branch adds `coin-alias-map`, `coin-enhance-map` and
 `coin-fetch-cmc`, with `--coin-dir DIR` for isolated coin data work. Provider
 commands retain exact `--dry`; Paprika also accepts `--retry-unmatched`. They are not in the
 currently accepted prebuilt runtime yet; see [migration status](docs/native-backend.md).
+Additive `coin-write-manifests` writes read-only live coin reports with
+`--out-dir`, `--state`, `--map` and `--token-env`; full migration acceptance
+and installed-runtime activation remain pending.
 Run the retained Python tools as modules from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 
