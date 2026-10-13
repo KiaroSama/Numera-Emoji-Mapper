@@ -36,7 +36,10 @@ fetch/build commands and complete source coercion parity remain pending.
 Provider upload proof and recovery ordering are being mapped independently:
 recorded dHash, unknown/duplicate refusal, idempotent provider tally and map-before-
 source promotion. These policy seams are not yet the public native publisher;
-actual durable upload/restart/staging integration remains pending.
+initial durable recovery and private staging are being connected using the
+existing transport, family-before-map leases and atomic persistence. Pending
+intent sources survive cleanup; only proven matching bytes become the shared
+logo. Complete mutation/restart/platform/public-command acceptance remains pending.
 An initial video seam owns
 FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
 additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed
