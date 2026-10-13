@@ -85,13 +85,12 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
             &json!({"btc":"111111111","other":"preserved"}),
         )
         .unwrap();
-        if index >= 16 {
-            std::fs::write(
-                coins.join("currency-emoji-inventory.md"),
-                b"## Bitcoin - Bitcoin\nticker: btc\npremium-id:\n",
-            )
-            .unwrap();
-        }
+        let input = if index >= 16 {
+            "## Bitcoin - Bitcoin\nticker: btc\npremium-id:\n"
+        } else {
+            inventory
+        };
+        std::fs::write(coins.join("currency-emoji-inventory.md"), input.as_bytes()).unwrap();
         let work = scratch.join(format!("run{index}"));
         std::fs::create_dir(&work).unwrap();
         let output = scratch.join(format!("stdout{index}.txt"));
