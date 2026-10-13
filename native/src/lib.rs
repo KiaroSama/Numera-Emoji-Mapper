@@ -51,6 +51,7 @@ pub mod coin_logo_review;
 pub mod coin_manifest;
 pub mod coin_manifest_cli;
 pub mod coin_map_cli;
+pub mod coin_map_identity;
 pub mod coin_paprika;
 pub mod coin_plan;
 pub mod coin_provider_cli;
