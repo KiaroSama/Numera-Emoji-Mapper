@@ -56,6 +56,11 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-remap-policy.json`: seven pinned `_remap` admission traces with controlled
+  nearest-distance/runner-up outputs. Dry mode writes nothing; calibrated cutoff
+  and margin accept their exact boundaries; incomplete sets, failed images and
+  ambiguity write candidates rather than replace the map. This verifies policy,
+  not nearest/signature arithmetic, actual backup/lock persistence or public CLI.
 - `coin-audit.json`: seven pinned cache/list/download/report traces with virtual
   waits and independent durable snapshots. Deleted IDs leave totals, decode errors
   retry instead of becoming blanks, locations come from live order, distinct CIDs
