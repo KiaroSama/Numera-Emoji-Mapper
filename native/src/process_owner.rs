@@ -322,27 +322,6 @@ mod platform {
         }
     }
 
-    #[cfg(test)]
-    mod tests {
-        use super::process_stat;
-        #[test]
-        fn disappeared_task_is_not_an_accounting_failure_but_permission_and_io_are() {
-            assert_eq!(
-                process_stat(Ok("record".into())).unwrap(),
-                Some("record".into())
-            );
-            for errno in [2, 3] {
-                assert_eq!(
-                    process_stat(Err(std::io::Error::from_raw_os_error(errno))).unwrap(),
-                    None
-                );
-            }
-            for errno in [5, 13] {
-                assert!(process_stat(Err(std::io::Error::from_raw_os_error(errno))).is_err());
-            }
-        }
-    }
-
     impl Tree {
         pub fn sample(&self) -> Result<Vec<u64>, String> {
             let mut values = Vec::new();
@@ -424,6 +403,27 @@ mod platform {
         let group =
             i32::try_from(child.id()).map_err(|_| "codec process id out of range".to_owned())?;
         Ok((child, Tree { group }))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::process_stat;
+        #[test]
+        fn disappeared_task_is_not_an_accounting_failure_but_permission_and_io_are() {
+            assert_eq!(
+                process_stat(Ok("record".into())).unwrap(),
+                Some("record".into())
+            );
+            for errno in [2, 3] {
+                assert_eq!(
+                    process_stat(Err(std::io::Error::from_raw_os_error(errno))).unwrap(),
+                    None
+                );
+            }
+            for errno in [5, 13] {
+                assert!(process_stat(Err(std::io::Error::from_raw_os_error(errno))).is_err());
+            }
+        }
     }
 }
 
