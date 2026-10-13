@@ -338,6 +338,23 @@ pub fn gallery_static(source: &Path, output: &Path) -> Result<Value, String> {
     preview_encoded(source, output, 88, true)
 }
 
+pub fn valid_logo(source: &Path) -> bool {
+    Python::initialize();
+    Python::attach(|py| -> PyResult<bool> {
+        let module = py.import("PIL.Image")?;
+        {
+            let image = OpenImage(module.call_method1("open", (source.to_path_buf(),))?);
+            image.0.call_method0("verify")?;
+        }
+        // verify() invalidates the object; reopening is required, not a redundant decode.
+        let image = OpenImage(module.call_method1("open", (source.to_path_buf(),))?);
+        let rgba = OpenImage(image.0.call_method1("convert", ("RGBA",))?);
+        let alpha = OpenImage(rgba.0.call_method1("getchannel", ("A",))?);
+        Ok(!alpha.0.call_method0("getbbox")?.is_none())
+    })
+    .unwrap_or(false)
+}
+
 pub fn animation_info(source: &Path) -> bool {
     Python::initialize();
     Python::attach(|py| -> PyResult<bool> {

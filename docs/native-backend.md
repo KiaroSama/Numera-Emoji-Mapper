@@ -28,7 +28,12 @@ persistence and full original-case parity remain pending. Search-cache persisten
 now has an additive native operation using existing OS leases and atomic writes;
 it records each answered coin, leaves unanswered searches uncached and preserves
 progress across a failed later search. Public provider CLI integration and full
-restart/platform acceptance remain pending. An initial video seam owns
+restart/platform acceptance remain pending. The additive native keyword writer
+retains earlier names after failed lookups, verifies/reopens PNGs before admission,
+and writes quoted UTF-8/CRLF CSV atomically. Initial CoinGecko canonical-name
+paging preserves market-cap precedence and incomplete-lookup status; public
+fetch/build commands and complete source coercion parity remain pending.
+An initial video seam owns
 FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
 additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed
 working sets and complete native-frame/timestamp comparison. Video validation,

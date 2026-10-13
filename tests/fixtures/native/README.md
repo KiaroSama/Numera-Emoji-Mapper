@@ -56,6 +56,14 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `keyword-writer.json`: four source byte-exact quoted UTF-8/CRLF CSV observations
+  and four actual image-admission checks. Earlier names survive empty lookups;
+  sorted rows and PNG decode/alpha-bbox admission differ intentionally from the
+  provider-logo <=8-visible-pixel rule. Native atomic replacement additionally
+  protects the previous CSV when malformed input fails.
+- `gecko-names.json`: six source market-page/long-tail/duplicate-symbol/partial
+  lookup traces with virtual page waits. No live CoinGecko requests; arbitrary
+  primitive coercion and full public fetch/build command parity remain pending.
 - `provider-image.json`: seven pinned source provider-logo observations: 0/8/9
   visible pixels, alpha 10/11/128, hidden RGB and corrupt bytes. Blank detection
   runs before fitting; accepted 100x100 PNG/RGBA hashes come from source. The
