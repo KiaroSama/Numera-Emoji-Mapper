@@ -94,11 +94,6 @@ impl MapIo for Disk<'_> {
         println!("{}", crate::logging::redact(text, &[]));
     }
 }
-fn document(path: &std::path::Path) -> Result<Value, String> {
-    crate::coin_provider_stage::physical(path)?;
-    serde_json::from_slice(&std::fs::read(path).map_err(|_| "cannot read frozen rebuild plan")?)
-        .map_err(|_| "invalid frozen rebuild plan JSON".into())
-}
 pub fn run(files: &Files, tg: &Telegram) -> Result<(), String> {
     for path in [&files.root, &files.directory, &files.images] {
         crate::coin_provider_stage::physical(path)?;
@@ -133,11 +128,8 @@ pub fn run(files: &Files, tg: &Telegram) -> Result<(), String> {
         .map_err(|_| "rebuild pack family is busy or unavailable")?;
     let _map = crate::locks::Lease::acquire(&canonical, &crate::logging::utc())
         .map_err(|_| "rebuild canonical map is busy or unavailable")?;
-    let plan = document(&files.directory.join("rebuild_dedup_plan.json"))?;
-    let plan = plan
-        .as_array()
-        .filter(|p| !p.is_empty())
-        .ok_or("frozen rebuild plan must be a nonempty list")?;
+    let plan = crate::coin_plan_disk::load(&files.directory)?;
+    let plan = crate::coin_plan_disk::validate(&plan)?;
     let state = Value::Object(crate::coin_provider_recover::object(
         &files.directory.join("rebuild_dedup_state.json"),
         false,
@@ -146,25 +138,26 @@ pub fn run(files: &Files, tg: &Telegram) -> Result<(), String> {
     if !problem.is_empty() {
         return Err(format!("rebuild resume state is inconsistent: {problem}"));
     }
-    let approved = match document(&files.directory.join("shared_logo_groups.json")) {
-        Ok(Value::Object(groups)) => groups
-            .values()
-            .map(|v| {
-                v.as_array()
-                    .ok_or("reviewed shared group must be a list")?
-                    .iter()
-                    .map(|t| {
-                        t.as_str()
-                            .map(str::to_owned)
-                            .ok_or("reviewed shared ticker must be a string")
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-            })
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>(),
-        _ => Vec::new(),
-    };
+    let approved =
+        match crate::coin_plan_disk::document(&files.directory.join("shared_logo_groups.json")) {
+            Ok(Value::Object(groups)) => groups
+                .values()
+                .map(|v| {
+                    v.as_array()
+                        .ok_or("reviewed shared group must be a list")?
+                        .iter()
+                        .map(|t| {
+                            t.as_str()
+                                .map(str::to_owned)
+                                .ok_or("reviewed shared ticker must be a string")
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                })
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>(),
+            _ => Vec::new(),
+        };
     crate::coin_rebuild_map::run(plan, &state, &approved, &mut Disk { files, tg })
 }
