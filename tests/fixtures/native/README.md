@@ -56,6 +56,10 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-plan.json`: four source-observed deterministic image-group plans and four
+  current-map alias replays. Inventory representative preference, merged keyword
+  order, duplicate ticker names and unapproved shared groups remain explicit.
+  This pure string-ID seam does not cover provider/network/durable map workflows.
 - `coin-aliases.json`: CPython 3.11.9, Unicode 14.0.0; pinned `coins/alias_map.py`
   AST `DROP`, `norm` and `main`, with in-memory map/CSV/missing-row I/O seams.
   Expected map order, messages, ambiguity and errors are source observations.
