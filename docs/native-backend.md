@@ -24,7 +24,11 @@ slices are additive. Provider-logo conversion uses the same native static fit bu
 rejects sparse/blank source pixels before enlargement. Initial CMC authentication,
 status and logo-metadata handling is also additive; synthetic loopback tests do
 not spend provider quota or publish to Telegram. Public coin orchestration,
-persistence and full original-case parity remain pending. An initial video seam owns
+persistence and full original-case parity remain pending. Search-cache persistence
+now has an additive native operation using existing OS leases and atomic writes;
+it records each answered coin, leaves unanswered searches uncached and preserves
+progress across a failed later search. Public provider CLI integration and full
+restart/platform acceptance remain pending. An initial video seam owns
 FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
 additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed
 working sets and complete native-frame/timestamp comparison. Video validation,

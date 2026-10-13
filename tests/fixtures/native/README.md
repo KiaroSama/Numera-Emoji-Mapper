@@ -76,6 +76,9 @@ They cover an initial migration slice, not the whole source test inventory.
 - `paprika-resolve.json`: five source resolver traces with per-coin saved snapshots,
   quota stop, unknown-not-cached, cached misses and explicit retry-unmatched.
   Fake provider outcomes exercise policy, not live HTTP/publication acceptance.
+  Native durable-cache tests replay those same traces on owned files, fresh
+  readback, competing OS ownership, malformed-cache preservation and controlled
+  search/save failure; required existing fixtures are reused, not target-generated.
 - `inventory-parse.json`: twenty-four exact source block-parser observations,
   including Unicode/control whitespace, CRLF, unanchored headings, greedy header
   backtracking and cross-line ticker quirks. No real operator inventory is used.
