@@ -56,6 +56,11 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-remap-cache.json`: six pinned manifest-digest/cache/download traces:
+  failed-image retry, legacy layout, obsolete signature length invalidation,
+  changed live manifest, deletion pruning and empty packs. Signature bytes are
+  controlled; actual image/numeric proof is separate. Full malformed-base64,
+  primitive-ID, concurrent persistence and public command parity remain pending.
 - `coin-remap-math.json`: four actual source 16x16 RGB-on-black plus alpha
   signatures and five source float32 nearest/runner-up observations, including
   first equal minimum, single-candidate infinity and a 513-row chunk boundary.
