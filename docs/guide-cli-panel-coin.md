@@ -359,6 +359,14 @@ resolve is named in the reply.
 Run each from the repository root as a module, `python -m coins.<tool>`; a
 tool run as a file path cannot import the shared `emojikit` package.
 
+The expanded migration branch additionally exposes `numera-emoji coin-alias-map`
+and `coin-enhance-map`, each with `--coin-dir DIR` (default project `coins/`).
+They atomically update the canonical map and filled inventory under its existing
+map lease; no provider/Telegram request is made. Unknown options refuse. These
+additive commands are not available in the accepted prebuilt runtime until the
+full migration/package gates pass. Non-string map IDs currently refuse rather
+than silently invent source-compatible formatting.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |
