@@ -56,6 +56,10 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-logo-review.json`: four pinned read-only provider/filter/order traces.
+  Strict threshold, missing/unreadable skips, virtual paging/per-image waits and
+  reverse tuple flag ordering are preserved. This is a policy seam, not actual
+  public review/fix orchestration or proof the flagged artwork is incorrect.
 - `logo-distance.json`: three pinned actual noise-art comparisons, including the
   original inverted-same-mark and different-art assertions. Typed Pillow variants
   preserve shared dHash; inversion/restyling is not proof of wrong artwork.
