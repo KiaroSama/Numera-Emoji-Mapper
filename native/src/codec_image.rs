@@ -51,6 +51,45 @@ fn premultiplied<'py>(
     image_module.call_method1("merge", ("RGBA", (red, green, blue, alpha)))
 }
 
+fn dhash<'py>(py: Python<'py>, image: &Bound<'py, PyAny>) -> PyResult<u64> {
+    let module = py.import("PIL.Image")?;
+    let multiplied = if image.getattr("mode")?.extract::<String>()? == "RGBA" {
+        Some(OpenImage(premultiplied(py, &module, image)?))
+    } else {
+        None
+    };
+    let raster = multiplied.as_ref().map(|value| &value.0).unwrap_or(image);
+    let gray = OpenImage(raster.call_method1("convert", ("L",))?);
+    let lanczos = module.getattr("Resampling")?.getattr("LANCZOS")?;
+    let resized = OpenImage(gray.0.call_method1("resize", ((9, 8), lanczos))?);
+    let bytes = pixels(&resized.0)?;
+    if bytes.len() != 72 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "invalid dHash raster",
+        ));
+    }
+    let mut bits = 0_u64;
+    for row in bytes.as_chunks::<9>().0 {
+        for pair in row.windows(2) {
+            bits = (bits << 1) | u64::from(pair[0] > pair[1]);
+        }
+    }
+    Ok(bits)
+}
+
+pub fn frame_phash(raw: &[u8]) -> Option<u64> {
+    let frame = raw.get(..64 * 64 * 4)?;
+    Python::initialize();
+    Python::attach(|py| -> PyResult<u64> {
+        let image = OpenImage(
+            py.import("PIL.Image")?
+                .call_method1("frombytes", ("RGBA", (64, 64), PyBytes::new(py, frame)))?,
+        );
+        dhash(py, &image.0)
+    })
+    .ok()
+}
+
 fn inspect(py: Python<'_>, path: &Path) -> PyResult<Value> {
     let image_module = py.import("PIL.Image")?;
     let image = OpenImage(image_module.call_method1("open", (path.to_path_buf(),))?);
@@ -68,26 +107,7 @@ fn inspect(py: Python<'_>, path: &Path) -> PyResult<Value> {
     let lanczos = image_module.getattr("Resampling")?.getattr("LANCZOS")?;
     let normalized = rgba.call_method1("resize", ((64, 64), &lanczos))?;
     let key = format!("s:{}", &digest_hex(&pixels(&normalized)?)[..32]);
-    let phash = (|| -> PyResult<u64> {
-        let multiplied = premultiplied(py, &image_module, &image.0)?;
-        let gray = multiplied
-            .call_method1("convert", ("L",))?
-            .call_method1("resize", ((9, 8), &lanczos))?;
-        let bytes = pixels(&gray)?;
-        if bytes.len() != 72 {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "invalid dHash raster",
-            ));
-        }
-        let mut bits = 0_u64;
-        for row in bytes.as_chunks::<9>().0 {
-            for pair in row.windows(2) {
-                bits = (bits << 1) | u64::from(pair[0] > pair[1]);
-            }
-        }
-        Ok(bits)
-    })()
-    .ok();
+    let phash = dhash(py, &image.0).ok();
     Ok(json!({"size":[size.0,size.1],"mode":mode,"blank":blank,"content_key":key,"phash":phash}))
 }
 
@@ -332,6 +352,42 @@ fn comparison_pixels(py: Python<'_>, path: &Path) -> PyResult<Vec<u8>> {
     pixels(&premultiplied(py, &module, &normalized)?)
 }
 
+fn close_pixels(x: &[u8], y: &[u8]) -> Option<bool> {
+    if x.len() != 64 * 64 * 4 || x.len() != y.len() {
+        return None;
+    }
+    let mut totals = [0_u64; 4];
+    for (index, (left, right)) in x.iter().zip(y).enumerate() {
+        totals[index % 4] += u64::from(left.abs_diff(*right));
+    }
+    let mean = totals
+        .iter()
+        .map(|sum| *sum as f64 / (64.0 * 64.0))
+        .sum::<f64>()
+        / 4.0;
+    Some(mean <= 8.0)
+}
+
+pub fn same_frame(x: &[u8], y: &[u8]) -> Option<bool> {
+    if x.len() != 64 * 64 * 4 || y.len() != x.len() {
+        return None;
+    }
+    if (frame_phash(x)? ^ frame_phash(y)?).count_ones() > 6 {
+        return Some(false);
+    }
+    Python::attach(|py| {
+        let module = py.import("PIL.Image").ok()?;
+        let normalized = |raw: &[u8]| -> PyResult<Vec<u8>> {
+            let image = OpenImage(
+                module.call_method1("frombytes", ("RGBA", (64, 64), PyBytes::new(py, raw)))?,
+            );
+            let multiplied = OpenImage(premultiplied(py, &module, &image.0)?);
+            pixels(&multiplied.0)
+        };
+        close_pixels(&normalized(x).ok()?, &normalized(y).ok()?)
+    })
+}
+
 pub fn same_image(a: &Path, b: &Path) -> Option<bool> {
     let a_info = inspect_and_fingerprint(a).ok()?;
     let b_info = inspect_and_fingerprint(b).ok()?;
@@ -345,19 +401,7 @@ pub fn same_image(a: &Path, b: &Path) -> Option<bool> {
     Python::attach(|py| {
         let x = comparison_pixels(py, a).ok()?;
         let y = comparison_pixels(py, b).ok()?;
-        if x.len() != 64 * 64 * 4 || x.len() != y.len() {
-            return None;
-        }
-        let mut totals = [0_u64; 4];
-        for (index, (left, right)) in x.iter().zip(&y).enumerate() {
-            totals[index % 4] += u64::from(left.abs_diff(*right));
-        }
-        let mean = totals
-            .iter()
-            .map(|sum| *sum as f64 / (64.0 * 64.0))
-            .sum::<f64>()
-            / 4.0;
-        Some(mean <= 8.0)
+        close_pixels(&x, &y)
     })
 }
 

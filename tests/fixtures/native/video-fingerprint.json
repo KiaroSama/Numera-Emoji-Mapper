@@ -1,0 +1,52 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/video_decode.py": "bab9579240a23bb8ee59c1a66e496586ca881398bb4d82e956e2fb6c2b3ff13a",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89"
+  },
+  "cases": [
+    {
+      "input": "tests/fixtures/native/video-fingerprint/fast30.webm",
+      "input_sha256": "9bbe7eb2e975eb1f325a733fba5e5f97918e3423bb19e5e10d25942aff78ef57",
+      "expected": {
+        "content_key": "v:3cf3deb8098c04f13c4f989370acac89",
+        "phash": 5300177295401782857,
+        "native_first_phash": 6510615555426900570,
+        "frame_bytes": 65536,
+        "rgba_sha256": "3cf3deb8098c04f13c4f989370acac89cc3dc269dfed34ac1f6271c39d34334d",
+        "duration": 0.4,
+        "sample_launches": 1,
+        "empty_sample_retried": false
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-fingerprint/fast15.webm",
+      "input_sha256": "91baf8d30ae00bc60584ed617bf355933885b8c7a4a493f573cc60fb560ba04e",
+      "expected": {
+        "content_key": "v:5ef91fd9de2aa94681a8d2811c6a1f7b",
+        "phash": 6510615555426900570,
+        "native_first_phash": 6510615555426900570,
+        "frame_bytes": 81920,
+        "rgba_sha256": "5ef91fd9de2aa94681a8d2811c6a1f7bd0e8cddfcb44c78a58f43a05d579f2c5",
+        "duration": 0.534,
+        "sample_launches": 1,
+        "empty_sample_retried": false
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-fingerprint/short30.webm",
+      "input_sha256": "dfdb3fc6a36583d08dbccdcdb77abf5b912c305d4e66197a53cdb549d90e45ca",
+      "expected": {
+        "content_key": "v:1df9b6aeb3afe57a3957973e8c497221",
+        "phash": 6510615555426900570,
+        "native_first_phash": 6510615555426900570,
+        "frame_bytes": 16384,
+        "rgba_sha256": "1df9b6aeb3afe57a3957973e8c49722149305914e273dd6568ba556a97b2dbce",
+        "duration": 0.033,
+        "sample_launches": 2,
+        "empty_sample_retried": true
+      }
+    }
+  ]
+}

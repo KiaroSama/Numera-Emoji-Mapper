@@ -29,6 +29,8 @@ pub mod codec_process;
 pub mod codec_svg;
 pub mod codec_tint;
 pub mod codec_video;
+mod codec_video_cache;
+pub mod codec_video_timeline;
 pub mod codec_worker;
 pub mod coin_aliases;
 pub mod coin_inventory;
