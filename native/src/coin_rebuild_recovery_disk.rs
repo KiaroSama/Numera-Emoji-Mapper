@@ -8,12 +8,12 @@ use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
-struct Disk<'a> {
-    files: &'a Files,
-    tg: &'a Telegram,
+pub(crate) struct Disk<'a> {
+    pub(crate) files: &'a Files,
+    pub(crate) tg: &'a Telegram,
 }
 impl Disk<'_> {
-    fn source(&self, key: &str) -> Result<PathBuf, String> {
+    pub(crate) fn source(&self, key: &str) -> Result<PathBuf, String> {
         if key.is_empty()
             || key.contains("..")
             || !key
