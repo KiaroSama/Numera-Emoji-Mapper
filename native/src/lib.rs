@@ -44,6 +44,7 @@ pub mod coin_inventory_parse;
 pub mod coin_keywords;
 pub mod coin_paprika;
 pub mod coin_plan;
+pub mod coin_provider_effects;
 pub mod coin_provider_policy;
 pub mod coin_provider_proof;
 pub mod coin_provider_publish;

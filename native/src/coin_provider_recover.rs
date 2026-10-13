@@ -14,10 +14,10 @@ pub struct Files {
     pub published: PathBuf,
     pub base: String,
 }
-struct Disk<'a> {
-    files: &'a Files,
-    stage: &'a Stage,
-    tg: &'a Telegram,
+pub(crate) struct Disk<'a> {
+    pub(crate) files: &'a Files,
+    pub(crate) stage: &'a Stage,
+    pub(crate) tg: &'a Telegram,
 }
 impl RecoveryIo for Disk<'_> {
     fn fallback_hash(&mut self, intent: &Value) -> Result<u64, String> {
@@ -75,7 +75,7 @@ impl RecoveryIo for Disk<'_> {
         )
     }
 }
-fn object(path: &Path, missing: bool) -> Result<Map<String, Value>, String> {
+pub(crate) fn object(path: &Path, missing: bool) -> Result<Map<String, Value>, String> {
     let metadata = match std::fs::symlink_metadata(path) {
         Ok(metadata) => metadata,
         Err(e) if missing && e.kind() == std::io::ErrorKind::NotFound => return Ok(Map::new()),
@@ -93,7 +93,7 @@ fn object(path: &Path, missing: bool) -> Result<Map<String, Value>, String> {
     .ok_or_else(|| "provider durable document must be an object".into())
 }
 
-pub fn run(files: &Files, tg: &Telegram) -> Result<Option<String>, String> {
+pub(crate) fn leases(files: &Files) -> Result<(crate::locks::Lease, crate::locks::Lease), String> {
     if files.base.is_empty()
         || [&files.root, &files.state, &files.mapping, &files.published]
             .iter()
@@ -120,6 +120,11 @@ pub fn run(files: &Files, tg: &Telegram) -> Result<Option<String>, String> {
         &crate::logging::utc(),
     )
     .map_err(|_| "canonical coin map is busy or unavailable")?;
+    Ok((_family, _map))
+}
+
+pub fn run(files: &Files, tg: &Telegram) -> Result<Option<String>, String> {
+    let _leases = leases(files)?;
     // Read after both owning leases, never a snapshot taken before waiting.
     let mut state = Value::Object(object(&files.state, false)?);
     let mut mapping = object(&files.mapping, true)?;

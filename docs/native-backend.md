@@ -41,8 +41,10 @@ existing transport, family-before-map leases and atomic persistence. Pending
 intent sources survive cleanup; only proven matching bytes become the shared
 logo. A source-traced native top-up policy now maps existing/overflow sets, writes
 intent before mutation, retains unknown outcomes and maps only content-proven
-IDs. Its effects are still controlled seams; complete transport/mutation/restart/
-platform/public-command acceptance remains pending.
+IDs. Native effects now connect existing Bot API transport, verified-retry
+checks, private staging and durable recovery; a bounded loopback upload/readback
+checks one-time publication and a subsequent mapped-ticker skip. Full ambiguous-
+mutation, crash/restart, platform and public-command acceptance remain pending.
 An initial video seam owns
 FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
 additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed
