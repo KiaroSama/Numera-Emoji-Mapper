@@ -23,8 +23,10 @@ FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
 additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed
 working sets and complete native-frame/timestamp comparison. Video validation,
 blank sampling, VP9 conversion, stream-copy preparation and WebP preview are
-being added at independent source-fixture seams. Worker integration and full
-failure/platform parity remain pending.
+covered at independent source-fixture seams. Internal worker video fingerprint,
+comparison, validation, preparation, conversion and preview dispatch are being
+connected; the production adapter and installed packages remain unchanged.
+Full failure/platform and original-case parity remain pending.
 These slices use
 pinned source-generated fixtures. The internal `codec-worker` entry point is
 not yet the production media adapter. Its limited hosted checkpoint is build

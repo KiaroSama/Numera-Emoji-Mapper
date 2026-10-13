@@ -40,6 +40,15 @@ fn path_field(request: &Value, field: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+fn output_field(request: &Value) -> Result<PathBuf, String> {
+    request
+        .get("output")
+        .and_then(Value::as_str)
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .ok_or_else(|| "output must be a non-empty path".into())
+}
+
 fn preview_parameters(request: &Value) -> Result<(u32, u32, bool), String> {
     request
         .get("key")
@@ -67,6 +76,10 @@ fn preview_parameters(request: &Value) -> Result<(u32, u32, bool), String> {
 }
 
 pub fn execute(request: &Value) -> Result<Value, String> {
+    execute_at(None, request)
+}
+
+pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String> {
     if !request.is_object() {
         return Err("expected a media request object".into());
     }
@@ -106,6 +119,66 @@ pub fn execute(request: &Value) -> Result<Value, String> {
             .filter(|key| !key.is_empty())
             .ok_or("collision requires a content key")?;
         return crate::codec_format::collision_key(&source, key).map(Value::String);
+    }
+    if (format == "video" && operation != "convert")
+        || (operation == "convert" && request["target_format"] == "video")
+    {
+        let root = root.ok_or("video worker requires an explicit project root")?;
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|_| "cannot initialize video worker runtime")?;
+        let decoder = crate::codec_video::VideoDecoder::new(root)?;
+        return runtime.block_on(async {
+            match operation {
+                "fingerprint" => decoder.fingerprint(&source).await,
+                "compare" | "same_image" => {
+                    let other = path_field(request, "other")?;
+                    if operation == "compare"
+                        && std::fs::read(&source)
+                            .ok()
+                            .zip(std::fs::read(&other).ok())
+                            .is_some_and(|(a, b)| a == b)
+                    {
+                        return Ok(json!(true));
+                    }
+                    Ok(json!(decoder.same_image(&source, &other).await))
+                }
+                "usable" => {
+                    crate::codec_video_validate::validate(&decoder, &source).await?;
+                    Ok(json!(
+                        !crate::codec_video_validate::is_blank(&decoder, &source).await?
+                    ))
+                }
+                "prepare" => {
+                    let reencode = request.get("reencode").cloned().unwrap_or(json!(false));
+                    if reencode.as_bool().ok_or("reencode must be boolean")? {
+                        crate::codec_video_encode::reencode(&decoder, &source).await?;
+                    }
+                    if let Some(tint) = request.get("tint") {
+                        crate::codec_tint::parse_tint(
+                            tint.as_str().ok_or("tint must be #RRGGBB")?,
+                        )?;
+                        return Err("requested tint could not be applied".into());
+                    }
+                    decoder.fingerprint(&source).await
+                }
+                "preview" => {
+                    let (size, fps, still) = preview_parameters(request)?;
+                    let output = output_field(request)?;
+                    crate::codec_video_preview::preview(
+                        &decoder, &source, &output, size, fps, still,
+                    )
+                    .await
+                }
+                "convert" if request["target_format"] == "video" => {
+                    let output = output_field(request)?;
+                    crate::codec_video_encode::convert(&decoder, &source, &output, 262144).await?;
+                    decoder.fingerprint(&output).await
+                }
+                _ => Err("unsupported video codec operation".into()),
+            }
+        });
     }
     if matches!(operation, "compare" | "same_image") && format != "video" {
         let other = path_field(request, "other")?;
@@ -210,7 +283,10 @@ pub fn execute(request: &Value) -> Result<Value, String> {
             .map(PathBuf::from)
             .ok_or("output must be a non-empty path")?;
         crate::codec_image::to_static_png(&source, &output)?;
-        return execute(&json!({"operation":"fingerprint","source":output,"format":"static"}));
+        return execute_at(
+            root,
+            &json!({"operation":"fingerprint","source":output,"format":"static"}),
+        );
     }
     let info = crate::codec_image::inspect_and_fingerprint(&source)?;
     Ok(match operation {
@@ -303,7 +379,7 @@ pub fn run(root: &Path, arguments: &[String]) -> i32 {
                         return Err("codec output must stay in its owned envelope directory".into());
                     }
                 }
-                execute(&request)
+                execute_at(Some(root), &request)
             });
         let success = operation.is_ok();
         let response = match operation {
