@@ -65,6 +65,10 @@ Additive `coin-build-keywords` shares the native CoinGecko name/CSV policies,
 scans configured coin logos with SVG precedence and preserves partial-lookup
 exit status. Help/invalid-flag paths never contact providers; full live command
 and installed-platform acceptance remain pending.
+Native CoinGecko logo-fetch policy additionally maps good-cache resume,
+corrupt-cache refresh, validated private download publication and final keyword
+sweep. Its current fixture seam uses real image bytes with fake HTTP/virtual waits;
+complete public fetch command, errors and platform parity remain pending.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use
