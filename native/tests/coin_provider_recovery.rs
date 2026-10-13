@@ -8,6 +8,7 @@ struct Evidence<'a> {
     proofs: Vec<Value>,
     promotions: Vec<Value>,
     hashes: Vec<Value>,
+    fail_clear: bool,
 }
 impl RecoveryIo for Evidence<'_> {
     fn fallback_hash(&mut self, _intent: &Value) -> Result<u64, String> {
@@ -28,6 +29,9 @@ impl RecoveryIo for Evidence<'_> {
         }
     }
     fn save(&mut self, kind: &str, value: &Value) -> Result<(), String> {
+        if self.fail_clear && kind == "state" && value["provider_in_flight"].is_null() {
+            return Err("controlled final state write failure".into());
+        }
         self.writes.push(json!([kind, value]));
         Ok(())
     }
@@ -53,6 +57,7 @@ fn unknown_keeps_intent_and_confirmed_recovery_saves_map_before_matching_source(
             proofs: Vec::new(),
             promotions: Vec::new(),
             hashes: Vec::new(),
+            fail_clear: false,
         };
         let outcome = recover(&mut state, &mut mapping, &mut io);
         let result = match outcome {
@@ -64,5 +69,16 @@ fn unknown_keeps_intent_and_confirmed_recovery_saves_map_before_matching_source(
             "proofs":io.proofs,"promotions":io.promotions,"hashes":io.hashes}),
             case["expected"]
         );
+        if case["outcome"].is_null() {
+            let mut state = case["initial"].clone();
+            let original = state["provider_in_flight"].clone();
+            let mut mapping = Map::new();
+            io.fail_clear = true;
+            assert!(recover(&mut state, &mut mapping, &mut io).is_err());
+            assert_eq!(
+                state["provider_in_flight"], original,
+                "a failed durable clear must keep cleanup from deleting the only recovery source"
+            );
+        }
     }
 }

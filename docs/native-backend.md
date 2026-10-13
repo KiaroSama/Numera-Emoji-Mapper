@@ -45,6 +45,8 @@ IDs. Native effects now connect existing Bot API transport, verified-retry
 checks, private staging and durable recovery; a bounded loopback upload/readback
 checks one-time publication and a subsequent mapped-ticker skip. Full ambiguous-
 mutation, crash/restart, platform and public-command acceptance remain pending.
+A failed durable intent-clear keeps its in-memory pending record too, so cleanup
+cannot delete the only source while the on-disk intent still needs recovery.
 An initial video seam owns
 FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
 additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed

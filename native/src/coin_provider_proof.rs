@@ -89,7 +89,11 @@ pub fn recover<I: RecoveryIo>(
         io.promote(&intent, want)?;
     }
     state["provider_in_flight"] = Value::Null;
-    io.save("state", state)?;
+    if let Err(error) = io.save("state", state) {
+        // Cleanup must follow durable intent, not an uncommitted in-memory clear.
+        state["provider_in_flight"] = intent.clone();
+        return Err(error);
+    }
     Ok(cid.map(|_| ticker.to_owned()))
 }
 
