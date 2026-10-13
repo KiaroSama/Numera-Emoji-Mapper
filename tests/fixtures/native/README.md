@@ -56,6 +56,13 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `provider-proof.json` / `provider-recovery.json`: nine independent source
+  content-proof traces and seven interrupted-upload recovery/order traces.
+  External download/dHash/live state/promotion/persistence are controlled seams;
+  these prove policy only, not actual Telegram, codecs, durable restart or
+  complete original recovery-case migration. Recorded source identity is reused;
+  unknown/duplicate/unreadable evidence refuses, maps save before promotion and
+  provider tally is idempotent/separate from rebuild order.
 - `keyword-writer.json`: four source byte-exact quoted UTF-8/CRLF CSV observations
   and four actual image-admission checks. Earlier names survive empty lookups;
   sorted rows and PNG decode/alpha-bbox admission differ intentionally from the

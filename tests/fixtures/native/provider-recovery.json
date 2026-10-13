@@ -1,0 +1,551 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "4bce8ae96c8ec69e22fa135bb622c26409100b124c578fed94f2b04cb8b114fc",
+  "cases": [
+    {
+      "initial": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "cryptoemoji1_by_bot",
+            "live": 2
+          }
+        ],
+        "provider_in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "cryptoemoji1_by_bot",
+          "set_index": 1,
+          "expected_before": 2,
+          "source_dhash": 17,
+          "title": "Title"
+        },
+        "provider_added": []
+      },
+      "outcome": "cid",
+      "promote": true,
+      "legacy": false,
+      "expected": {
+        "result": {
+          "ticker": "aaa"
+        },
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_bot",
+              "live": 2
+            }
+          ],
+          "provider_in_flight": null,
+          "provider_added": [
+            "aaa"
+          ]
+        },
+        "mapping": {
+          "aaa": "cid"
+        },
+        "writes": [
+          [
+            "map",
+            {
+              "aaa": "cid"
+            }
+          ],
+          [
+            "state",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_bot",
+                  "live": 2
+                }
+              ],
+              "provider_in_flight": null,
+              "provider_added": [
+                "aaa"
+              ]
+            }
+          ]
+        ],
+        "proofs": [
+          [
+            "cryptoemoji1_by_bot",
+            2,
+            17,
+            "aaa.png"
+          ]
+        ],
+        "promotions": [
+          [
+            "aaa.png",
+            "aaa",
+            17
+          ]
+        ],
+        "hashes": []
+      }
+    },
+    {
+      "initial": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "cryptoemoji1_by_bot",
+            "live": 2
+          }
+        ],
+        "provider_in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "cryptoemoji1_by_bot",
+          "set_index": 1,
+          "expected_before": 2,
+          "source_dhash": 17,
+          "title": "Title"
+        },
+        "provider_added": []
+      },
+      "outcome": null,
+      "promote": true,
+      "legacy": false,
+      "expected": {
+        "result": {
+          "ticker": null
+        },
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_bot",
+              "live": 2
+            }
+          ],
+          "provider_in_flight": null,
+          "provider_added": []
+        },
+        "mapping": {},
+        "writes": [
+          [
+            "state",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_bot",
+                  "live": 2
+                }
+              ],
+              "provider_in_flight": null,
+              "provider_added": []
+            }
+          ]
+        ],
+        "proofs": [
+          [
+            "cryptoemoji1_by_bot",
+            2,
+            17,
+            "aaa.png"
+          ]
+        ],
+        "promotions": [],
+        "hashes": []
+      }
+    },
+    {
+      "initial": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "cryptoemoji1_by_bot",
+            "live": 2
+          }
+        ],
+        "provider_in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "cryptoemoji1_by_bot",
+          "set_index": 1,
+          "expected_before": 2,
+          "source_dhash": 17,
+          "title": "Title"
+        },
+        "provider_added": []
+      },
+      "outcome": "unknown",
+      "promote": true,
+      "legacy": false,
+      "expected": {
+        "result": {
+          "unknown": true
+        },
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_bot",
+              "live": 2
+            }
+          ],
+          "provider_in_flight": {
+            "key": "aaa",
+            "operation": "add",
+            "set_name": "cryptoemoji1_by_bot",
+            "set_index": 1,
+            "expected_before": 2,
+            "source_dhash": 17,
+            "title": "Title"
+          },
+          "provider_added": []
+        },
+        "mapping": {},
+        "writes": [],
+        "proofs": [
+          [
+            "cryptoemoji1_by_bot",
+            2,
+            17,
+            "aaa.png"
+          ]
+        ],
+        "promotions": [],
+        "hashes": []
+      }
+    },
+    {
+      "initial": {
+        "sets": [],
+        "provider_in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "cryptoemoji1_by_bot",
+          "set_index": 1,
+          "expected_before": 2,
+          "source_dhash": 17,
+          "title": "Title"
+        },
+        "provider_added": []
+      },
+      "outcome": "cid",
+      "promote": true,
+      "legacy": false,
+      "expected": {
+        "result": {
+          "ticker": "aaa"
+        },
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_bot",
+              "title": "Title",
+              "live": 1
+            }
+          ],
+          "provider_in_flight": null,
+          "provider_added": [
+            "aaa"
+          ]
+        },
+        "mapping": {
+          "aaa": "cid"
+        },
+        "writes": [
+          [
+            "map",
+            {
+              "aaa": "cid"
+            }
+          ],
+          [
+            "state",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_bot",
+                  "title": "Title",
+                  "live": 1
+                }
+              ],
+              "provider_in_flight": null,
+              "provider_added": [
+                "aaa"
+              ]
+            }
+          ]
+        ],
+        "proofs": [
+          [
+            "cryptoemoji1_by_bot",
+            2,
+            17,
+            "aaa.png"
+          ]
+        ],
+        "promotions": [
+          [
+            "aaa.png",
+            "aaa",
+            17
+          ]
+        ],
+        "hashes": []
+      }
+    },
+    {
+      "initial": {
+        "sets": [],
+        "provider_in_flight": {
+          "key": "aaa",
+          "operation": "create",
+          "set_name": "cryptoemoji1_by_bot",
+          "set_index": 1,
+          "expected_before": 2,
+          "source_dhash": 17,
+          "title": "Title"
+        },
+        "provider_added": []
+      },
+      "outcome": "cid",
+      "promote": false,
+      "legacy": false,
+      "expected": {
+        "result": {
+          "ticker": "aaa"
+        },
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_bot",
+              "title": "Title",
+              "live": 1
+            }
+          ],
+          "provider_in_flight": null,
+          "provider_added": [
+            "aaa"
+          ]
+        },
+        "mapping": {
+          "aaa": "cid"
+        },
+        "writes": [
+          [
+            "map",
+            {
+              "aaa": "cid"
+            }
+          ],
+          [
+            "state",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_bot",
+                  "title": "Title",
+                  "live": 1
+                }
+              ],
+              "provider_in_flight": null,
+              "provider_added": [
+                "aaa"
+              ]
+            }
+          ]
+        ],
+        "proofs": [
+          [
+            "cryptoemoji1_by_bot",
+            2,
+            17,
+            "aaa.png"
+          ]
+        ],
+        "promotions": [
+          [
+            "aaa.png",
+            "aaa",
+            17
+          ]
+        ],
+        "hashes": []
+      }
+    },
+    {
+      "initial": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "cryptoemoji1_by_bot",
+            "live": 2
+          }
+        ],
+        "provider_in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "cryptoemoji1_by_bot",
+          "set_index": 1,
+          "expected_before": 2,
+          "source_dhash": 17,
+          "title": "Title"
+        },
+        "provider_added": []
+      },
+      "outcome": "cid",
+      "promote": false,
+      "legacy": false,
+      "expected": {
+        "result": {
+          "ticker": "aaa"
+        },
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_bot",
+              "live": 2
+            }
+          ],
+          "provider_in_flight": null,
+          "provider_added": [
+            "aaa"
+          ]
+        },
+        "mapping": {
+          "aaa": "cid"
+        },
+        "writes": [
+          [
+            "map",
+            {
+              "aaa": "cid"
+            }
+          ],
+          [
+            "state",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_bot",
+                  "live": 2
+                }
+              ],
+              "provider_in_flight": null,
+              "provider_added": [
+                "aaa"
+              ]
+            }
+          ]
+        ],
+        "proofs": [
+          [
+            "cryptoemoji1_by_bot",
+            2,
+            17,
+            "aaa.png"
+          ]
+        ],
+        "promotions": [
+          [
+            "aaa.png",
+            "aaa",
+            17
+          ]
+        ],
+        "hashes": []
+      }
+    },
+    {
+      "initial": {
+        "sets": [
+          {
+            "index": 1,
+            "name": "cryptoemoji1_by_bot",
+            "live": 2
+          }
+        ],
+        "provider_in_flight": {
+          "key": "aaa",
+          "operation": "add",
+          "set_name": "cryptoemoji1_by_bot",
+          "set_index": 1,
+          "expected_before": 2,
+          "title": "Title"
+        },
+        "provider_added": []
+      },
+      "outcome": "cid",
+      "promote": true,
+      "legacy": true,
+      "expected": {
+        "result": {
+          "ticker": "aaa"
+        },
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_bot",
+              "live": 2
+            }
+          ],
+          "provider_in_flight": null,
+          "provider_added": [
+            "aaa"
+          ]
+        },
+        "mapping": {
+          "aaa": "cid"
+        },
+        "writes": [
+          [
+            "map",
+            {
+              "aaa": "cid"
+            }
+          ],
+          [
+            "state",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_bot",
+                  "live": 2
+                }
+              ],
+              "provider_in_flight": null,
+              "provider_added": [
+                "aaa"
+              ]
+            }
+          ]
+        ],
+        "proofs": [
+          [
+            "cryptoemoji1_by_bot",
+            2,
+            23,
+            "aaa.png"
+          ]
+        ],
+        "promotions": [
+          [
+            "aaa.png",
+            "aaa",
+            23
+          ]
+        ],
+        "hashes": [
+          "aaa.png"
+        ]
+      }
+    }
+  ]
+}
