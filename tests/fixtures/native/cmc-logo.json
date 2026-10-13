@@ -1,0 +1,120 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "74a5a49bc7bbe91d3718d27886ce97f55d3479c3cd78d89a8a711389d1bbe5e9",
+  "cases": [
+    {
+      "id": "7",
+      "response": null,
+      "expected": null,
+      "calls": [
+        "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=7"
+      ],
+      "waits": [
+        1.0
+      ]
+    },
+    {
+      "id": "7",
+      "response": [],
+      "expected": null,
+      "calls": [
+        "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=7"
+      ],
+      "waits": [
+        1.0
+      ]
+    },
+    {
+      "id": "7",
+      "response": {},
+      "expected": null,
+      "calls": [
+        "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=7"
+      ],
+      "waits": [
+        1.0
+      ]
+    },
+    {
+      "id": "7",
+      "response": {
+        "data": null
+      },
+      "expected": null,
+      "calls": [
+        "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=7"
+      ],
+      "waits": [
+        1.0
+      ]
+    },
+    {
+      "id": "7",
+      "response": {
+        "data": {
+          "7": {
+            "logo": "https://example.invalid/64x64/7.png"
+          }
+        }
+      },
+      "expected": "https://example.invalid/128x128/7.png",
+      "calls": [
+        "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=7"
+      ],
+      "waits": [
+        1.0
+      ]
+    },
+    {
+      "id": "7",
+      "response": {
+        "data": {
+          "8": {
+            "logo": "https://example.invalid/64x64/8.png"
+          }
+        }
+      },
+      "expected": null,
+      "calls": [
+        "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=7"
+      ],
+      "waits": [
+        1.0
+      ]
+    },
+    {
+      "id": "7",
+      "response": {
+        "data": {
+          "7": {
+            "logo": ""
+          }
+        }
+      },
+      "expected": null,
+      "calls": [
+        "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=7"
+      ],
+      "waits": [
+        1.0
+      ]
+    },
+    {
+      "id": "7",
+      "response": {
+        "data": {
+          "7": {
+            "logo": "https://example.invalid/128x128/7.png"
+          }
+        }
+      },
+      "expected": "https://example.invalid/128x128/7.png",
+      "calls": [
+        "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=7"
+      ],
+      "waits": [
+        1.0
+      ]
+    }
+  ]
+}

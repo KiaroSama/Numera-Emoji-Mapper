@@ -20,7 +20,11 @@ and Lottie preview/file-preparation/file-validation/vector-comparison handling,
 static preview/tint/tri-state comparison, source media detection/collision keys
 and coin-alias/inventory-text/block-parser/frozen-group-plan/alias-replay/provider-status-policy
 and bounded provider-GET/retry/Paprika-search/search-cache/rebuild-resume-validation
-slices are additive. An initial video seam owns
+slices are additive. Provider-logo conversion uses the same native static fit but
+rejects sparse/blank source pixels before enlargement. Initial CMC authentication,
+status and logo-metadata handling is also additive; synthetic loopback tests do
+not spend provider quota or publish to Telegram. Public coin orchestration,
+persistence and full original-case parity remain pending. An initial video seam owns
 FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
 additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed
 working sets and complete native-frame/timestamp comparison. Video validation,
