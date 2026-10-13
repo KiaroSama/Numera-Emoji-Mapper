@@ -84,6 +84,7 @@ jobs:
           export NUMERA_STATIC_CONVERT_ORACLE="$PWD/logs/checkpoint/static-convert-source.json"
           bounded lottie-source env PYTHONPATH="$PWD:$PYTHONPATH" python -m tests._lottie_preview_oracle
           export NUMERA_LOTTIE_PREVIEW_ORACLE="$PWD/logs/checkpoint/lottie-preview-source.json"
+          export NUMERA_GALLERY_CODEC_ORACLE="$PWD/logs/checkpoint/gallery-codec-source.json"
           bounded format cargo fmt --manifest-path native/Cargo.toml --check
           bounded lint cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
           bounded video-cache cargo test --manifest-path native/Cargo.toml --locked --lib codec_video_cache::tests -- --test-threads=2
