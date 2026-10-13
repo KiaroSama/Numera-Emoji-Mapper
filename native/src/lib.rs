@@ -47,6 +47,7 @@ pub mod coin_inventory;
 pub mod coin_inventory_parse;
 pub mod coin_keywords;
 pub mod coin_keywords_cli;
+pub mod coin_logo_review;
 pub mod coin_manifest;
 pub mod coin_manifest_cli;
 pub mod coin_map_cli;
