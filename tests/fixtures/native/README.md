@@ -56,6 +56,9 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `paprika-search.json`: seven source two-query name/ticker fallback traces,
+  preserving quota stop, partial-not-used and transient recovery with virtual
+  metered waits. It does not contact the provider or certify a live quota.
 - `paprika-resolve.json`: five source resolver traces with per-coin saved snapshots,
   quota stop, unknown-not-cached, cached misses and explicit retry-unmatched.
   Fake provider outcomes exercise policy, not live HTTP/publication acceptance.
