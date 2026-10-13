@@ -61,6 +61,10 @@ They cover an initial migration slice, not the whole source test inventory.
   preserve shared dHash; inversion/restyling is not proof of wrong artwork.
   These fixtures do not authorize automatic fixing or prove full review/replace
   CLI, provider, durable recovery or installed-platform acceptance.
+- `coin-replace-recovery.json`: nine independently pinned recovery traces with
+  exact map/state target binding, unknown/wrong-art refusal, old-still-live
+  clearing and idempotent all-alias repoint. External/durable effects are controlled;
+  physical intent/staging, actual mutation and process-death coverage remain pending.
 - `coin-replace-proof.json`: twelve source before/after CID-list observations.
   Length and every other ID must be unchanged, position valid and new ID absent
   from the original set. This structural proof alone does not establish artwork;

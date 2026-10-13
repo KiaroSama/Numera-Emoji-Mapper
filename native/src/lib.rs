@@ -66,6 +66,7 @@ pub mod coin_remap_cli;
 pub mod coin_remap_math;
 pub mod coin_remap_policy;
 pub mod coin_replace_proof;
+pub mod coin_replace_recovery;
 pub mod coin_state;
 pub mod collection_manifest;
 pub mod collection_names;
