@@ -56,6 +56,11 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-map-identity.json`: eight independent source one-to-one content attribution
+  cases: reordered live list, Hamming boundary, zero/multiple matches, duplicate
+  image attribution, missing upload/source and unreadable live bytes. Source
+  refusal text/order are retained. This is not durable rebuild-map/public CLI
+  acceptance; no positional mapping or second dedup mechanism is introduced.
 - `coin-logo-review.json`: four pinned read-only provider/filter/order traces.
   Strict threshold, missing/unreadable skips, virtual paging/per-image waits and
   reverse tuple flag ordering are preserved. This is a policy seam, not actual

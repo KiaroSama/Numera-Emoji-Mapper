@@ -1,0 +1,156 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "5fc72119e143b9d20af1f9280921d2503327f6c574e7b34e9d93a7ba1e27310e",
+  "cases": [
+    {
+      "input": {
+        "want": {
+          "aaa": 0,
+          "bbb": 65535
+        },
+        "live": [
+          [
+            "cid-b",
+            65535
+          ],
+          [
+            "cid-a",
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {
+          "bbb": "cid-b",
+          "aaa": "cid-a"
+        }
+      }
+    },
+    {
+      "input": {
+        "want": {
+          "aaa": 0
+        },
+        "live": [
+          [
+            "cid-a",
+            255
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {
+          "aaa": "cid-a"
+        }
+      }
+    },
+    {
+      "input": {
+        "want": {
+          "aaa": 0
+        },
+        "live": [
+          [
+            "cid-a",
+            511
+          ]
+        ]
+      },
+      "expected": {
+        "error": "live sticker cid-a matches 0 uploaded image(s) []; it cannot be attributed to a coin"
+      }
+    },
+    {
+      "input": {
+        "want": {
+          "aaa": 0,
+          "bbb": 0
+        },
+        "live": [
+          [
+            "cid-a",
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "error": "live sticker cid-a matches 2 uploaded image(s) ['aaa', 'bbb']; it cannot be attributed to a coin"
+      }
+    },
+    {
+      "input": {
+        "want": {
+          "aaa": 0
+        },
+        "live": [
+          [
+            "cid-a",
+            0
+          ],
+          [
+            "cid-b",
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "error": "'aaa' is live twice (cid-a and cid-b); the pack contains a duplicate"
+      }
+    },
+    {
+      "input": {
+        "want": {
+          "aaa": 0,
+          "bbb": 65535
+        },
+        "live": [
+          [
+            "cid-a",
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "error": "1 recorded upload(s) have no live sticker (e.g. ['bbb'])"
+      }
+    },
+    {
+      "input": {
+        "want": {
+          "aaa": 0
+        },
+        "live": [
+          [
+            "cid-a",
+            0
+          ]
+        ],
+        "missing": [
+          "aaa"
+        ]
+      },
+      "expected": {
+        "error": "the source image for 'aaa' is gone, so no live sticker can be proven to be it"
+      }
+    },
+    {
+      "input": {
+        "want": {
+          "aaa": 0
+        },
+        "live": [
+          [
+            "cid-a",
+            0
+          ]
+        ],
+        "unreadable": [
+          "cid-a"
+        ]
+      },
+      "expected": {
+        "error": "live sticker cid-a could not be read (controlled decode failure)"
+      }
+    }
+  ]
+}
