@@ -14,12 +14,23 @@ fn real_images_group_once_and_corrupt_frozen_plan_is_not_regenerated() {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let images = scratch.join("images");
         std::fs::create_dir(&images).unwrap();
-        let image_fixture: Value = serde_json::from_str(include_str!(
-            "../../tests/fixtures/native/coin-audit-image.json"
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/native/coin-plan-disk.json"
         ))
         .unwrap();
-        let case = &image_fixture["cases"][2];
-        let source = root.join(case["input"].as_str().unwrap());
+        assert_eq!(
+            fixture["source_sha256"],
+            "d5fe1edbd9ecf37cc59eada51b2108a756d49edece5b1fd47db4a1b325ec5bd3"
+        );
+        let source = root.join(fixture["input"].as_str().unwrap());
+        use sha2::Digest;
+        assert_eq!(
+            format!(
+                "{:x}",
+                sha2::Sha256::digest(std::fs::read(&source).unwrap())
+            ),
+            fixture["input_sha256"]
+        );
         std::fs::copy(&source, images.join("aaa.png")).unwrap();
         std::fs::copy(&source, images.join("aaabsc.png")).unwrap();
         std::fs::write(images.join("empty.png"), b"").unwrap();
@@ -34,14 +45,14 @@ fn real_images_group_once_and_corrupt_frozen_plan_is_not_regenerated() {
             b"ticker,keywords\naaa,Alpha\naaabsc,BSC\n",
         )
         .unwrap();
-        let expected = json!([{"rep":"aaabsc","tickers":["aaabsc","aaa"],"kw":"BSC, Alpha","hash":case["expected"]["hash"]}]);
+        let expected = fixture["plan"].clone();
         let plan = _native::coin_plan_disk::build(&scratch, &images).unwrap();
         assert_eq!(plan, expected);
         assert_eq!(_native::coin_plan_disk::load(&scratch).unwrap(), expected);
         let groups = scratch.join("shared_logo_groups.json");
         assert_eq!(
             serde_json::from_slice::<Value>(&std::fs::read(&groups).unwrap()).unwrap(),
-            json!({"aaabsc":["aaabsc","aaa"]})
+            fixture["writes"][1][1]
         );
         let frozen = scratch.join("rebuild_dedup_plan.json");
         let before = std::fs::read(&groups).unwrap();
