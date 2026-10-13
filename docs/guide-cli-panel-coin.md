@@ -374,6 +374,14 @@ incomplete provider lookup exits 3. It reads `COIN_PAGE_DELAY` (default 2 second
 needs no Telegram token and makes no Telegram request. The accepted installed
 runtime and complete source/platform parity remain unchanged/pending.
 
+The same branch adds `numera-emoji coin-fetch-logos [pages] [--coin-dir DIR]`.
+The default is 40 pages of 250 coins; nonnumeric/zero counts and unknown flags
+refuse before networking. Good cached PNGs resume without download, corrupt
+cache is refreshed, downloaded bodies must pass image verification, SVG takes
+precedence and keyword CSV retains prior names. Paging failure exits 3. This
+command contacts CoinGecko/image hosts but never Telegram; it is not available
+in the accepted installed package yet.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |

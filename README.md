@@ -374,7 +374,8 @@ locks, atomic state, announcements and table rendering use native-backed binding
 The generic `build-pack` command also supports the coin bot (`TELEGRAM_BOT_TOKEN`).
 Coin data, scripts and images all live under `coins/`.
 The expanded migration branch adds `coin-alias-map`, `coin-enhance-map` and
-`coin-build-keywords`, with `--coin-dir DIR` for isolated coin data work. They are not in the
+`coin-build-keywords` and `coin-fetch-logos [pages]`, with `--coin-dir DIR`
+for isolated coin data work. They are not in the
 currently accepted prebuilt runtime yet; see [migration status](docs/native-backend.md).
 Run the retained Python tools as modules from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):

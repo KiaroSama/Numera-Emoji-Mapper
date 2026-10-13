@@ -68,7 +68,9 @@ and installed-platform acceptance remain pending.
 Native CoinGecko logo-fetch policy additionally maps good-cache resume,
 corrupt-cache refresh, validated private download publication and final keyword
 sweep. Its current fixture seam uses real image bytes with fake HTTP/virtual waits;
-complete public fetch command, errors and platform parity remain pending.
+additive `coin-fetch-logos [pages] [--coin-dir DIR]` connects the pooled native
+HTTP transport. Default 40 pages, invalid arguments fail before networking, and
+paging failure exits 3. Full live command, errors and platform parity remain pending.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use

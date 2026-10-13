@@ -38,6 +38,7 @@ pub mod codec_worker;
 pub mod coin_aliases;
 pub mod coin_cmc;
 pub mod coin_gecko;
+pub mod coin_gecko_cli;
 pub mod coin_gecko_fetch;
 pub mod coin_http;
 pub mod coin_inventory;
