@@ -61,6 +61,9 @@ They cover an initial migration slice, not the whole source test inventory.
   rejected/ambiguous/unknown mutation, verified absence, unknown readback and
   current-map skip. Durable write ordering and exact intent fields are source
   observations; this is not complete actual publisher or restart acceptance.
+  Native effects additionally exercise one real loopback multipart upload, exact
+  supplied media bytes, content readback, mapping/tally persistence and a second
+  mapped-ticker skip. Full ambiguous mutation/process-death coverage stays open.
 - `provider-proof.json` / `provider-recovery.json`: nine independent source
   content-proof traces and seven interrupted-upload recovery/order traces.
   External download/dHash/live state/promotion/persistence are controlled seams;
