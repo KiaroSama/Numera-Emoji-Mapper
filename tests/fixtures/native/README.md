@@ -59,8 +59,10 @@ They cover an initial migration slice, not the whole source test inventory.
 - `coin-remap-math.json`: four actual source 16x16 RGB-on-black plus alpha
   signatures and five source float32 nearest/runner-up observations, including
   first equal minimum, single-candidate infinity and a 513-row chunk boundary.
-  Source NumPy 2.4.6 observations are immutable; checkpoint target NumPy 2.5.4
-  must match rather than regenerate them. Rust owns orchestration and calls
+  Source NumPy 2.4.6 observations are immutable; checkpoint target keeps 2.4.6
+  because latest 2.5.4 requires Python 3.12+, beyond the Python 3.11 runtime.
+  The hosted binary-only install proved that incompatibility; no source build
+  or runtime upgrade is substituted to hide it. Rust owns orchestration and calls
   unchanged typed external NumPy/Pillow APIs. Full arbitrary dtype/BLAS/platform,
   cache, runtime process and public command acceptance remain pending.
 - `coin-remap-policy.json`: seven pinned `_remap` admission traces with controlled
