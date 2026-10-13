@@ -120,6 +120,7 @@ const COMMANDS: &[&str] = &[
     "identity-repair",
     "coin-alias-map",
     "coin-enhance-map",
+    "coin-build-keywords",
 ];
 fn main() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -151,6 +152,8 @@ fn main() -> std::process::ExitCode {
             let log = RunLog::open(&root, &args[0], config.secret_values());
             let result = if matches!(args[0].as_str(), "coin-alias-map" | "coin-enhance-map") {
                 _native::coin_map_cli::run(&config, &args[0], &args[1..], &log)
+            } else if args[0] == "coin-build-keywords" {
+                _native::coin_keywords_cli::run(&config, &args[1..], &log)
             } else if args[0] == "add-media" {
                 _native::local_cli::run(&config, &args[1..], &log)
             } else if args[0] == "fetch-pack" {

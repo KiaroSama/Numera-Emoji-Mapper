@@ -367,6 +367,13 @@ additive commands are not available in the accepted prebuilt runtime until the
 full migration/package gates pass. Non-string map IDs currently refuse rather
 than silently invent source-compatible formatting.
 
+`numera-emoji coin-build-keywords [--coin-dir DIR]` on that branch uses the
+native canonical-name paging and shared CSV writer. SVG wins over a same-ticker
+PNG; unreadable PNGs are omitted, earlier names survive empty lookups, and an
+incomplete provider lookup exits 3. It reads `COIN_PAGE_DELAY` (default 2 seconds),
+needs no Telegram token and makes no Telegram request. The accepted installed
+runtime and complete source/platform parity remain unchanged/pending.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |
