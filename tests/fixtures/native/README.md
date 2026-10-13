@@ -56,6 +56,9 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-state.json`: twenty source resume-shape/cursor/order/in-flight refusal
+  observations, including booleans rejected as counts and cursor/order mismatch.
+  These pure invariants are not persisted restart or live publication acceptance.
 - `coin-http.json`: nine independent source retry traces using virtual time:
   immediate success, quota stop, transient recovery, exhausted retries and
   Retry-After clamping/defaults. Actual native loopback transport is tested
