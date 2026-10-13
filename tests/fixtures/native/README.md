@@ -64,7 +64,11 @@ They cover an initial migration slice, not the whole source test inventory.
 - `coin-replace-recovery.json`: nine independently pinned recovery traces with
   exact map/state target binding, unknown/wrong-art refusal, old-still-live
   clearing and idempotent all-alias repoint. External/durable effects are controlled;
-  physical intent/staging, actual mutation and process-death coverage remain pending.
+  an initial physical loopback adapter verifies exact target binding, downloaded
+  content, inventoried original/prepared promotion, all-alias map replacement and
+  idempotent restart without another mutation. Sources remain until durable map
+  save/intent clear; missing/changed source refuses. Complete actual mutation,
+  fault/race/platform and process-death coverage remain pending.
 - `coin-replace-proof.json`: twelve source before/after CID-list observations.
   Length and every other ID must be unchanged, position valid and new ID absent
   from the original set. This structural proof alone does not establish artwork;
