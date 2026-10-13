@@ -56,6 +56,11 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `logo-distance.json`: three pinned actual noise-art comparisons, including the
+  original inverted-same-mark and different-art assertions. Typed Pillow variants
+  preserve shared dHash; inversion/restyling is not proof of wrong artwork.
+  These fixtures do not authorize automatic fixing or prove full review/replace
+  CLI, provider, durable recovery or installed-platform acceptance.
 - `coin-replace-proof.json`: twelve source before/after CID-list observations.
   Length and every other ID must be unchanged, position valid and new ID absent
   from the original set. This structural proof alone does not establish artwork;
