@@ -38,6 +38,7 @@ pub mod codec_worker;
 pub mod coin_aliases;
 pub mod coin_http;
 pub mod coin_inventory;
+pub mod coin_inventory_parse;
 pub mod coin_plan;
 pub mod coin_provider_policy;
 pub mod coin_state;
