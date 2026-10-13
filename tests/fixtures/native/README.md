@@ -56,6 +56,13 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-remap-math.json`: four actual source 16x16 RGB-on-black plus alpha
+  signatures and five source float32 nearest/runner-up observations, including
+  first equal minimum, single-candidate infinity and a 513-row chunk boundary.
+  Source NumPy 2.4.6 observations are immutable; checkpoint target NumPy 2.5.4
+  must match rather than regenerate them. Rust owns orchestration and calls
+  unchanged typed external NumPy/Pillow APIs. Full arbitrary dtype/BLAS/platform,
+  cache, runtime process and public command acceptance remain pending.
 - `coin-remap-policy.json`: seven pinned `_remap` admission traces with controlled
   nearest-distance/runner-up outputs. Dry mode writes nothing; calibrated cutoff
   and margin accept their exact boundaries; incomplete sets, failed images and
