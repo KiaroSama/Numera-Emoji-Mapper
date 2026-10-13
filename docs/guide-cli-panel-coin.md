@@ -391,6 +391,14 @@ work. **Without `--dry` these commands can publish to Telegram**; test only with
 isolated loopback fixtures until full migration/package acceptance. Existing
 installed launchers and retained Python commands have not been switched.
 
+The branch also exposes `coin-write-manifests [--out-dir DIR] [--state PATH]
+[--map PATH] [--token-env KEY]`. It reads live sets without Telegram mutation,
+preserves their order, joins sorted ticker aliases and marks unmapped IDs.
+Default inputs/output are project `coins/`; `COIN_PACK_BASE` identifies the
+family lease. The chosen token variable is redacted. Unknown live readback stops
+before changing prior reports; per-file Markdown/index replacement is atomic,
+not a transaction across all report files. Full source/platform acceptance is pending.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |

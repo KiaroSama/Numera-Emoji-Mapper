@@ -1,0 +1,105 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "64d9de164ec0bb767c745e7191f408eaab860d7a00ceb33ba453d25541e12ffa",
+  "renderer_sha256": "1c0c0fc15ab5b6abcecb182f138f89da55c566c7210102c1eaaa5ad115343121",
+  "cases": [
+    {
+      "set": {
+        "name": "cryptoemoji1_by_YourEmojiBot",
+        "title": "Coins"
+      },
+      "stickers": [
+        {
+          "custom_emoji_id": "111"
+        },
+        {
+          "custom_emoji_id": "222"
+        },
+        {
+          "custom_emoji_id": "111"
+        }
+      ],
+      "aliases": {
+        "111": [
+          "z",
+          "aaa"
+        ]
+      },
+      "expected": "# Coins\n\nPack: https://t.me/addemoji/cryptoemoji1_by_YourEmojiBot  |  3 stickers\n\n| # | Ticker(s) | Emoji ID |\n|---|-----------|----------|\n| 1 | aaa, z | 111 |\n| 2 | (unmapped) | 222 |\n| 3 | aaa, z | 111 |\n"
+    },
+    {
+      "set": {
+        "name": "cryptoemoji2_by_YourEmojiBot",
+        "title": "C 1"
+      },
+      "stickers": [
+        {
+          "custom_emoji_id": "111"
+        }
+      ],
+      "aliases": {
+        "111": [
+          "left|right\nnext line"
+        ]
+      },
+      "source_test": "tests.test_pack_rows.EveryWriterUsesIt.test_the_coin_manifest",
+      "expected": "# C 1\n\nPack: https://t.me/addemoji/cryptoemoji2_by_YourEmojiBot  |  1 stickers\n\n| # | Ticker(s) | Emoji ID |\n|---|-----------|----------|\n| 1 | left\\|right next line | 111 |\n"
+    },
+    {
+      "set": {
+        "name": "cryptoemoji3_by_YourEmojiBot"
+      },
+      "stickers": [],
+      "aliases": {},
+      "expected": "# cryptoemoji3_by_YourEmojiBot\n\nPack: https://t.me/addemoji/cryptoemoji3_by_YourEmojiBot  |  0 stickers\n\n| # | Ticker(s) | Emoji ID |\n|---|-----------|----------|\n"
+    },
+    {
+      "set": {
+        "name": "cryptoemoji4_by_YourEmojiBot",
+        "title": "\u0639\u0646\u0648\u0627\u0646 \ud83e\ude99"
+      },
+      "stickers": [
+        {},
+        {
+          "custom_emoji_id": null
+        },
+        {
+          "custom_emoji_id": 123
+        },
+        {
+          "custom_emoji_id": true
+        }
+      ],
+      "aliases": {
+        "None": [
+          "n"
+        ],
+        "123": [
+          "b",
+          "a"
+        ],
+        "True": [
+          "boolean"
+        ]
+      },
+      "expected": "# \u0639\u0646\u0648\u0627\u0646 \ud83e\ude99\n\nPack: https://t.me/addemoji/cryptoemoji4_by_YourEmojiBot  |  4 stickers\n\n| # | Ticker(s) | Emoji ID |\n|---|-----------|----------|\n| 1 | n | None |\n| 2 | n | None |\n| 3 | a, b | 123 |\n| 4 | boolean | True |\n"
+    },
+    {
+      "set": {
+        "name": "cryptoemoji5_by_YourEmojiBot",
+        "title": ""
+      },
+      "stickers": [
+        {
+          "custom_emoji_id": " "
+        }
+      ],
+      "aliases": {
+        " ": [
+          "\u001c\n"
+        ]
+      },
+      "expected": "# \n\nPack: https://t.me/addemoji/cryptoemoji5_by_YourEmojiBot  |  1 stickers\n\n| # | Ticker(s) | Emoji ID |\n|---|-----------|----------|\n| 1 | \u2014 | \u2014 |\n"
+    }
+  ]
+}

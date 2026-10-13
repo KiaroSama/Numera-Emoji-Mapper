@@ -77,6 +77,13 @@ and downloads nothing; Paprika supports `--retry-unmatched` and persists answere
 searches. Unknown searches remain partial; live runs require the token before
 provider work. They are not authorized live-test commands and full end-to-end,
 source-case and platform acceptance remains pending.
+Additive `coin-write-manifests` reads live coin sticker IDs through the existing
+Bot API client and writes per-pack Markdown plus `manifests/INDEX.md`. It accepts
+`--out-dir`, `--state`, `--map` and `--token-env`; default inputs/output are in
+project `coins/`. State/map reads hold family-before-map leases, report writes are
+atomic, and an unknown live read leaves prior reports untouched. Custom token
+variables are redacted even without a secret-shaped key name. Full source error,
+primitive coercion, concurrent-output and installed-platform acceptance remain pending.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use

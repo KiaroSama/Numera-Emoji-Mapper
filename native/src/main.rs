@@ -124,6 +124,7 @@ const COMMANDS: &[&str] = &[
     "coin-fetch-logos",
     "coin-fetch-paprika",
     "coin-fetch-cmc",
+    "coin-write-manifests",
 ];
 fn main() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -152,7 +153,16 @@ fn main() -> std::process::ExitCode {
         let result = (|| {
             let root = root()?;
             let config = Config::load(root.clone())?;
-            let log = RunLog::open(&root, &args[0], config.secret_values());
+            let mut secrets = config.secret_values();
+            if args[0] == "coin-write-manifests" {
+                for option in args[1..].windows(2).filter(|pair| pair[0] == "--token-env") {
+                    let token = config.value(&option[1]);
+                    if !token.is_empty() {
+                        secrets.push(token.into());
+                    }
+                }
+            }
+            let log = RunLog::open(&root, &args[0], secrets);
             let result = if matches!(args[0].as_str(), "coin-alias-map" | "coin-enhance-map") {
                 _native::coin_map_cli::run(&config, &args[0], &args[1..], &log)
             } else if matches!(args[0].as_str(), "coin-fetch-paprika" | "coin-fetch-cmc") {
@@ -162,6 +172,8 @@ fn main() -> std::process::ExitCode {
                     &args[1..],
                     &log,
                 )
+            } else if args[0] == "coin-write-manifests" {
+                _native::coin_manifest_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-fetch-logos" {
                 _native::coin_gecko_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-build-keywords" {
