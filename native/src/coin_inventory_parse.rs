@@ -83,7 +83,8 @@ pub fn missing(text: &str, have: &BTreeSet<String>) -> Vec<(String, String)> {
             }
             remaining = &remaining[start + consumed..];
         } else {
-            remaining = &remaining[start + 2..];
+            // Regex search advances one character, so ### can begin a match at its second #.
+            remaining = &remaining[start + 1..];
         }
     }
     output
