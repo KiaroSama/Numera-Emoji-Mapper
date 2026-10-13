@@ -212,6 +212,33 @@ fn video_probe_and_frozen_stream_match_pinned_source() {
                 assert_eq!(json!(value.duration), case["expected"]["duration"]);
             }
         }
+        let validation: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/native/video-validation.json"
+        ))
+        .unwrap();
+        assert_eq!(
+            validation["source_sha256"],
+            fixture["source_sha256"]["emojikit/media.py"]
+        );
+        for case in validation["cases"].as_array().unwrap() {
+            let result = _native::codec_video_validate::validate_info(
+                &case["info"],
+                case["bytes"].as_u64().unwrap(),
+                case["filename"].as_str().unwrap(),
+            );
+            assert_eq!(json!(result.err()), case["error"]);
+        }
+        for case in validation["blank"].as_array().unwrap() {
+            let path = root.join(case["input"].as_str().unwrap());
+            assert_eq!(
+                json!(
+                    _native::codec_video_validate::is_blank(&decoder, &path)
+                        .await
+                        .unwrap()
+                ),
+                case["blank"]
+            );
+        }
         let scratch = Scratch(
             root.join("logs/tmp")
                 .join(format!("video swap {}", std::process::id())),

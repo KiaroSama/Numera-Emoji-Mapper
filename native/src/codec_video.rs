@@ -28,7 +28,7 @@ impl VideoDecoder {
         })
     }
 
-    fn validate_source(path: &Path) -> Result<(), String> {
+    pub(crate) fn validate_source(path: &Path) -> Result<(), String> {
         let metadata =
             std::fs::symlink_metadata(path).map_err(|_| "cannot inspect video source")?;
         if !path.is_absolute() || !metadata.is_file() || metadata.file_type().is_symlink() {

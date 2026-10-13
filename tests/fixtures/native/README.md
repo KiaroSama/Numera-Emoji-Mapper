@@ -8,6 +8,14 @@ They cover an initial migration slice, not the whole source test inventory.
   33 ms single-frame clips. Source dHash values prove the first frame belongs to
   the frozen 10 fps stream rather than native frame zero; the short clip records
   an actual successful-empty sample followed by native-frame retry.
+- `video-operations.json`: actual pinned source VP9 conversion pixels/probe fields,
+  lossless stream-copy preparation and WebP preview bytes. Container bytes are not
+  deterministic across muxer runs; decoded frames and exact same-platform preview
+  codec bytes are the observable contract. External-version differences still need
+  independent source verification, never target-derived replacement expectations.
+- `video-validation.json`: twelve source metadata refusal/order observations and
+  four actual alpha-sample blank checks; metadata-only variants do not prove full
+  real audio/container/oversized corpus acceptance.
 - `video-timing.json`: eleven pinned byte-level timing grammar observations.
   Unrelated non-UTF-8 metadata does not invalidate ASCII frame records; malformed
   indices/field order, missing timestamps and nonfinite timing remain refusals.

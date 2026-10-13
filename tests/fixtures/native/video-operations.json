@@ -1,0 +1,98 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/video_decode.py": "bab9579240a23bb8ee59c1a66e496586ca881398bb4d82e956e2fb6c2b3ff13a",
+    "emojikit/media_bridge.py": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7"
+  },
+  "conversions": [
+    {
+      "input": "tests/fixtures/native/video-codec/opaque.webm",
+      "input_sha256": "9ad49bae33aec4cc5e754476800285ddc0f7f7ba4738e39e1f4245d87e4551e1",
+      "expected": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "fps": 30.0,
+        "codec": "vp9",
+        "has_audio": false,
+        "container": "matroska,webm",
+        "rgba_sha256": "8df8be1fd1ce389d4f43582a3c200bd125cc70458a83b9a4ada376fed7971fe8",
+        "frame_bytes": 163840
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/alpha.webm",
+      "input_sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "expected": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "fps": 30.0,
+        "codec": "vp9",
+        "has_audio": false,
+        "container": "matroska,webm",
+        "rgba_sha256": "f081eb04ba1e7ab1d7ea57eaea0f6c828ad1cec61e565da7abc76813ee20af61",
+        "frame_bytes": 163840
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/vp8.webm",
+      "input_sha256": "25002b26244c4a3a5ff62a862152c15a67e88b2a33ef4c8825c216be1ca30db7",
+      "expected": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "fps": 30.0,
+        "codec": "vp9",
+        "has_audio": false,
+        "container": "matroska,webm",
+        "rgba_sha256": "f081eb04ba1e7ab1d7ea57eaea0f6c828ad1cec61e565da7abc76813ee20af61",
+        "frame_bytes": 163840
+      }
+    }
+  ],
+  "previews": [
+    {
+      "input": "tests/fixtures/native/video-codec/alpha.webm",
+      "still": true,
+      "size": 52,
+      "fps": 15,
+      "bytes": 96,
+      "webp_sha256": "d3620c82d9d3c6de6bfac7b9d0b3685a51bf1a2f70df7c8a1bf91d0a86d0ed1c"
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/alpha.webm",
+      "still": false,
+      "size": 104,
+      "fps": 15,
+      "bytes": 156,
+      "webp_sha256": "40ba5536e2752704075665ebed5b0ad2176ab418ebe4111c7863dcaa53567f06"
+    },
+    {
+      "input": "tests/fixtures/native/video-fingerprint/fast30.webm",
+      "still": false,
+      "size": 72,
+      "fps": 15,
+      "bytes": 1040,
+      "webp_sha256": "c544d769fcbb149058672bbbd834fa6a2efbeee083c890bc5d10390e7d5978fd"
+    }
+  ],
+  "remuxes": [
+    {
+      "input": "tests/fixtures/native/video-codec/opaque.webm",
+      "changed": true,
+      "rgba_sha256": "7cae73765ab8408268f0a31a7b39c4bb1a3e04daed2ca82718c406b6aacecf67"
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/alpha.webm",
+      "changed": true,
+      "rgba_sha256": "85e56926e47d16bc4f70572dfcc4a0275f575cdd55b9f9a3ddc1c7e56a6b4f94"
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/vp8.webm",
+      "changed": true,
+      "rgba_sha256": "55bad622a9f79bfd3643618a7257ce7ba684d1d5017ebc58fa6edc42854ff48e"
+    }
+  ]
+}
