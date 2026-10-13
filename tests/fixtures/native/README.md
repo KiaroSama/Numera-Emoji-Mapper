@@ -56,6 +56,9 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `inventory-parse.json`: twenty-four exact source block-parser observations,
+  including Unicode/control whitespace, CRLF, unanchored headings, greedy header
+  backtracking and cross-line ticker quirks. No real operator inventory is used.
 - `coin-state.json`: twenty source resume-shape/cursor/order/in-flight refusal
   observations, including booleans rejected as counts and cursor/order mismatch.
   These pure invariants are not persisted restart or live publication acceptance.
