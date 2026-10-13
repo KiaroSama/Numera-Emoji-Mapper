@@ -12,7 +12,7 @@ pub struct Files {
     pub intent: PathBuf,
     pub base: String,
 }
-fn target(path: &Path) -> Result<String, String> {
+pub(crate) fn target(path: &Path) -> Result<String, String> {
     crate::coin_provider_stage::physical(path)?;
     let path = path
         .canonicalize()
@@ -24,9 +24,10 @@ fn target(path: &Path) -> Result<String, String> {
         text.into()
     })
 }
-struct Disk<'a> {
-    files: &'a Files,
-    tg: &'a crate::telegram::Telegram,
+pub(crate) struct Disk<'a> {
+    pub(crate) files: &'a Files,
+    pub(crate) tg: &'a crate::telegram::Telegram,
+    pub(crate) map_locked: bool,
 }
 impl Disk<'_> {
     fn staged(&self, intent: &Value) -> Result<PathBuf, String> {
@@ -159,8 +160,14 @@ impl RecoveryIo for Disk<'_> {
     fn repoint(&mut self, old: &str, new: &str) -> Result<(), String> {
         let path = self.files.root.join(".locks/canonical_map.lock");
         crate::coin_manifest::output_path(&path)?;
-        let _map = crate::locks::Lease::acquire(&path, &crate::logging::utc())
-            .map_err(|_| "replacement canonical map is busy or unavailable")?;
+        let _map = if self.map_locked {
+            None
+        } else {
+            Some(
+                crate::locks::Lease::acquire(&path, &crate::logging::utc())
+                    .map_err(|_| "replacement canonical map is busy or unavailable")?,
+            )
+        };
         let mut mapping = crate::coin_provider_recover::object(&self.files.map, false)?;
         if mapping.values().any(|value| !value.is_string()) {
             return Err("replacement map ID compatibility requires text".into());
@@ -228,8 +235,27 @@ pub fn run(files: &Files, tg: &crate::telegram::Telegram) -> Result<bool, String
     if !files.intent.exists() {
         return Ok(true);
     }
+    recover_locked(files, tg)
+}
+
+pub(crate) fn recover_locked(
+    files: &Files,
+    tg: &crate::telegram::Telegram,
+) -> Result<bool, String> {
+    if !files.intent.exists() {
+        return Ok(true);
+    }
     let intent = Value::Object(crate::coin_provider_recover::object(&files.intent, false)?);
     let map = target(&files.map)?;
     let state = target(&files.state)?;
-    crate::coin_replace_recovery::recover(Some(&intent), &map, &state, &mut Disk { files, tg })
+    crate::coin_replace_recovery::recover(
+        Some(&intent),
+        &map,
+        &state,
+        &mut Disk {
+            files,
+            tg,
+            map_locked: false,
+        },
+    )
 }

@@ -68,7 +68,10 @@ They cover an initial migration slice, not the whole source test inventory.
 - `coin-replace-publish.json`: nine pinned `fix_one` effect-order traces:
   intent before mutation, ambiguous response followed by independent content
   proof, definitive refusal, unchanged/shifted set, wrong art and unknown readback.
-  Controlled effects prove ordering only, not real mutation retries or staging.
+  Controlled effects prove ordering only; an additional bounded native loopback
+  test exercises one immutable multipart replacement, intent present before POST,
+  downloaded art proof, original/prepared promotion and all-alias map readback.
+  Full ambiguous retry, process-death/race and platform acceptance remain pending.
 - `coin-replace-recovery.json`: nine independently pinned recovery traces with
   exact map/state target binding, unknown/wrong-art refusal, old-still-live
   clearing and idempotent all-alias repoint. External/durable effects are controlled;
