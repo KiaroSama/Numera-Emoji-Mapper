@@ -56,6 +56,9 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `paprika-resolve.json`: five source resolver traces with per-coin saved snapshots,
+  quota stop, unknown-not-cached, cached misses and explicit retry-unmatched.
+  Fake provider outcomes exercise policy, not live HTTP/publication acceptance.
 - `inventory-parse.json`: twenty-four exact source block-parser observations,
   including Unicode/control whitespace, CRLF, unanchored headings, greedy header
   backtracking and cross-line ticker quirks. No real operator inventory is used.
