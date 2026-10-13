@@ -56,6 +56,11 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-replace-proof.json`: twelve source before/after CID-list observations.
+  Length and every other ID must be unchanged, position valid and new ID absent
+  from the original set. This structural proof alone does not establish artwork;
+  downloaded content proof, bound durable intent, promotion/repoint and complete
+  public repair command acceptance remain separate pending requirements.
 - `coin-remap-cache.json`: six pinned manifest-digest/cache/download traces:
   failed-image retry, legacy layout, obsolete signature length invalidation,
   changed live manifest, deletion pruning and empty packs. Signature bytes are
