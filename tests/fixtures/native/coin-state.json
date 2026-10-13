@@ -1,0 +1,658 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "d5fe1edbd9ecf37cc59eada51b2108a756d49edece5b1fd47db4a1b325ec5bd3",
+  "cases": [
+    {
+      "state": {},
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": ""
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ]
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": ""
+    },
+    {
+      "state": [],
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "state is not an object"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": true,
+        "order": [
+          "a"
+        ]
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "cursor True is not a plan position"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": -1,
+        "order": [
+          "a"
+        ]
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "cursor -1 is not a plan position"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 3,
+        "order": [
+          "a"
+        ]
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "cursor 3 is past the end of the 2-entry plan"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "b"
+        ]
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "'order' records 'b', which is not among the first 1 plan entries the cursor claims were processed, in that order"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a",
+          "a"
+        ]
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "'order' records ['a'] more than once"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "provider_added": [
+          "x",
+          "x"
+        ]
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "'provider_added' repeats ['x']"
+    },
+    {
+      "state": {
+        "sets": [],
+        "cursor": 1,
+        "order": [
+          "a"
+        ]
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "1 upload(s) are recorded but no set holds them"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 201
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ]
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "sets[0] live count 201 outside 0..200"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "sent": 1
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "'sent' must be a list"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "deleted_old": 1
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "'deleted_old' must be true or false"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "in_flight": {}
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "in_flight is missing 'key'"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "in_flight": 12
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "'in_flight' must be an intent object or null"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "in_flight": {
+          "key": "a",
+          "operation": "add",
+          "set_name": "synthetic_set",
+          "set_index": 1,
+          "expected_before": 0
+        }
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": ""
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "in_flight": {
+          "key": "b",
+          "operation": "add",
+          "set_name": "synthetic_set",
+          "set_index": 1,
+          "expected_before": 0
+        }
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "in_flight 'b' is not plan entry 1, the one the cursor was moved past to run it"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "in_flight": {
+          "key": "a",
+          "operation": "unknown",
+          "set_name": "synthetic_set",
+          "set_index": 1
+        }
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "in_flight operation 'unknown' is unknown"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "in_flight": {
+          "key": "a",
+          "operation": "add",
+          "set_name": "synthetic_set",
+          "set_index": true
+        }
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "in_flight set_index True is not a set number"
+    },
+    {
+      "state": {
+        "sets": [
+          {
+            "name": "synthetic_set",
+            "index": 1,
+            "live": 1
+          }
+        ],
+        "cursor": 1,
+        "order": [
+          "a"
+        ],
+        "in_flight": {
+          "key": "a",
+          "operation": "add",
+          "set_name": "synthetic_set",
+          "set_index": 1,
+          "expected_before": false
+        }
+      },
+      "plan": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a"
+          ],
+          "kw": "a"
+        },
+        {
+          "rep": "b",
+          "tickers": [
+            "b"
+          ],
+          "kw": "b"
+        }
+      ],
+      "expected": "in_flight expected_before False is not a count"
+    }
+  ]
+}

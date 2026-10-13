@@ -40,6 +40,7 @@ pub mod coin_http;
 pub mod coin_inventory;
 pub mod coin_plan;
 pub mod coin_provider_policy;
+pub mod coin_state;
 pub mod collection_manifest;
 pub mod collection_names;
 pub mod collection_notify;
