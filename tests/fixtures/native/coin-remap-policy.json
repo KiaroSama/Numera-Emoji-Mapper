@@ -1,0 +1,213 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "b66136d42adc3448d44e67c36c9f8c827a4e63d6ce259af5d6b437299b043ed7",
+  "cases": [
+    {
+      "input": {
+        "apply": false,
+        "max": null,
+        "margin": null,
+        "d2": [
+          0,
+          10000
+        ],
+        "second": [
+          0,
+          12100
+        ]
+      },
+      "expected": {
+        "code": 0,
+        "writes": [],
+        "backups": []
+      }
+    },
+    {
+      "input": {
+        "apply": true,
+        "max": 100,
+        "margin": null,
+        "d2": [
+          0,
+          2500
+        ],
+        "second": [
+          40000,
+          90000
+        ]
+      },
+      "expected": {
+        "code": 0,
+        "writes": [
+          [
+            "map",
+            {
+              "aaa": "c1",
+              "bbb": "c2"
+            }
+          ]
+        ],
+        "backups": [
+          [
+            "map",
+            "map.prebroken.json"
+          ]
+        ]
+      }
+    },
+    {
+      "input": {
+        "apply": true,
+        "max": 100,
+        "margin": null,
+        "d2": [
+          0,
+          2500
+        ],
+        "second": [
+          40000,
+          90000
+        ],
+        "incomplete": [
+          "s1"
+        ]
+      },
+      "expected": {
+        "code": 3,
+        "writes": [
+          [
+            "candidate",
+            {
+              "aaa": "c1",
+              "bbb": "c2"
+            }
+          ]
+        ],
+        "backups": []
+      }
+    },
+    {
+      "input": {
+        "apply": true,
+        "max": 100,
+        "margin": 5,
+        "d2": [
+          0,
+          2500
+        ],
+        "second": [
+          1,
+          90000
+        ]
+      },
+      "expected": {
+        "code": 3,
+        "writes": [
+          [
+            "candidate",
+            {
+              "bbb": "c2"
+            }
+          ]
+        ],
+        "backups": []
+      }
+    },
+    {
+      "input": {
+        "apply": true,
+        "max": 50,
+        "margin": 0,
+        "d2": [
+          2500,
+          2501
+        ],
+        "second": [
+          2500,
+          90000
+        ]
+      },
+      "expected": {
+        "code": 0,
+        "writes": [
+          [
+            "map",
+            {
+              "aaa": "c1"
+            }
+          ]
+        ],
+        "backups": [
+          [
+            "map",
+            "map.prebroken.json"
+          ]
+        ]
+      }
+    },
+    {
+      "input": {
+        "apply": true,
+        "max": 100,
+        "margin": 100,
+        "d2": [
+          0,
+          0
+        ],
+        "second": [
+          10000,
+          10000
+        ]
+      },
+      "expected": {
+        "code": 0,
+        "writes": [
+          [
+            "map",
+            {
+              "aaa": "c1",
+              "bbb": "c2"
+            }
+          ]
+        ],
+        "backups": [
+          [
+            "map",
+            "map.prebroken.json"
+          ]
+        ]
+      }
+    },
+    {
+      "input": {
+        "apply": true,
+        "max": 100,
+        "margin": 0,
+        "d2": [
+          0,
+          0
+        ],
+        "second": [
+          1,
+          1
+        ],
+        "errors": {
+          "c": "decode refused"
+        }
+      },
+      "expected": {
+        "code": 3,
+        "writes": [
+          [
+            "candidate",
+            {
+              "aaa": "c1",
+              "bbb": "c2"
+            }
+          ]
+        ],
+        "backups": []
+      }
+    }
+  ]
+}
