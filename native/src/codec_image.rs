@@ -178,6 +178,56 @@ fn png_bytes(py: Python<'_>, image: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
         .to_vec())
 }
 
+pub fn logo_distance(ours: &[u8], theirs: &[u8]) -> Result<u32, String> {
+    Python::initialize();
+    Python::attach(|py| -> PyResult<u32> {
+        let module = py.import("PIL.Image")?;
+        let open = |data: &[u8]| -> PyResult<OpenImage<'_>> {
+            let buffer = OpenImage(
+                py.import("io")?
+                    .call_method1("BytesIO", (PyBytes::new(py, data),))?,
+            );
+            let image = OpenImage(module.call_method1("open", (&buffer.0,))?);
+            image.0.call_method0("load")?;
+            Ok(image)
+        };
+        let x = open(ours)?;
+        let y = open(theirs)?;
+        let want_rgba = OpenImage(y.0.call_method1("convert", ("RGBA",))?);
+        let want = dhash(py, &want_rgba.0)?;
+        let direct = OpenImage(x.0.call_method1("convert", ("RGBA",))?);
+        let mut closest = (dhash(py, &direct.0)? ^ want).count_ones();
+        let inverted = (|| -> PyResult<u64> {
+            let rgb = OpenImage(x.0.call_method1("convert", ("RGB",))?);
+            let inverse = OpenImage(
+                py.import("PIL.ImageOps")?
+                    .call_method1("invert", (&rgb.0,))?,
+            );
+            let rgba = OpenImage(inverse.0.call_method1("convert", ("RGBA",))?);
+            dhash(py, &rgba.0)
+        })();
+        if let Ok(hash) = inverted {
+            closest = closest.min((hash ^ want).count_ones());
+        }
+        let flattened = (|| -> PyResult<u64> {
+            let rgba = OpenImage(x.0.call_method1("convert", ("RGBA",))?);
+            let size = rgba.0.getattr("size")?.extract::<(u32, u32)>()?;
+            let white = OpenImage(module.call_method1("new", ("RGB", size, (255, 255, 255)))?);
+            let alpha = OpenImage(rgba.0.call_method1("getchannel", ("A",))?);
+            let options = PyDict::new(py);
+            options.set_item("mask", &alpha.0)?;
+            white.0.call_method("paste", (&rgba.0,), Some(&options))?;
+            let flat = OpenImage(white.0.call_method1("convert", ("RGBA",))?);
+            dhash(py, &flat.0)
+        })();
+        if let Ok(hash) = flattened {
+            closest = closest.min((hash ^ want).count_ones());
+        }
+        Ok(closest)
+    })
+    .map_err(|_| "cannot decode logo review images".into())
+}
+
 pub fn remap_signature(data: &[u8]) -> Result<Vec<u8>, String> {
     Python::initialize();
     Python::attach(|py| -> PyResult<Vec<u8>> {
