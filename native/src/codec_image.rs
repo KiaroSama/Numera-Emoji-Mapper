@@ -178,6 +178,32 @@ fn png_bytes(py: Python<'_>, image: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
         .to_vec())
 }
 
+pub fn remap_signature(data: &[u8]) -> Result<Vec<u8>, String> {
+    Python::initialize();
+    Python::attach(|py| -> PyResult<Vec<u8>> {
+        let buffer = OpenImage(
+            py.import("io")?
+                .call_method1("BytesIO", (PyBytes::new(py, data),))?,
+        );
+        let module = py.import("PIL.Image")?;
+        let source = OpenImage(module.call_method1("open", (&buffer.0,))?);
+        let rgba = OpenImage(source.0.call_method1("convert", ("RGBA",))?);
+        let size = rgba.0.getattr("size")?.extract::<(u32, u32)>()?;
+        let background = OpenImage(module.call_method1("new", ("RGBA", size, (0, 0, 0, 255)))?);
+        let composite =
+            OpenImage(module.call_method1("alpha_composite", (&background.0, &rgba.0))?);
+        let rgb = OpenImage(composite.0.call_method1("convert", ("RGB",))?);
+        let lanczos = module.getattr("Resampling")?.getattr("LANCZOS")?;
+        let flat = OpenImage(rgb.0.call_method1("resize", ((16, 16), &lanczos))?);
+        let alpha = OpenImage(rgba.0.call_method1("getchannel", ("A",))?);
+        let silhouette = OpenImage(alpha.0.call_method1("resize", ((16, 16), lanczos))?);
+        let mut signature = pixels(&flat.0)?;
+        signature.extend(pixels(&silhouette.0)?);
+        Ok(signature)
+    })
+    .map_err(|_| "cannot decode remap source image".into())
+}
+
 pub fn audit_image(data: &[u8]) -> Result<(String, bool), String> {
     Python::initialize();
     Python::attach(|py| -> PyResult<(String, bool)> {

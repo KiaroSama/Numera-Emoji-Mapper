@@ -60,6 +60,7 @@ pub mod coin_provider_publish;
 pub mod coin_provider_recover;
 pub mod coin_provider_resolve;
 pub mod coin_provider_stage;
+pub mod coin_remap_math;
 pub mod coin_remap_policy;
 pub mod coin_state;
 pub mod collection_manifest;
