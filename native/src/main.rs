@@ -128,6 +128,7 @@ const COMMANDS: &[&str] = &[
     "coin-check-packs",
     "coin-remap-ids",
     "coin-verify-logos",
+    "coin-rebuild-map",
 ];
 fn main() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -159,7 +160,10 @@ fn main() -> std::process::ExitCode {
             let mut secrets = config.secret_values();
             if matches!(
                 args[0].as_str(),
-                "coin-write-manifests" | "coin-remap-ids" | "coin-verify-logos"
+                "coin-write-manifests"
+                    | "coin-remap-ids"
+                    | "coin-verify-logos"
+                    | "coin-rebuild-map"
             ) {
                 for option in args[1..].windows(2).filter(|pair| pair[0] == "--token-env") {
                     let token = config.value(&option[1]);
@@ -178,6 +182,8 @@ fn main() -> std::process::ExitCode {
                     &args[1..],
                     &log,
                 )
+            } else if args[0] == "coin-rebuild-map" {
+                _native::coin_rebuild_map_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-verify-logos" {
                 _native::coin_verify_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-remap-ids" {

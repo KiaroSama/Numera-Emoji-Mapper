@@ -56,6 +56,14 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-rebuild-map.json`: eight pinned source map/admission effect snapshots.
+  Reordered content, current aliases, provider overlap/top-ups, diagnostic
+  identity candidates, lost-alias candidates and reviewed/unreviewed crowds
+  retain source write/refill/report order. Identity/disk effects are controlled;
+  the separate actual command loopback checks reordered real PNGs, both locks
+  during snapshot read, map/refill readback and unreadable-image preservation.
+  Missing-plan creation, full build/link, crash/platform and source-case acceptance
+  remain pending. No live mutations or installed activation.
 - `coin-map-identity.json`: eight independent source one-to-one content attribution
   cases: reordered live list, Hamming boundary, zero/multiple matches, duplicate
   image attribution, missing upload/source and unreadable live bytes. Source
