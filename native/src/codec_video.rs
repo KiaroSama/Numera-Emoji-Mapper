@@ -1,12 +1,18 @@
 //! Alpha-faithful video probe and frozen canonical frame stream; no timeline shortcut.
+use crate::codec_video_cache::{DecodeKey, FileIdentity, WorkingSet};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 pub struct VideoDecoder {
-    root: PathBuf,
-    ffmpeg: PathBuf,
+    pub(crate) root: PathBuf,
+    pub(crate) ffmpeg: PathBuf,
     ffprobe: PathBuf,
+    decoders: Mutex<WorkingSet<DecodeKey, Vec<String>>>,
+    capabilities: Mutex<WorkingSet<(String, FileIdentity), bool>>,
+    frames: Mutex<WorkingSet<DecodeKey, Arc<Vec<u8>>>>,
+    timelines: Mutex<WorkingSet<DecodeKey, crate::codec_video_timeline::Timeline>>,
 }
 
 impl VideoDecoder {
@@ -15,16 +21,31 @@ impl VideoDecoder {
             root: root.into(),
             ffmpeg: crate::codec_process::executable("ffmpeg")?,
             ffprobe: crate::codec_process::executable("ffprobe")?,
+            decoders: Mutex::new(WorkingSet::new(512)),
+            capabilities: Mutex::new(WorkingSet::new(512)),
+            frames: Mutex::new(WorkingSet::new(8)),
+            timelines: Mutex::new(WorkingSet::new(8)),
         })
     }
 
-    pub async fn probe(&self, path: &Path) -> Result<Value, String> {
-        if !path.is_absolute()
-            || !std::fs::symlink_metadata(path)
-                .is_ok_and(|m| m.is_file() && !m.file_type().is_symlink())
-        {
+    fn validate_source(path: &Path) -> Result<(), String> {
+        let metadata =
+            std::fs::symlink_metadata(path).map_err(|_| "cannot inspect video source")?;
+        if !path.is_absolute() || !metadata.is_file() || metadata.file_type().is_symlink() {
             return Err("video source must be an absolute regular non-symlink file".into());
         }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::MetadataExt;
+            if metadata.file_attributes() & 0x400 != 0 {
+                return Err("video source must not be a reparse point".into());
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn probe(&self, path: &Path) -> Result<Value, String> {
+        Self::validate_source(path)?;
         let args = vec!["-v".into(),"error".into(),"-show_entries".into(),
             "stream=index,codec_type,codec_name,width,height,avg_frame_rate:format=duration,format_name".into(),
             "-of".into(),"json".into(),path.to_string_lossy().into_owned()];
@@ -77,8 +98,19 @@ impl VideoDecoder {
     }
 
     pub async fn decoder_args(&self, path: &Path) -> Result<Vec<String>, String> {
+        Self::validate_source(path)?;
         if crate::codec_format::detect(path)? != "video" {
             return Ok(Vec::new());
+        }
+        let key = DecodeKey::read(path, &self.ffmpeg, None);
+        if let Some(key) = &key
+            && let Some(args) = self
+                .decoders
+                .lock()
+                .map_err(|_| "video decoder cache poisoned")?
+                .get(key)
+        {
+            return Ok(args);
         }
         let info = self.probe(path).await?;
         let codec = info["codec"]
@@ -93,26 +125,67 @@ impl VideoDecoder {
         let decoder = match codec.as_str() {
             "vp9" => "libvpx-vp9",
             "vp8" => "libvpx",
-            _ => return Ok(Vec::new()),
+            _ => {
+                if let Some(key) = key {
+                    self.decoders
+                        .lock()
+                        .map_err(|_| "video decoder cache poisoned")?
+                        .insert(key, Vec::new());
+                }
+                return Ok(Vec::new());
+            }
         };
-        let args = vec!["-v".into(), "error".into(), "-decoders".into()];
-        let captured =
-            crate::codec_process::capture(&self.root, &self.ffmpeg, &args, 1024 * 1024).await?;
-        if !captured
-            .stdout
-            .windows(decoder.len())
-            .any(|window| window == decoder.as_bytes())
-        {
+        let capability = FileIdentity::read(&self.ffmpeg).map(|tool| (decoder.to_owned(), tool));
+        let known = capability
+            .as_ref()
+            .and_then(|key| self.capabilities.lock().ok()?.get(key));
+        let available = if let Some(available) = known {
+            available
+        } else {
+            let args = vec!["-v".into(), "error".into(), "-decoders".into()];
+            let captured =
+                crate::codec_process::capture(&self.root, &self.ffmpeg, &args, 1024 * 1024).await?;
+            let available = captured
+                .stdout
+                .windows(decoder.len())
+                .any(|window| window == decoder.as_bytes());
+            if let Some(key) = capability {
+                self.capabilities
+                    .lock()
+                    .map_err(|_| "video capability cache poisoned")?
+                    .insert(key, available);
+            }
+            available
+        };
+        if !available {
             return Err(format!(
                 "ffmpeg has no {decoder} decoder; alpha fidelity cannot be established"
             ));
         }
-        Ok(vec!["-c:v".into(), decoder.into()])
+        let args = vec!["-c:v".into(), decoder.into()];
+        if let Some(key) = key {
+            self.decoders
+                .lock()
+                .map_err(|_| "video decoder cache poisoned")?
+                .insert(key, args.clone());
+        }
+        Ok(args)
     }
 
     pub async fn frames_rgba(&self, path: &Path, fps: u32) -> Result<Vec<u8>, String> {
         if fps == 0 || fps > 30 {
             return Err("video sample rate must be1..30".into());
+        }
+        Self::validate_source(path)?;
+        let key = DecodeKey::read(path, &self.ffmpeg, Some(fps));
+        if let Some(key) = &key
+            && let Some(raw) = self
+                .frames
+                .lock()
+                .map_err(|_| "video frame cache poisoned")?
+                .get(key)
+        {
+            return Ok((*raw).clone());
         }
         let decoder = self.decoder_args(path).await?;
         let sample = |rate: bool| {
@@ -155,21 +228,63 @@ impl VideoDecoder {
         )
         .await?
         .stdout;
-        if !raw.is_empty() {
-            return Ok(raw);
+        let raw = if raw.is_empty() {
+            crate::codec_process::capture(
+                &self.root,
+                &self.ffmpeg,
+                &sample(false),
+                16 * 1024 * 1024,
+            )
+            .await?
+            .stdout
+        } else {
+            raw
+        };
+        if !raw.is_empty()
+            && let Some(key) = key
+        {
+            self.frames
+                .lock()
+                .map_err(|_| "video frame cache poisoned")?
+                .insert(key, Arc::new(raw.clone()));
         }
-        Ok(crate::codec_process::capture(
-            &self.root,
-            &self.ffmpeg,
-            &sample(false),
-            16 * 1024 * 1024,
-        )
-        .await?
-        .stdout)
+        Ok(raw)
     }
 
-    pub async fn content_key(&self, path: &Path) -> Result<String, String> {
+    pub async fn timeline(
+        &self,
+        path: &Path,
+    ) -> Result<crate::codec_video_timeline::Timeline, String> {
+        Self::validate_source(path)?;
+        let key = DecodeKey::read(path, &self.ffmpeg, None);
+        if let Some(key) = &key
+            && let Some(value) = self
+                .timelines
+                .lock()
+                .map_err(|_| "video timeline cache poisoned")?
+                .get(key)
+        {
+            return Ok(value);
+        }
+        let value = crate::codec_video_timeline::decode(self, path).await?;
+        if let Some(key) = key {
+            self.timelines
+                .lock()
+                .map_err(|_| "video timeline cache poisoned")?
+                .insert(key, value.clone());
+        }
+        Ok(value)
+    }
+
+    pub async fn same_image(&self, a: &Path, b: &Path) -> Option<bool> {
+        let left = self.timeline(a).await.ok()?;
+        let right = self.timeline(b).await.ok()?;
+        crate::codec_video_timeline::same_image(&left, &right)
+    }
+
+    pub async fn fingerprint(&self, path: &Path) -> Result<Value, String> {
         let raw = self.frames_rgba(path, 10).await?;
+        let phash = crate::codec_image::frame_phash(&raw);
         let bytes = if raw.is_empty() {
             std::fs::read(path).map_err(|_| "cannot read undecodable video source")?
         } else {
@@ -179,6 +294,22 @@ impl VideoDecoder {
             .iter()
             .map(|v| format!("{v:02x}"))
             .collect::<String>();
-        Ok(format!("v:{}", &digest[..32]))
+        Ok(
+            json!({"content_key":format!("v:{}", &digest[..32]), "phash":phash,
+            "fmt":"video", "extension":".webm"}),
+        )
+    }
+
+    pub async fn content_key(&self, path: &Path) -> Result<String, String> {
+        self.fingerprint(path).await?["content_key"]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| "missing video content key".into())
+    }
+
+    pub async fn perceptual_hash(&self, path: &Path) -> Result<Option<u64>, String> {
+        Ok(crate::codec_image::frame_phash(
+            &self.frames_rgba(path, 10).await?,
+        ))
     }
 }

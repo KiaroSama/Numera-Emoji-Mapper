@@ -19,8 +19,10 @@ tint/bounded TGS loading/canonical animated identity/loaded-document validation
 and Lottie preview/file-preparation/file-validation/vector-comparison handling,
 static preview/tint/tri-state comparison, source media detection/collision keys
 and coin-alias/inventory-text slices are additive. An initial video seam owns
-FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream; full
-video comparison, caching, conversion and worker integration remain pending.
+FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
+additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed
+working sets and complete native-frame/timestamp comparison. Conversion,
+preview, worker integration and full failure/platform parity remain pending.
 These slices use
 pinned source-generated fixtures. The internal `codec-worker` entry point is
 not yet the production media adapter. Its limited hosted checkpoint is build

@@ -4,6 +4,14 @@ These expected values come from the pinned source revision
 `1a36a968b006236bd0665a1da65c541938c06061`, not from the replacement Rust code.
 They cover an initial migration slice, not the whole source test inventory.
 
+- `video-fingerprint.json`: three pinned nonuniform 30 fps, 15 fps and genuine
+  33 ms single-frame clips. Source dHash values prove the first frame belongs to
+  the frozen 10 fps stream rather than native frame zero; the short clip records
+  an actual successful-empty sample followed by native-frame retry.
+- `video-timeline.json`: four pinned real clips and four source comparison pairs,
+  including equal sampled lookup keys with a differing native frame. Native RGBA,
+  presentation timestamps and duration are independent source observations;
+  VFR boundary quantization and full consumer/cancellation coverage remain pending.
 - `video-codec.json`: five pinned real VP8/VP9 byte fixtures over opaque,
   translucent, extensionless and single-frame inputs. Probe fields, alpha-safe
   decoder arguments, frozen 10 fps RGBA hashes and content keys are source
