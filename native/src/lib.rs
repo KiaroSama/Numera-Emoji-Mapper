@@ -46,6 +46,7 @@ pub mod coin_paprika;
 pub mod coin_plan;
 pub mod coin_provider_policy;
 pub mod coin_provider_proof;
+pub mod coin_provider_publish;
 pub mod coin_provider_recover;
 pub mod coin_provider_resolve;
 pub mod coin_provider_stage;

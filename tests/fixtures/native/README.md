@@ -56,6 +56,11 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `provider-publish.json`: eight pinned source top-up traces at controlled
+  live/hash/upload/proof/promotion/persistence seams. Includes full-set rollover,
+  rejected/ambiguous/unknown mutation, verified absence, unknown readback and
+  current-map skip. Durable write ordering and exact intent fields are source
+  observations; this is not complete actual publisher or restart acceptance.
 - `provider-proof.json` / `provider-recovery.json`: nine independent source
   content-proof traces and seven interrupted-upload recovery/order traces.
   External download/dHash/live state/promotion/persistence are controlled seams;
