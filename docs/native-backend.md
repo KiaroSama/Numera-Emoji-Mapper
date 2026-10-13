@@ -113,6 +113,17 @@ map/state targets must match recovery. `--map`, `--state`, `--token-env` retain
 isolated input selection. **Repair can mutate Telegram packs**; no live testing
 is authorized by the command or checkpoint. Full original-case/provider/CLI,
 crash/platform and installed acceptance remain pending.
+Additive `coin-rebuild-map` reads `rebuild_dedup_plan.json` and validated
+`rebuild_dedup_state.json` beneath `--coin-dir` (default `coins/`), with source
+images beneath `--emoji-dir` (default `logos/emoji` in that directory). It holds
+family then canonical-map leases across the entire snapshot, live downloads,
+alias replay and atomic map/inventory writes. Every live ID and recorded rebuild
+or provider source must have exactly one content match; order is never position.
+Lost aliases or unreviewed shared groups larger than 20 refuse replacement and
+write `ticker_to_id.candidate.json`. `--token-env` selects the read-only token.
+An absent/corrupt frozen plan refuses; automatic plan creation and full build/link
+orchestration are not yet connected. Complete error/crash/platform/source-case
+acceptance remains pending; this command makes no Telegram mutations.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use

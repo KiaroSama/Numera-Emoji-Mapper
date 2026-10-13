@@ -429,6 +429,15 @@ repoint. Unknown results retain target-bound intent/source and stop further repa
 full acceptance, not as an agent live-test command. The migration checkpoint
 uses loopback fixtures; installed runtime and full source/platform gates are pending.
 
+Additive `coin-rebuild-map [--coin-dir DIR] [--emoji-dir DIR] [--token-env KEY]`
+reads the frozen `rebuild_dedup_plan.json` and validated resume state, proves live
+images against recorded rebuild/provider source PNGs and replays current aliases.
+Both family and canonical-map leases cover all reads through replacement/refill.
+Unknown content, lost aliases or more than 20 unreviewed tickers sharing one ID
+refuse canonical replacement and retain a review candidate. Missing/corrupt plans
+refuse rather than regenerate. No Telegram mutations; native plan/build/link and
+full original-case/platform/installed acceptance are still pending.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |

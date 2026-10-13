@@ -389,6 +389,11 @@ It makes no Telegram mutations; full acceptance and installed activation are pen
 Additive `coin-verify-logos --emoji-dir DIR` is review-only unless explicit
 `--fix --only` selects repairs; fixing mutates Telegram and requires separate
 operator authorization. Full source/platform/installed acceptance is pending.
+Additive `coin-rebuild-map [--coin-dir DIR] [--emoji-dir DIR] [--token-env KEY]`
+uses the frozen rebuild plan and recorded sources to prove every live sticker by
+image content. It preserves current aliases, refuses lost aliases/unreviewed
+shared crowds and writes review candidates rather than overwrite an unproven map.
+It reads Telegram only; source/platform acceptance and installed activation remain pending.
 Run the retained Python tools as modules from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 
