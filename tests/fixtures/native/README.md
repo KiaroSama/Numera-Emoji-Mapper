@@ -56,6 +56,10 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-http.json`: nine independent source retry traces using virtual time:
+  immediate success, quota stop, transient recovery, exhausted retries and
+  Retry-After clamping/defaults. Actual native loopback transport is tested
+  separately; redirect, provider CLI and durable cache parity remain pending.
 - `provider-policy.json`: seven source candidate-precedence observations and
   fourteen Paprika/CMC status outcomes. Quota, transient, missing and rejected
   credentials stay distinct. Transport/backoff/cache/CLI integration is separate.
