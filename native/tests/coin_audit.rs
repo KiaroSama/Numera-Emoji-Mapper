@@ -1,7 +1,40 @@
 //! Source-observed resume/reconcile/report behavior uses virtual transport and time.
 use _native::coin_audit::{AuditIo, run};
 use serde_json::{Map, Value, json};
+use sha2::{Digest, Sha256};
 use std::time::Duration;
+
+#[test]
+fn source_audit_image_hash_uses_normalized_pixels_and_shared_blank_rule() {
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .to_owned();
+    let fixture: Value = serde_json::from_str(include_str!(
+        "../../tests/fixtures/native/coin-audit-image.json"
+    ))
+    .unwrap();
+    for case in fixture["cases"].as_array().unwrap() {
+        let data = if let Some(path) = case["input"].as_str() {
+            std::fs::read(root.join(path)).unwrap()
+        } else {
+            case["data"].as_str().unwrap().as_bytes().to_vec()
+        };
+        let hash = Sha256::digest(&data)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        assert_eq!(hash, case["input_sha256"].as_str().unwrap());
+        let result = _native::codec_image::audit_image(&data);
+        if case["expected"].get("error_type").is_some() {
+            assert!(result.is_err());
+        } else {
+            let (hash, blank) = result.unwrap();
+            assert_eq!(hash, case["expected"]["hash"].as_str().unwrap());
+            assert_eq!(blank, case["expected"]["blank"].as_bool().unwrap());
+        }
+    }
+}
 
 struct Fixture {
     input: Value,

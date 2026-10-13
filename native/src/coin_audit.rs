@@ -167,7 +167,7 @@ pub fn run<I: AuditIo>(
                 },
             );
             processed += 1;
-            if processed % 100 == 0 {
+            if processed.is_multiple_of(100) {
                 io.save(cache)?;
             }
             io.wait(Duration::from_millis(30));

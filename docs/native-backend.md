@@ -84,6 +84,13 @@ project `coins/`. State/map reads hold family-before-map leases, report writes a
 atomic, and an unknown live read leaves prior reports untouched. Custom token
 variables are redacted even without a secret-shaped key name. Full source error,
 primitive coercion, concurrent-output and installed-platform acceptance remain pending.
+Additive `coin-check-packs [--coin-dir DIR]` reads current live sets, downloads
+only uncached/failed images and checkpoints `pack_audit4.json`; the text report
+is `pack_audit4_report.txt`. Deleted IDs leave the totals; decode failures remain
+retryable errors, not blanks. Duplicate groups require distinct live IDs with the
+same normalized pixel hash. Exhausted set listings preserve progress and refuse
+a partial report. It makes no Telegram mutation; full original-case/error,
+process-death and platform acceptance remain pending.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use

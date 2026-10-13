@@ -380,7 +380,9 @@ commands retain exact `--dry`; Paprika also accepts `--retry-unmatched`. They ar
 currently accepted prebuilt runtime yet; see [migration status](docs/native-backend.md).
 Additive `coin-write-manifests` writes read-only live coin reports with
 `--out-dir`, `--state`, `--map` and `--token-env`; full migration acceptance
-and installed-runtime activation remain pending.
+and installed-runtime activation remain pending. Additive `coin-check-packs
+[--coin-dir DIR]` resumes a live read-only blank/duplicate audit; failed images
+remain retryable and incomplete listings never replace the report.
 Run the retained Python tools as modules from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 
