@@ -62,7 +62,12 @@ They cover an initial migration slice, not the whole source test inventory.
   these prove policy only, not actual Telegram, codecs, durable restart or
   complete original recovery-case migration. Recorded source identity is reused;
   unknown/duplicate/unreadable evidence refuses, maps save before promotion and
-  provider tally is idempotent/separate from rebuild order.
+  provider tally is idempotent/separate from rebuild order. Additional native
+  staging tests use existing actual image bytes, private directories, mismatched
+  promotion preservation and retained pending sources. Initial durable-recovery
+  integration reads live sticker/download bytes only from a bounded loopback
+  server, persists mapping/tally and proves no second add/create request; it is
+  not the complete source crash/restart matrix or live service acceptance.
 - `keyword-writer.json`: four source byte-exact quoted UTF-8/CRLF CSV observations
   and four actual image-admission checks. Earlier names survive empty lookups;
   sorted rows and PNG decode/alpha-bbox admission differ intentionally from the

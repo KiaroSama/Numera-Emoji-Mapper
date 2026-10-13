@@ -338,6 +338,25 @@ pub fn gallery_static(source: &Path, output: &Path) -> Result<Value, String> {
     preview_encoded(source, output, 88, true)
 }
 
+pub fn source_dhash(source: &Path) -> Result<u64, String> {
+    let bytes = std::fs::read(source).map_err(|_| "cannot read provider identity source")?;
+    provider_dhash(&bytes)
+}
+
+pub fn provider_dhash(bytes: &[u8]) -> Result<u64, String> {
+    Python::initialize();
+    Python::attach(|py| -> PyResult<u64> {
+        let buffer = OpenImage(
+            py.import("io")?
+                .call_method1("BytesIO", (PyBytes::new(py, bytes),))?,
+        );
+        let image = OpenImage(py.import("PIL.Image")?.call_method1("open", (&buffer.0,))?);
+        let rgba = OpenImage(image.0.call_method1("convert", ("RGBA",))?);
+        dhash(py, &rgba.0)
+    })
+    .map_err(|_| "cannot decode provider identity source".into())
+}
+
 pub fn valid_logo(source: &Path) -> bool {
     Python::initialize();
     Python::attach(|py| -> PyResult<bool> {
