@@ -46,13 +46,14 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     }
     let token = config.require(&token_key)?;
     let base = config.require("COIN_PACK_BASE")?;
-    for path in [&directory, &state, &mapping] {
+    crate::coin_manifest::output_path(&directory)?;
+    for path in [&state, &mapping] {
         crate::coin_provider_stage::physical(path)?;
     }
     let family_path = crate::locks::pack_family_path(&config.root, base);
     let map_path = config.root.join(".locks/canonical_map.lock");
-    crate::coin_provider_stage::physical(&family_path)?;
-    crate::coin_provider_stage::physical(&map_path)?;
+    crate::coin_manifest::output_path(&family_path)?;
+    crate::coin_manifest::output_path(&map_path)?;
     let _family = crate::locks::Lease::acquire(&family_path, &crate::logging::utc())
         .map_err(|_| "coin manifest pack family is busy or unavailable")?;
     let _map = crate::locks::Lease::acquire(&map_path, &crate::logging::utc())

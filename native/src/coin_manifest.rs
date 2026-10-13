@@ -63,6 +63,24 @@ pub fn render(
     ))
 }
 
+pub(crate) fn output_path(path: &Path) -> Result<(), String> {
+    if !path.is_absolute()
+        || path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        return Err("coin manifest output requires an absolute nontraversing path".into());
+    }
+    for ancestor in path.ancestors() {
+        match std::fs::symlink_metadata(ancestor) {
+            Ok(_) => return crate::coin_provider_stage::physical(ancestor),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => return Err("coin manifest output path is unavailable".into()),
+        }
+    }
+    Err("coin manifest output has no physical ancestor".into())
+}
+
 pub fn write<F>(
     directory: &Path,
     state: &Value,
@@ -72,7 +90,7 @@ pub fn write<F>(
 where
     F: FnMut(&str) -> Result<Value, String>,
 {
-    crate::coin_provider_stage::physical(directory)?;
+    output_path(directory)?;
     let mut sets = state["sets"]
         .as_array()
         .ok_or("coin manifest state has no sets")?
@@ -121,11 +139,11 @@ where
     }
     index += &format!("\nTotal: {} packs, {total} stickers.\n", sets.len());
     let out = directory.join("manifests");
-    crate::coin_provider_stage::physical(&out)?;
+    output_path(&out)?;
     for (name, _) in &reports {
-        crate::coin_provider_stage::physical(&out.join(format!("{name}.md")))?;
+        output_path(&out.join(format!("{name}.md")))?;
     }
-    crate::coin_provider_stage::physical(&out.join("INDEX.md"))?;
+    output_path(&out.join("INDEX.md"))?;
     std::fs::create_dir_all(&out).map_err(|_| "cannot create coin manifest directory")?;
     for (name, body) in reports {
         crate::atomic::write_bytes(&out.join(format!("{name}.md")), body.as_bytes())

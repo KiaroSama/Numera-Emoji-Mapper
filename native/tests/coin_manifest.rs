@@ -102,5 +102,14 @@ fn all_live_sets_are_known_before_any_report_changes() {
         .is_err()
     );
     assert!(write(&scratch, &state, &mapping, |_| Ok(json!({"stickers":null}))).is_err());
+    let fresh = scratch.join("fresh output");
+    assert_eq!(
+        write(&fresh, &json!({"sets":[]}), &mapping, |_| panic!(
+            "empty set list contacted transport"
+        ))
+        .unwrap(),
+        (0, 0)
+    );
+    assert!(fresh.join("manifests/INDEX.md").is_file());
     std::fs::remove_dir_all(scratch).unwrap();
 }
