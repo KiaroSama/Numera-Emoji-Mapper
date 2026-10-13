@@ -43,12 +43,15 @@ fn premultiplied<'py>(
     // The source applies this only to an originally RGBA image. Converting an
     // RGB/palette input first changes the frozen perceptual hash contract.
     let channels = image.call_method0("split")?;
-    let alpha = channels.get_item(3)?;
+    let channels = (0..4)
+        .map(|index| channels.get_item(index).map(OpenImage))
+        .collect::<PyResult<Vec<_>>>()?;
+    let alpha = &channels[3].0;
     let multiply = py.import("PIL.ImageChops")?.getattr("multiply")?;
-    let red = multiply.call1((channels.get_item(0)?, &alpha))?;
-    let green = multiply.call1((channels.get_item(1)?, &alpha))?;
-    let blue = multiply.call1((channels.get_item(2)?, &alpha))?;
-    image_module.call_method1("merge", ("RGBA", (red, green, blue, alpha)))
+    let red = OpenImage(multiply.call1((&channels[0].0, alpha))?);
+    let green = OpenImage(multiply.call1((&channels[1].0, alpha))?);
+    let blue = OpenImage(multiply.call1((&channels[2].0, alpha))?);
+    image_module.call_method1("merge", ("RGBA", (&red.0, &green.0, &blue.0, alpha)))
 }
 
 fn dhash<'py>(py: Python<'py>, image: &Bound<'py, PyAny>) -> PyResult<u64> {
@@ -95,18 +98,12 @@ fn inspect(py: Python<'_>, path: &Path) -> PyResult<Value> {
     let image = OpenImage(image_module.call_method1("open", (path.to_path_buf(),))?);
     let mode = image.0.getattr("mode")?.extract::<String>()?;
     let size = image.0.getattr("size")?.extract::<(u32, u32)>()?;
-    let rgba = image.0.call_method1("convert", ("RGBA",))?;
-    let raw = pixels(&rgba)?;
-    let blank = raw
-        .iter()
-        .skip(3)
-        .step_by(4)
-        .filter(|&&alpha| alpha > 10)
-        .count()
-        <= 8;
+    let rgba = OpenImage(image.0.call_method1("convert", ("RGBA",))?);
+    let raw = pixels(&rgba.0)?;
+    let blank = blank_rgba(&raw);
     let lanczos = image_module.getattr("Resampling")?.getattr("LANCZOS")?;
-    let normalized = rgba.call_method1("resize", ((64, 64), &lanczos))?;
-    let key = format!("s:{}", &digest_hex(&pixels(&normalized)?)[..32]);
+    let normalized = OpenImage(rgba.0.call_method1("resize", ((64, 64), &lanczos))?);
+    let key = format!("s:{}", &digest_hex(&pixels(&normalized.0)?)[..32]);
     let phash = dhash(py, &image.0).ok();
     Ok(json!({"size":[size.0,size.1],"mode":mode,"blank":blank,"content_key":key,"phash":phash}))
 }
@@ -123,48 +120,99 @@ fn fitted_png(py: Python<'_>, path: &Path) -> PyResult<(Vec<u8>, Vec<u8>, bool)>
             module.call_method1("open", (path.to_path_buf(),))?
         },
     );
-    let rgba = source.0.call_method1("convert", ("RGBA",))?;
-    let alpha = rgba.call_method1("getchannel", ("A",))?;
-    let bounds = alpha.call_method0("getbbox")?;
+    let rgba = OpenImage(source.0.call_method1("convert", ("RGBA",))?);
+    let canvas = fit_100(py, &rgba.0)?;
+    let rgba = pixels(&canvas.0)?;
+    if blank_rgba(&rgba) {
+        return Ok((Vec::new(), rgba, true));
+    }
+    Ok((png_bytes(py, &canvas.0)?, rgba, false))
+}
+
+fn blank_rgba(raw: &[u8]) -> bool {
+    raw.iter()
+        .skip(3)
+        .step_by(4)
+        .filter(|&&alpha| alpha > 10)
+        .count()
+        <= 8
+}
+
+fn fit_100<'py>(py: Python<'py>, rgba: &Bound<'py, PyAny>) -> PyResult<OpenImage<'py>> {
+    let module = py.import("PIL.Image")?;
+    let alpha = OpenImage(rgba.call_method1("getchannel", ("A",))?);
+    let bounds = alpha.0.call_method0("getbbox")?;
     let trimmed = if bounds.is_none() {
-        rgba
+        None
     } else {
-        rgba.call_method1("crop", (bounds,))?
+        Some(OpenImage(rgba.call_method1("crop", (bounds,))?))
     };
-    let (width, height) = trimmed.getattr("size")?.extract::<(u32, u32)>()?;
-    let canvas = module.call_method1("new", ("RGBA", (100, 100), (0, 0, 0, 0)))?;
+    let raster = trimmed.as_ref().map(|image| &image.0).unwrap_or(rgba);
+    let (width, height) = raster.getattr("size")?.extract::<(u32, u32)>()?;
+    let canvas = OpenImage(module.call_method1("new", ("RGBA", (100, 100), (0, 0, 0, 0)))?);
     if width != 0 && height != 0 {
         let scale = (100.0 / f64::from(width)).min(100.0 / f64::from(height));
         let w = (f64::from(width) * scale).round_ties_even().max(1.0) as u32;
         let h = (f64::from(height) * scale).round_ties_even().max(1.0) as u32;
         let lanczos = module.getattr("Resampling")?.getattr("LANCZOS")?;
-        let resized = trimmed.call_method1("resize", ((w, h), lanczos))?;
-        // No mask: the source preserves straight RGB and alpha rather than compositing twice.
-        canvas.call_method1("paste", (resized, ((100 - w) / 2, (100 - h) / 2)))?;
+        let resized = OpenImage(raster.call_method1("resize", ((w, h), lanczos))?);
+        // No mask: preserve straight RGB and alpha rather than compositing twice.
+        canvas
+            .0
+            .call_method1("paste", (&resized.0, ((100 - w) / 2, (100 - h) / 2)))?;
     }
-    let rgba = pixels(&canvas)?;
-    let blank = rgba
-        .iter()
-        .skip(3)
-        .step_by(4)
-        .filter(|&&alpha| alpha > 10)
-        .count()
-        <= 8;
-    if blank {
-        return Ok((Vec::new(), rgba, true));
-    }
+    Ok(canvas)
+}
+
+fn png_bytes(py: Python<'_>, image: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
     let buffer = OpenImage(py.import("io")?.call_method0("BytesIO")?);
     let options = PyDict::new(py);
     options.set_item("format", "PNG")?;
     options.set_item("optimize", true)?;
-    canvas.call_method("save", (&buffer.0,), Some(&options))?;
-    let bytes = buffer
+    image.call_method("save", (&buffer.0,), Some(&options))?;
+    Ok(buffer
         .0
         .call_method0("getvalue")?
         .cast_into::<PyBytes>()?
         .as_bytes()
-        .to_vec();
-    Ok((bytes, rgba, false))
+        .to_vec())
+}
+
+pub fn provider_png(data: &[u8], output: &Path) -> Result<bool, String> {
+    if !output.is_absolute() || std::fs::symlink_metadata(output).is_ok() {
+        return Err("provider image output must be absolute and must not already exist".into());
+    }
+    Python::initialize();
+    let bytes = Python::attach(|py| -> PyResult<Option<Vec<u8>>> {
+        let buffer = OpenImage(
+            py.import("io")?
+                .call_method1("BytesIO", (PyBytes::new(py, data),))?,
+        );
+        let decoded = py
+            .import("PIL.Image")?
+            .call_method1("open", (&buffer.0,))
+            .map(OpenImage)
+            .and_then(|image| image.0.call_method1("convert", ("RGBA",)).map(OpenImage));
+        let Ok(rgba) = decoded else {
+            return Ok(None);
+        };
+        // A sparse placeholder must not become meaningful just because fitting enlarges it.
+        if blank_rgba(&pixels(&rgba.0)?) {
+            return Ok(None);
+        }
+        let canvas = fit_100(py, &rgba.0)?;
+        png_bytes(py, &canvas.0).map(Some)
+    })
+    .map_err(|_| "external provider image conversion failed")?;
+    let Some(bytes) = bytes else {
+        return Ok(false);
+    };
+    let staged = crate::codec_video_encode::Staged::new(output, "png")?;
+    let result = std::fs::write(&staged.0, &bytes)
+        .map_err(|_| "cannot write staged provider image".to_owned())
+        .and_then(|_| staged.publish(output).map(|_| true));
+    staged.clean()?;
+    result
 }
 
 pub fn to_static_png(source: &Path, output: &Path) -> Result<Value, String> {
@@ -387,11 +435,10 @@ fn comparison_pixels(py: Python<'_>, path: &Path) -> PyResult<Vec<u8>> {
     let module = py.import("PIL.Image")?;
     let source = OpenImage(module.call_method1("open", (path.to_path_buf(),))?);
     let lanczos = module.getattr("Resampling")?.getattr("LANCZOS")?;
-    let normalized = source
-        .0
-        .call_method1("convert", ("RGBA",))?
-        .call_method1("resize", ((64, 64), lanczos))?;
-    pixels(&premultiplied(py, &module, &normalized)?)
+    let rgba = OpenImage(source.0.call_method1("convert", ("RGBA",))?);
+    let normalized = OpenImage(rgba.0.call_method1("resize", ((64, 64), lanczos))?);
+    let multiplied = OpenImage(premultiplied(py, &module, &normalized.0)?);
+    pixels(&multiplied.0)
 }
 
 fn close_pixels(x: &[u8], y: &[u8]) -> Option<bool> {

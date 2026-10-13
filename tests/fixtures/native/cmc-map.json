@@ -1,0 +1,186 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "74a5a49bc7bbe91d3718d27886ce97f55d3479c3cd78d89a8a711389d1bbe5e9",
+  "order_note": "Python set query order is process-specific; merge is observed at this explicit ordered-query seam",
+  "cases": [
+    {
+      "ticker": "btc",
+      "responses": {
+        "BTC": {
+          "data": [
+            {
+              "id": 7,
+              "name": "Bitcoin",
+              "symbol": "BTC"
+            }
+          ]
+        }
+      },
+      "queries": [
+        "BTC"
+      ],
+      "waits": [
+        1.0
+      ],
+      "expected": {
+        "candidates": [
+          {
+            "id": "7",
+            "name": "Bitcoin",
+            "symbol": "BTC"
+          }
+        ],
+        "transient": false
+      }
+    },
+    {
+      "ticker": "btctrc20",
+      "responses": {
+        "BTC": {
+          "data": [
+            {
+              "id": 7,
+              "name": "Bitcoin",
+              "symbol": "BTC"
+            }
+          ]
+        },
+        "BTCTRC20": null
+      },
+      "queries": [
+        "BTCTRC20",
+        "BTC"
+      ],
+      "waits": [
+        1.0,
+        1.0
+      ],
+      "expected": {
+        "candidates": [
+          {
+            "id": "7",
+            "name": "Bitcoin",
+            "symbol": "BTC"
+          }
+        ],
+        "transient": false
+      }
+    },
+    {
+      "ticker": "btctrc20",
+      "responses": {
+        "BTC": "transient",
+        "BTCTRC20": {
+          "data": [
+            {
+              "id": 7,
+              "name": "Bitcoin",
+              "symbol": "BTC"
+            }
+          ]
+        }
+      },
+      "queries": [
+        "BTCTRC20",
+        "BTC"
+      ],
+      "waits": [
+        1.0,
+        1.0
+      ],
+      "expected": {
+        "candidates": [
+          {
+            "id": "7",
+            "name": "Bitcoin",
+            "symbol": "BTC"
+          }
+        ],
+        "transient": true
+      }
+    },
+    {
+      "ticker": "btc",
+      "responses": {
+        "BTC": "transient"
+      },
+      "queries": [
+        "BTC"
+      ],
+      "waits": [
+        1.0
+      ],
+      "expected": {
+        "candidates": [],
+        "transient": true
+      }
+    },
+    {
+      "ticker": "btc",
+      "responses": {
+        "BTC": {
+          "data": null
+        }
+      },
+      "queries": [
+        "BTC"
+      ],
+      "waits": [
+        1.0
+      ],
+      "expected": {
+        "candidates": [],
+        "transient": false
+      }
+    },
+    {
+      "ticker": "btctrc20",
+      "responses": {
+        "BTC": {
+          "data": [
+            {
+              "id": 7,
+              "name": "Bitcoin",
+              "symbol": "BTC"
+            },
+            {
+              "id": 8
+            }
+          ]
+        },
+        "BTCTRC20": {
+          "data": [
+            {
+              "id": 7,
+              "name": "Replacement",
+              "symbol": "BTCTRC20"
+            }
+          ]
+        }
+      },
+      "queries": [
+        "BTCTRC20",
+        "BTC"
+      ],
+      "waits": [
+        1.0,
+        1.0
+      ],
+      "expected": {
+        "candidates": [
+          {
+            "id": "7",
+            "name": "Bitcoin",
+            "symbol": "BTC"
+          },
+          {
+            "id": "8",
+            "name": "",
+            "symbol": ""
+          }
+        ],
+        "transient": false
+      }
+    }
+  ]
+}

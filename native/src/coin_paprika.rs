@@ -32,6 +32,21 @@ pub fn http_json(client: &ProviderHttp, url: &str) -> Result<Response, String> {
         .map_err(|_| "invalid CoinPaprika JSON".into())
 }
 
+pub fn http_bytes(client: &ProviderHttp, url: &str) -> Result<Option<Vec<u8>>, String> {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        USER_AGENT,
+        HeaderValue::from_static("Mozilla/5.0 (logo-fetcher; local)"),
+    );
+    let policy = Retry {
+        attempts: 3,
+        backoff: 2.0,
+        max_backoff: 6.0,
+        stop_on: Vec::new(),
+    };
+    Ok(client.get(url, &headers, &policy)?.map(|reply| reply.bytes))
+}
+
 fn candidates(response: &Response) -> Result<&[Value], String> {
     match response {
         Response::Transient => Ok(&[]),

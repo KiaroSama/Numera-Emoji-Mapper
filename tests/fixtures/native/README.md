@@ -56,6 +56,20 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `provider-image.json`: seven pinned source provider-logo observations: 0/8/9
+  visible pixels, alpha 10/11/128, hidden RGB and corrupt bytes. Blank detection
+  runs before fitting; accepted 100x100 PNG/RGBA hashes come from source. The
+  hosted source oracle checks unchanged pixels/refusals and supplies same-platform
+  PNG bytes. Exclusive native output preservation is an additional safety check;
+  real provider downloads and public publishing acceptance remain separate.
+- `cmc-logo.json`: eight source metadata/logo lookup traces, including missing,
+  non-object payload, wrong ID, empty logo and 64-to-128 URL selection. Waits are
+  virtual; actual status/authentication/JSON/logo bytes are tested on bounded
+  numeric-loopback HTTP, never paid CMC calls. `cmc-map.json` adds six explicit
+  ordered-query/source merge traces, unique full/base symbol sets, transient
+  aggregation and stable duplicate-ID position. Python set iteration is unstable;
+  this ordered seam does not certify source process-randomized query precedence
+  or arbitrary mixed-type IDs. Public CLI/persistence parity remains pending.
 - `paprika-search.json`: seven source two-query name/ticker fallback traces,
   preserving quota stop, partial-not-used and transient recovery with virtual
   metered waits. It does not contact the provider or certify a live quota.
