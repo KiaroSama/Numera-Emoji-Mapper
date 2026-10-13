@@ -57,6 +57,11 @@ comparison, validation, preparation, conversion and preview dispatch are being
 connected; the production adapter and installed packages remain unchanged.
 Gallery thumbnails and animation metadata are also being mapped at their own
 source-fixture seam, retaining their distinct filters/sizes/quality.
+Additive `coin-alias-map` and `coin-enhance-map` commands now wire the existing
+native policies to canonical map leases, atomic writes and inventory refill.
+`--coin-dir DIR` selects isolated input/output; default is project `coins/`.
+They refuse unknown flags and non-string IDs and perform no network calls.
+Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use
 pinned source-generated fixtures. The internal `codec-worker` entry point is

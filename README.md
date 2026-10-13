@@ -373,7 +373,10 @@ coin-domain workflows remain Python; shared Telegram transport, upload proofs,
 locks, atomic state, announcements and table rendering use native-backed bindings.
 The generic `build-pack` command also supports the coin bot (`TELEGRAM_BOT_TOKEN`).
 Coin data, scripts and images all live under `coins/`.
-Run every tool as a module from the repository root, e.g.
+The expanded migration branch adds `coin-alias-map` and `coin-enhance-map`
+with `--coin-dir DIR` for isolated map/inventory work. They are not in the
+currently accepted prebuilt runtime yet; see [migration status](docs/native-backend.md).
+Run the retained Python tools as modules from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 
 - `coins/fetch_logos.py` — download coin logos from CoinGecko + write `coins/keywords.csv`
