@@ -45,6 +45,7 @@ pub mod coin_keywords;
 pub mod coin_paprika;
 pub mod coin_plan;
 pub mod coin_provider_policy;
+pub mod coin_provider_proof;
 pub mod coin_provider_resolve;
 pub mod coin_state;
 pub mod collection_manifest;
