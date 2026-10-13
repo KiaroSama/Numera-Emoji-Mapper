@@ -280,14 +280,44 @@ pub fn repaint_static(path: &Path, rgb: [u8; 3]) -> Result<bool, String> {
 }
 
 pub fn preview_static(source: &Path, output: &Path, size: u32) -> Result<Value, String> {
+    if !matches!(size, 52 | 72 | 104) {
+        return Err("invalid preview parameters".into());
+    }
+    preview_encoded(source, output, size, false)
+}
+
+pub fn gallery_static(source: &Path, output: &Path) -> Result<Value, String> {
+    preview_encoded(source, output, 88, true)
+}
+
+pub fn animation_info(source: &Path) -> bool {
+    Python::initialize();
+    Python::attach(|py| -> PyResult<bool> {
+        let image = OpenImage(
+            py.import("PIL.Image")?
+                .call_method1("open", (source.to_path_buf(),))?,
+        );
+        let animated = image
+            .0
+            .getattr("is_animated")
+            .and_then(|value| value.extract::<bool>())
+            .unwrap_or(false);
+        Ok(animated && image.0.getattr("n_frames")?.extract::<u32>()? > 1)
+    })
+    .unwrap_or(false)
+}
+
+fn preview_encoded(
+    source: &Path,
+    output: &Path,
+    size: u32,
+    gallery: bool,
+) -> Result<Value, String> {
     if !source.is_absolute()
         || !std::fs::symlink_metadata(source)
             .is_ok_and(|m| m.is_file() && !m.file_type().is_symlink())
     {
         return Err("static preview source must be an absolute regular non-symlink file".into());
-    }
-    if !matches!(size, 52 | 72 | 104) {
-        return Err("invalid preview parameters".into());
     }
     if !output.is_absolute() || std::fs::symlink_metadata(output).is_ok() {
         return Err("preview output must be absolute and must not already exist".into());
@@ -299,10 +329,22 @@ pub fn preview_static(source: &Path, output: &Path, size: u32) -> Result<Value, 
                 .call_method1("open", (source.to_path_buf(),))?,
         );
         let rgba = OpenImage(image.0.call_method1("convert", ("RGBA",))?);
-        rgba.0.call_method1("thumbnail", ((size, size),))?;
+        if gallery {
+            let lanczos = py
+                .import("PIL.Image")?
+                .getattr("Resampling")?
+                .getattr("LANCZOS")?;
+            rgba.0.call_method1("thumbnail", ((size, size), lanczos))?;
+        } else {
+            rgba.0.call_method1("thumbnail", ((size, size),))?;
+        }
         let buffer = OpenImage(py.import("io")?.call_method0("BytesIO")?);
         let options = PyDict::new(py);
-        options.set_item("lossless", true)?;
+        if gallery {
+            options.set_item("quality", 65)?;
+        } else {
+            options.set_item("lossless", true)?;
+        }
         options.set_item("exact", true)?;
         rgba.0
             .call_method("save", (&buffer.0, "WEBP"), Some(&options))?;
