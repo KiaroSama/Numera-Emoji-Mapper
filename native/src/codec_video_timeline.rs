@@ -13,23 +13,50 @@ pub struct Timeline {
     pub duration: f64,
 }
 
+fn timing_token(mut bytes: &[u8]) -> Option<&[u8]> {
+    let whitespace = |byte: &u8| matches!(byte, b' ' | b'\t' | b'\n' | b'\r' | 0x0b | 0x0c);
+    bytes = &bytes[bytes.iter().take_while(|byte| whitespace(byte)).count()..];
+    let digits = bytes
+        .iter()
+        .take_while(|byte| byte.is_ascii_digit())
+        .count();
+    if digits == 0 {
+        return None;
+    }
+    bytes = &bytes[digits..];
+    if !bytes.first().is_some_and(whitespace) {
+        return None;
+    }
+    bytes = &bytes[bytes.iter().take_while(|byte| whitespace(byte)).count()..];
+    bytes = bytes.strip_prefix(b"pts:")?;
+    bytes = &bytes[bytes.iter().take_while(|byte| whitespace(byte)).count()..];
+    let boundary = bytes.windows(9).position(|window| window == b"pts_time:")?;
+    let prefix = &bytes[..boundary];
+    let pts = prefix.iter().take_while(|byte| !whitespace(byte)).count();
+    if pts == 0 || pts == prefix.len() || prefix[pts..].iter().any(|byte| !whitespace(byte)) {
+        return None;
+    }
+    bytes = &bytes[boundary + 9..];
+    let end = bytes.iter().position(whitespace).unwrap_or(bytes.len());
+    (end > 0).then_some(&bytes[..end])
+}
+
 pub fn parse(raw: Vec<u8>, stderr: &[u8], duration: f64) -> Result<Timeline, String> {
-    let text = std::str::from_utf8(stderr).map_err(|_| "invalid native video timing text")?;
     let mut times = Vec::new();
-    for line in text.lines() {
-        // Frame records have all three fields; showinfo configuration lines do not.
-        if line.contains(" n:")
-            && line.contains(" pts:")
-            && let Some((_, suffix)) = line.split_once("pts_time:")
+    // FFmpeg may carry arbitrary metadata bytes; only timing tokens are text.
+    for offset in 0..stderr.len().saturating_sub(1) {
+        if stderr.get(offset..offset + 2) != Some(b"n:")
+            || (offset > 0
+                && (stderr[offset - 1].is_ascii_alphanumeric() || stderr[offset - 1] == b'_'))
         {
-            let token = suffix
-                .split_whitespace()
-                .next()
-                .ok_or("missing native frame timestamp")?;
+            continue;
+        }
+        if let Some(token) = timing_token(&stderr[offset + 2..]) {
             times.push(
-                token
-                    .parse::<f64>()
-                    .map_err(|_| "invalid native frame timestamp")?,
+                std::str::from_utf8(token)
+                    .ok()
+                    .and_then(|text| text.parse::<f64>().ok())
+                    .ok_or("invalid native frame timestamp")?,
             );
         }
     }

@@ -8,6 +8,9 @@ They cover an initial migration slice, not the whole source test inventory.
   33 ms single-frame clips. Source dHash values prove the first frame belongs to
   the frozen 10 fps stream rather than native frame zero; the short clip records
   an actual successful-empty sample followed by native-frame retry.
+- `video-timing.json`: eleven pinned byte-level timing grammar observations.
+  Unrelated non-UTF-8 metadata does not invalidate ASCII frame records; malformed
+  indices/field order, missing timestamps and nonfinite timing remain refusals.
 - `video-timeline.json`: four pinned real clips and four source comparison pairs,
   including equal sampled lookup keys with a differing native frame. Native RGBA,
   presentation timestamps and duration are independent source observations;
