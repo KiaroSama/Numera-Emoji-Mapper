@@ -39,7 +39,10 @@ source promotion. These policy seams are not yet the public native publisher;
 initial durable recovery and private staging are being connected using the
 existing transport, family-before-map leases and atomic persistence. Pending
 intent sources survive cleanup; only proven matching bytes become the shared
-logo. Complete mutation/restart/platform/public-command acceptance remains pending.
+logo. A source-traced native top-up policy now maps existing/overflow sets, writes
+intent before mutation, retains unknown outcomes and maps only content-proven
+IDs. Its effects are still controlled seams; complete transport/mutation/restart/
+platform/public-command acceptance remains pending.
 An initial video seam owns
 FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
 additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed
