@@ -56,6 +56,9 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `provider-policy.json`: seven source candidate-precedence observations and
+  fourteen Paprika/CMC status outcomes. Quota, transient, missing and rejected
+  credentials stay distinct. Transport/backoff/cache/CLI integration is separate.
 - `coin-plan.json`: four source-observed deterministic image-group plans and four
   current-map alias replays. Inventory representative preference, merged keyword
   order, duplicate ticker names and unapproved shared groups remain explicit.

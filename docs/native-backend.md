@@ -18,7 +18,8 @@ The initial static-image/identity/conversion, SVG renderer binding, pure Lottie
 tint/bounded TGS loading/canonical animated identity/loaded-document validation
 and Lottie preview/file-preparation/file-validation/vector-comparison handling,
 static preview/tint/tri-state comparison, source media detection/collision keys
-and coin-alias/inventory-text/frozen-group-plan/alias-replay slices are additive. An initial video seam owns
+and coin-alias/inventory-text/frozen-group-plan/alias-replay/provider-status-policy
+slices are additive. An initial video seam owns
 FFprobe, alpha-capable VP8/VP9 decoding and the frozen identity stream. The next
 additive slice includes canonical first-frame dHash, bounded file/toolchain-keyed
 working sets and complete native-frame/timestamp comparison. Video validation,
