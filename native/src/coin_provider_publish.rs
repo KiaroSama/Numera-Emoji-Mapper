@@ -14,6 +14,15 @@ pub trait PublishIo: RecoveryIo {
     fn pause(&mut self) -> Result<(), String>;
 }
 
+fn clear<I: RecoveryIo>(state: &mut Value, intent: &Value, io: &mut I) -> Result<(), String> {
+    state["provider_in_flight"] = Value::Null;
+    if let Err(error) = io.save("state", state) {
+        state["provider_in_flight"] = intent.clone();
+        return Err(error);
+    }
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn publish<I: PublishIo>(
     state: &mut Value,
@@ -97,8 +106,7 @@ pub fn publish<I: PublishIo>(
                 .unwrap_or(ticker),
         ) {
             Mutation::Rejected => {
-                state["provider_in_flight"] = Value::Null;
-                io.save("state", state)?;
+                clear(state, &intent, io)?;
                 failed += 1;
                 continue;
             }
@@ -110,8 +118,7 @@ pub fn publish<I: PublishIo>(
             Err(_) => return Ok((added, failed + tickers.len() - position)),
         };
         let Some(cid) = cid else {
-            state["provider_in_flight"] = Value::Null;
-            io.save("state", state)?;
+            clear(state, &intent, io)?;
             failed += 1;
             continue;
         };
@@ -126,8 +133,7 @@ pub fn publish<I: PublishIo>(
         mapping.insert(ticker.clone(), json!(cid));
         io.save("map", &Value::Object(mapping.clone()))?;
         io.promote(&intent, want)?;
-        state["provider_in_flight"] = Value::Null;
-        io.save("state", state)?;
+        clear(state, &intent, io)?;
         added += 1;
         io.pause()?;
     }
