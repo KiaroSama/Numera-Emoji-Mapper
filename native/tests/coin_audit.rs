@@ -116,7 +116,13 @@ fn source_audit_retries_failed_art_keeps_unknown_sets_and_drops_deleted_ids() {
         assert_eq!(json!(io.calls), case["expected"]["calls"]);
         assert_eq!(json!(io.downloads), case["expected"]["downloads"]);
         assert_eq!(json!(io.writes), case["expected"]["writes"]);
-        assert_eq!(json!(io.waits), case["expected"]["waits"]);
+        let expected_waits = case["expected"]["waits"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_f64().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(io.waits, expected_waits);
         assert_eq!(json!(io.reports), case["expected"]["reports"]);
     }
     let mut live = Map::new();
