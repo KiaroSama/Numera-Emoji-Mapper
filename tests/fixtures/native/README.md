@@ -81,6 +81,11 @@ They cover an initial migration slice, not the whole source test inventory.
   sorted rows and PNG decode/alpha-bbox admission differ intentionally from the
   provider-logo <=8-visible-pixel rule. Native atomic replacement additionally
   protects the previous CSV when malformed input fails.
+- `gecko-fetch.json`: five pinned source actual-image/mocked-HTTP cache workflows
+  and six safe-ticker observations. Good cache skips download; corrupt cache is
+  refreshed; invalid bodies never become logos; page failure yields partial exit.
+  Request order, virtual waits, CSV bytes and destination hashes are source
+  observations. This is not live fetch/public CLI/full crash/error acceptance.
 - `gecko-names.json`: six source market-page/long-tail/duplicate-symbol/partial
   lookup traces with virtual page waits. No live CoinGecko requests; arbitrary
   primitive coercion and full public fetch/build command parity remain pending.
