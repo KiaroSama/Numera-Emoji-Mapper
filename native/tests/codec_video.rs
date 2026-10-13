@@ -188,6 +188,30 @@ fn video_probe_and_frozen_stream_match_pinned_source() {
                 pair["expected"]
             );
         }
+        let timing: Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/native/video-timing.json"
+        ))
+        .unwrap();
+        assert_eq!(
+            timing["source_sha256"],
+            fixture["source_sha256"]["emojikit/video_decode.py"]
+        );
+        for case in timing["cases"].as_array().unwrap() {
+            use base64::Engine;
+            let stderr = base64::engine::general_purpose::STANDARD
+                .decode(case["stderr_base64"].as_str().unwrap())
+                .unwrap();
+            let result = _native::codec_video_timeline::parse(
+                vec![0; 64 * 64 * 4],
+                &stderr,
+                timing["duration"].as_f64().unwrap(),
+            );
+            assert_eq!(json!(result.is_ok()), case["expected"]["ok"]);
+            if let Ok(value) = result {
+                assert_eq!(json!(value.times), case["expected"]["times"]);
+                assert_eq!(json!(value.duration), case["expected"]["duration"]);
+            }
+        }
         let scratch = Scratch(
             root.join("logs/tmp")
                 .join(format!("video swap {}", std::process::id())),

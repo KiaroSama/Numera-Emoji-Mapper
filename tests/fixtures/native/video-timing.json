@@ -1,0 +1,89 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "bab9579240a23bb8ee59c1a66e496586ca881398bb4d82e956e2fb6c2b3ff13a",
+  "duration": 0.033,
+  "cases": [
+    {
+      "stderr_base64": "W3Nob3dpbmZvXSBuOiAwIHB0czogMCBwdHNfdGltZTow",
+      "expected": {
+        "ok": true,
+        "times": [
+          0.0
+        ],
+        "duration": 0.033
+      }
+    },
+    {
+      "stderr_base64": "/yBtZXRhZGF0YQpbc2hvd2luZm9dIG46IDAgcHRzOiAwIHB0c190aW1lOjA=",
+      "expected": {
+        "ok": true,
+        "times": [
+          0.0
+        ],
+        "duration": 0.033
+      }
+    },
+    {
+      "stderr_base64": "bjpnYXJiYWdlIHB0czowIHB0c190aW1lOjA=",
+      "expected": {
+        "ok": false
+      }
+    },
+    {
+      "stderr_base64": "bjowIHB0c190aW1lOjAgcHRzOjA=",
+      "expected": {
+        "ok": false
+      }
+    },
+    {
+      "stderr_base64": "bjowIHB0czowcHRzX3RpbWU6MA==",
+      "expected": {
+        "ok": false
+      }
+    },
+    {
+      "stderr_base64": "bjowIHB0czowIHB0c190aW1lOm5hbg==",
+      "expected": {
+        "ok": false
+      }
+    },
+    {
+      "stderr_base64": "bjowIHB0czpOT1BUUyBwdHNfdGltZTpOT1BUUw==",
+      "expected": {
+        "ok": false
+      }
+    },
+    {
+      "stderr_base64": "bjowIHB0czotMSBwdHNfdGltZTotMC4wMQ==",
+      "expected": {
+        "ok": true,
+        "times": [
+          0.0
+        ],
+        "duration": 0.043000000000000003
+      }
+    },
+    {
+      "stderr_base64": "eG46MCBwdHM6MCBwdHNfdGltZTow",
+      "expected": {
+        "ok": false
+      }
+    },
+    {
+      "stderr_base64": "bjoJMAlwdHM6CTAJcHRzX3RpbWU6MA==",
+      "expected": {
+        "ok": true,
+        "times": [
+          0.0
+        ],
+        "duration": 0.033
+      }
+    },
+    {
+      "stderr_base64": "bjowIHB0czowIHB0c190aW1lOjAKIG46MSBwdHM6MSBwdHNfdGltZTowLjAy",
+      "expected": {
+        "ok": false
+      }
+    }
+  ]
+}
