@@ -36,11 +36,6 @@ fn object(raw: &str) -> PyResult<Value> {
     }
     Ok(value)
 }
-fn text<'a>(value: &'a Value, key: &str) -> crate::telegram::Result<&'a str> {
-    value[key]
-        .as_str()
-        .ok_or_else(|| ApiError::Invalid(format!("missing {key}")))
-}
 fn fields(value: &Value) -> PyResult<BTreeMap<String, String>> {
     serde_json::from_value(value.clone())
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
@@ -266,108 +261,7 @@ fn mutation(
 ) -> crate::telegram::Result<Value> {
     let mut tg = Telegram::new(token, base)?;
     tg.max_flood_wait = max_wait;
-    let name = text(request, "name")?;
-    let source = text(request, "source")?;
-    let fmt = text(request, "format")?;
-    let creating = request["create"]
-        .as_bool()
-        .ok_or_else(|| ApiError::Invalid("missing create flag".into()))?;
-    let user = request["user_id"]
-        .as_u64()
-        .ok_or_else(|| ApiError::Invalid("invalid user ID".into()))?;
-    let emojis: Vec<String> = serde_json::from_value(request["emojis"].clone())
-        .map_err(|e| ApiError::Invalid(e.to_string()))?;
-    let keywords: Vec<String> = serde_json::from_value(request["keywords"].clone())
-        .map_err(|e| ApiError::Invalid(e.to_string()))?;
-    let input = input_sticker(fmt, &emojis, &keywords)?;
-    let file = crate::telegram::upload(std::path::Path::new(source), "file0")?;
-    let before = if !creating && !request["expected_before"].is_null() {
-        live(&tg, name).and_then(|stickers| usable_fuids(&stickers))
-    } else {
-        None
-    };
-    let mut data = BTreeMap::from([
-        ("user_id".into(), user.to_string()),
-        ("name".into(), name.into()),
-    ]);
-    let method = if creating {
-        data.insert("title".into(), text(request, "title")?.into());
-        data.insert("sticker_type".into(), "custom_emoji".into());
-        data.insert("stickers".into(), json!([input]).to_string());
-        if request["needs_repainting"] == true {
-            data.insert("needs_repainting".into(), "true".into());
-        }
-        "createNewStickerSet"
-    } else {
-        data.insert("sticker".into(), input.to_string());
-        "addStickerToSet"
-    };
-    let mut fired = false;
-    {
-        let mut check = || -> crate::telegram::Result<Option<bool>> {
-            fired = true;
-            let (state, set) = tg.probe(name);
-            if state == SetState::Unknown {
-                return Ok(None);
-            }
-            if state == SetState::Missing {
-                return Ok(if creating { Some(false) } else { None });
-            }
-            let Some(stickers) = set.and_then(|set| set["stickers"].as_array().cloned()) else {
-                return Ok(None);
-            };
-            if creating {
-                return Ok(if stickers.len() == 1 {
-                    compare(&tg, &stickers[0], source, fmt, codec, failure)
-                } else {
-                    None
-                });
-            }
-            let (Some(old), Some(now)) = (&before, usable_fuids(&stickers)) else {
-                return Ok(None);
-            };
-            let new = now.difference(old).collect::<Vec<_>>();
-            if new.is_empty() {
-                return Ok(Some(false));
-            }
-            if new.len() != 1 {
-                return Ok(None);
-            }
-            let sticker = stickers.iter().find(|st| {
-                st["file_unique_id"]
-                    .as_str()
-                    .is_some_and(|id| id == new[0].as_str())
-            });
-            Ok(sticker.and_then(|st| compare(&tg, st, source, fmt, codec, failure)))
-        };
-        tg.call(method, &data, &[file], 5, Some(&mut check))?;
-    }
-    if creating || !fired {
-        return Ok(Value::Null);
-    }
-    let stickers = live(&tg, name).ok_or_else(|| {
-        ApiError::Ambiguous(
-            "addStickerToSet applied after retry but live state is unknown or missing".into(),
-        )
-    })?;
-    if let (Some(old), Some(now)) = (&before, usable_fuids(&stickers)) {
-        let mut found = false;
-        for sticker in &stickers {
-            if sticker["file_unique_id"]
-                .as_str()
-                .is_some_and(|id| now.contains(id) && !old.contains(id))
-                && compare(&tg, sticker, source, fmt, codec, failure) == Some(true)
-            {
-                found = true;
-                break;
-            }
-        }
-        if !found {
-            return Err(ApiError::Ambiguous(
-                "addStickerToSet readback does not prove our source; count cannot be trusted"
-                    .into(),
-            ));
-        }
-    }
-    Ok(json!(stickers.len()))
+    crate::telegram_mutation::mutate(&tg, request, |tg, sticker, source, fmt| {
+        compare(tg, sticker, source, fmt, codec, failure)
+    })
 }

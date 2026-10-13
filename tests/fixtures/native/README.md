@@ -56,6 +56,13 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-rebuild-walk.json`: twelve pinned cursor/upload/skip/stop traces.
+  Durable intent precedes create/add, permanent skips advance the cursor,
+  verified transient failures roll it back, ambiguous results retain intent and
+  stop later uploads, and server-full rollover saves a new create intent. Live
+  count discrepancy and missing owner refuse before old-pack deletion. Controlled
+  effects and virtual 100ms pacing are policy evidence, not actual transport,
+  deletion, announcement, command or full restart/platform acceptance.
 - `coin-plan-disk.json`: independent actual source plan/shared-report observations
   from a reused sparse-alpha PNG, duplicate chain artwork, empty/corrupt inputs,
   inventory representative preference and quoted CSV keyword loading. Source/input
