@@ -61,6 +61,10 @@ Additive `coin-alias-map` and `coin-enhance-map` commands now wire the existing
 native policies to canonical map leases, atomic writes and inventory refill.
 `--coin-dir DIR` selects isolated input/output; default is project `coins/`.
 They refuse unknown flags and non-string IDs and perform no network calls.
+Additive `coin-build-keywords` shares the native CoinGecko name/CSV policies,
+scans configured coin logos with SVG precedence and preserves partial-lookup
+exit status. Help/invalid-flag paths never contact providers; full live command
+and installed-platform acceptance remain pending.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use

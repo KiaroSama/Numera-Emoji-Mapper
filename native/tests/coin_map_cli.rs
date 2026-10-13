@@ -35,6 +35,8 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
     for (index, command, arguments, expected) in [
         (0, "coin-alias-map", vec!["--typo".into()], 2),
         (1, "coin-alias-map", vec!["--help".into()], 0),
+        (4, "coin-build-keywords", vec!["--help".into()], 0),
+        (5, "coin-build-keywords", vec!["--typo".into()], 2),
         (
             2,
             "coin-alias-map",
@@ -82,7 +84,7 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
                 .unwrap();
         assert_eq!(mapping["btc"], "111111111");
         assert_eq!(mapping["other"], "preserved");
-        if index >= 2 {
+        if index == 2 || index == 3 {
             assert_eq!(mapping["btctrc20"], "111111111");
             let filled =
                 std::fs::read_to_string(coins.join("currency-emoji-inventory.filled.md")).unwrap();
