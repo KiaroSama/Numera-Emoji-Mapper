@@ -170,7 +170,12 @@ impl Telegram {
                 Ok(payload) => {
                     if payload.get("ok") == Some(&Value::Bool(true)) {
                         return payload.get("result").cloned().ok_or_else(|| {
-                            ApiError::Transport("Bot API success has no result".into())
+                            let reason = "Bot API success has no result".into();
+                            if ["addStickerToSet", "createNewStickerSet"].contains(&method) {
+                                ApiError::Ambiguous(reason)
+                            } else {
+                                ApiError::Transport(reason)
+                            }
                         });
                     }
                     let desc = self.safe(

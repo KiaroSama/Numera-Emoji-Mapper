@@ -129,6 +129,7 @@ const COMMANDS: &[&str] = &[
     "coin-remap-ids",
     "coin-verify-logos",
     "coin-rebuild-map",
+    "coin-rebuild",
 ];
 fn main() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -164,6 +165,7 @@ fn main() -> std::process::ExitCode {
                     | "coin-remap-ids"
                     | "coin-verify-logos"
                     | "coin-rebuild-map"
+                    | "coin-rebuild"
             ) {
                 for option in args[1..].windows(2).filter(|pair| pair[0] == "--token-env") {
                     let token = config.value(&option[1]);
@@ -182,6 +184,8 @@ fn main() -> std::process::ExitCode {
                     &args[1..],
                     &log,
                 )
+            } else if args[0] == "coin-rebuild" {
+                _native::coin_rebuild_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-rebuild-map" {
                 _native::coin_rebuild_map_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-verify-logos" {

@@ -16,7 +16,7 @@ fn live(tg: &Telegram, name: &str) -> Option<Vec<Value>> {
 }
 pub fn mutate<F>(tg: &Telegram, request: &Value, mut compare: F) -> crate::telegram::Result<Value>
 where
-    F: FnMut(&Telegram, &Value, &str, &str) -> Option<bool>,
+    F: FnMut(&Telegram, &Value, &str, &str) -> crate::telegram::Result<Option<bool>>,
 {
     let name = text(request, "name")?;
     let source = text(request, "source")?;
@@ -69,11 +69,11 @@ where
                 return Ok(None);
             };
             if creating {
-                return Ok(if stickers.len() == 1 {
+                return if stickers.len() == 1 {
                     compare(tg, &stickers[0], source, fmt)
                 } else {
-                    None
-                });
+                    Ok(None)
+                };
             }
             let (Some(old), Some(now)) = (&before, usable_fuids(&stickers)) else {
                 return Ok(None);
@@ -90,7 +90,10 @@ where
                     .as_str()
                     .is_some_and(|id| id == new[0].as_str())
             });
-            Ok(sticker.and_then(|st| compare(tg, st, source, fmt)))
+            match sticker {
+                Some(sticker) => compare(tg, sticker, source, fmt),
+                None => Ok(None),
+            }
         };
         tg.call(method, &data, &[file], 5, Some(&mut check))?;
     }
@@ -108,7 +111,7 @@ where
             if sticker["file_unique_id"]
                 .as_str()
                 .is_some_and(|id| now.contains(id) && !old.contains(id))
-                && compare(tg, sticker, source, fmt) == Some(true)
+                && compare(tg, sticker, source, fmt)? == Some(true)
             {
                 found = true;
                 break;

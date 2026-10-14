@@ -121,9 +121,15 @@ alias replay and atomic map/inventory writes. Every live ID and recorded rebuild
 or provider source must have exactly one content match; order is never position.
 Lost aliases or unreviewed shared groups larger than 20 refuse replacement and
 write `ticker_to_id.candidate.json`. `--token-env` selects the read-only token.
-An absent/corrupt frozen plan refuses; automatic plan creation and full build/link
-orchestration are not yet connected. Complete error/crash/platform/source-case
-acceptance remains pending; this command makes no Telegram mutations.
+An absent/corrupt frozen plan refuses; this command makes no Telegram mutations.
+The branch also implements `coin-rebuild [all|build|map|links]` with the same
+path/token options. Default `all` builds, maps and sends final links; **both `all`
+and `build` can delete old packs and upload**. They generate a missing frozen
+plan, never regenerate a corrupt one, confirm each old deletion by live readback
+and persist upload intent before transport. `links` deliberately resends the
+combined index; `map` only reads Telegram. These latest rebuild paths are authored
+but not yet compiled or runtime-verified. Full error/crash/platform/source-case
+acceptance remains pending; do not use this branch for live migration testing.
 Current prebuilt installations do not yet include these expanded commands.
 Full failure/platform and original-case parity remain pending.
 These slices use
