@@ -394,6 +394,10 @@ uses the frozen rebuild plan and recorded sources to prove every live sticker by
 image content. It preserves current aliases, refuses lost aliases/unreviewed
 shared crowds and writes review candidates rather than overwrite an unproven map.
 It reads Telegram only; source/platform acceptance and installed activation remain pending.
+The branch also authors `coin-rebuild [all|build|map|links]` with the same options.
+**Default `all` and explicit `build` may delete old packs and upload**; `links`
+resends messages, and `map` only reads Telegram. These latest rebuild paths have
+not yet been compiled/runtime-verified or included in accepted installations.
 Run the retained Python tools as modules from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 

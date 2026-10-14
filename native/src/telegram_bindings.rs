@@ -262,6 +262,6 @@ fn mutation(
     let mut tg = Telegram::new(token, base)?;
     tg.max_flood_wait = max_wait;
     crate::telegram_mutation::mutate(&tg, request, |tg, sticker, source, fmt| {
-        compare(tg, sticker, source, fmt, codec, failure)
+        Ok(compare(tg, sticker, source, fmt, codec, failure))
     })
 }

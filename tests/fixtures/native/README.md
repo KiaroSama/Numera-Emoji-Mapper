@@ -56,6 +56,22 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+- `coin-rebuild-links.json`: ten independent hash-pinned final-link/notification
+  observations. Final links sort and deliberately resend, empty state writes
+  nothing, and final send/save failures propagate. Per-pack notifications skip
+  recorded names and report both send/save failures without stopping the build;
+  a failed save retains the source's in-memory sent append. Controlled effects
+  are policy evidence only. Authored actual CLI tests check loopback payloads,
+  family lease ownership, resend, refused-send byte preservation, empty/missing/
+  malformed state. These new Rust tests have not yet run.
+- `coin-rebuild-delete.json`: six source deletion/probe/persistence traces with
+  virtual 500ms pacing. Only missing readback closes an old pack; unknown stops,
+  surviving packs remain incomplete, and already-confirmed packs are not deleted
+  again. Authored build-command loopback covers a surviving old pack, restart of
+  only its unconfirmed deletion, intent-before-create, no duplicate successful
+  upload/notification, all→content map→final links, unknown-delete preservation,
+  proof-workspace failure and malformed-success envelopes with intent retained. Target execution and full failure/platform
+  acceptance remain pending; all endpoints and operator values are synthetic.
 - `coin-rebuild-walk.json`: twelve pinned cursor/upload/skip/stop traces.
   Durable intent precedes create/add, permanent skips advance the cursor,
   verified transient failures roll it back, ambiguous results retain intent and

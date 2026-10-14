@@ -435,8 +435,20 @@ images against recorded rebuild/provider source PNGs and replays current aliases
 Both family and canonical-map leases cover all reads through replacement/refill.
 Unknown content, lost aliases or more than 20 unreviewed tickers sharing one ID
 refuse canonical replacement and retain a review candidate. Missing/corrupt plans
-refuse rather than regenerate. No Telegram mutations; native plan/build/link and
-full original-case/platform/installed acceptance are still pending.
+refuse rather than regenerate. No Telegram mutations; full original-case/platform/
+installed acceptance is still pending.
+
+The branch additionally authors `coin-rebuild [all|build|map|links]` using those
+same path/token options and configured `COIN_PACK_BASE`, `COIN_PACK_TITLE` and
+`PACK_OWNER_USER_ID`. Default `all` builds, maps and sends links. **Both `all` and
+`build` can delete packs listed in `rebuild_state.json` before uploading.** Each
+old deletion is recorded only after the set is confirmed missing; unknown state
+stops before another deletion/upload. A missing plan is generated once; corrupt
+plans/states are refused. Uploads use the frozen cursor and durable content-bound
+intent, never a live-count position. `build` reports the plan checkpoint and exits
+3 when incomplete; `links` explicitly resends the sorted index and saves
+`final_sent` only after an answered send. New source observations are recorded,
+but these latest Rust paths are not yet compiled/runtime-verified or installed.
 
 | Command | File | Purpose |
 |---------|------|---------|
