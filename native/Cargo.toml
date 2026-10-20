@@ -21,7 +21,7 @@ reqwest = { version = "=0.13.5", default-features = false, features = ["blocking
 axum = "=0.8.9"
 chrono = { version = "=0.4.45", default-features = false, features = ["clock", "std"] }
 sha1 = "=0.11.0"
-sha2 = "=0.11.0"
+sha2 = "=0.11.1"
 percent-encoding = "=2.3.2"
 getrandom = "=0.4.3"
 tokio = { version = "=1.53.2", features = ["rt-multi-thread", "net", "signal", "time", "sync", "process"] }
