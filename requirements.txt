@@ -8,7 +8,7 @@
 # emoji (.webm). Install on Windows with: winget install Gyan.FFmpeg
 
 requests>=2.32          # Telegram Bot API calls, and the coin fetchers
-Pillow>=12.3.0          # image decode / 100x100 fitting
+Pillow>=13.0.0          # image decode / 100x100 fitting
 # SVG -> RGBA PNG. resvg is a self-contained Rust renderer shipped as a wheel:
 # no system cairo, no build toolchain, and it renders gradients (the previous
 # svglib/reportlab backend produced a blank image for those, and reportlab's
