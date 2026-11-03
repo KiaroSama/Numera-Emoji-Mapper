@@ -28,4 +28,19 @@ fn source_replacement_id_requires_new_identity_and_unchanged_other_ids() {
             case["expected"]
         );
     }
+    // Original VerifyLogosFix literals retain the exact neighbors and old/new identities.
+    let before = vec!["a".into(), "cid-old".into()];
+    for (after, expected) in [
+        (["a", "cid-new"], Some("cid-new")),
+        (["z", "cid-new"], None),
+        (["a", "a"], None),
+        (["a", "cid-old"], None),
+    ] {
+        let after = after.into_iter().map(str::to_owned).collect::<Vec<_>>();
+        assert_eq!(
+            _native::coin_replace_proof::new_id(&before, &after, 1).as_deref(),
+            expected
+        );
+    }
+    assert!(_native::coin_replace_proof::new_id(&before, &["cid-new".into()], 1).is_none());
 }

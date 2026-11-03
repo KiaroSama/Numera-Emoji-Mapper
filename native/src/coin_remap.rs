@@ -1,6 +1,6 @@
 //! Content-only remap joins live signatures, local artwork and guarded atomic replacement.
 use crate::coin_remap_cache::CacheIo;
-use crate::coin_remap_policy::{Match, Options};
+use crate::coin_remap_policy::Options;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -160,8 +160,13 @@ pub fn run(
     }
     let family = crate::locks::pack_family_path(&files.root, &files.base);
     crate::coin_manifest::output_path(&family)?;
-    let _family = crate::locks::Lease::acquire(&family, &crate::logging::utc())
-        .map_err(|_| "remap pack family is busy or unavailable")?;
+    let _family = match crate::locks::Lease::acquire(&family, &crate::logging::utc()) {
+        Ok(lease) => lease,
+        Err(_) => {
+            log.event("ERROR", "coins", "remap pack family is busy or unavailable");
+            return Ok(4);
+        }
+    };
     let state = crate::coin_provider_recover::object(&files.state, false)?;
     let mut sets = state["sets"]
         .as_array()
@@ -203,33 +208,7 @@ pub fn run(
         })
         .collect::<Result<Vec<_>, _>>()?;
     let nearest = crate::coin_remap_math::nearest(&local, &live)?;
-    if [
-        nearest.indices.len(),
-        nearest.squared.len(),
-        nearest.second.len(),
-    ]
-    .iter()
-    .any(|len| *len != tickers.len())
-    {
-        return Err("remap parallel match arrays disagree".into());
-    }
-    let matches = tickers
-        .into_iter()
-        .enumerate()
-        .map(|(i, ticker)| {
-            let cid = cids
-                .get(nearest.indices[i])
-                .ok_or("remap nearest index is outside candidates")?
-                .clone();
-            let distance = nearest.squared[i].sqrt();
-            Ok(Match {
-                ticker,
-                cid,
-                distance,
-                margin: nearest.second[i].sqrt() - distance,
-            })
-        })
-        .collect::<Result<Vec<_>, String>>()?;
+    let matches = crate::coin_remap_policy::matches(&tickers, &cids, nearest)?;
     options.incomplete_sets = incomplete.len();
     options.failed_images = cache["errors"]
         .as_object()

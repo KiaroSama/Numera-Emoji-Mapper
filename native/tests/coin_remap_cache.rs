@@ -74,4 +74,102 @@ fn source_remap_cache_uses_live_manifest_retries_errors_and_prunes_deleted_ids()
         assert_eq!(io.waits, waits);
     }
     assert!(load(&json!({"sigs":{"x":"%%%%"}})).is_err());
+    original_cache_assertions();
+}
+
+fn original_cache_assertions() {
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    let old = STANDARD.encode(vec![0; 512]);
+    let current = STANDARD.encode(vec![0; 1024]);
+    assert_eq!(
+        load(&json!({"done_sets":[1],"sigs":{"a":current}})).unwrap(),
+        json!({"sets":{},"sigs":{"a":current},"errors":{}})
+    );
+    assert_eq!(
+        load(&json!({"sets":{"s1":"digest"},"sigs":{"old":old,"new":current},"errors":{}}))
+            .unwrap(),
+        json!({"sets":{},"sigs":{"new":current},"errors":{}})
+    );
+    for scenario in ["retry", "replace", "append"] {
+        let mut io = Fixture {
+            input: json!({"sets":{"s1":if scenario == "append" {json!(["a"])} else {json!(["a","b"]) }},
+                "fail":if scenario == "retry" {json!(["b"])} else {json!([])}}),
+            downloads: vec![],
+            writes: vec![],
+            waits: vec![],
+        };
+        let sets = [json!({"index":1,"name":"s1"})];
+        let mut cache = load(&json!({})).unwrap();
+        assert_eq!(
+            download(&sets, &mut cache, &mut io).unwrap(),
+            if scenario == "retry" {
+                vec!["s1"]
+            } else {
+                vec![]
+            }
+        );
+        assert_eq!(
+            io.downloads,
+            if scenario == "append" {
+                vec!["a"]
+            } else {
+                vec!["a", "b"]
+            }
+        );
+        if scenario == "retry" {
+            assert!(cache["sets"].get("s1").is_none());
+            assert_eq!(
+                cache["sigs"]
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>(),
+                ["a"]
+            );
+            assert!(cache["errors"].get("b").is_some());
+        }
+        let before = cache["sets"]["s1"].clone();
+        // Resume the serialized checkpoint, not the first run's in-memory cache.
+        cache = load(io.writes.last().unwrap()).unwrap();
+        io.input["sets"]["s1"] = if scenario == "replace" {
+            json!(["a", "c"])
+        } else {
+            json!(["a", "b"])
+        };
+        io.input["fail"] = json!([]);
+        io.downloads.clear();
+        io.writes.clear();
+        io.waits.clear();
+        assert!(download(&sets, &mut cache, &mut io).unwrap().is_empty());
+        assert_eq!(
+            io.downloads,
+            if scenario == "replace" {
+                vec!["c"]
+            } else {
+                vec!["b"]
+            }
+        );
+        assert_eq!(io.waits, [0.02]);
+        assert!(cache["sets"]["s1"].is_string());
+        assert_eq!(cache["errors"], json!({}));
+        assert_eq!(
+            cache["sigs"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            if scenario == "replace" {
+                vec!["a", "c"]
+            } else {
+                vec!["a", "b"]
+            }
+        );
+        if scenario == "replace" {
+            assert_ne!(cache["sets"]["s1"], before);
+        }
+        assert_eq!(io.writes.last(), Some(&cache));
+        assert!(!cache.to_string().contains("TOKEN123"));
+    }
 }

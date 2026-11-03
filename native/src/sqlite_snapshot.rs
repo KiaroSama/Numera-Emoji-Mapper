@@ -57,6 +57,16 @@ pub fn copy(
     result.and(restore_source).and(restore_destination)
 }
 pub fn backup(source: &Connection, path: &Path) -> Result<(), String> {
+    backup_with_budget(source, path, Duration::from_secs(30))
+}
+pub fn backup_with_budget(
+    source: &Connection,
+    path: &Path,
+    budget: Duration,
+) -> Result<(), String> {
+    if budget.is_zero() {
+        return Err("SQLite snapshot budget must be positive".into());
+    }
     let reservation = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -65,7 +75,11 @@ pub fn backup(source: &Connection, path: &Path) -> Result<(), String> {
     drop(reservation);
     let result = (|| {
         let mut destination = Connection::open(path).map_err(|e| e.to_string())?;
-        copy(source, &mut destination, Duration::from_secs(30))?;
+        copy(source, &mut destination, budget)?;
+        #[cfg(test)]
+        if std::env::var("NUMERA_MIGRATION_TEST_ACTION").as_deref() == Ok("refuse-backup") {
+            return Err("controlled backup verification failure".into());
+        }
         let integrity: String = destination
             .query_row("PRAGMA integrity_check", [], |r| r.get(0))
             .map_err(|e| e.to_string())?;

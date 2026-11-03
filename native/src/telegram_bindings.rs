@@ -14,7 +14,7 @@ fn encode(result: crate::telegram::Result<Value>) -> PyResult<String> {
             let (kind, method, seconds) = match &error {
                 ApiError::Rejected(_) => ("rejected", None, None),
                 ApiError::Transport(_) => ("transport", None, None),
-                ApiError::Ambiguous(_) => ("ambiguous", None, None),
+                ApiError::Ambiguous(_) | ApiError::Unproven(_) => ("ambiguous", None, None),
                 ApiError::FloodWait { method, seconds } => {
                     ("flood", Some(method.as_str()), Some(*seconds))
                 }

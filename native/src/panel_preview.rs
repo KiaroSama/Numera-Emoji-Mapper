@@ -1,18 +1,18 @@
 //! Native preview cache policy; the adapter only returns exact rendered codec bytes.
-use crate::media_adapter::MediaAdapter;
+use crate::media_adapter::{MediaAdapter, MediaCodec};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::{Mutex, Semaphore};
 
-pub struct Previews {
-    adapter: MediaAdapter,
+pub struct Previews<M = MediaAdapter> {
+    adapter: M,
     cache: PathBuf,
     renders: Semaphore,
     locks: Mutex<std::collections::BTreeMap<PathBuf, Arc<Mutex<()>>>>,
 }
-impl Previews {
-    pub fn new(adapter: MediaAdapter, data: &Path, workers: usize) -> Self {
+impl<M: MediaCodec> Previews<M> {
+    pub fn new(adapter: M, data: &Path, workers: usize) -> Self {
         Self {
             adapter,
             cache: data.join("preview"),

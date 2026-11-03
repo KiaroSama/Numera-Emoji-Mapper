@@ -417,7 +417,11 @@ work exits 3 and writes candidates without canonical-map replacement. A successf
 replacement keeps the original map bytes in a never-overwritten `.prebroken.json`.
 Family-before-map leases protect the whole live-read/replace workflow. NumPy 2.4.6
 remains the supported external numerical runtime for Python 3.11; later 2.5.4
-requires 3.12+. Installed/runtime and full source/platform acceptance are pending.
+requires 3.12+. The additive command now admits this optional import before
+configuration, network or data work; a missing dependency names
+`pip install -r requirements-coins.txt`. Help and invalid arguments do not require
+NumPy. This diagnostic change and its isolated import-failure assertion are
+uncompiled and unrun; installed/runtime and full source/platform acceptance are pending.
 
 Additive `coin-verify-logos --emoji-dir DIR` defaults to review only: `--top 100`,
 `--threshold 20`. Use `--map`, `--state` and `--token-env` for isolated inputs.

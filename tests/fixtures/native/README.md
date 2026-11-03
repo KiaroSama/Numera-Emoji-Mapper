@@ -4,6 +4,12 @@ These expected values come from the pinned source revision
 `1a36a968b006236bd0665a1da65c541938c06061`, not from the replacement Rust code.
 They cover an initial migration slice, not the whole source test inventory.
 
+- `codec-timeout.json`: 14 pinned CPython 3.11.9 timeout-policy observations.
+  The source default is 300 seconds per codec child, with a one-second floor;
+  signs, underscores and Unicode decimal digits use Python integer semantics.
+  Invalid text and below-minimum warnings are captured independently. The shared
+  native process owner keeps Git/tool reads on their separate 30/15-second budget.
+  Native policy/lifetime tests remain unexecuted; no timing acceptance is implied.
 - `video-fingerprint.json`: three pinned nonuniform 30 fps, 15 fps and genuine
   33 ms single-frame clips. Source dHash values prove the first frame belongs to
   the frozen 10 fps stream rather than native frame zero; the short clip records
@@ -56,6 +62,84 @@ They cover an initial migration slice, not the whole source test inventory.
   regenerates the pinned source result on its runner, verifies unchanged RGBA
   hashes/refusals and compares target bytes to that independent same-runner
   source oracle. It never replaces the committed expectation with target output.
+  The authored native `source-static-images --output-dir DIRECTORY` replacement
+  admits both original source hashes and frozen recipes before replaying these five
+  cases and the seven `provider-image.json` cases below. It requires exactly
+  CPython 3.11.9, Pillow 12.3.0 and resvg-py 0.5.0. Its outputs are
+  `static-convert-source.json` and `provider-image-source.json`; the original
+  driver's `MediaError=RuntimeError` port is disclosed rather than exception-class
+  parity. The native generator and its runtime tests remain uncompiled/unexecuted;
+  original drivers and fixtures stay until the migration gates pass.
+- `lottie-validation.json`: 84 independent CPython 3.11.9 loaded-document
+  validation observations, including original error classes. Native historical
+  replay admits the pinned validator and exception-class source from Git and
+  compares every message/class; stat/magic/load are supplied ports, not actual
+  file/codec proof. The input recipe retains huge integers and ordering. Typed
+  validation and real-file/worker tests are authored but unexecuted; no source
+  retirement or complete Lottie acceptance is implied.
+- `source-baseline.json`: exact original paths and SHA-256 identities for 277
+  Git blobs at the pinned source revision. This is mechanical source inventory,
+  not a claim that the files or tests have migrated.
+- `coverage.json`: all 1489 original declared cases remain explicitly pending.
+  Static declarations do not include every inherited, decorated or generated case;
+  zero pending and complete discovery are required before source retirement.
+- `source-discovery.json`: seven independent CPython 3.11.9 loader observations
+  for inheritance, C3 ordering, overrides, mixins, non-callable shadowing, the
+  `test` prefix, `runTest` and inconsistent/duplicate bases. Only trusted small
+  synthetic classes execute; repository source remains parse-only. Imported bases,
+  decorators and dynamic collection remain unresolved by static discovery.
+- `source-bindings.json`: five independent CPython 3.11.9 module-loader observations.
+  Collection uses sorted final module bindings; subclasses retain the original
+  parent class after its name is rebound. A function can replace a collected
+  class, and `runTest` is collected on presence even when its value is non-callable.
+  Only trusted synthetic modules execute. Unknown imported classes, definition-time
+  effects, decorators and subclass hooks still block complete static discovery.
+- `tooling-source-contracts-v2.json`: corrected independent source observations
+  for 24 manifest cases (four valid host manifests), two environment plans and
+  four confinement paths. UTF-8 payload hashes use actual written LF bytes.
+  The earlier `tooling-source-contracts.json` is an invalid newline-corruption
+  diagnostic, not parity evidence and not consumed by the target tests.
+  Native-owned historical regeneration now admits the original environment and
+  manifest sources plus a separately pinned input recipe before using the shared
+  bounded worker. Private host facts do not patch the worker's real environment;
+  all 30 observations come from original functions and real disposable files.
+  This new generator remains uncompiled and unrun.
+- `tooling-package-source.json`: 26 exact Windows-x64 source-selected package
+  members and their SHA-256 identities. The executable and wheels are explicitly
+  synthetic selection fixtures; this does not prove an installed package or ABI.
+  Native-owned regeneration executes only the two admitted original source
+  slices, retaining the Windows golden and comparing an explicitly disclosed
+  same-platform manifest. It verifies all member names, CRCs, input preservation
+  and checksum text before success-only cleanup. Caller-supplied expected values
+  are ignored; failed evidence is retained. The new generator is uncompiled/unrun.
+- `media-continuation/worker.json`: 46 independent pinned static worker outcomes,
+  including defaults, malformed requests, path refusals, corrupt-image errors,
+  exact output bytes and occupied-output preservation. Captured with Pillow 12.3.0;
+  error-message comparison alone does not establish exception-class or worker
+  envelope parity. Native target tests are authored but have not yet run.
+- `media-continuation/static-boundary.json`: eighteen actual CPython 3.11.9 /
+  Pillow 12.3.0 source observations, captured before the native repair. Preview
+  faults retain their actual exception class, including a frame-close `OSError`;
+  reencode catches ordinary exceptions as false plus warning while preserving
+  input bytes, but propagates `KeyboardInterrupt` without that warning. Injected
+  calls must actually be reached. Success-byte hashes are independently observed,
+  not native expectations. This direct source slice does not prove filesystem
+  failures, combined faults, tint, worker exit status or cross-platform acceptance;
+  the new native boundary test is authored but has not run.
+- `media-continuation/prepare-tint.json`: nine actual pinned CPython 3.11.9 /
+  Pillow 12.3.0 static prepare observations, including reencode-before-tint order.
+  Invalid hex raises the real `MediaError`; non-string tint and refused repaint
+  raise `ValueError`. Ordinary injected save exceptions produce the original
+  warning and preserve input; `KeyboardInterrupt` propagates without that warning,
+  including before invalid tint. Successful result, byte hashes and actual fault
+  hits are captured from source. This is not native runtime, final-write failure,
+  combined-fault or cross-platform proof; its new native tracer remains unrun.
+- `source-inventory.json`: four independent CPython 3.11.9 stdlib AST observations
+  and two parser refusals. Rust-owned extraction preserves class bases, method
+  locations, decorators, assertion source slices, import aliases, CLI arguments
+  and custom `load_tests` detection without importing source modules. A raising
+  module body is deliberately parsed, never executed. This is not complete
+  inherited/dynamic discovery or retirement approval; those remain explicit gates.
 - `coin-rebuild-links.json`: ten independent hash-pinned final-link/notification
   observations. Final links sort and deliberately resend, empty state writes
   nothing, and final send/save failures propagate. Per-pack notifications skip
@@ -275,6 +359,11 @@ They cover an initial migration slice, not the whole source test inventory.
   vector comparison pairs. Size and gzip magic precede decoding; truncated gzip
   is distinct from malformed JSON. The oversized malformed header is stored as
   UTF-8 Base64 and decoded into owned scratch with its original byte hash checked.
+  A separate native-owned historical replay admits the exact original validator,
+  loader and exception class, then uses external pathlib/gzip/io/json on these
+  seven validation inputs. Input bytes are checked before historical execution;
+  observation drift retains reconstructed scratch for diagnosis. This replay is
+  authored but unexecuted and does not regenerate the six comparison pairs.
   Canonical equality is true, vector mismatch stays unknown, and only `compare`
   has the byte-identical shortcut.
 - `tgs-prepare.json`: five pinned source file observations: Unicode re-gzip,
@@ -302,8 +391,12 @@ They cover an initial migration slice, not the whole source test inventory.
   WebP bytes, decoded frames and durations. These are synthetic artwork inputs,
   not full real-world animation coverage. CI regenerates an independent source
   oracle on its own platform and compares target bytes to that source; committed
-  Windows observations remain unchanged. The short clip must retain its native
-  rate rather than producing an empty sampled frame list.
+  Windows observations remain unchanged. The authored Rust-owned
+  `source-lottie-render` command selects only the fixed original source functions
+  after source, fixture-recipe and physical input admission. It regenerates three
+  previews and two animated gallery observations without target codec output;
+  compilation/runtime acceptance is still pending. The short clip must retain its
+  native rate rather than producing an empty sampled frame list.
 - `lottie-validation.json`: pinned `validate_tgs` policy with already-decoded
   document and file stat/magic/load seams; 84 source cases cover timeline,
   numeric coercion, required fields and nested subtract-mask refusal. This is
@@ -312,6 +405,49 @@ They cover an initial migration slice, not the whole source test inventory.
   CPython 3.11.9; tint parsing/errors, boolean numeric quirks, solid/keyframed
   colours and gradient opacity preservation. This does not cover animation
   rendering, gzip packaging, file replacement or runtime cancellation.
+
+- `source-assertions.json`: parse-only CPython 3.11.9 assertion spans and
+  loop/with/subTest/branch contexts from two hash-pinned original test modules
+  plus one Unicode/multiline synthetic input. Repository source is never imported
+  or executed. This preserves static evidence for migration review; it does not
+  prove runtime variant completeness or source-to-native case equivalence.
+- `media-continuation/main-policy.json`: eight actual CPython 3.11.9 observations
+  of pinned `media_bridge.main` and log redaction with controlled execute and
+  filesystem seams. Success writes one result; OSError/ValueError/RuntimeError
+  write one redacted error and return 1; TypeError/EOFError/KeyError escape without
+  a response. This is catch/envelope policy, not codec or atomic-write acceptance.
+- `coin-map-lock.json`: two actual pinned `alias_map.main`/`enhance_map.main`
+  canonical-lock refusal outcomes: exit 4, unchanged input map, no filled output
+  and no downstream work. The corresponding original held-lock assertion is
+  identified in the fixture. Native command regression tests are authored but
+  remain unexecuted; this fixture does not prove general concurrent-writer parity.
+
+- `media-continuation/static-errors.json`: six actual pinned CPython 3.11.9 /
+  Pillow 12.3.0 static fingerprint and conversion outcomes. Visible conversion
+  preserves the independently captured PNG hash; blank conversion raises the
+  source MediaError, while corrupt fingerprint and conversion both raise
+  UnidentifiedImageError. Typed error classes, messages and input preservation
+  are tested in authored native code; execution remains pending.
+- `coin-verify-gate.json`: three actual pinned verify command gate outcomes.
+  Unresolved replacement blocks fixing with exit 4; failed fixing returns 4;
+  successful fixing returns 0. Controlled lock/reconcile/fix seams preserve effect
+  ordering but do not prove real replacement, transport or provider acceptance.
+- `tooling-sandbox-source.json`: five actual source parser/panel-argument cases
+  and credential-template scrubbing under CPython 3.11.9. Native-owned historical
+  regeneration admits exact source and input-recipe hashes before runtime access,
+  then selects only the original scrub/parser/argument functions. A private
+  synthetic environment, real template and stdlib parser supply observations;
+  caller-supplied outputs are ignored. No clone, panel, browser or service is
+  started. Success removes only the verified template; failure retains evidence.
+  The new generator is uncompiled/unrun. These are command policy observations,
+  not active-codec cancellation or inherited-process lifetime proof.
+
+The existing `../backend/intent.json`, `resume.json`, `steps.json`, `bot.json`,
+`roster.json`, `reconcile.json`, `view.json`, `ingest.json` and `../similarity.json`
+remain independent pre-port source corpora.
+New native tracer tests reuse their exact outcomes without rewriting the fixtures.
+Pinned byte checks do not replace source regeneration, Python binding error checks
+or complete original-case coverage; those acceptance gates remain pending.
 
 Original executable sources remain in Git history. Fixture regeneration must
 retrieve and verify that exact source and runtime before executing a hermetic,

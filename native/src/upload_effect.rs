@@ -1,29 +1,21 @@
 //! Upload/readback effects shared by both builders without imposing catalog storage.
 use crate::{
-    media_adapter::MediaAdapter,
+    media_adapter::{MediaAdapter, MediaCodec},
     telegram::{ApiError, SetState, Telegram, input_sticker, upload, usable_fuids},
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-static NEXT: AtomicU64 = AtomicU64::new(0);
 fn text<'a>(v: &'a Value, key: &str) -> Result<&'a str, String> {
     v[key].as_str().ok_or_else(|| format!("missing {key}"))
 }
-struct Scratch(PathBuf);
-impl Drop for Scratch {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
-    }
-}
-pub struct UploadEffect<'a> {
+pub struct UploadEffect<'a, M = MediaAdapter> {
     pub tg: &'a Telegram,
-    pub media: &'a MediaAdapter,
+    pub media: &'a M,
     pub data: &'a Path,
     pub runtime: &'a tokio::runtime::Runtime,
 }
-impl UploadEffect<'_> {
+impl<M: MediaCodec> UploadEffect<'_, M> {
     pub fn live(&self, name: &str) -> Result<Vec<Value>, String> {
         match self.tg.probe(name) {
             (SetState::Exists, Some(pack)) => pack["stickers"]
@@ -39,41 +31,24 @@ impl UploadEffect<'_> {
             .tg
             .download_bytes(text(sticker, "file_id")?, 5)
             .map_err(|e| e.to_string())?;
-        let directory = self.data.join("tmp");
-        std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-        let (mut file, path) = loop {
-            let path = directory.join(format!(
-                "verify-{}-{}.dl",
-                std::process::id(),
-                NEXT.fetch_add(1, Ordering::Relaxed)
-            ));
-            match std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&path)
-            {
-                Ok(file) => break (file, path),
-                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(e) => return Err(e.to_string()),
-            }
-        };
-        let scratch = Scratch(path);
-        use std::io::Write;
-        file.write_all(&bytes)
-            .and_then(|_| file.sync_all())
-            .map_err(|e| e.to_string())?;
-        drop(file);
-        let result = self.runtime.block_on(self.media.call(
-            json!({"operation":"same_image","source":scratch.0,"other":source,"format":fmt}),
-        ))?;
-        if result.is_null() {
-            Ok(None)
-        } else {
-            result
-                .as_bool()
-                .map(Some)
-                .ok_or("invalid media comparison result".into())
-        }
+        let scratch = crate::publication_download::Download::new(self.data, "verify", &bytes)?;
+        let media = self.media.with_scratch(scratch.codec());
+        let result = self
+            .runtime
+            .block_on(media.call(
+                json!({"operation":"same_image","source":scratch.path,"other":source,"format":fmt}),
+            ))
+            .and_then(|result| {
+                if result.is_null() {
+                    Ok(None)
+                } else {
+                    result
+                        .as_bool()
+                        .map(Some)
+                        .ok_or("invalid media comparison result".into())
+                }
+            });
+        scratch.finish(result)
     }
     pub fn mutate(
         &self,
@@ -162,7 +137,9 @@ impl UploadEffect<'_> {
             Ok(self.same(new[0], &path, fmt).unwrap_or(None))
         };
         self.tg.call(method, &data, &[file], 5, Some(applied))?;
-        let after = self.live(name).map_err(ApiError::Ambiguous)?;
+        // An answered request still needs identity proof. Do not route a failed
+        // confirmation into the unanswered-transport recovery that can attribute a tail.
+        let after = self.live(name).map_err(ApiError::Unproven)?;
         let old = before
             .iter()
             .map(crate::reconcile::identity)
@@ -175,12 +152,12 @@ impl UploadEffect<'_> {
             })
             .collect::<Vec<_>>();
         if new.len() != 1 {
-            return Err(ApiError::Ambiguous(
+            return Err(ApiError::Unproven(
                 "cannot identify exactly one new sticker".into(),
             ));
         }
         if self.same(new[0], &path, fmt).unwrap_or(None) != Some(true) {
-            return Err(ApiError::Ambiguous(
+            return Err(ApiError::Unproven(
                 "new live sticker content is not proven ours".into(),
             ));
         }

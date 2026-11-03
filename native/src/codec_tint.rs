@@ -1,5 +1,6 @@
-//! Pure Lottie recolouring; original alpha and gradient opacity entries remain untouched.
-use serde_json::{Value, json};
+//! Lottie recolouring over external JSON objects; alpha and gradient opacity remain untouched.
+use pyo3::prelude::*;
+use pyo3::types::{PyDict, PyFloat, PyInt, PyList};
 
 pub fn parse_tint(text: &str) -> Result<[u8; 3], String> {
     // CPython also strips these four ASCII record separators, unlike Rust's whitespace set.
@@ -20,105 +21,112 @@ pub fn parse_tint(text: &str) -> Result<[u8; 3], String> {
     Ok(rgb)
 }
 
-pub fn numeric(value: &Value) -> bool {
-    value.as_array().is_some_and(|values| {
+pub fn numeric(value: &Bound<'_, PyAny>) -> bool {
+    value.cast::<PyList>().is_ok_and(|values| {
         values
             .iter()
-            .all(|v| matches!(v, Value::Number(_) | Value::Bool(_)))
+            .all(|value| value.is_instance_of::<PyInt>() || value.is_instance_of::<PyFloat>())
     })
 }
 
-fn recolour(values: &mut [Value], rgb: [f64; 3]) {
-    for (slot, colour) in values.iter_mut().take(3).zip(rgb) {
-        *slot = json!(colour);
+fn recolour(values: &Bound<'_, PyList>, rgb: [f64; 3]) -> PyResult<()> {
+    for (index, colour) in rgb.into_iter().take(values.len()).enumerate() {
+        values.set_item(index, colour)?;
     }
+    Ok(())
 }
 
-fn stop_count(value: Option<&Value>, length: usize) -> usize {
-    let fallback = || {
-        if length.is_multiple_of(4) {
-            length / 4
-        } else {
-            0
-        }
+pub fn tint_gradient(gradient: &Bound<'_, PyAny>, rgb: [f64; 3]) -> PyResult<()> {
+    let Ok(gradient) = gradient.cast::<PyDict>() else {
+        return Ok(());
     };
-    match value {
-        Some(Value::Bool(v)) => usize::from(*v),
-        Some(Value::Number(v)) => {
-            let text = v.to_string();
-            if text.contains(['.', 'e', 'E']) || (text.starts_with('-') && text != "-0") {
-                fallback()
+    let Some(key) = gradient.get_item("k")? else {
+        return Ok(());
+    };
+    let Ok(key) = key.cast::<PyDict>() else {
+        return Ok(());
+    };
+    let Some(stops) = key.get_item("k")? else {
+        return Ok(());
+    };
+    if !numeric(&stops) {
+        return Ok(());
+    }
+    let stops = stops.cast::<PyList>()?;
+    let length = stops.len();
+    let count = match gradient.get_item("p")? {
+        Some(value) if value.is_instance_of::<PyInt>() && value.ge(0)? => {
+            if value.ge(length / 4)? {
+                length / 4
             } else {
-                // The source's arbitrary integer is eventually clamped to the existing array.
-                if text == "-0" {
-                    0
-                } else {
-                    text.parse::<usize>().unwrap_or(length / 4)
-                }
+                value.extract::<usize>()?
             }
         }
-        _ => fallback(),
+        _ if length.is_multiple_of(4) => length / 4,
+        _ => 0,
+    };
+    for base in (0..count * 4).step_by(4) {
+        for (index, colour) in rgb.into_iter().enumerate() {
+            stops.set_item(base + 1 + index, colour)?;
+        }
+    }
+    Ok(())
+}
+
+struct Recursion<'py> {
+    _py: Python<'py>,
+}
+#[allow(unsafe_code)]
+impl<'py> Recursion<'py> {
+    fn enter(py: Python<'py>) -> PyResult<Self> {
+        // SAFETY: the token holds the interpreter attachment; the message is a static C string.
+        if unsafe { pyo3::ffi::Py_EnterRecursiveCall(c" while tinting Lottie".as_ptr()) } != 0 {
+            return Err(PyErr::fetch(py));
+        }
+        Ok(Self { _py: py })
+    }
+}
+#[allow(unsafe_code)]
+impl Drop for Recursion<'_> {
+    fn drop(&mut self) {
+        // SAFETY: this guard owns exactly one successful entry and cannot outlive its attachment.
+        unsafe { pyo3::ffi::Py_LeaveRecursiveCall() };
     }
 }
 
-pub fn tint_gradient(gradient: &mut Value, rgb: [f64; 3]) {
-    let Some(gradient) = gradient.as_object_mut() else {
-        return;
-    };
-    let declared = gradient.get("p").cloned();
-    let Some(stops) = gradient
-        .get_mut("k")
-        .and_then(Value::as_object_mut)
-        .and_then(|k| k.get_mut("k"))
-    else {
-        return;
-    };
-    if !numeric(stops) {
-        return;
-    }
-    let stops = stops
-        .as_array_mut()
-        .expect("numeric checks the array shape");
-    let count = stop_count(declared.as_ref(), stops.len()).min(stops.len() / 4);
-    for stop in stops[..count * 4].as_chunks_mut::<4>().0 {
-        recolour(&mut stop[1..4], rgb);
-    }
-}
-
-pub fn tint_lottie(node: &mut Value, rgb: [f64; 3]) {
-    match node {
-        Value::Object(object) => {
-            if let Some(values) = object
-                .get_mut("c")
-                .and_then(Value::as_object_mut)
-                .and_then(|colour| colour.get_mut("k"))
-            {
-                if numeric(values) {
-                    recolour(values.as_array_mut().expect("numeric array"), rgb);
-                } else if let Some(frames) = values.as_array_mut() {
-                    for frame in frames {
-                        if let Some(frame) = frame.as_object_mut() {
-                            for field in ["s", "e"] {
-                                if let Some(value) = frame.get_mut(field).filter(|v| numeric(v)) {
-                                    recolour(value.as_array_mut().expect("numeric keyframe"), rgb);
-                                }
+pub fn tint_lottie(node: &Bound<'_, PyAny>, rgb: [f64; 3]) -> PyResult<()> {
+    let _recursion = Recursion::enter(node.py())?;
+    if let Ok(object) = node.cast::<PyDict>() {
+        if let Some(colour) = object.get_item("c")?
+            && let Ok(colour) = colour.cast::<PyDict>()
+            && let Some(values) = colour.get_item("k")?
+        {
+            if numeric(&values) {
+                recolour(values.cast::<PyList>()?, rgb)?;
+            } else if let Ok(frames) = values.cast::<PyList>() {
+                for frame in frames.iter() {
+                    if let Ok(frame) = frame.cast::<PyDict>() {
+                        for field in ["s", "e"] {
+                            if let Some(value) = frame.get_item(field)?
+                                && numeric(&value)
+                            {
+                                recolour(value.cast::<PyList>()?, rgb)?;
                             }
                         }
                     }
                 }
             }
-            if let Some(gradient) = object.get_mut("g") {
-                tint_gradient(gradient, rgb);
-            }
-            for value in object.values_mut() {
-                tint_lottie(value, rgb);
-            }
         }
-        Value::Array(array) => {
-            for value in array {
-                tint_lottie(value, rgb);
-            }
+        if let Some(gradient) = object.get_item("g")? {
+            tint_gradient(&gradient, rgb)?;
         }
-        _ => {}
+        for (_, value) in object.iter() {
+            tint_lottie(&value, rgb)?;
+        }
+    } else if let Ok(array) = node.cast::<PyList>() {
+        for value in array.iter() {
+            tint_lottie(&value, rgb)?;
+        }
     }
+    Ok(())
 }

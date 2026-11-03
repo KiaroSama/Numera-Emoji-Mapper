@@ -23,9 +23,13 @@ fn restyling_is_not_wrong_art_but_different_content_remains_far() {
         assert_eq!(hash(&x), case["ours_sha256"].as_str().unwrap());
         assert_eq!(hash(&y), case["theirs_sha256"].as_str().unwrap());
         let distance = _native::codec_image::logo_distance(&x, &y).unwrap();
+        let plain = (_native::codec_image::provider_dhash(&x).unwrap()
+            ^ _native::codec_image::provider_dhash(&y).unwrap())
+        .count_ones();
+        assert_eq!(u64::from(plain), case["plain"].as_u64().unwrap());
         assert_eq!(u64::from(distance), case["expected"].as_u64().unwrap());
         if index == 0 {
-            assert!(case["plain"].as_u64().unwrap() > 20);
+            assert!(plain > 20);
             assert!(distance <= 8);
         }
         if index == 1 {

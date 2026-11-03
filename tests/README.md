@@ -12,11 +12,384 @@ with `python -m tests._similarity_oracle`; changes require reviewing source pari
 Rust formatting, clippy, unit checks and a repeated benchmark run once in the
 3.11 build job; native parity also runs on Windows and Python 3.12/3.14.
 
-The expanded first-party Rust migration has a separate limited hosted checkpoint
-for static codec identity, the internal worker envelope and pure coin aliases.
-It runs only the new public seams, with pinned [source fixtures](fixtures/native/README.md).
-It does not replace the main suite, four-platform acceptance or source-retirement
-gates. No production codec adapter is switched by this checkpoint.
+The expanded first-party Rust migration has a separate, manually dispatched
+checkpoint for additive codec, coin, storage, tooling and historical-source seams,
+with pinned [source fixtures](fixtures/native/README.md). Workflow selection is
+not execution evidence: the new historical replay, runner and audit-cancellation
+checks remain uncompiled and unexecuted. The checkpoint does not replace the main
+suite, four-platform acceptance or source-retirement gates. No production codec
+adapter is switched by it.
+
+The native launcher candidates have scripted workflow tests in `tooling_menu`,
+exit/cancellation and retained-check planning in `tooling_launch`, and actual
+copied-binary doctor/menu/shared-input scenarios in the existing `tooling_runtime`
+tracer. They reuse its one disposable venv and built artifacts; the echo child
+proves stdin ownership only, not bot behavior. Scripted capture admission is covered
+in `tooling_process`; `tooling_install` adds offline argument/environment policy,
+extension location and actual CLI refusal before activation. The public installer
+remains closed pending signing/identity/logo/rollback admission; no successful install
+is claimed. All these additions remain uncompiled and unexecuted.
+See [launcher migration limits](../docs/native-launcher.md). The same real-venv
+tracer now selects three hash-pinned original hermetic-guard methods through the
+actual native `check` command with compile/lint skipped, followed by a nonexistent
+selection that must fail. This remains retained-source orchestration, not native
+network isolation or test retirement. Package CLI tests retain external stdlib
+argparse grammar; the synthetic archive test verifies every original payload hash,
+CRC, file mode and exact27-member inventory. All new runtime evidence is pending.
+
+The `wheel_package` Rust suite checks the actual newest built wheel, preserving
+native-extension presence, private-content exclusion and complete CRC/header
+validation. Missing wheels fail rather than skip. It belongs to the full
+wheel-building lanes, not the additive no-wheel checkpoint. An in-memory
+corruption matrix checks that member names alone cannot satisfy integrity.
+The original Python test remains; the new Rust tests are uncompiled and unrun.
+
+The shared pinned Git corpus also drives native-owned regeneration of the 24
+original manifest, two environment and four confinement observations. Source and
+input-recipe hashes are admitted before runtime access; caller-supplied expected
+outputs are not trusted. The existing bounded historical worker executes original
+functions with private host facts and real disposable files, never native policy
+as its own oracle. A second fixed recipe regenerates the original synthetic
+package archive: all 26 inventory hashes, 27 ZIP members, CRCs, input preservation
+and checksum are checked with explicit same-platform differences. A third recipe
+regenerates the original sandbox environment scrub and five parser/argument cases
+using a synthetic environment and real template, without creating a clone or
+starting a panel. None uses caller-supplied expected values. Failures retain
+evidence; all three generators remain uncompiled and unrun.
+
+Collection resume migration also retains 19 original `StateFileContract`
+assertion methods in a fixed three-source replay. Its synthetic two-key setup
+replaces the original image catalog; catalog writer ownership is explicitly not
+proved by that replay. A private replacement fault exercises the original atomic
+writer without patching the worker's real `os` module. Native `intent_parity`
+checks the corresponding schema variants, while the existing copied-command
+tracer checks corrupt state/plan refusal, preserved bytes and zero API requests.
+Two full publisher methods remain excluded from the historical state-only replay.
+The command's actual JSON reader also has responsibility-local absent/default,
+existing-null and malformed/nonregular-file assertions; the production writer's
+last-replace failure must retain the original `sent` list and unrelated staging.
+All new source and native execution evidence remains pending.
+
+Live reconciliation, identity, uniqueness, the plan applier and a transport subset
+retain 145 unchanged original assertion methods through one fixed 34-source replay
+of the admitted Git corpus. The applier contributes all 20 original methods; five
+fresh-upload methods retain the real publisher CLI, downloaded-content proof and
+final identity readback. The 33 selected transport methods retain token masking,
+lookup/create name-lock policy, upload-content proof, measured post-retry size,
+tri-state live counts, creation-only repainting and malformed-body retry/proof
+routing. Diagnostic assertions observe real original warnings through a private
+registered logger; its registration, handlers, namespace and stdout are restored
+on success or failure. Thirty-five original ticker-bookkeeping, skipped-image
+resume, capacity, unresolved-mutation and announcer methods retain the original builder,
+argparse and atomic state writer with private configuration, clock and argv
+ports. Its family-lock and announcement ports are no-op; exact unknown/foreign/
+extra-content refusal assertions remain distinct from native wire evidence. The replay keeps the historical SQLite catalog, opaque-cell Pillow
+image recipe, fake live family, publisher, removal recovery, reorder, state
+validator, atomic writer and OS family lock. The expected 127 temporary contexts share one delayed teardown
+ledger, including all selected original PNG setup and cleanup methods. Private
+synthetic environment, HTTP and sleep ports avoid real credentials, requests and
+long waits; exact client sleep and print patch targets are redirected. Manifest
+output and native prerequisite/catalog ownership ports are explicitly no-op.
+Source success would not establish native locking, cancellation, transport or
+exception equivalence. The existing 15-second wall / 8-second idle process bounds
+and 512 KiB envelope limit are unchanged. Every assertion, teardown acknowledgment
+and bounded physical inventory must succeed before deletion; failures retain
+evidence. This extended replay remains uncompiled and unrun.
+
+The native `reconcile_commit` cohort exercises the real publisher/catalog against
+scripted loopback reads, including actual downloaded pinned images through the
+bounded native codec. It covers unknown/missing/drift, prior CID preservation,
+reuploaded content, foreign tails, unreadable rivals and stopping at the first
+attributable item behind a foreign one. The previous partial-commit regression
+remains: an earlier identity-proven upload survives a later duplicate refusal.
+The fresh-upload tracer adds real native create/add/readback, final reorder or
+foreign replacement, and answered adds with zero or two new identities. Failed
+post-answer proof stops before eager tail recovery and keeps the unresolved
+intent; previously verified CIDs survive. Two additional real-WebM variants require native-worker
+video admission, successful create/add/readback/manifest, and rejection of a one-frame change whose
+10 fps sampled key is identical. The full native timeline, not that key, must prove the upload;
+a failed second proof keeps its intent and the first committed CID without retry or attribution.
+Exact forms, uploaded bytes, saved membership and reopened catalog mappings are asserted. Smaller source-pinned
+rasters replace the original generated images here, so this is not remote
+Telegram dimensions-validation evidence. The same sequential process-owning test
+also contains copied `build-pack` commands with real codec readbacks.
+A retried add following foreign content must book the measured size and persist
+`expected_before` values `1, 1, 3`; unknown/foreign final evidence must stop before
+the next item. Clean adds retain one snapshot each, without post-add reads.
+Skipped-image recovery checks legacy intents, our content behind foreign content,
+same-count replacement, unexplained drift, corrupt state and durable create/add
+intents. Integrity refusals return 4; unknown live reads remain retryable at 3.
+In-run ambiguous creates require exactly one content-proven sticker; unknown,
+foreign, missing, unreadable or extra evidence keeps the original intent and
+stops before another upload or notification. Later-set recovery targets set two,
+not the previous set, and only definite Missing permits a fresh create. Deleted,
+shrunken and foreign-family state refuses without changing its bytes. A missing
+result in an answered success envelope drives the native ambiguous-call cases;
+this adapts the original fake exception, not a real remote timeout.
+Five dry runs check default/valid capacity and invalid zero/400/negative start
+without creating state or making requests. These use the transitional retained-codec fixture, not a Python-free package.
+Two announcer commands also require exact authenticated Worker JSON: the coin
+token selects `coin`, every other token selects `general`, the upload is durable
+before the send, and `sent` changes only after its successful response. The same
+finite fixture owns both API and Worker requests; no live service is contacted.
+Six original collection-publication scenarios share that copied executable:
+normal and branded publication plus repeat, content-proven lost-response adoption,
+foreign restart refusal, explicit earlier-pack append and explicit new-pack creation.
+They retain original public artwork, escaped manifest keywords, separate full/final
+notification milestones, exact mutation snapshots and unchanged other-pack IDs.
+Malformed JSON adapts the original socket-close fault; circle/coin conversion setup
+is not independent encoding-golden evidence. Those nine invocations remain unrun.
+Ten additional refusal commands distinguish integrity exit 4 from unknown exit 3,
+including older recorded packs, explicit missing/full targets and interrupted adds.
+Four two-command progress scenarios cover clean repeat, definite all/partial failure,
+permanent refusal and the next clean notification. Exactly one shared command log
+must contain one key/set/slot/progress line per confirmed upload; retained media logs
+are not counted. Definite refusals remain pending or permanently skipped as appropriate;
+unknown/unexaminable transport and answered-but-unproven confirmation retain their
+intent and stop. An ambiguous add may settle only after successful live reconciliation;
+its proven key is never resent. Restart, occupied-name and foreign-tail tracers check
+source/uploaded FUID retention, one correct CID per key and a fresh pack instead of
+appending behind proven foreign artwork.
+Dry-run validation uses 200 real catalog rows to test logo capacity, selection/publication
+filtering, naming, invalid arguments and the stable family lease. Shared immutable
+artwork replaces 200 generated files only for this counting seam. Every dry-run command
+has its own finite no-request server, so a long validation batch cannot silently lose
+its request observer. No plan/state is written; the real-bot name-length refusal allows
+only `getMe`. Nine preflight commands check accepted/refused/unknown/partial/missing/precedence/
+all-category/empty/filtered queues with exact multipart bytes and no publication or plan/state write.
+The separate eleven-source preflight replay keeps all eleven original outcome/summary methods,
+eight delayed temporary contexts and 26 zero-delay pacing calls. Its five legacy report observations
+feed the existing exact-output command comparisons; source identity mutations refuse before execution.
+These counts are authored expectations, not runtime results. A real mixed-family
+command skips both transparent and one-visible-pixel PNGs without counting a failure.
+A separate actual-command assertion uses the original real 30-frame transparent VP9 recipe:
+only `getMe`, exit 0, a skipped key and no set are permitted. The matching fade-in recipe must
+pass strict native-worker usability. Encoding uses the shared bounded capture owner, not a
+synthetic decoder; publication shares the existing alpha-preserving VP8/VP9 decoder selector.
+These real-codec assertions remain uncompiled and unrun.
+Branded/plain manifests assert the actual pack total and logo-adjusted row numbers.
+A separate fixed 37-source selector now authors 81 unchanged original CLI/dedup/closed-set/
+item-format/brand/notification/order, six blank-video and five real-content retry methods,
+including original notification, manifest and preflight functions plus scoped `assertLogs`.
+It expects 79 delayed temporary contexts; these are requirements, not observed execution.
+Publication admission is separate from strict codec validation: complete-frame alpha samples
+reject only proven blank video, while a settled failed probe leaves the upload to decide.
+Custody, capture-admission and cleanup errors still stop the operation. The existing controlled-tool
+cohort keeps six strict codec cases and sixteen publication cases through the actual public publisher.
+Blank/noise and selected-alpha decoding skip without HTTP; settled metadata/probe/capability failures
+reach one explicitly refused video create. Oversized decode, metadata or capability output stops
+without a mutation. Exact observed argv requires the alpha decoder before its input and no decode
+when metadata or capability is unavailable. Child death and empty scratch are required; source mocks
+prove no process lifetime. Native-worker IPC separately checks static and animated admission.
+Animated media is not revalidated at publication. The copied-command brand fixture also requires
+static-logo/animated/animated upload order, original dummy-TGS bytes, content readback and shifted
+CIDs; this synthetic service is not proof Telegram accepts invalid animation. All new paths remain
+uncompiled and unrun. Retained static-worker open-error compatibility is authored through the
+shared Rust binding; its actual execution and complete error/lifetime parity remain cutover gates.
+Seven notification/routing fixtures inspect full versus initial milestones, real HTTP 503
+without automatic retry, subsequent explicit retry, direct note/previews and one 30-pack
+Worker call. A reverse-panel-order command keeps stored plan membership while uploads/CIDs
+follow current catalog order. A logo-plus-two-item command checks both CID offsets.
+Five public mutation variants use actual bounded native-codec downloaded-content comparisons,
+not injected matcher answers; the original legacy blind-retry-without-snapshot case remains
+unmapped because it conflicts with the current no-blind-retry safety contract. It shares the same admitted
+Git corpus, AST selector, bounded historical process owner and delayed teardown ledger;
+its request stays separate from the nearly full reconciliation envelope. All new command
+and original replay assertions are uncompiled and unrun. Complete transport-failure,
+remaining brand/format and platform equivalence remain pending. Occupied-name drift has
+two command assertions: one durable container survives the refused reconciliation, and
+a later invocation remains loadable without recreating or duplicating the set record.
+Seven capacity/follow-up command invocations additionally require a successful logo
+create to survive a refused artwork add: another item uses that same pack, a transient
+refusal retries only on the next invocation, and a permanent refusal stays skipped.
+A definite `STICKERS_TOO_MUCH` on an existing pack moves the item to one fresh pack;
+`--into-pack` instead refuses without changing the requested target. An occupied-name
+adoption that fills its pack must record the full and final milestones independently.
+These transitions share the existing confirmation/accounting path; transport uncertainty
+never enters the definite-full rollover route. Two more command scenarios check one title
+sequence across formats and a full notification using a curated recorded title rather than
+the current CLI title. The seeded video record proves sequencing, not video decoding.
+All remain uncompiled and unrun.
+Each command has 25-second wall / 8-second idle bounds and the existing
+Windows/Linux descendant owner; Darwin custody remains unsupported.
+All new execution remains pending. The `reconcile_identity` cohort adds real fixed-colour
+collision/reencode/rival comparisons and durable resolver refusals. Its public
+policy inputs replace private original SQL/mock seams; a disposable missing-column
+fault drives the actual resolver's candidate-enumeration refusal.
+
+The existing `telegram_transport` suite also sends all three original non-object
+JSON bodies through the actual HTTP parser: two requests per read refusal, one
+add plus one proof callback without resending. Its isolated children retain the
+12-second wall / 5-second idle bounds and failure diagnostics. `telegram_tests`
+uses the shared post/sleep effect seam for requested waits, explicit proof and
+no-blind-retry policies; that is not actual sleeping or content-proof evidence.
+Public mutation scenarios also assert exact multipart forms and bytes, no resend
+on unknown/proven outcomes, measured size only with our content, and repaint flag
+presence versus omission. Their injected content comparisons deliberately match
+the original test fakes; real decoding has separate codec/publication cohorts.
+Native exported-class reads check exists/missing/unknown without collapsing an
+unknown to zero. A real UTF-8 file assertion covers shared retry/flood/name-lock
+and verified-no-resend warnings, token redaction and one run's warning counts.
+CLI clients attach the existing run log rather than opening a second file;
+retained extension/announcement callers remain a separate diagnostic boundary.
+All additions remain uncompiled and unrun.
+
+Downloaded verification/attribution bytes now share an exclusive private
+invocation directory and file, with the codec scoped inside that directory.
+Cleanup uncertainty retains bytes and refuses before durable attribution; normal
+cleanup errors are propagated. `publication_scratch` observes two held public
+calls at a time, actual downloaded bytes, Unix private mode, error/unwind cleanup,
+caller sentinel preservation and controlled unresolved-custody retention. Its
+codec is a diagnostic seam, not real decoder evidence. All these source/native
+additions remain uncompiled and unrun.
+
+[Coin migration test boundaries](coin-migration.md) documents the keyword,
+argument, HTTP, cache, provider, remap, replacement and rebuild assertion cohorts.
+They reuse the same corpus/worker, finite loopback observer and bounded command
+capture. Native/source additions remain uncompiled and unrun; explicit exclusions,
+wire/error adaptations and process-death limits are recorded there.
+
+Operator configuration migration retains all eight original assertion methods
+through three fixed sources, a private environment and the same historical worker.
+Native `operator_config` checks absent versus explicitly empty branding, normalized
+unique bot names, configured/relative logo paths, disable and keyword defaults.
+Five copied-command dry runs start with disposable empty catalogs: refusals must
+preserve every catalog-directory byte and success must publish no state. These
+checks are uncompiled and unrun. The native single-key diagnostic and project-root
+CLI override remain adaptations, not Python exception/variadic API equivalence.
+
+Ordering migration retains 13 original methods through a fixed four-source
+replay with private patchable globals and the original state validator/writer.
+Native `sync_order` covers pinned-logo planning, a 30-item reversal, idempotence,
+actual catalog panel order, loopback position forms, stale-record repair,
+report-only preservation and refusal without ID reassignment. Five copied-command
+cases check whole-family/repeated pack selection, unknown-pack refusal and an
+applied record repair that leaves other sets unchanged. Two further native-backed
+command invocations perform one real scripted move after the pinned logo, then
+repeat with no second mutation; saved order, empty stdout and every catalog ID
+must survive. Original fake catalog,
+refusal sentinel and no-op ownership ports are disclosed separately from native
+transport/storage evidence. All new source/native tests are uncompiled and unrun;
+no live set is contacted or reordered.
+
+Archive migration retains 14 original methods through seven fixed sources,
+real original SQLite, path helpers, file moves and pure Markdown rendering.
+Native `archive_state` checks capacity/freshness without writes, slot-one logo
+identity, unidentified later slots and the original partial-move guarantee:
+a missing second source must not undo the first file's committed catalog path.
+Synthetic bytes establish file-transfer behavior only, not image validity.
+Historical no-op ownership and native warning/path refinements remain explicit;
+all new source/native tests are uncompiled and unrun.
+
+The native-backed archive/export lifecycle also has one Rust `archive_commands`
+tracer sharing one copied executable. Eight archive calls check partial per-file
+commit, repaired-source recovery, zero-move repeat, conflicting final-file refusal
+and missing configuration. Three export calls check ordered CRC-validated members,
+missing-slot preservation of the completed ZIP and stale-roster refusal. Every
+command has wall/idle limits and uses only disposable data; exact scripted
+loopback requests forbid mutations. These assertions remain uncompiled and unrun.
+
+ZIP export migration retains four original methods through nine fixed sources
+and actual historical Pillow/ZIP operations. Native `pack_export` uses a real
+roster fingerprint and read-only SQLite projection: number/name selection must
+keep slot order, decoded member bytes, manifest IDs and every source unchanged.
+Stale rosters, missing slots and unknown packs must leave no partial ZIP; source
+aliases refuse and caller-owned staging bytes survive. Compressed ZIP byte
+identity is not claimed. All new source/native checks are uncompiled and unrun.
+
+Offline status migration retains four unchanged original methods, including the
+real read-only SQLite count, through four fixed sources and a private environment.
+Native `status` authors ten actual copied-command scenarios for current/stale
+roster/archive, unpublished counts, unknown configuration, unreadable/missing
+catalog and usage refusal. Catalog and roster directory membership/bytes must stay
+identical; per-run logs are checked separately. All new checks are uncompiled and
+unrun; historical collaborator mocks do not establish native freshness behavior.
+
+Roster and report migration shares eighteen fixed sources, sixteen delayed
+original temporary contexts and one historical worker. It retains all 24 original
+roster methods, private patchable modules, real SQLite/files and the original writer and
+HTML renderer. Original PNG/VP9 builders, deterministic TGS generation and Lottie
+renderers are retained; FFmpeg uses the shared bounded process owner inside an
+outer session. Missing tools fail rather than skip. Native `roster_state` covers
+live/source/retired IDs, the coin logo exemption, freshness, safe machine-readable
+HTML and untouched-family lookups. Its separate real static/Lottie/video tracer
+checks encoded output hashes, cache bytes and modification times against pinned
+independent fixtures. `roster_commands` reuses one copied executable for nine
+original native-backed lifecycle commands and three coin refresh/incomplete-read/
+usage cases, with exact loopback requests and bounded process ownership. Untouched reports
+and input files must remain byte-identical, and their old freshness signatures
+must survive. All new checks are uncompiled and unrun; markup checks are not
+browser interaction or rendering-performance evidence.
+
+Plan-status migration shares the existing status replay: nine exact sources,
+four unchanged status methods plus five unchanged plan-report methods, and three
+delayed temporary contexts in one historical worker. Original plan validation and
+report functions remain intact. Native `plan_steps_parity` adds public summary and
+four copied-command checks for absent plans, retired IDs, capacity and offline/live
+reports; real SQLite/data membership and bytes must remain unchanged. Two exact
+read-only API requests are allowed. Independent source rendering uses literal inputs
+from the original native CLI test. All new checks remain uncompiled and unrun.
+
+Native plan-removal migration authors budgeted deletion, unknown-live-state intent
+retention, flood-wait/usage exits, four dry-run layouts and five structural refusals
+through one copied binary and thirteen bounded commands. Family-scoped unpublish
+and direct applied/not-applied/unknown/flood settlement assertions reopen the real
+catalog. They do not replace complete crash/retry publisher verification. The
+scripted server reads the durable journal before answering
+a deletion; no real Telegram write occurs. A separate full cross-pack tracer authors
+two identical actual commands with the original three baseline-pinned artworks,
+exact multipart upload bytes, downloaded content proof, new/retired IDs, reorder,
+untouched third-pack state and no repeated mutation. It reuses the retained codec
+closure while production still selects it; this is not Python-free package proof.
+Existing descendant custody bounds Windows/Linux commands; unsupported Darwin is
+not counted as parity. All new command checks are uncompiled and unrun.
+
+Shared report migration adds native `pack_reports` assertions for the original
+hostile cell, empty dash, CRLF/control-line splitting, right alignment and complete
+keywords. All four real native writers retain their original column headers and
+escaped labels; the publisher writes through a disposable actual catalog with an
+independently pinned PNG. Existing original row generation and registered-binding
+replay are reused, not replaced. All seven unchanged original report methods also
+run inside the existing roster replay with their original writers/catalog/PNG
+builder; no-op prerequisite/lease and one exact single-insert identity port are
+explicit, not locking/dedup proof. All new checks remain uncompiled and unrun.
+
+Bot migration adds 26 original pure assertion methods through the same pinned
+source corpus and historical worker. Native tests retain entity order, markup
+refusal, rich/plain alignment and complete bounded copy-button coverage. The
+native typed-list parser reuses the frozen decimal/whitespace policy and refuses
+leading/trailing separators like the original. Private span/keyboard checks are
+adapted to public escape/payload seams. A separate fixed four-source replay
+retains the remaining 18 typed-transport, access, polling-wiring and cursor
+assertions, with private patchable globals/environment and the original atomic
+writer. Original `KeyboardInterrupt` termination remains in that replay; its
+five temporary directories are removed only after verified successful teardown.
+
+The `bot_commands` suite exercises actual native handling and eight copied-binary
+invocations against a bounded numeric-loopback Axum server. It checks denials,
+resolved versus missing IDs, all configured numeric members, negative channels,
+Unicode decimal grammar, restart/corrupt cursors and per-invocation redacted logs.
+Startup refusals must reach no request, not merely fail against a closed port.
+Synthetic API conflict deliberately ends polling with exit 4; it is not normal
+shutdown or Python exception equivalence. The suite is selected by the manual
+checkpoint and Windows bucket; these additions are uncompiled and unrun, not
+live bot verification.
+
+Native suites opt into the contributor `test-runner` through `.cargo/tests.toml`;
+the matching debug executable must already exist. The runner's credential scrub
+and process ownership do not provide an OS network sandbox. Darwin currently
+refuses before spawning suites because complete descendant custody is not
+established. See the [native testing boundary](../docs/native-backend.md#expanded-first-party-migration-in-progress).
+
+The shared Git-source corpus now includes a fixed replay of all seven original
+audit test methods from six hash-pinned sources. It retains the original
+`KeyboardInterrupt` and shared-blank-rule assertions; it is not native parity
+proof. A separate native command tracer cancels execution while the second set
+listing is held, checking the first-set checkpoint and absence of a partial
+report. External process cancellation is not Python exception equivalence.
+Historical worker failures retain request/response evidence and gallery thumbnails;
+intentional refusal tests clean only their exact, validated owned evidence after
+assertions pass. These replays, cancellation and cleanup checks remain unexecuted.
 
 Run from the repository root:
 
@@ -64,6 +437,18 @@ Chromium twice to prove the same thing. That job names its modules explicitly
 rather than globbing, so `test_ci_coverage.py` fails if a new browser suite is
 added without being listed there.
 
+The additive Rust browser cohort in `native/tests/panel_browser.rs` now authors
+counterparts of the 97 original declared browser cases. It owns one real Rust
+router/catalog and one headless Playwright instance, with isolated contexts,
+original JavaScript fixtures, actual SQLite observations and real animated WebP
+performance probes. It calls only typed external Python libraries, not the
+first-party Python harness. The browser job selects it once through the native
+process-tree runner (900-second wall / 180-second idle ceilings); browser files
+stay in the project-local cache. Browser fixtures acknowledge shutdown but are
+removed only by the outer runner after descendant quiescence; failed or unready
+fixtures retain their diagnostics. These new tests remain **uncompiled and unrun**;
+authored correspondence is not parity acceptance, and all original suites remain.
+
 A third job, `windows-safety:`, runs the suites whose behaviour Linux and WSL
 cannot exercise — native file-handle locks, migration replay and rollback over
 real paths, atomic plan writes, the decoder subprocess and the CLI entry points
@@ -91,6 +476,41 @@ after it, so anything else in `.env` stayed visible for a whole run.
 This exists because a test meant only to check a CLI usage error once reached
 live Telegram and replaced a sticker in a published pack. Inject a fake session
 rather than adding an opt-out.
+
+The original reencoding cohort retains all 21 unchanged assertions plus all 42 original
+media assertions, plus 12 original finite-timeline and repaint assertions, through ten admitted
+Git sources, the same bounded historical worker and 67 expected delayed directory contexts.
+No media or reencoding method is excluded; the repaint module-ownership assertion remains an
+explicit exclusion, not a skipped success.
+Real Pillow/gzip/JSON and the original static/vector/video identity, conversion, validation,
+probe, decoder/cache and sampling definitions supply the reference; no native result is an
+oracle. Original FFmpeg encode/copy/sample/conversion/container-generation commands use the
+existing owned capture with 5-second wall/3-second idle bounds inside the 15-second wall/8-second
+idle historical session, explicitly adapting the original subprocess timeout of 120 seconds.
+The native `codec_reencode` suite adds the exact hidden-RGB and opaque WebP recipes with full pixel,
+changed-byte and stable-key checks. `codec_compare` adds the original real lossy artwork, foreign
+shape/colour, exact-self and unknown comparisons. `codec_lottie_prepare` checks the original empty
+animation, deterministic gzip timestamps and unchanged decoded document. Native actual-cap and
+unsupported-format refusal boundaries are explicitly adapted from the original monkeypatch/false
+return. The four original single-frame video scenarios share one exact real encode, independent
+stream copy and native reencode; the two underdeclared-duration scenarios use the existing
+controlled-tool cohort. All 21 methods have pending native candidates; the historical replay
+retains the two original mocked duration methods and all four real single-frame methods. Four
+original one-frame encodes, three stream copies, seven conversions, six container generators
+and one alpha-first-frame read require completed-process accounting, exact argv/path admission
+and empty owned capture scratch before success-only cleanup.
+The existing native static, Lottie-file and video-operations suites now carry pending counterparts
+for all 42 original `test_media.py` methods: real image/hash/visibility recipes, real compressed
+animation validation, original GIF/transparent padding and actual video-container refusals.
+Three controlled success variants join the existing bounded tool cohort (27 cases total) to
+observe one-decode accounting and decoder-before-input selection without replacing real-codec
+coverage. The `codec_video` suite also authors all 14 original video-identity counterparts
+using one shared set of exact 64×64 alpha/VP8/VP9/structured-frame recipes: eight encodes,
+one genuine remux, an extensionless copy and a same-path codec replacement. Public real-frame
+availability plus successful comparison adapts the original private `_premultiplied` assertion;
+it is not private API equivalence. Original blue solid/keyframe/gradient recipes run at the
+existing typed tint seam, while the actual compressed-file tests retain valid, NaN, infinity
+and nonnumeric timeline cases. All new execution remains pending.
 
 ## Layout
 
@@ -229,6 +649,16 @@ only caller is `announce.announce_packs`, so it must be patched on
 reimplementing it. The retry count and the link-preview flag are guarantees
 those tests assert, and a hand-written copy would keep asserting them long after
 the shipped method stopped providing them.
+
+The native video-fidelity candidate adds the original four real100×100 VP9/VP8
+alpha-only recipes, eight bounded concurrent callers and a still-image exemption.
+Six refusal/recovery cases reuse the existing controlled-tool worker and process
+owner. String errors/public recovery are explicit adaptations of original private
+Python mocks and exception classes; no runtime parity is claimed. Original creator
+cases reuse the existing conversion artifact/deadline for freshness, corrupt/blank
+repair, real SVG priority, failure exits, marker observation and quarantine. Three
+copied dry runs check original coin-keyword source selection without network calls.
+All candidates remain pending until compilation and actual hosted execution.
 
 ## The Cloudflare Worker has its own suite
 

@@ -58,6 +58,71 @@ fn keyword_writer_preserves_source_csv_names_order_and_verified_image_admission(
     assert!(_native::coin_keywords::write(&serde_json::Map::new(), &broken).is_err());
     assert_eq!(std::fs::read(&broken).unwrap(), b"other,name\r\nx,old\r\n");
     std::fs::remove_file(broken).unwrap();
+    original_cached_image_and_name_assertions(&scratch);
     assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0);
     std::fs::remove_dir(scratch).unwrap();
+}
+
+fn original_cached_image_and_name_assertions(scratch: &std::path::Path) {
+    use pyo3::prelude::*;
+    use serde_json::json;
+    const OLD: &str =
+        "ticker,name,format,file,keywords\nbtc,Bitcoin,svg,logos/svg/btc.svg,\"btc, Bitcoin\"\n";
+    let images = scratch.join("logos/png");
+    std::fs::create_dir_all(&images).unwrap();
+    let bad = images.join("bad.png");
+    let good = images.join("ok.png");
+    let bad_bytes = b"<html>429 Too Many Requests</html>";
+    std::fs::write(&bad, bad_bytes).unwrap();
+    Python::initialize();
+    Python::attach(|py| -> PyResult<()> {
+        let module = py.import("PIL.Image")?;
+        assert_eq!(
+            module.getattr("__version__")?.extract::<String>()?,
+            "12.3.0"
+        );
+        let image = module.call_method1("new", ("RGBA", (8, 8), (1, 2, 3, 255)))?;
+        let saved = image.call_method1("save", (&good, "PNG"));
+        let closed = image.call_method0("close");
+        saved?;
+        closed?;
+        Ok(())
+    })
+    .unwrap();
+    let good_bytes = std::fs::read(&good).unwrap();
+    let path = scratch.join("keywords.csv");
+    let rows = json!({
+        "bad":{"ticker":"bad","name":"","format":"png","file":"logos/png/bad.png"},
+        "ok":{"ticker":"ok","name":"","format":"png","file":"logos/png/ok.png"},
+    });
+    _native::coin_keywords::write(rows.as_object().unwrap(), &path).unwrap();
+    let mut csv = csv::Reader::from_path(&path).unwrap();
+    assert_eq!(
+        csv.headers().unwrap().iter().collect::<Vec<_>>(),
+        ["ticker", "name", "format", "file", "keywords"]
+    );
+    let actual = csv.records().collect::<Result<Vec<_>, _>>().unwrap();
+    assert_eq!(actual.len(), 1);
+    assert_eq!(
+        actual[0].iter().collect::<Vec<_>>(),
+        ["ok", "", "png", "logos/png/ok.png", "ok"]
+    );
+    drop(csv);
+    assert_eq!(std::fs::read(&bad).unwrap(), bad_bytes);
+    assert_eq!(std::fs::read(&good).unwrap(), good_bytes);
+    std::fs::write(&path, OLD.as_bytes()).unwrap();
+    let rows = json!({"btc":{"ticker":"btc","name":"","format":"svg","file":"logos/svg/btc.svg"}});
+    _native::coin_keywords::write(rows.as_object().unwrap(), &path).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), b"ticker,name,format,file,keywords\r\nbtc,Bitcoin,svg,logos/svg/btc.svg,\"btc, Bitcoin\"\r\n");
+    assert_eq!(
+        _native::coin_keywords::old_names(&path).unwrap()["btc"],
+        "Bitcoin"
+    );
+    assert!(!scratch.join("keywords.csv.tmp").exists());
+    assert_eq!(std::fs::read_dir(scratch).unwrap().count(), 2);
+    std::fs::remove_file(path).unwrap();
+    std::fs::remove_file(bad).unwrap();
+    std::fs::remove_file(good).unwrap();
+    std::fs::remove_dir(images).unwrap();
+    std::fs::remove_dir(scratch.join("logos")).unwrap();
 }

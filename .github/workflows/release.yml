@@ -2,16 +2,6 @@ name: Prebuilt packages
 
 on:
   workflow_dispatch:
-  push:
-    tags: ["v*"]
-  pull_request:
-    paths:
-      - .github/workflows/release.yml
-      - scripts/*prebuilt*.py
-      - scripts/package_native.py
-      - native/**
-      - pyproject.toml
-      - requirements*.txt
 
 permissions:
   contents: read
@@ -130,8 +120,10 @@ jobs:
           python scripts/package_native.py --executable "$binary" --wheel "${wheels[0]}" --dependencies native/target/dependency-wheels --out dist
       - name: Verify project-local temp/cache confinement
         run: python -m unittest tests.test_prebuilt_environment -v
+      - name: Build guarded native test runner
+        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
       - name: Native lifecycle and storage acceptance
-        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test darwin_exit --test ownership --test atomic_failure --test media_config --test sandbox_lease --test sandbox_lease_windows -- --test-threads=2
+        run: cargo test --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test tooling_test_runner --test process_lifecycle --test darwin_exit --test ownership --test atomic_failure --test media_config --test sandbox_lease --test sandbox_lease_windows -- --test-threads=2
       - name: Sandbox wrapper death and owned clone reclamation
         shell: bash
         run: |

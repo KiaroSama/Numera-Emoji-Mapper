@@ -1,0 +1,74 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_runtime": "CPython 3.11.9",
+  "source_hashes": {
+    "coins/verify_logos.py": "86f17862ebe5019e05965fa7aa30380a20226b3632f192f051525290ae7f7031",
+    "tests/test_verify_logos.py": "aa1a7ae193adf684062d4318182c94f5b6a6962fb8bb0c13313bac3868690136",
+    "emojikit/cli_env.py": "9e4c0a045f031bffd23fe5ff9e51a132363e9952a1cdde47d071bfc81234e887"
+  },
+  "source_cases": [
+    "VerifyLogosMainContracts.test_an_unresolved_intent_blocks_every_replacement",
+    "VerifyLogosMainContracts.test_a_requested_fix_that_failed_exits_nonzero",
+    "VerifyLogosMainContracts.test_a_clear_intent_lets_the_run_proceed"
+  ],
+  "cases": [
+    {
+      "input": {
+        "name": "unresolved",
+        "reconciled": false,
+        "fixed": false
+      },
+      "expected": {
+        "code": 4,
+        "events": [
+          "family lock",
+          "reconcile",
+          "family unlock"
+        ],
+        "mapping_unchanged": true
+      }
+    },
+    {
+      "input": {
+        "name": "clear failed fix",
+        "reconciled": true,
+        "fixed": false
+      },
+      "expected": {
+        "code": 4,
+        "events": [
+          "family lock",
+          "reconcile",
+          "fix aaa",
+          [
+            "wait",
+            0.3
+          ],
+          "family unlock"
+        ],
+        "mapping_unchanged": true
+      }
+    },
+    {
+      "input": {
+        "name": "clear successful fix",
+        "reconciled": true,
+        "fixed": true
+      },
+      "expected": {
+        "code": 0,
+        "events": [
+          "family lock",
+          "reconcile",
+          "fix aaa",
+          [
+            "wait",
+            0.3
+          ],
+          "family unlock"
+        ],
+        "mapping_unchanged": true
+      }
+    }
+  ]
+}

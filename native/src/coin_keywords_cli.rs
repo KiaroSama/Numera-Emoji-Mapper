@@ -63,15 +63,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         return Ok(0);
     }
     crate::coin_provider_stage::physical(&directory)?;
-    let raw = config.value("COIN_PAGE_DELAY");
-    let delay = raw
-        .parse::<f64>()
-        .ok()
-        .filter(|v| v.is_finite())
-        .map(|v| v.max(0.0))
-        .unwrap_or(2.0);
-    let delay = Duration::try_from_secs_f64(delay)
-        .map_err(|_| "COIN_PAGE_DELAY exceeds native duration range")?;
+    let delay = crate::coin_http::page_delay(config.value("COIN_PAGE_DELAY"))?;
     let client = crate::coin_http::ProviderHttp::new(Duration::from_secs(60))?;
     let (names, complete) = crate::coin_gecko::names(&client, delay)?;
     let rows = build(&directory, &names)?;

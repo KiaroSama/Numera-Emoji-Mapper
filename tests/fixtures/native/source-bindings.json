@@ -1,0 +1,59 @@
+{
+  "source_runtime": "CPython 3.11.9",
+  "boundary": "unittest.TestLoader.loadTestsFromModule; trusted synthetic modules only",
+  "cases": [
+    {
+      "name": "class replaces imported TestCase",
+      "source": "from unittest import TestCase\nclass TestCase: pass\nclass Child(TestCase):\n def test_one(self): pass\n",
+      "sha256": "e305b5ea7e1a4d5dfcca4b7224daff98fd9b2e25846ce058c772392592c85646",
+      "expected": []
+    },
+    {
+      "name": "class identity survives module rebinding",
+      "source": "import unittest\nclass Parent(unittest.TestCase):\n def test_original(self): pass\nclass Child(Parent): pass\nclass Parent:\n def test_not_collected(self): pass\n",
+      "sha256": "4a90b571926cf0d2ef3f40efb5ca9b9ccf273a543ece92b462bdf4936dbcd425",
+      "expected": [
+        {
+          "class": "Child",
+          "method": "test_original",
+          "defined_in": "Parent"
+        }
+      ]
+    },
+    {
+      "name": "function replaces a collected class",
+      "source": "import unittest\nclass Case(unittest.TestCase):\n def test_one(self): pass\ndef Case(): pass\n",
+      "sha256": "1b7769f9a7cd0eea334f3471c76c6ba1d116e2645efa4cfd058261df6a14a544",
+      "expected": []
+    },
+    {
+      "name": "module bindings sorted independently of definition order",
+      "source": "import unittest\nclass Zulu(unittest.TestCase):\n def test_z(self): pass\nclass Alpha(unittest.TestCase):\n def test_a(self): pass\n",
+      "sha256": "88f6c9137afb2a2541ba13a3899d036a4fed15a1bd28fcd04d959d6d702758d7",
+      "expected": [
+        {
+          "class": "Alpha",
+          "method": "test_a",
+          "defined_in": "Alpha"
+        },
+        {
+          "class": "Zulu",
+          "method": "test_z",
+          "defined_in": "Zulu"
+        }
+      ]
+    },
+    {
+      "name": "noncallable runTest still collected",
+      "source": "import unittest\nclass Legacy(unittest.TestCase):\n runTest = None\n",
+      "sha256": "b1d5b143b66dda39908ab368cc95e015a466b12050a0f5aba04baffabf0a29e3",
+      "expected": [
+        {
+          "class": "Legacy",
+          "method": "runTest",
+          "defined_in": "Legacy"
+        }
+      ]
+    }
+  ]
+}

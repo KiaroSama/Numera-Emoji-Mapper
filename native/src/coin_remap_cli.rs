@@ -77,6 +77,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         return Err("remap token environment key is invalid".into());
     }
     crate::coin_remap_policy::decide(&[], options)?;
+    crate::coin_remap_math::require_available()?;
     files.base = config.require("COIN_PACK_BASE")?.into();
     let token = config.require(&token_key)?;
     let api = if config.value("NUMERA_EMOJI_MAPPER_NO_DOTENV") == "1" {
@@ -84,7 +85,8 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         "https://api.telegram.org"
     };
-    let tg =
-        crate::telegram::Telegram::new(token.into(), api.into()).map_err(|e| e.command_error())?;
+    let tg = crate::telegram::Telegram::new(token.into(), api.into())
+        .map_err(|e| e.command_error())?
+        .with_log(log);
     crate::coin_remap::run(&files, &tg, options, log)
 }

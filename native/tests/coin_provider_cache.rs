@@ -110,6 +110,48 @@ fn cache_restart_quota_unknown_and_failed_save_preserve_answered_progress() {
     assert_eq!(result.unknown, 2);
     assert!(cache.is_empty() && !absent.exists());
     std::fs::remove_file(absent.with_extension("json.lock")).unwrap();
+    let retry_path = scratch.join("original-cached-miss.json");
+    _native::atomic::write_json(
+        &retry_path,
+        &json!({"aaa":{"id":null,"conf":"no-results","name":"Alpha Coin"}}),
+    )
+    .unwrap();
+    let original = std::fs::read(&retry_path).unwrap();
+    let missing = vec![("Alpha Coin".into(), "aaa".into())];
+    let (unchanged, _) = resolve_file(&retry_path, &missing, false, |_, _| {
+        panic!("cached miss was searched without retry")
+    })
+    .unwrap();
+    assert!(!unchanged.quota && unchanged.unknown == 0);
+    assert_eq!(std::fs::read(&retry_path).unwrap(), original);
+    let mut calls = Vec::new();
+    let (retried, cache) = resolve_file(&retry_path, &missing, true, |name, ticker| {
+        calls.push((name.to_owned(), ticker.to_owned()));
+        Ok(Search::Match {
+            id: Some("alpha-coin".into()),
+            confidence: "symbol".into(),
+        })
+    })
+    .unwrap();
+    assert!(!retried.quota && retried.unknown == 0);
+    assert_eq!(calls, missing);
+    assert_eq!(
+        Value::Object(cache),
+        json!({"aaa":{"id":"alpha-coin","conf":"symbol","name":"Alpha Coin"}})
+    );
+    assert_eq!(
+        serde_json::from_slice::<Value>(&std::fs::read(&retry_path).unwrap()).unwrap(),
+        json!({"aaa":{"id":"alpha-coin","conf":"symbol","name":"Alpha Coin"}})
+    );
+    drop(
+        _native::locks::Lease::acquire(
+            &retry_path.with_extension("json.lock"),
+            "retry cache released",
+        )
+        .unwrap(),
+    );
+    std::fs::remove_file(&retry_path).unwrap();
+    std::fs::remove_file(retry_path.with_extension("json.lock")).unwrap();
     assert_eq!(std::fs::read_dir(&scratch).unwrap().count(), 0);
     std::fs::remove_dir(scratch).unwrap();
 }

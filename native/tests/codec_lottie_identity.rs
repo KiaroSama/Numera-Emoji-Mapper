@@ -40,12 +40,40 @@ fn pinned_animated_identity_matches_source_and_worker() {
         let worker = _native::codec_worker::execute(&serde_json::json!({
             "operation":"fingerprint","source":path,"format":"animated"
         }));
+        let typed = _native::codec_lottie_identity::fingerprint_typed(&path);
+        let typed_worker = _native::codec_worker::execute_typed_at(
+            None,
+            &serde_json::json!({
+                "operation":"fingerprint","source":path,"format":"animated"
+            }),
+        );
         if let Some(expected) = case.get("expected") {
             assert_eq!(direct.unwrap(), *expected, "{}", case["input"]);
             assert_eq!(worker.unwrap(), *expected, "{}", case["input"]);
+            assert_eq!(typed.unwrap(), *expected, "{}", case["input"]);
+            assert_eq!(typed_worker.unwrap(), *expected, "{}", case["input"]);
         } else {
             assert_eq!(direct.unwrap_err(), case["error"].as_str().unwrap());
             assert_eq!(worker.unwrap_err(), case["error"].as_str().unwrap());
+            for error in [typed.unwrap_err(), typed_worker.unwrap_err()] {
+                assert_eq!(error.kind, case["error_kind"].as_str().unwrap());
+                assert_eq!(error.message, case["error"].as_str().unwrap());
+                if case["error_kind"] == "MediaError" {
+                    let reply = _native::codec_error::CodecError::worker_reply(Err(error)).unwrap();
+                    assert_eq!(reply.exit, 1);
+                    assert_eq!(
+                        reply.envelope,
+                        serde_json::json!({"ok":false,"error":case["error"]})
+                    );
+                } else {
+                    assert!(
+                        !_native::codec_error::CodecError::worker_reply(Err(error))
+                            .err()
+                            .unwrap()
+                            .handled
+                    );
+                }
+            }
             let error = _native::codec_lottie_load::canonical_bytes(&path).unwrap_err();
             assert_eq!(error.kind, case["error_kind"].as_str().unwrap());
             assert!(!error.raw_fallback);

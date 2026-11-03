@@ -1,5 +1,5 @@
 //! Read-only identity survey keeps missing/undecodable/collision evidence separate from unchanged.
-use crate::media_adapter::MediaAdapter;
+use crate::media_adapter::MediaCodec;
 use rusqlite::{Connection, OpenFlags};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -52,7 +52,7 @@ pub fn all_keys(db: &Connection) -> Result<BTreeSet<String>, String> {
 pub fn survey(
     data: &Path,
     root: &Path,
-    media: &MediaAdapter,
+    media: &impl MediaCodec,
     runtime: &tokio::runtime::Runtime,
 ) -> Result<Survey, String> {
     let db = read(data)?;

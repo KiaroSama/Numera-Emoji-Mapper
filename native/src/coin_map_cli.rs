@@ -58,6 +58,24 @@ pub(crate) fn tickers(text: &str) -> BTreeSet<String> {
 }
 
 pub fn run(config: &Config, command: &str, args: &[String], log: &RunLog) -> Result<u8, String> {
+    run_with(
+        config,
+        command,
+        args,
+        log,
+        |path| crate::locks::Lease::acquire(path, &crate::logging::utc()),
+        |path, value| crate::atomic::write_json(path, value),
+    )
+}
+
+pub(crate) fn run_with(
+    config: &Config,
+    command: &str,
+    args: &[String],
+    log: &RunLog,
+    mut acquire: impl FnMut(&Path) -> std::io::Result<crate::locks::Lease>,
+    mut persist: impl FnMut(&Path, &Value) -> std::io::Result<()>,
+) -> Result<u8, String> {
     let mut directory = config.root.join("coins");
     let mut help = false;
     let mut index = 0;
@@ -84,11 +102,17 @@ pub fn run(config: &Config, command: &str, args: &[String], log: &RunLog) -> Res
     let path = directory.join("ticker_to_id.json");
     crate::coin_provider_stage::physical(&path)?;
     let mapping = {
-        let _lease = crate::locks::Lease::acquire(
-            &config.root.join(".locks/canonical_map.lock"),
-            &crate::logging::utc(),
-        )
-        .map_err(|_| "canonical coin map is busy or unavailable")?;
+        let _lease = match acquire(&config.root.join(".locks/canonical_map.lock")) {
+            Ok(lease) => lease,
+            Err(_) => {
+                log.event(
+                    "ERROR",
+                    "coins",
+                    "canonical coin map is busy or unavailable",
+                );
+                return Ok(4);
+            }
+        };
         let mut mapping = crate::coin_provider_recover::object(&path, false)?;
         if mapping.values().any(|value| !value.is_string()) {
             return Err("coin map IDs must be strings; primitive compatibility unverified".into());
@@ -132,7 +156,7 @@ pub fn run(config: &Config, command: &str, args: &[String], log: &RunLog) -> Res
             println!("added {added} chain-variant mappings");
             added
         };
-        crate::atomic::write_json(&path, &Value::Object(mapping.clone()))
+        persist(&path, &Value::Object(mapping.clone()))
             .map_err(|_| "cannot persist canonical coin map")?;
         log.event("INFO", "coins", &format!("mapped_added={added}"));
         mapping

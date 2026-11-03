@@ -5,12 +5,8 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 
-struct Scratch(PathBuf);
-impl Drop for Scratch {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
+#[path = "support/tooling_fixture.rs"]
+mod tooling_fixture;
 
 #[test]
 fn static_previews_match_source_without_enlarging_or_losing_hidden_rgb() {
@@ -32,11 +28,7 @@ fn static_previews_match_source_without_enlarging_or_losing_hidden_rgb() {
     );
     let cases = fixture["cases"].as_array().unwrap();
     assert_eq!(cases.len(), 4);
-    let directory = Scratch(
-        root.join("logs")
-            .join(format!("static preview {}", std::process::id())),
-    );
-    std::fs::create_dir(&directory.0).unwrap();
+    let directory = tooling_fixture::Root::new("static preview");
     let hash = |bytes: &[u8]| {
         Sha256::digest(bytes)
             .iter()
@@ -93,8 +85,12 @@ fn static_previews_match_source_without_enlarging_or_losing_hidden_rgb() {
                 actual.unwrap_err(),
                 "external static preview rendering failed"
             );
+            let error = _native::codec_worker::execute_typed_at(None, &request).unwrap_err();
+            assert_eq!(error.kind, case["error_kind"].as_str().unwrap());
+            assert!(error.handled);
             assert!(!output.exists());
         }
+        assert_eq!(hash(&std::fs::read(&source).unwrap()), case["input_sha256"]);
         for (field, value) in [
             ("size", serde_json::json!(true)),
             ("fps", serde_json::json!(false)),
@@ -111,4 +107,5 @@ fn static_previews_match_source_without_enlarging_or_losing_hidden_rgb() {
         }
     }
     assert!(std::fs::read_dir(&directory.0).unwrap().next().is_none());
+    directory.clean().unwrap();
 }
