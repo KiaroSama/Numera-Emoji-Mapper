@@ -12,6 +12,8 @@ pub fn run(config: &Config, tg: &Telegram, log: &RunLog) -> Result<u8, String> {
         crate::ownership::Mode::Writer,
         &crate::logging::iso_utc(),
     )?;
+    #[cfg(test)]
+    crate::migration_crash_tests::barrier("writer-archive");
     let db = rusqlite::Connection::open_with_flags(
         data.join("catalog.db"),
         rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE,

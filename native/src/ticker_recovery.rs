@@ -2,8 +2,30 @@
 use crate::{atomic, telegram::SetState, upload_effect::UploadEffect};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
-pub fn recover(
-    publisher: &UploadEffect<'_>,
+
+pub(crate) struct Failure {
+    pub code: u8,
+    pub message: String,
+}
+impl From<String> for Failure {
+    fn from(message: String) -> Self {
+        Self { code: 4, message }
+    }
+}
+impl From<&str> for Failure {
+    fn from(message: &str) -> Self {
+        message.to_owned().into()
+    }
+}
+fn unknown(message: impl Into<String>) -> Failure {
+    Failure {
+        code: 3,
+        message: message.into(),
+    }
+}
+
+pub fn recover<M: crate::media_adapter::MediaCodec>(
+    publisher: &UploadEffect<'_, M>,
     state: &mut Value,
     sources: &[PathBuf],
     path: &Path,
@@ -11,6 +33,19 @@ pub fn recover(
     base: &str,
     logo: Option<&Value>,
 ) -> Result<(), String> {
+    recover_checked(publisher, state, sources, path, title, base, logo)
+        .map_err(|failure| failure.message)
+}
+
+pub(crate) fn recover_checked<M: crate::media_adapter::MediaCodec>(
+    publisher: &UploadEffect<'_, M>,
+    state: &mut Value,
+    sources: &[PathBuf],
+    path: &Path,
+    title: &str,
+    base: &str,
+    logo: Option<&Value>,
+) -> Result<(), Failure> {
     let Some(mut intent) = state.get("in_flight").filter(|v| !v.is_null()).cloned() else {
         return Ok(());
     };
@@ -67,7 +102,9 @@ pub fn recover(
         .position(|s| s["name"] == name);
     let (known, pack) = publisher.tg.probe(name);
     if known == SetState::Unknown {
-        return Err("live state unknown; interrupted upload remains unresolved".into());
+        return Err(unknown(
+            "live state unknown; interrupted upload remains unresolved",
+        ));
     }
     let applied = if operation == "create" {
         if known == SetState::Missing {
@@ -80,8 +117,19 @@ pub fn recover(
                     "interrupted create cannot own a set with more than one sticker".into(),
                 );
             }
-            if publisher.same(&stickers[0], source, "static")? != Some(true) {
-                return Err("created sticker is not proven to be the interrupted source".into());
+            match publisher
+                .same(&stickers[0], source, "static")
+                .map_err(unknown)?
+            {
+                Some(true) => {}
+                Some(false) => {
+                    return Err("created sticker is not proven to be the interrupted source".into());
+                }
+                None => {
+                    return Err(unknown(
+                        "created sticker is not proven to be the interrupted source",
+                    ));
+                }
             }
             if recorded.is_none() {
                 state["sets"].as_array_mut().ok_or("invalid sets")?.push(
@@ -104,7 +152,7 @@ pub fn recover(
             .map_err(|_| "invalid expected count")?
             .min(stickers.len());
         for sticker in stickers[split..].iter().chain(&stickers[..split]) {
-            match publisher.same(sticker, source, "static")? {
+            match publisher.same(sticker, source, "static").map_err(unknown)? {
                 Some(true) => {
                     found = Some(true);
                     break;
@@ -121,7 +169,7 @@ pub fn recover(
             }
             Some(false) if stickers.len() as u64 == before => false,
             Some(false) => return Err("set grew with foreign content; refusing attribution".into()),
-            None => return Err("interrupted source comparison remains unknown".into()),
+            None => return Err(unknown("interrupted source comparison remains unknown")),
         }
     } else {
         return Err("unknown interrupted operation".into());
@@ -133,9 +181,19 @@ pub fn recover(
         }
     }
     state["in_flight"] = Value::Null;
-    atomic::write_json(path, state).map_err(|e| e.to_string())
+    atomic::write_json(path, state).map_err(|e| e.to_string().into())
 }
-pub fn verify_counts(publisher: &UploadEffect<'_>, state: &Value) -> Result<(), String> {
+pub fn verify_counts<M: crate::media_adapter::MediaCodec>(
+    publisher: &UploadEffect<'_, M>,
+    state: &Value,
+) -> Result<(), String> {
+    verify_counts_checked(publisher, state).map_err(|failure| failure.message)
+}
+
+pub(crate) fn verify_counts_checked<M: crate::media_adapter::MediaCodec>(
+    publisher: &UploadEffect<'_, M>,
+    state: &Value,
+) -> Result<(), Failure> {
     for set in state["sets"].as_array().ok_or("invalid sets")? {
         let name = set["name"].as_str().ok_or("set has no name")?;
         match publisher.tg.probe(name) {
@@ -151,7 +209,7 @@ pub fn verify_counts(publisher: &UploadEffect<'_>, state: &Value) -> Result<(), 
             (SetState::Missing, _) => {
                 return Err("recorded set was deleted; refusing recreation".into());
             }
-            _ => return Err("recorded live state unknown".into()),
+            _ => return Err(unknown("recorded live state unknown")),
         }
     }
     Ok(())

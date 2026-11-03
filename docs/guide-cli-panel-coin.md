@@ -359,6 +359,101 @@ resolve is named in the reply.
 Run each from the repository root as a module, `python -m coins.<tool>`; a
 tool run as a file path cannot import the shared `emojikit` package.
 
+The expanded migration branch additionally exposes `numera-emoji coin-alias-map`
+and `coin-enhance-map`, each with `--coin-dir DIR` (default project `coins/`).
+They atomically update the canonical map and filled inventory under its existing
+map lease; no provider/Telegram request is made. Unknown options refuse. These
+additive commands are not available in the accepted prebuilt runtime until the
+full migration/package gates pass. Non-string map IDs currently refuse rather
+than silently invent source-compatible formatting.
+
+`numera-emoji coin-build-keywords [--coin-dir DIR]` on that branch uses the
+native canonical-name paging and shared CSV writer. SVG wins over a same-ticker
+PNG; unreadable PNGs are omitted, earlier names survive empty lookups, and an
+incomplete provider lookup exits 3. It reads `COIN_PAGE_DELAY` (default 2 seconds),
+needs no Telegram token and makes no Telegram request. The accepted installed
+runtime and complete source/platform parity remain unchanged/pending.
+
+The same branch adds `numera-emoji coin-fetch-logos [pages] [--coin-dir DIR]`.
+The default is 40 pages of 250 coins; nonnumeric/zero counts and unknown flags
+refuse before networking. Good cached PNGs resume without download, corrupt
+cache is refreshed, downloaded bodies must pass image verification, SVG takes
+precedence and keyword CSV retains prior names. Paging failure exits 3. This
+command contacts CoinGecko/image hosts but never Telegram; it is not available
+in the accepted installed package yet.
+
+Additive `coin-fetch-paprika [--dry] [--retry-unmatched] [--coin-dir DIR]` and
+`coin-fetch-cmc [--dry] [--coin-dir DIR]` wire the native provider/search/codec/
+publisher seams. Exact dry mode stops before downloads or Telegram; Paprika
+still saves answered search-cache entries. Unanswered searches exit 3, rejected
+CMC credentials stop naming the key, and live token admission precedes provider
+work. **Without `--dry` these commands can publish to Telegram**; test only with
+isolated loopback fixtures until full migration/package acceptance. Existing
+installed launchers and retained Python commands have not been switched.
+
+The branch also exposes `coin-write-manifests [--out-dir DIR] [--state PATH]
+[--map PATH] [--token-env KEY]`. It reads live sets without Telegram mutation,
+preserves their order, joins sorted ticker aliases and marks unmapped IDs.
+Default inputs/output are project `coins/`; `COIN_PACK_BASE` identifies the
+family lease. The chosen token variable is redacted. Unknown live readback stops
+before changing prior reports; per-file Markdown/index replacement is atomic,
+not a transaction across all report files. Full source/platform acceptance is pending.
+
+Additive `coin-check-packs [--coin-dir DIR]` (default project `coins/`) reads
+`rebuild_dedup_state.json`, resumes `pack_audit4.json` and atomically writes
+`pack_audit4_report.txt`. It reads/downloads Telegram media only; no pack/map
+mutation. Failed decode/downloads retry on the next run, current live IDs drive
+locations/totals and deleted cache IDs are pruned only after complete listings.
+Each set and every 100 new analyses checkpoint; four exhausted listing attempts
+preserve progress and exit 4 without replacing the report. Partial image analysis
+exits 3, all failed analyses exit 4. Full source/platform acceptance is pending.
+
+Additive `coin-remap-ids --emoji-dir DIR` exposes `--token-env`, `--state`,
+`--cache`, `--out`, `--candidates`, `--max-distance`, `--min-margin` and `--apply`.
+It reads live IDs/manifest signatures and matches source artwork by content,
+never slot position. Dry mode writes signature cache only. Apply needs a finite
+positive calibrated cutoff; margin defaults to cutoff, ambiguous or incomplete
+work exits 3 and writes candidates without canonical-map replacement. A successful
+replacement keeps the original map bytes in a never-overwritten `.prebroken.json`.
+Family-before-map leases protect the whole live-read/replace workflow. NumPy 2.4.6
+remains the supported external numerical runtime for Python 3.11; later 2.5.4
+requires 3.12+. The additive command now admits this optional import before
+configuration, network or data work; a missing dependency names
+`pip install -r requirements-coins.txt`. Help and invalid arguments do not require
+NumPy. This diagnostic change and its isolated import-failure assertion are
+uncompiled and unrun; installed/runtime and full source/platform acceptance are pending.
+
+Additive `coin-verify-logos --emoji-dir DIR` defaults to review only: `--top 100`,
+`--threshold 20`. Use `--map`, `--state` and `--token-env` for isolated inputs.
+Review flags are not proof of wrong artwork. Repair explicitly requires `--fix
+--only a,b`, configured token and positive `PACK_OWNER_USER_ID`; immutable upload
+bytes, before/after CID proof and downloaded-image proof precede promotion/map
+repoint. Unknown results retain target-bound intent/source and stop further repairs.
+**`--fix` mutates Telegram**; use only explicitly approved operator targets after
+full acceptance, not as an agent live-test command. The migration checkpoint
+uses loopback fixtures; installed runtime and full source/platform gates are pending.
+
+Additive `coin-rebuild-map [--coin-dir DIR] [--emoji-dir DIR] [--token-env KEY]`
+reads the frozen `rebuild_dedup_plan.json` and validated resume state, proves live
+images against recorded rebuild/provider source PNGs and replays current aliases.
+Both family and canonical-map leases cover all reads through replacement/refill.
+Unknown content, lost aliases or more than 20 unreviewed tickers sharing one ID
+refuse canonical replacement and retain a review candidate. Missing/corrupt plans
+refuse rather than regenerate. No Telegram mutations; full original-case/platform/
+installed acceptance is still pending.
+
+The branch additionally authors `coin-rebuild [all|build|map|links]` using those
+same path/token options and configured `COIN_PACK_BASE`, `COIN_PACK_TITLE` and
+`PACK_OWNER_USER_ID`. Default `all` builds, maps and sends links. **Both `all` and
+`build` can delete packs listed in `rebuild_state.json` before uploading.** Each
+old deletion is recorded only after the set is confirmed missing; unknown state
+stops before another deletion/upload. A missing plan is generated once; corrupt
+plans/states are refused. Uploads use the frozen cursor and durable content-bound
+intent, never a live-count position. `build` reports the plan checkpoint and exits
+3 when incomplete; `links` explicitly resends the sorted index and saves
+`final_sent` only after an answered send. New source observations are recorded,
+but these latest Rust paths are not yet compiled/runtime-verified or installed.
+
 | Command | File | Purpose |
 |---------|------|---------|
 | `-m coins.fetch_logos [pages]` | `coins/fetch_logos.py` | Download coin logos (CoinGecko) + write `keywords.csv`. `pages` is how many 250-coin market pages to walk (default 40 = up to 10 000 coins). Exits 3 when paging stopped early; the file is still written, keeping names an earlier run found. |

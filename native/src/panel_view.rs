@@ -24,12 +24,48 @@ fn format_order(fmt: &str) -> u8 {
     }
 }
 
+pub fn packs_named(data: &std::path::Path, wanted: &[u64]) -> Result<Value> {
+    let mut paths = std::fs::read_dir(data)
+        .map_err(|e| e.to_string())?
+        .filter_map(std::result::Result::ok)
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|s| s.to_str())
+                .is_some_and(|s| s.starts_with("publish_") && s.ends_with(".json"))
+        })
+        .collect::<Vec<_>>();
+    paths.sort();
+    let mut out = serde_json::Map::new();
+    for path in paths {
+        let Ok(bytes) = std::fs::read(path) else {
+            continue;
+        };
+        let Ok(doc) = serde_json::from_slice::<Value>(&bytes) else {
+            continue;
+        };
+        if let Some(sets) = doc.get("sets").and_then(Value::as_array) {
+            for set in sets {
+                if let (Some(n), Some(name)) = (
+                    set.get("index").and_then(Value::as_u64),
+                    set.get("name").and_then(Value::as_str),
+                ) && wanted.contains(&n)
+                    && !name.is_empty()
+                {
+                    out.insert(name.into(), json!(n));
+                }
+            }
+        }
+    }
+    Ok(json!(out))
+}
+
 pub fn copy_id(label: &str) -> String {
     let Some(raw) = label.strip_prefix("premium-id:") else {
         return String::new();
     };
     let raw = raw.strip_suffix('\n').unwrap_or(raw);
-    if !raw.is_empty() && raw.chars().all(|c| c.is_ascii_digit()) {
+    if !raw.is_empty() && raw.chars().all(crate::emoji_ids::decimal) {
         raw.into()
     } else {
         String::new()
@@ -62,7 +98,7 @@ pub fn similarity(items: &[Value]) -> Result<Vec<Value>> {
                 }
             }
         }
-        for i in crate::greedy(&hashes) {
+        for i in crate::similarity::greedy(&hashes) {
             out.push(hashed[i].clone())
         }
         out.extend(plain);

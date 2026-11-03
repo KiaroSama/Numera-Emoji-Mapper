@@ -1,0 +1,196 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+  "cases": [
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 30.0,
+        "has_audio": false,
+        "container": "webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": null
+    },
+    {
+      "info": {
+        "width": 99,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 30.0,
+        "has_audio": false,
+        "container": "webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": "opaque.webm: dimensions 99x100 != 100x100"
+    },
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 0,
+        "codec": "vp9",
+        "fps": 30.0,
+        "has_audio": false,
+        "container": "webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": "opaque.webm: duration is zero or unknown"
+    },
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 3.06,
+        "codec": "vp9",
+        "fps": 30.0,
+        "has_audio": false,
+        "container": "webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": "opaque.webm: duration 3.06s > 3.0s"
+    },
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp8",
+        "fps": 30.0,
+        "has_audio": false,
+        "container": "webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": "opaque.webm: codec 'vp8' != 'vp9'"
+    },
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 30.0,
+        "has_audio": true,
+        "container": "webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": "opaque.webm: contains an audio stream (video emoji must have none)"
+    },
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 30.02,
+        "has_audio": false,
+        "container": "webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": "opaque.webm: 30.02 fps > 30 fps"
+    },
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 30.0,
+        "has_audio": false,
+        "container": "matroska"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": "opaque.webm: container 'matroska' is not webm"
+    },
+    {
+      "info": {
+        "width": 99,
+        "height": 98,
+        "duration": 0,
+        "codec": "vp8",
+        "fps": 31,
+        "has_audio": true,
+        "container": "mp4"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": "opaque.webm: dimensions 99x98 != 100x100; duration is zero or unknown; codec 'vp8' != 'vp9'; contains an audio stream (video emoji must have none); 31.00 fps > 30 fps; container 'mp4' is not webm"
+    },
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 3.05,
+        "codec": "vp9",
+        "fps": 30.0,
+        "has_audio": false,
+        "container": "webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": null
+    },
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 30.01,
+        "has_audio": false,
+        "container": "webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": null
+    },
+    {
+      "info": {
+        "width": 100,
+        "height": 100,
+        "duration": 1.0,
+        "codec": "vp9",
+        "fps": 30.0,
+        "has_audio": false,
+        "container": "matroska,webm"
+      },
+      "bytes": 1096,
+      "filename": "opaque.webm",
+      "error": null
+    }
+  ],
+  "blank": [
+    {
+      "input": "tests/fixtures/native/video-codec/opaque.webm",
+      "input_sha256": "9ad49bae33aec4cc5e754476800285ddc0f7f7ba4738e39e1f4245d87e4551e1",
+      "blank": false
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/alpha.webm",
+      "input_sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "blank": false
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/vp8.webm",
+      "input_sha256": "25002b26244c4a3a5ff62a862152c15a67e88b2a33ef4c8825c216be1ca30db7",
+      "blank": false
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/single.webm",
+      "input_sha256": "09b6b934a16829435db84a9791672ff05f3a975a6e59af5ad352480a5a378252",
+      "blank": false
+    }
+  ]
+}

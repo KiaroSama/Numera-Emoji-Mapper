@@ -1,0 +1,109 @@
+name: Native migration checkpoint
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-checkpoint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  codec-alias:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: "2"
+      PYO3_PYTHON: python
+      PYTHONUTF8: "1"
+      NUMERA_EMOJI_MAPPER_NO_DOTENV: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          # Exact historical runtime for native-owned source-oracle regeneration.
+          python-version: "3.11.9"
+      - name: Install unchanged external static codec
+        run: "python -m pip install --only-binary=:all: Pillow==12.3.0 resvg-py==0.5.0 rlottie-python==1.3.8 numpy==2.4.6 requests==2.34.2 playwright==1.63.0"
+      - name: Install external video codecs
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Select supported compiler and check components
+        run: |
+          rustup default 1.99.0
+          rustup component add rustfmt clippy
+      - name: Bounded compile, lint and public seam tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs/checkpoint logs/tmp .cache
+          export TEMP="$PWD/logs/tmp" TMP="$PWD/logs/tmp" TMPDIR="$PWD/logs/tmp"
+          export PYTHONHOME="$pythonLocation"
+          export PYTHONPATH="$pythonLocation/lib/python3.11/site-packages"
+          export PYTHONNOUSERSITE=1 PYTHONSAFEPATH=1
+          export LD_LIBRARY_PATH="$pythonLocation/lib:${LD_LIBRARY_PATH:-}"
+          bounded() {
+            local pid code started advanced size previous=0
+            local output="$PWD/logs/checkpoint/$1.log"
+            shift
+            setsid "$@" >"$output" 2>&1 &
+            pid=$!
+            started=$SECONDS
+            advanced=$started
+            trap 'kill -KILL -- -"$pid" 2>/dev/null || :; wait "$pid" 2>/dev/null || :' EXIT INT TERM
+            while kill -0 "$pid" 2>/dev/null; do
+              size=$(stat -c %s "$output")
+              if (( size != previous )); then advanced=$SECONDS; previous=$size; fi
+              if (( SECONDS-started >= 900 || SECONDS-advanced >= 180 )); then
+                kill -KILL -- -"$pid" 2>/dev/null || :
+                wait "$pid" 2>/dev/null || :
+                cat "$output"
+                echo '::error::checkpoint exceeded wall/idle bound'
+                exit 124
+              fi
+              sleep 1
+            done
+            code=0
+            wait "$pid" || code=$?
+            kill -KILL -- -"$pid" 2>/dev/null || :
+            trap - EXIT INT TERM
+            cat "$output"
+            return "$code"
+          }
+          bounded fixture-worker rustc --edition=2024 native/tests/fixtures/media_worker.rs -o "$PWD/logs/checkpoint/media-worker-fixture"
+          export NUMERA_MEDIA_FIXTURE_WORKER="$PWD/logs/checkpoint/media-worker-fixture"
+          bounded format cargo fmt --manifest-path native/Cargo.toml --check
+          bounded lint cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
+          bounded render-build cargo build --manifest-path native/Cargo.toml --locked --lib --bin numera-emoji --bin numera-build
+          bounded static-source native/target/debug/numera-emoji source-static-images --output-dir logs/checkpoint/static-images
+          export NUMERA_STATIC_CONVERT_ORACLE="$PWD/logs/checkpoint/static-images/static-convert-source.json"
+          export NUMERA_PROVIDER_IMAGE_ORACLE="$PWD/logs/checkpoint/static-images/provider-image-source.json"
+          bounded lottie-source native/target/debug/numera-emoji source-lottie-render --output-dir logs/checkpoint/lottie-render
+          export NUMERA_LOTTIE_PREVIEW_ORACLE="$PWD/logs/checkpoint/lottie-render/lottie-preview-source.json"
+          export NUMERA_GALLERY_CODEC_ORACLE="$PWD/logs/checkpoint/lottie-render/gallery-codec-source.json"
+          bounded video-cache native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib codec_video_cache::tests -- --test-threads=2
+          bounded process-accounting native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib process_owner::platform::tests -- --test-threads=2
+          bounded public-json-bindings native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib binding_ -- --test-threads=2
+          bounded catalog-storage native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib catalog::tests -- --test-threads=2
+          bounded atomic-preservation native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib atomic_tests:: -- --test-threads=2
+          bounded collection-persistence native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib publish_cli::tests -- --test-threads=2
+          bounded configuration native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib config::tests -- --test-threads=2
+          bounded lock-diagnostics native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib lock_diagnostics::tests -- --test-threads=2
+          bounded logging-panic native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib logging::tests -- --test-threads=2
+          bounded telegram-flood native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib telegram_tests:: -- --test-threads=2
+          bounded sandbox-copy native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib tooling_sandbox_tests:: -- --test-threads=2
+          bounded consumer-cleanup native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib cleanup_pending_guard_retains_uncertain_codec_bytes -- --test-threads=2
+          bounded session-policy native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib process_owner::session_tests -- --test-threads=2
+          bounded seams native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test codec_video --test codec_video_fidelity --test codec_video_operations --test codec_gallery --test codec_format --test codec_static --test codec_compare --test codec_reencode --test codec_static_tint --test codec_static_preview --test codec_worker --test codec_worker_ipc --test coin_aliases --test coin_audit --test coin_audit_cli --test coin_plan --test coin_plan_disk --test coin_provider_policy --test coin_http --test coin_state --test coin_remap --test coin_remap_cli --test coin_remap_math --test coin_remap_cache --test coin_remap_policy --test coin_replace_proof --test coin_replace_disk --test coin_replace_effects --test coin_replace_publish --test coin_replace_recovery --test coin_logo_distance --test coin_logo_review --test coin_inventory_parse --test coin_provider_resolve --test coin_paprika --test coin_provider_image --test coin_cmc --test coin_provider_wire --test coin_provider_cache --test coin_keywords --test coin_gecko --test coin_provider_proof --test coin_provider_recovery --test coin_provider_stage --test coin_provider_restart --test coin_provider_publish --test coin_provider_effects --test coin_map_cli --test coin_map_identity --test coin_rebuild_map --test coin_rebuild_map_cli --test coin_rebuild_recovery --test coin_rebuild_recovery_disk --test coin_rebuild_walk --test coin_rebuild_delete --test coin_rebuild_effects --test coin_rebuild_links --test coin_rebuild_links_cli --test coin_manifest --test coin_manifest_cli --test coin_keywords_cli --test coin_gecko_fetch --test codec_tint --test codec_lottie_validate --test codec_lottie_file --test codec_lottie_load --test codec_lottie_package --test codec_lottie_identity --test codec_lottie_preview --test codec_lottie_lifetime --test codec_lottie_prepare --test repaint_gate --test source_fake_contracts --test source_reference_behavior --test source_lock_order --test media_native_collect --test media_native_ids --test fetch_ids_cli --test coin_inventory --test source_test_inventory --test source_test_discovery --test source_corpus_discovery --test source_git_inventory --test source_steps_recipe --test source_tooling_recipe --test source_ingest_recipe --test source_sqlite_recipe --test source_archive_recipe --test state_artifacts --test roster_pack_parity --test archive_parity --test gallery_parity --test source_coverage_artifacts --test source_inventory_cli --test migration_coverage --test coin_http_route --test coin_provider_cli --test coin_rebuild_add_cli --test coin_support_refusal_cli --test codec_worker_contracts --test codec_worker_source_parity --test codec_worker_error_ipc --test codec_error_policy --test source_assertions --test intent_parity --test plan_steps_parity --test bot_roster_parity --test reconcile_view_parity --test reconcile_commit --test reconcile_identity --test publication_scratch --test operator_config --test sync_order --test archive_state --test archive_commands --test plan_removal --test pack_export --test status --test roster_state --test roster_commands --test pack_reports --test ingest_parity --test codec_static_errors --test codec_static_lifetime --test codec_static_source_boundary --test codec_prepare_tint --test similarity_parity --test coin_verify_cli --test lease_transfer --test sandbox_marker --test ci_coverage --test codec_process_policy --test codec_svg_lifetime --test media_native_consumers --test media_native_paths --test media_native_lifecycle --test tooling_policy --test tooling_package --test tooling_package_cli --test tooling_install --test tooling_launch --test tooling_build --test tooling_convert --test tooling_sandbox --test tooling_sandbox_serve --test tooling_process --test tooling_test_runner --test tooling_test_cohort --test tooling_runtime --test tooling_doctor --test tooling_menu --test telegram_transport --test bot_commands --test announce_binding --test process_session --test source_blob --test source_catalog_recipe --test source_state_compat_recipe --test source_logging_admission --test logging_parity --test catalog_integrity --test catalog_paths --test pack_locks --test atomic_failure --test source_benchmark_admission --test source_rows_admission --test tooling_similarity_benchmark --test tooling_similarity_cli --test tooling_convert_cli --test state_compat_parity -- --test-threads=2
+      - name: Preserve bounded checkpoint diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: native-codec-alias-checkpoint
+          path: logs/checkpoint/*.log
+          if-no-files-found: warn
+          retention-days: 7

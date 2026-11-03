@@ -1,0 +1,70 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "5112b55f21d4d241ffe9660d5294de20487d4ea1e9772188fb6bd125f7fef63b",
+  "source": "emojikit.media_lottie._load_lottie",
+  "cases": [
+    {
+      "name": "valid.tgs",
+      "input": "tests/fixtures/native/tgs-load/valid.tgs",
+      "input_sha256": "7eab5f062ab6ff2b69178b0086356f9fa361ac0f755b4448e05c97c713376135",
+      "expected": {
+        "v": "5.7.4",
+        "w": 512,
+        "h": 512,
+        "fr": 60,
+        "ip": 0,
+        "op": 180,
+        "layers": []
+      }
+    },
+    {
+      "name": "plain.json",
+      "input": "tests/fixtures/native/tgs-load/plain.json",
+      "input_sha256": "655c333bb0235dee13ab05ba6e7cf6f6d2921939ec9b10cb13b358701361bfbc",
+      "expected": {
+        "v": "5.7.4",
+        "w": 512,
+        "h": 512,
+        "fr": 60,
+        "ip": 0,
+        "op": 180,
+        "layers": []
+      }
+    },
+    {
+      "name": "root-list.tgs",
+      "input": "tests/fixtures/native/tgs-load/root-list.tgs",
+      "input_sha256": "61663fde99b3394d71653f41c19fe91269442622a4a6695f8352a70fbf5ca4c1",
+      "error_kind": "MediaError",
+      "error": "root-list.tgs: Lottie root is list, expected an object"
+    },
+    {
+      "name": "corrupt.tgs",
+      "input_base64": "tests/fixtures/native/tgs-load/corrupt.tgs.b64",
+      "input_sha256": "b6414ce2cb6aa36c297c733108468e05128bf5adc6c8fe4fd03f53e91204bda1",
+      "error_kind": "BadGzipFile",
+      "error": "Unknown compression method"
+    },
+    {
+      "name": "invalid-json.tgs",
+      "input": "tests/fixtures/native/tgs-load/invalid-json.tgs",
+      "input_sha256": "5975249916cf2897128ebef9852d860710bcd91e34d4bf0b09d3e1711d2a9d3c",
+      "error_kind": "JSONDecodeError",
+      "error": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)"
+    },
+    {
+      "name": "expansion.tgs",
+      "input": "tests/fixtures/native/tgs-load/expansion.tgs",
+      "input_sha256": "c2157d0aa365e20c8e9a010c8e344e0e3fa0f0fea9951f5121ff0bc8eefd1fd1",
+      "error_kind": "MediaError",
+      "error": "expansion.tgs: Lottie expands beyond 8388608 bytes"
+    },
+    {
+      "name": "invalid-utf8.tgs",
+      "input": "tests/fixtures/native/tgs-load/invalid-utf8.tgs",
+      "input_sha256": "b07e63134810f5083112f3b8be86eaed95c45c1cfdea9d9c901af87434284621",
+      "error_kind": "UnicodeDecodeError",
+      "error": "'utf-8' codec can't decode byte 0xff in position 0: invalid start byte"
+    }
+  ]
+}

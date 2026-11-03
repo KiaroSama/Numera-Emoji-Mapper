@@ -1,0 +1,250 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media_bridge.py": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7",
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89",
+    "emojikit/repaint.py": "845d1443956499a93413316342f06d819e9ef89a9a8bb789dcaa53638cdbfc59",
+    "emojikit/errors.py": "6c29243e2ec976606174605f1deaa3d23ef8d94fea47e886465c27f4f21f2026"
+  },
+  "source_runtime": "CPython3.11.9",
+  "Pillow": "12.3.0",
+  "scope": "Static prepare including actual parse/repaint and reencode prefix only",
+  "cases": [
+    {
+      "name": "success",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "format": "static",
+        "tint": "#1A80FF",
+        "reencode": false
+      },
+      "fault": null,
+      "injected_kind": null,
+      "expected": {
+        "content_key": "s:fdbeef820a5718fbd02094fd6057b73a",
+        "phash": 2269426494736384,
+        "fmt": "static",
+        "extension": ".webp"
+      },
+      "warnings": [],
+      "injected_calls": 0,
+      "output": {
+        "bytes": 40,
+        "sha256": "e6b041053ac8bcc87710645648ef8942ff09ef1ddc03314bdd18fd53da73f768",
+        "input_unchanged": false
+      }
+    },
+    {
+      "name": "success-reencode",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "format": "static",
+        "tint": "#1A80FF",
+        "reencode": true
+      },
+      "fault": null,
+      "injected_kind": null,
+      "expected": {
+        "content_key": "s:fdbeef820a5718fbd02094fd6057b73a",
+        "phash": 2269426494736384,
+        "fmt": "static",
+        "extension": ".webp"
+      },
+      "warnings": [],
+      "injected_calls": 0,
+      "output": {
+        "bytes": 40,
+        "sha256": "e6b041053ac8bcc87710645648ef8942ff09ef1ddc03314bdd18fd53da73f768",
+        "input_unchanged": false
+      }
+    },
+    {
+      "name": "invalid-hex",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "format": "static",
+        "tint": "#fff",
+        "reencode": false
+      },
+      "fault": null,
+      "injected_kind": null,
+      "error": {
+        "kind": "MediaError",
+        "message": "tint must be #RRGGBB, got '#fff'"
+      },
+      "warnings": [],
+      "injected_calls": 0,
+      "output": {
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+        "input_unchanged": true
+      }
+    },
+    {
+      "name": "nonstring",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "format": "static",
+        "tint": null,
+        "reencode": false
+      },
+      "fault": null,
+      "injected_kind": null,
+      "error": {
+        "kind": "ValueError",
+        "message": "tint must be #RRGGBB"
+      },
+      "warnings": [],
+      "injected_calls": 0,
+      "output": {
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+        "input_unchanged": true
+      }
+    },
+    {
+      "name": "corrupt",
+      "input": "tests/fixtures/native/static-compare/corrupt.png",
+      "input_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "format": "static",
+        "tint": "#1A80FF",
+        "reencode": false
+      },
+      "fault": null,
+      "injected_kind": null,
+      "error": {
+        "kind": "ValueError",
+        "message": "requested tint could not be applied"
+      },
+      "warnings": [
+        "repaint skipped for corrupt.png (static): cannot identify image file '$source'"
+      ],
+      "injected_calls": 0,
+      "output": {
+        "bytes": 12,
+        "sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+        "input_unchanged": true
+      }
+    },
+    {
+      "name": "save-oserror",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "format": "static",
+        "tint": "#1A80FF",
+        "reencode": false
+      },
+      "fault": "save",
+      "injected_kind": "OSError",
+      "error": {
+        "kind": "ValueError",
+        "message": "requested tint could not be applied"
+      },
+      "warnings": [
+        "repaint skipped for alpha-edge.png (static): controlled save OSError"
+      ],
+      "injected_calls": 1,
+      "output": {
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+        "input_unchanged": true
+      }
+    },
+    {
+      "name": "save-typeerror",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "format": "static",
+        "tint": "#1A80FF",
+        "reencode": false
+      },
+      "fault": "save",
+      "injected_kind": "TypeError",
+      "error": {
+        "kind": "ValueError",
+        "message": "requested tint could not be applied"
+      },
+      "warnings": [
+        "repaint skipped for alpha-edge.png (static): controlled save TypeError"
+      ],
+      "injected_calls": 1,
+      "output": {
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+        "input_unchanged": true
+      }
+    },
+    {
+      "name": "save-interrupt",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "format": "static",
+        "tint": "#1A80FF",
+        "reencode": false
+      },
+      "fault": "save",
+      "injected_kind": "KeyboardInterrupt",
+      "error": {
+        "kind": "KeyboardInterrupt",
+        "message": "controlled save KeyboardInterrupt"
+      },
+      "warnings": [],
+      "injected_calls": 1,
+      "output": {
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+        "input_unchanged": true
+      }
+    },
+    {
+      "name": "reencode-interrupt-before-invalid-tint",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "format": "static",
+        "tint": null,
+        "reencode": true
+      },
+      "fault": "save",
+      "injected_kind": "KeyboardInterrupt",
+      "error": {
+        "kind": "KeyboardInterrupt",
+        "message": "controlled save KeyboardInterrupt"
+      },
+      "warnings": [],
+      "injected_calls": 1,
+      "output": {
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+        "input_unchanged": true
+      }
+    }
+  ]
+}

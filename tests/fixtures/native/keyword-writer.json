@@ -1,0 +1,77 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "7c157ebff8fd5dbb8ec28c87ce8e85b70559601a8671b01c2510fe4e9f70f75f",
+  "valid": [
+    {
+      "input": "tests/fixtures/native/provider-image/visible-0-alpha-255.png",
+      "input_sha256": "a22b9d6429f74727c26f599bd3d58ac8280a1f164f96a8af7014e0b6ac0ad07d",
+      "expected": false
+    },
+    {
+      "input": "tests/fixtures/native/provider-image/visible-8-alpha-255.png",
+      "input_sha256": "53cbc16b12ec7f9e1a31828600b732e67f42112fc9d4ffbfe30e448c31d794ae",
+      "expected": true
+    },
+    {
+      "input": "tests/fixtures/native/provider-image/visible-9-alpha-10.png",
+      "input_sha256": "83917e6c7fa9db08725292108c9c64a9c0b12ae7e447b09b07a565ea9b1c4d73",
+      "expected": true
+    },
+    {
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": true
+    }
+  ],
+  "cases": [
+    {
+      "rows": {},
+      "old": "",
+      "expected": "ticker,name,format,file,keywords\r\n"
+    },
+    {
+      "rows": {
+        "a": {
+          "ticker": "a",
+          "name": "",
+          "format": "svg",
+          "file": "logos/a.svg"
+        }
+      },
+      "old": "ticker,name,format,file,keywords\r\na,Old Name,svg,logos/a.svg,a\r\n",
+      "expected": "ticker,name,format,file,keywords\r\na,Old Name,svg,logos/a.svg,\"a, Old Name\"\r\n"
+    },
+    {
+      "rows": {
+        "z": {
+          "ticker": "z",
+          "name": "Comma, \"Quote\"\n\u65e5\u672c",
+          "format": "svg",
+          "file": "logos/z.svg"
+        },
+        "a": {
+          "ticker": "a",
+          "name": "A",
+          "format": "png",
+          "file": "tests/fixtures/native/provider-image/visible-8-alpha-255.png",
+          "path": "tests/fixtures/native/provider-image/visible-8-alpha-255.png"
+        }
+      },
+      "old": "",
+      "expected": "ticker,name,format,file,keywords\r\na,A,png,tests/fixtures/native/provider-image/visible-8-alpha-255.png,\"a, A\"\r\nz,\"Comma, \"\"Quote\"\"\n\u65e5\u672c\",svg,logos/z.svg,\"z, Comma, \"\"Quote\"\"\n\u65e5\u672c\"\r\n"
+    },
+    {
+      "rows": {
+        "a": {
+          "ticker": "a",
+          "name": "Blank",
+          "format": "png",
+          "file": "tests/fixtures/native/provider-image/visible-0-alpha-255.png",
+          "path": "tests/fixtures/native/provider-image/visible-0-alpha-255.png"
+        }
+      },
+      "old": "",
+      "expected": "ticker,name,format,file,keywords\r\n"
+    }
+  ]
+}

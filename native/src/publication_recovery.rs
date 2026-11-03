@@ -1,5 +1,10 @@
 //! Recover durable native publication intent using fresh live identities, never positional guesses.
-use crate::{atomic, publication::Publisher, publish_collection::Options, telegram::SetState};
+use crate::{
+    atomic,
+    publication::{Failure, Publisher},
+    publish_collection::Options,
+    telegram::SetState,
+};
 use serde_json::{Value, json};
 use std::path::Path;
 
@@ -11,12 +16,21 @@ fn text<'a>(value: &'a Value, key: &str) -> Result<&'a str, String> {
         .ok_or_else(|| format!("publication intent is missing {key}"))
 }
 
-pub fn recover(
-    publisher: &mut Publisher<'_>,
+pub fn recover<M: crate::media_adapter::MediaCodec>(
+    publisher: &mut Publisher<'_, M>,
     options: &Options,
     state: &mut Value,
     path: &Path,
 ) -> Result<(), String> {
+    recover_checked(publisher, options, state, path).map_err(|failure| failure.message)
+}
+
+pub(crate) fn recover_checked<M: crate::media_adapter::MediaCodec>(
+    publisher: &mut Publisher<'_, M>,
+    options: &Options,
+    state: &mut Value,
+    path: &Path,
+) -> Result<(), Failure> {
     let Some(intent) = state.get("in_flight").filter(|v| !v.is_null()).cloned() else {
         return Ok(());
     };
@@ -49,7 +63,9 @@ pub fn recover(
     }
     match publisher.tg.probe(name) {
         (SetState::Unknown, _) => {
-            return Err("publication recovery cannot determine live state; intent retained".into());
+            return Err(Failure::unknown(
+                "publication recovery cannot determine live state; intent retained",
+            ));
         }
         (SetState::Missing, _) => {
             if operation != "create" || recorded.is_some() {
@@ -57,7 +73,7 @@ pub fn recover(
             }
             // A fresh proven negative permits the next run to try this name again.
             state["in_flight"] = Value::Null;
-            return atomic::write_json(path, state).map_err(|e| e.to_string());
+            return atomic::write_json(path, state).map_err(|e| e.to_string().into());
         }
         (SetState::Exists, Some(live)) => {
             if recorded.is_none() {
@@ -99,7 +115,11 @@ pub fn recover(
                 atomic::write_json(path, state).map_err(|e| e.to_string())?;
             }
         }
-        _ => return Err("publication recovery returned incomplete live evidence".into()),
+        _ => {
+            return Err(Failure::unknown(
+                "publication recovery returned incomplete live evidence",
+            ));
+        }
     }
     let i = state["sets"]
         .as_array()
@@ -107,7 +127,7 @@ pub fn recover(
         .iter()
         .position(|set| set["name"] == name)
         .ok_or("recovered set vanished")?;
-    publisher.reconcile(&mut state["sets"][i], &options.base)?;
+    publisher.reconcile_checked(&mut state["sets"][i], &options.base)?;
     // Save reconciled membership before clearing intent; a crash here is idempotent.
     atomic::write_json(path, state).map_err(|e| e.to_string())?;
     let published = publisher
@@ -118,5 +138,5 @@ pub fn recover(
         return Err("recovery found unattributed live stickers; intent retained".into());
     }
     state["in_flight"] = Value::Null;
-    atomic::write_json(path, state).map_err(|e| e.to_string())
+    atomic::write_json(path, state).map_err(|e| e.to_string().into())
 }

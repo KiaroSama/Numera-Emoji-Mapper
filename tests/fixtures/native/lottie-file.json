@@ -1,0 +1,102 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media_lottie.py": "5112b55f21d4d241ffe9660d5294de20487d4ea1e9772188fb6bd125f7fef63b",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89",
+    "emojikit/media_bridge.py": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7"
+  },
+  "validations": [
+    {
+      "input": "tests/fixtures/native/tgs-load/valid.tgs",
+      "input_sha256": "7eab5f062ab6ff2b69178b0086356f9fa361ac0f755b4448e05c97c713376135",
+      "expected": true
+    },
+    {
+      "input": "tests/fixtures/native/tgs-load/plain.json",
+      "input_sha256": "655c333bb0235dee13ab05ba6e7cf6f6d2921939ec9b10cb13b358701361bfbc",
+      "error_kind": "MediaError",
+      "error": "plain.json: TGS must be gzip-compressed Lottie"
+    },
+    {
+      "input": "tests/fixtures/native/tgs-load/invalid-json.tgs",
+      "input_sha256": "5975249916cf2897128ebef9852d860710bcd91e34d4bf0b09d3e1711d2a9d3c",
+      "error_kind": "MediaError",
+      "error": "invalid-json.tgs: not a valid TGS/Lottie (Expecting property name enclosed in double quotes: line 1 column 2 (char 1))"
+    },
+    {
+      "input": "tests/fixtures/native/tgs-load/root-list.tgs",
+      "input_sha256": "61663fde99b3394d71653f41c19fe91269442622a4a6695f8352a70fbf5ca4c1",
+      "error_kind": "MediaError",
+      "error": "root-list.tgs: Lottie root is list, expected an object"
+    },
+    {
+      "input": "tests/fixtures/native/animated-key/truncated.tgs",
+      "input_sha256": "9d1011ce9a9221ec2cbde2cc63ce50401fda24a6ffbf96a97b55552cc9e035e3",
+      "error_kind": "EOFError",
+      "error": "Compressed file ended before the end-of-stream marker was reached"
+    },
+    {
+      "input": "tests/fixtures/native/lottie-file/zero-rate.tgs",
+      "input_sha256": "c193a0f4e2e64d1ec0c3cd57762e7bfea9f3a8eba1fe27c31b5cc28248263fa1",
+      "error_kind": "MediaError",
+      "error": "zero-rate.tgs: frame rate 0.0 must be positive"
+    },
+    {
+      "name": "oversize.tgs",
+      "input_base64": "tests/fixtures/native/lottie-file/oversize.tgs.b64",
+      "input_sha256": "892ddba56da9b5c2c27a3aca7477d1742bdc4a935efc49d78dac97e6bfb23f5b",
+      "error_kind": "MediaError",
+      "error": "oversize.tgs: TGS 65537 > 65536 bytes"
+    }
+  ],
+  "comparisons": [
+    {
+      "a": "tests/fixtures/native/animated-key/ordered.json",
+      "b": "tests/fixtures/native/animated-key/ordered-equivalent.json",
+      "a_sha256": "5f23bdab8e196e6325b9a485ef36eb015bc37d05800cacba1b3284ac1fe2a617",
+      "b_sha256": "156c14aabac87ce75dc31bb9ddef2480a74c48bfc48ca83cb10dbb8dfe04ac0a",
+      "same_image": true,
+      "compare": true
+    },
+    {
+      "a": "tests/fixtures/native/animated-key/ordered.json",
+      "b": "tests/fixtures/native/tgs-load/valid.tgs",
+      "a_sha256": "5f23bdab8e196e6325b9a485ef36eb015bc37d05800cacba1b3284ac1fe2a617",
+      "b_sha256": "7eab5f062ab6ff2b69178b0086356f9fa361ac0f755b4448e05c97c713376135",
+      "same_image": null,
+      "compare": null
+    },
+    {
+      "a": "tests/fixtures/native/tgs-load/invalid-json.tgs",
+      "b": "tests/fixtures/native/tgs-load/invalid-json.tgs",
+      "a_sha256": "5975249916cf2897128ebef9852d860710bcd91e34d4bf0b09d3e1711d2a9d3c",
+      "b_sha256": "5975249916cf2897128ebef9852d860710bcd91e34d4bf0b09d3e1711d2a9d3c",
+      "same_image": true,
+      "compare": true
+    },
+    {
+      "a": "tests/fixtures/native/tgs-load/root-list.tgs",
+      "b": "tests/fixtures/native/tgs-load/root-list.tgs",
+      "a_sha256": "61663fde99b3394d71653f41c19fe91269442622a4a6695f8352a70fbf5ca4c1",
+      "b_sha256": "61663fde99b3394d71653f41c19fe91269442622a4a6695f8352a70fbf5ca4c1",
+      "same_image": null,
+      "compare": true
+    },
+    {
+      "a": "tests/fixtures/native/animated-key/truncated.tgs",
+      "b": "tests/fixtures/native/animated-key/truncated.tgs",
+      "a_sha256": "9d1011ce9a9221ec2cbde2cc63ce50401fda24a6ffbf96a97b55552cc9e035e3",
+      "b_sha256": "9d1011ce9a9221ec2cbde2cc63ce50401fda24a6ffbf96a97b55552cc9e035e3",
+      "same_image": null,
+      "compare": true
+    },
+    {
+      "a": "tests/fixtures/native/tgs-load/root-list.tgs",
+      "b": "tests/fixtures/native/tgs-load/valid.tgs",
+      "a_sha256": "61663fde99b3394d71653f41c19fe91269442622a4a6695f8352a70fbf5ca4c1",
+      "b_sha256": "7eab5f062ab6ff2b69178b0086356f9fa361ac0f755b4448e05c97c713376135",
+      "same_image": null,
+      "compare": null
+    }
+  ]
+}

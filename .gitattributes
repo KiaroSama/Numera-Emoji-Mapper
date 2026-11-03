@@ -11,6 +11,8 @@
 *.jpg binary
 *.jpeg binary
 *.ico binary
+*.tgs binary
+*.webm binary
 
 # Data files
 *.csv text

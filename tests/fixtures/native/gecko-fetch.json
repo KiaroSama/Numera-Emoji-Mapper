@@ -1,0 +1,144 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "a42706ef2afb8efc880e7d695199a8f3b1a8d3acc9f17e625f60b49e40a36181",
+  "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+  "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+  "tickers": [
+    {
+      "input": " BTC ",
+      "expected": "btc"
+    },
+    {
+      "input": "....",
+      "expected": ""
+    },
+    {
+      "input": "A/B:C",
+      "expected": "abc"
+    },
+    {
+      "input": "_-eth-._",
+      "expected": "eth"
+    },
+    {
+      "input": "\u65e5\u672c",
+      "expected": ""
+    },
+    {
+      "input": "BTT(TRC20)",
+      "expected": "btttrc20"
+    }
+  ],
+  "cases": [
+    {
+      "initial": "missing",
+      "outcome": "valid",
+      "expected": {
+        "code": 0,
+        "calls": [
+          [
+            "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+            false,
+            6
+          ],
+          [
+            "http://example.invalid/btc.png",
+            true,
+            3
+          ]
+        ],
+        "waits": [
+          0.05,
+          2.0
+        ],
+        "csv": "ticker,name,format,file,keywords\r\nbtc,Bitcoin,png,logos/png/btc.png,\"btc, Bitcoin\"\r\n",
+        "destination_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71"
+      }
+    },
+    {
+      "initial": "corrupt",
+      "outcome": "valid",
+      "expected": {
+        "code": 0,
+        "calls": [
+          [
+            "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+            false,
+            6
+          ],
+          [
+            "http://example.invalid/btc.png",
+            true,
+            3
+          ]
+        ],
+        "waits": [
+          0.05,
+          2.0
+        ],
+        "csv": "ticker,name,format,file,keywords\r\nbtc,Bitcoin,png,logos/png/btc.png,\"btc, Bitcoin\"\r\n",
+        "destination_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71"
+      }
+    },
+    {
+      "initial": "valid",
+      "outcome": "unused",
+      "expected": {
+        "code": 0,
+        "calls": [
+          [
+            "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+            false,
+            6
+          ]
+        ],
+        "waits": [
+          2.0
+        ],
+        "csv": "ticker,name,format,file,keywords\r\nbtc,Bitcoin,png,logos/png/btc.png,\"btc, Bitcoin\"\r\n",
+        "destination_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71"
+      }
+    },
+    {
+      "initial": "missing",
+      "outcome": "corrupt",
+      "expected": {
+        "code": 0,
+        "calls": [
+          [
+            "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+            false,
+            6
+          ],
+          [
+            "http://example.invalid/btc.png",
+            true,
+            3
+          ]
+        ],
+        "waits": [
+          2.0
+        ],
+        "csv": "ticker,name,format,file,keywords\r\n",
+        "destination_sha256": null
+      }
+    },
+    {
+      "initial": "missing",
+      "outcome": "failure",
+      "expected": {
+        "code": 3,
+        "calls": [
+          [
+            "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+            false,
+            6
+          ]
+        ],
+        "waits": [],
+        "csv": "ticker,name,format,file,keywords\r\n",
+        "destination_sha256": null
+      }
+    }
+  ]
+}

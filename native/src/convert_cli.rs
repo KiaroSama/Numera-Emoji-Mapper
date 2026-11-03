@@ -1,5 +1,9 @@
 //! Source grouping, resume/quarantine and output ownership stay native; pixels use exact codecs.
-use crate::{config::Config, logging::RunLog, media_adapter::MediaAdapter};
+use crate::{
+    config::Config,
+    logging::RunLog,
+    media_adapter::{MediaAdapter, MediaCodec},
+};
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
@@ -25,16 +29,12 @@ impl Staging {
         }
     }
     fn pending(&self) -> bool {
-        std::fs::read_dir(self.0.join("codecs"))
-            .map(|mut entries| {
-                entries.any(|entry| {
-                    entry.is_err()
-                        || entry.is_ok_and(|entry| {
-                            entry.path().join("codec-cleanup-pending.json").exists()
-                        })
-                })
-            })
-            .unwrap_or_else(|error| error.kind() != std::io::ErrorKind::NotFound)
+        let codecs = self.0.join("codecs");
+        crate::process_owner::cleanup_pending(&codecs)
+            // Settled failure evidence still belongs to this run if relocation failed.
+            || std::fs::read_dir(&codecs)
+                .map(|mut entries| entries.next().is_some())
+                .unwrap_or_else(|error| error.kind() != std::io::ErrorKind::NotFound)
     }
 }
 impl Drop for Staging {
@@ -81,6 +81,31 @@ fn groups(path: &Path) -> Result<Vec<Vec<PathBuf>>, String> {
     Ok(groups.into_values().collect())
 }
 pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String> {
+    run_with_codec(config, args, log, |scratch| {
+        let python = std::env::var_os("PYO3_PYTHON")
+            .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                config.root.join(if cfg!(windows) {
+                    ".venv/Scripts/python.exe"
+                } else {
+                    ".venv/bin/python"
+                })
+            });
+        MediaAdapter {
+            python,
+            root: config.root.clone(),
+            scratch,
+        }
+    })
+}
+
+pub fn run_with_codec<M: MediaCodec>(
+    config: &Config,
+    args: &[String],
+    log: &RunLog,
+    make_media: impl FnOnce(PathBuf) -> M,
+) -> Result<u8, String> {
     if args.iter().any(|a| a == "-h" || a == "--help") {
         println!("Usage: numera-emoji make-emoji-pngs [--in DIR] [--out DIR] [--limit N]");
         return Ok(0);
@@ -166,21 +191,8 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         }
         std::fs::remove_file(&marker).map_err(|e| e.to_string())?;
     }
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    let media = MediaAdapter {
-        python,
-        root: config.root.clone(),
-        scratch: output.join(".native-codec"),
-    };
+    let scratch = output.join(".native-codec");
+    let media = make_media(scratch.clone());
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -254,13 +266,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         let mut success = false;
         for source in group {
             let source = source.canonicalize().map_err(|e| e.to_string())?;
-            let staging = Staging::new(&media.scratch)?;
+            let staging = Staging::new(&scratch)?;
             let staged = staging.0.join("output.png");
-            let adapter = MediaAdapter {
-                python: media.python.clone(),
-                root: media.root.clone(),
-                scratch: staging.0.join("codecs"),
-            };
+            let adapter = media.with_scratch(staging.0.join("codecs"));
             match runtime.block_on(adapter.call(json!({"operation":"convert","source":source,"output":staged,"target_format":"static"}))) {
                 Ok(_) => {
                     if runtime.block_on(adapter.call(json!({"operation":"image_info","source":staged,"format":"static"})))?
@@ -316,4 +324,89 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         4
     })
+}
+
+#[cfg(test)]
+mod cleanup_tests {
+    use super::*;
+
+    struct Fixture(PathBuf);
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.0).expect("clean owned synthetic cleanup fixtures");
+        }
+    }
+
+    #[test]
+    fn cleanup_pending_guard_retains_uncertain_codec_bytes() {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let parent =
+            crate::tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
+        let root = parent.join(format!("convert cleanup guard {}", std::process::id()));
+        std::fs::create_dir(&root).unwrap();
+        let fixture = Fixture(root);
+        for (case, relative, shape) in [
+            ("legacy", "codecs/run/codec-cleanup-pending.json", "file"),
+            (
+                "native",
+                "codecs/run/owner/codec-cleanup-pending.json",
+                "file",
+            ),
+            (
+                "marker-directory",
+                "codecs/run/codec-cleanup-pending.json",
+                "directory",
+            ),
+            ("owner-file", "codecs/run/owner", "file"),
+            ("container-file", "codecs", "file"),
+            ("entry-file", "codecs/run", "file"),
+            ("settled-request", "codecs/run/request.json", "file"),
+            ("settled-response", "codecs/run/response.json", "file"),
+            ("empty-envelope", "codecs/run/owner", "directory"),
+            ("quiet", "codecs", "directory"),
+            ("absent", "", "none"),
+            #[cfg(unix)]
+            (
+                "marker-link",
+                "codecs/run/codec-cleanup-pending.json",
+                "link",
+            ),
+            #[cfg(unix)]
+            ("owner-link", "codecs/run/owner", "link"),
+            #[cfg(unix)]
+            ("container-link", "codecs", "link"),
+        ] {
+            let workspace = fixture.0.join(case);
+            std::fs::create_dir(&workspace).unwrap();
+            let sentinel = workspace.join("keep.bin");
+            let bytes = b"not JSON; unresolved synthetic bytes";
+            std::fs::write(&sentinel, bytes).unwrap();
+            let target = workspace.join(relative);
+            if shape != "none" {
+                std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+                match shape {
+                    "file" => std::fs::write(&target, bytes).unwrap(),
+                    "directory" => std::fs::create_dir(&target).unwrap(),
+                    #[cfg(unix)]
+                    "link" => std::os::unix::fs::symlink("missing", &target).unwrap(),
+                    _ => unreachable!(),
+                }
+            }
+            drop(Staging(workspace.clone()));
+            if matches!(case, "quiet" | "absent") {
+                assert!(!workspace.exists(), "ordinary cleanup did not run: {case}");
+            } else {
+                assert_eq!(std::fs::read(&sentinel).unwrap(), bytes, "{case}");
+                match shape {
+                    "file" => assert_eq!(std::fs::read(&target).unwrap(), bytes, "{case}"),
+                    "directory" => assert!(std::fs::symlink_metadata(&target).unwrap().is_dir()),
+                    #[cfg(unix)]
+                    "link" => {
+                        assert_eq!(std::fs::read_link(&target).unwrap(), Path::new("missing"))
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
 }

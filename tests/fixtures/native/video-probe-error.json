@@ -1,0 +1,8 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+  "input": "tests/fixtures/native/video-codec/truncated.webm",
+  "input_sha256": "97f5da8cb43784c5f54cd20f8c362b09bd4612f45dad07fe99f83d21cb82bc32",
+  "expected_failure": true,
+  "error_kind": "CalledProcessError"
+}

@@ -240,10 +240,35 @@ pub fn handle(
     }
     Ok(())
 }
-fn allowlist(raw: &str) -> BTreeSet<i64> {
-    raw.replace(';', ",")
-        .split(',')
-        .filter_map(|v| v.trim().parse().ok())
+fn allowlist(raw: &str, channels: bool, log: &RunLog) -> BTreeSet<i64> {
+    raw.split([',', ';'])
+        .filter_map(|part| {
+            let part = part.trim_matches(crate::emoji_ids::whitespace);
+            if part.is_empty() {
+                return None;
+            }
+            // Channel syntax is -?\d+, unlike the user's signed/underscored int grammar.
+            let channel_digits = part.strip_prefix('-').unwrap_or(part);
+            let valid = !channels
+                || (!channel_digits.is_empty()
+                    && channel_digits.chars().all(crate::emoji_ids::decimal));
+            let value = valid
+                .then(|| crate::config_integer::decimal(part))
+                .flatten()
+                .and_then(|value| value.parse().ok());
+            if value.is_none() {
+                log.event(
+                    "WARNING",
+                    "bot",
+                    if channels {
+                        "ignoring malformed or out-of-range BOT_ALLOWED_CHANNEL_IDS entry"
+                    } else {
+                        "ignoring malformed or out-of-range BOT_ALLOWED_USER_IDS entry"
+                    },
+                );
+            }
+            value
+        })
         .collect()
 }
 pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String> {
@@ -255,21 +280,26 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     if owner <= 0 {
         return Err("PACK_OWNER_USER_ID must be a valid positive numeric ID".into());
     }
-    let allowed = if config.value("BOT_ALLOWED_USER_IDS").is_empty() {
+    let users = config
+        .value("BOT_ALLOWED_USER_IDS")
+        .trim_matches(crate::emoji_ids::whitespace);
+    let allowed = if users.is_empty() {
         BTreeSet::from([owner])
     } else {
-        allowlist(config.value("BOT_ALLOWED_USER_IDS"))
+        allowlist(users, false, log)
     };
     if allowed.is_empty() {
         return Err("no authorized users; refusing an open bot".into());
     }
-    let channels = allowlist(config.value("BOT_ALLOWED_CHANNEL_IDS"));
+    let channels = allowlist(config.value("BOT_ALLOWED_CHANNEL_IDS"), true, log);
     let base = if std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1") {
         std::env::var("NUMERA_TEST_API_BASE").unwrap_or_else(|_| "https://api.telegram.org".into())
     } else {
         "https://api.telegram.org".into()
     };
-    let tg = Telegram::new(token.into(), base).map_err(|e| e.to_string())?;
+    let tg = Telegram::new(token.into(), base)
+        .map_err(|e| e.to_string())?
+        .with_log(log);
     tg.read_call("getMe", &BTreeMap::new())
         .map_err(|e| e.to_string())?;
     let _ = call(

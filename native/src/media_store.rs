@@ -1,5 +1,5 @@
 //! Non-clobbering media storage and durable provenance for refused destinations.
-use crate::{atomic, media_adapter::MediaAdapter};
+use crate::{atomic, media_adapter::MediaCodec};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::io::Read;
@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 pub async fn store(
-    adapter: &MediaAdapter,
+    adapter: &impl MediaCodec,
     source: &Path,
     destination: &Path,
     fmt: &str,

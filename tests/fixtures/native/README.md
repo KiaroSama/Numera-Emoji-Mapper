@@ -1,0 +1,456 @@
+# First-party native migration fixtures
+
+These expected values come from the pinned source revision
+`1a36a968b006236bd0665a1da65c541938c06061`, not from the replacement Rust code.
+They cover an initial migration slice, not the whole source test inventory.
+
+- `codec-timeout.json`: 14 pinned CPython 3.11.9 timeout-policy observations.
+  The source default is 300 seconds per codec child, with a one-second floor;
+  signs, underscores and Unicode decimal digits use Python integer semantics.
+  Invalid text and below-minimum warnings are captured independently. The shared
+  native process owner keeps Git/tool reads on their separate 30/15-second budget.
+  Native policy/lifetime tests remain unexecuted; no timing acceptance is implied.
+- `video-fingerprint.json`: three pinned nonuniform 30 fps, 15 fps and genuine
+  33 ms single-frame clips. Source dHash values prove the first frame belongs to
+  the frozen 10 fps stream rather than native frame zero; the short clip records
+  an actual successful-empty sample followed by native-frame retry.
+- `gallery-codec.json`: five pinned gallery outputs: 88px static LANCZOS/lossy65,
+  animated still/moving 88px/9fps/lossy65, raw video copy and source animation-info
+  booleans. This is distinct from the panel preview's BICUBIC/lossless policy.
+  Animated gallery output compares to the independently pinned renderer source
+  on the same platform; committed Windows bytes are retained, not replaced.
+- `video-operations.json`: actual pinned source VP9 conversion pixels/probe fields,
+  lossless stream-copy preparation and WebP preview bytes. Container bytes are not
+  deterministic across muxer runs; decoded frames and exact same-platform preview
+  codec bytes are the observable contract. External-version differences still need
+  independent source verification, never target-derived replacement expectations.
+- `video-validation.json`: twelve source metadata refusal/order observations and
+  four actual alpha-sample blank checks; metadata-only variants do not prove full
+  real audio/container/oversized corpus acceptance.
+- `video-timing.json`: eleven pinned byte-level timing grammar observations.
+  Unrelated non-UTF-8 metadata does not invalidate ASCII frame records; malformed
+  indices/field order, missing timestamps and nonfinite timing remain refusals.
+- `video-timeline.json`: four pinned real clips and four source comparison pairs,
+  including equal sampled lookup keys with a differing native frame. Native RGBA,
+  presentation timestamps and duration are independent source observations;
+  VFR boundary quantization and full consumer/cancellation coverage remain pending.
+- `video-codec.json`: five pinned real VP8/VP9 byte fixtures over opaque,
+  translucent, extensionless and single-frame inputs. Probe fields, alpha-safe
+  decoder arguments, frozen 10 fps RGBA hashes and content keys are source
+  observations. Encoded fixtures are synthetic artwork, not the final real-media
+  acceptance corpus. Timeline comparison, decoder/cache failure recovery and
+  conversion remain outside this initial seam.
+- `video-probe-error.json`: pinned source refusal for an actual truncated WebM,
+  with input/source hashes. Probe failure is not inferred from a raster decoder
+  failure: FFprobe can recognize a damaged PNG container without decoding pixels.
+- `media-format.json`: 22 pinned byte-header/extension detections and eight
+  collision-key observations. Magic bytes take priority over extension hints;
+  JSON without a hint stays unknown. This is not video decoding or local CLI
+  target-format selection. Collision keys retain the final sampled lookup bucket.
+- `static-codec.json`: Pillow 12.3.0; original
+  `emojikit.identity.fingerprint` and `emojikit.media.is_blank_image` outputs.
+  Input hashes protect the four PNGs. The public-logo input is an unchanged copy
+  of the repository's public artwork; other inputs exercise opaque pixels,
+  invisible RGB under transparency and alpha boundaries. Source revision/hash
+  are recorded in the fixture. This does not cover SVG, Lottie or VP9.
+- `static-convert.json`: the four raster inputs and a synthetic gradient SVG through pinned
+  `emojikit.media.to_static_png`, with exact PNG-byte and decoded-RGBA hashes,
+  size/mode and blank-image refusal. Output preservation is checked separately
+  by the native test. These are Pillow 12.3.0 Windows source outputs, not target hashes.
+  PNG compression bytes can differ across external platform codec builds even
+  when decoded pixels are identical. During migration, the hosted checkpoint
+  regenerates the pinned source result on its runner, verifies unchanged RGBA
+  hashes/refusals and compares target bytes to that independent same-runner
+  source oracle. It never replaces the committed expectation with target output.
+  The authored native `source-static-images --output-dir DIRECTORY` replacement
+  admits both original source hashes and frozen recipes before replaying these five
+  cases and the seven `provider-image.json` cases below. It requires exactly
+  CPython 3.11.9, Pillow 12.3.0 and resvg-py 0.5.0. Its outputs are
+  `static-convert-source.json` and `provider-image-source.json`; the original
+  driver's `MediaError=RuntimeError` port is disclosed rather than exception-class
+  parity. The native generator and its runtime tests remain uncompiled/unexecuted;
+  original drivers and fixtures stay until the migration gates pass.
+- `lottie-validation.json`: 84 independent CPython 3.11.9 loaded-document
+  validation observations, including original error classes. Native historical
+  replay admits the pinned validator and exception-class source from Git and
+  compares every message/class; stat/magic/load are supplied ports, not actual
+  file/codec proof. The input recipe retains huge integers and ordering. Typed
+  validation and real-file/worker tests are authored but unexecuted; no source
+  retirement or complete Lottie acceptance is implied.
+- `source-baseline.json`: exact original paths and SHA-256 identities for 277
+  Git blobs at the pinned source revision. This is mechanical source inventory,
+  not a claim that the files or tests have migrated.
+- `coverage.json`: all 1489 original declared cases remain explicitly pending.
+  Static declarations do not include every inherited, decorated or generated case;
+  zero pending and complete discovery are required before source retirement.
+- `source-discovery.json`: seven independent CPython 3.11.9 loader observations
+  for inheritance, C3 ordering, overrides, mixins, non-callable shadowing, the
+  `test` prefix, `runTest` and inconsistent/duplicate bases. Only trusted small
+  synthetic classes execute; repository source remains parse-only. Imported bases,
+  decorators and dynamic collection remain unresolved by static discovery.
+- `source-bindings.json`: five independent CPython 3.11.9 module-loader observations.
+  Collection uses sorted final module bindings; subclasses retain the original
+  parent class after its name is rebound. A function can replace a collected
+  class, and `runTest` is collected on presence even when its value is non-callable.
+  Only trusted synthetic modules execute. Unknown imported classes, definition-time
+  effects, decorators and subclass hooks still block complete static discovery.
+- `tooling-source-contracts-v2.json`: corrected independent source observations
+  for 24 manifest cases (four valid host manifests), two environment plans and
+  four confinement paths. UTF-8 payload hashes use actual written LF bytes.
+  The earlier `tooling-source-contracts.json` is an invalid newline-corruption
+  diagnostic, not parity evidence and not consumed by the target tests.
+  Native-owned historical regeneration now admits the original environment and
+  manifest sources plus a separately pinned input recipe before using the shared
+  bounded worker. Private host facts do not patch the worker's real environment;
+  all 30 observations come from original functions and real disposable files.
+  This new generator remains uncompiled and unrun.
+- `tooling-package-source.json`: 26 exact Windows-x64 source-selected package
+  members and their SHA-256 identities. The executable and wheels are explicitly
+  synthetic selection fixtures; this does not prove an installed package or ABI.
+  Native-owned regeneration executes only the two admitted original source
+  slices, retaining the Windows golden and comparing an explicitly disclosed
+  same-platform manifest. It verifies all member names, CRCs, input preservation
+  and checksum text before success-only cleanup. Caller-supplied expected values
+  are ignored; failed evidence is retained. The new generator is uncompiled/unrun.
+- `media-continuation/worker.json`: 46 independent pinned static worker outcomes,
+  including defaults, malformed requests, path refusals, corrupt-image errors,
+  exact output bytes and occupied-output preservation. Captured with Pillow 12.3.0;
+  error-message comparison alone does not establish exception-class or worker
+  envelope parity. Native target tests are authored but have not yet run.
+- `media-continuation/static-boundary.json`: eighteen actual CPython 3.11.9 /
+  Pillow 12.3.0 source observations, captured before the native repair. Preview
+  faults retain their actual exception class, including a frame-close `OSError`;
+  reencode catches ordinary exceptions as false plus warning while preserving
+  input bytes, but propagates `KeyboardInterrupt` without that warning. Injected
+  calls must actually be reached. Success-byte hashes are independently observed,
+  not native expectations. This direct source slice does not prove filesystem
+  failures, combined faults, tint, worker exit status or cross-platform acceptance;
+  the new native boundary test is authored but has not run.
+- `media-continuation/prepare-tint.json`: nine actual pinned CPython 3.11.9 /
+  Pillow 12.3.0 static prepare observations, including reencode-before-tint order.
+  Invalid hex raises the real `MediaError`; non-string tint and refused repaint
+  raise `ValueError`. Ordinary injected save exceptions produce the original
+  warning and preserve input; `KeyboardInterrupt` propagates without that warning,
+  including before invalid tint. Successful result, byte hashes and actual fault
+  hits are captured from source. This is not native runtime, final-write failure,
+  combined-fault or cross-platform proof; its new native tracer remains unrun.
+- `source-inventory.json`: four independent CPython 3.11.9 stdlib AST observations
+  and two parser refusals. Rust-owned extraction preserves class bases, method
+  locations, decorators, assertion source slices, import aliases, CLI arguments
+  and custom `load_tests` detection without importing source modules. A raising
+  module body is deliberately parsed, never executed. This is not complete
+  inherited/dynamic discovery or retirement approval; those remain explicit gates.
+- `coin-rebuild-links.json`: ten independent hash-pinned final-link/notification
+  observations. Final links sort and deliberately resend, empty state writes
+  nothing, and final send/save failures propagate. Per-pack notifications skip
+  recorded names and report both send/save failures without stopping the build;
+  a failed save retains the source's in-memory sent append. Controlled effects
+  are policy evidence only. Authored actual CLI tests check loopback payloads,
+  family lease ownership, resend, refused-send byte preservation, empty/missing/
+  malformed state. These new Rust tests have not yet run.
+- `coin-rebuild-delete.json`: six source deletion/probe/persistence traces with
+  virtual 500ms pacing. Only missing readback closes an old pack; unknown stops,
+  surviving packs remain incomplete, and already-confirmed packs are not deleted
+  again. Authored build-command loopback covers a surviving old pack, restart of
+  only its unconfirmed deletion, intent-before-create, no duplicate successful
+  upload/notification, all→content map→final links, unknown-delete preservation,
+  proof-workspace failure and malformed-success envelopes with intent retained. Target execution and full failure/platform
+  acceptance remain pending; all endpoints and operator values are synthetic.
+- `coin-rebuild-walk.json`: twelve pinned cursor/upload/skip/stop traces.
+  Durable intent precedes create/add, permanent skips advance the cursor,
+  verified transient failures roll it back, ambiguous results retain intent and
+  stop later uploads, and server-full rollover saves a new create intent. Live
+  count discrepancy and missing owner refuse before old-pack deletion. Controlled
+  effects and virtual 100ms pacing are policy evidence, not actual transport,
+  deletion, announcement, command or full restart/platform acceptance.
+- `coin-plan-disk.json`: independent actual source plan/shared-report observations
+  from a reused sparse-alpha PNG, duplicate chain artwork, empty/corrupt inputs,
+  inventory representative preference and quoted CSV keyword loading. Source/input
+  hashes protect provenance. Native disk tests additionally refuse corrupt frozen
+  plans and preserve prior files; full plan crash/concurrency acceptance is pending.
+- `coin-rebuild-recovery.json`: eighteen pinned interrupted-create/add traces.
+  Create shape/content proof precedes adoption; add proof considers only the
+  recorded suffix, never count growth or a prior identical sticker. Unknown,
+  foreign/unreadable art, duplicate hits and missing sources retain the intent;
+  proven absence rolls back the cursor. State/save/report/download order is source
+  evidence, not complete build-command acceptance. A separate bounded loopback
+  disk adapter checks actual same-image create adoption, persisted restart,
+  malformed live-read preservation and temporary-proof cleanup without mutations.
+- `coin-rebuild-map.json`: eight pinned source map/admission effect snapshots.
+  Reordered content, current aliases, provider overlap/top-ups, diagnostic
+  identity candidates, lost-alias candidates and reviewed/unreviewed crowds
+  retain source write/refill/report order. Identity/disk effects are controlled;
+  the separate actual command loopback checks reordered real PNGs, both locks
+  during snapshot read, map/refill readback and unreadable-image preservation.
+  Missing-plan creation, full build/link, crash/platform and source-case acceptance
+  remain pending. No live mutations or installed activation.
+- `coin-map-identity.json`: eight independent source one-to-one content attribution
+  cases: reordered live list, Hamming boundary, zero/multiple matches, duplicate
+  image attribution, missing upload/source and unreadable live bytes. Source
+  refusal text/order are retained. This is not durable rebuild-map/public CLI
+  acceptance; no positional mapping or second dedup mechanism is introduced.
+- `coin-logo-review.json`: four pinned read-only provider/filter/order traces.
+  Strict threshold, missing/unreadable skips, virtual paging/per-image waits and
+  reverse tuple flag ordering are preserved. This is a policy seam, not actual
+  public review/fix orchestration or proof the flagged artwork is incorrect.
+- `logo-distance.json`: three pinned actual noise-art comparisons, including the
+  original inverted-same-mark and different-art assertions. Typed Pillow variants
+  preserve shared dHash; inversion/restyling is not proof of wrong artwork.
+  These fixtures do not authorize automatic fixing or prove full review/replace
+  CLI, provider, durable recovery or installed-platform acceptance.
+- `coin-replace-publish.json`: nine pinned `fix_one` effect-order traces:
+  intent before mutation, ambiguous response followed by independent content
+  proof, definitive refusal, unchanged/shifted set, wrong art and unknown readback.
+  Controlled effects prove ordering only; an additional bounded native loopback
+  test exercises one immutable multipart replacement, intent present before POST,
+  downloaded art proof, original/prepared promotion and all-alias map readback.
+  Full ambiguous retry, process-death/race and platform acceptance remain pending.
+- `coin-replace-recovery.json`: nine independently pinned recovery traces with
+  exact map/state target binding, unknown/wrong-art refusal, old-still-live
+  clearing and idempotent all-alias repoint. External/durable effects are controlled;
+  an initial physical loopback adapter verifies exact target binding, downloaded
+  content, inventoried original/prepared promotion, all-alias map replacement and
+  idempotent restart without another mutation. Sources remain until durable map
+  save/intent clear; missing/changed source refuses. Complete actual mutation,
+  fault/race/platform and process-death coverage remain pending.
+- `coin-replace-proof.json`: twelve source before/after CID-list observations.
+  Length and every other ID must be unchanged, position valid and new ID absent
+  from the original set. This structural proof alone does not establish artwork;
+  downloaded content proof, bound durable intent, promotion/repoint and complete
+  public repair command acceptance remain separate pending requirements.
+- `coin-remap-cache.json`: six pinned manifest-digest/cache/download traces:
+  failed-image retry, legacy layout, obsolete signature length invalidation,
+  changed live manifest, deletion pruning and empty packs. Signature bytes are
+  controlled; actual image/numeric proof is separate. Full malformed-base64,
+  primitive-ID, concurrent persistence and public command parity remain pending.
+- `coin-remap-math.json`: four actual source 16x16 RGB-on-black plus alpha
+  signatures and five source float32 nearest/runner-up observations, including
+  first equal minimum, single-candidate infinity and a 513-row chunk boundary.
+  Source NumPy 2.4.6 observations are immutable; checkpoint target keeps 2.4.6
+  because latest 2.5.4 requires Python 3.12+, beyond the Python 3.11 runtime.
+  The hosted binary-only install proved that incompatibility; no source build
+  or runtime upgrade is substituted to hide it. Rust owns orchestration and calls
+  unchanged typed external NumPy/Pillow APIs. Full arbitrary dtype/BLAS/platform,
+  cache, runtime process and public command acceptance remain pending.
+- `coin-remap-policy.json`: seven pinned `_remap` admission traces with controlled
+  nearest-distance/runner-up outputs. Dry mode writes nothing; calibrated cutoff
+  and margin accept their exact boundaries; incomplete sets, failed images and
+  ambiguity write candidates rather than replace the map. This verifies policy,
+  not nearest/signature arithmetic, actual backup/lock persistence or public CLI.
+- `coin-audit.json`: seven pinned cache/list/download/report traces with virtual
+  waits and independent durable snapshots. Deleted IDs leave totals, decode errors
+  retry instead of becoming blanks, locations come from live order, distinct CIDs
+  sharing a hash form duplicate groups, listing exhaustion preserves earlier
+  progress and does not publish a partial report. Source test names accompany
+  selected observations. `coin-audit-image.json` adds seven real source pixel
+  hash/blank/error cases, reusing unchanged provider-image inputs. Native command
+  loopback covers one download, persisted retry/cache, current live positions and
+  no second download after success. Full original assertions, arbitrary primitive
+  coercion, process-death and installed-platform acceptance are pending.
+- `coin-manifest.json`: five independent pinned coin-report observations using
+  the retained pure source table oracle, not a native-backed Python binding.
+  Live order, sorted aliases, unmapped IDs, empty/title fallback, primitive IDs,
+  Unicode and hostile pipe/newline cells are byte-exact. The original coin-table
+  assertion is named in provenance; arbitrary container/float coercion remains
+  unaccepted. Separate owned-file/actual loopback-command tests cover unknown
+  readback preservation, atomic outputs, source-file preservation and custom-token
+  error redaction; no live Telegram calls or installed runtime switch.
+- `provider-publish.json`: eight pinned source top-up traces at controlled
+  live/hash/upload/proof/promotion/persistence seams. Includes full-set rollover,
+  rejected/ambiguous/unknown mutation, verified absence, unknown readback and
+  current-map skip. Durable write ordering and exact intent fields are source
+  observations; this is not complete actual publisher or restart acceptance.
+  Native effects additionally exercise one real loopback multipart upload, exact
+  supplied media bytes, content readback, mapping/tally persistence and a second
+  mapped-ticker skip. Full ambiguous mutation/process-death coverage stays open.
+- `provider-proof.json` / `provider-recovery.json`: nine independent source
+  content-proof traces and seven interrupted-upload recovery/order traces.
+  External download/dHash/live state/promotion/persistence are controlled seams;
+  these prove policy only, not actual Telegram, codecs, durable restart or
+  complete original recovery-case migration. Recorded source identity is reused;
+  unknown/duplicate/unreadable evidence refuses, maps save before promotion and
+  provider tally is idempotent/separate from rebuild order. Additional native
+  staging tests use existing actual image bytes, private directories, mismatched
+  promotion preservation and retained pending sources. Initial durable-recovery
+  integration reads live sticker/download bytes only from a bounded loopback
+  server, persists mapping/tally and proves no second add/create request; it is
+  not the complete source crash/restart matrix or live service acceptance.
+- `keyword-writer.json`: four source byte-exact quoted UTF-8/CRLF CSV observations
+  and four actual image-admission checks. Earlier names survive empty lookups;
+  sorted rows and PNG decode/alpha-bbox admission differ intentionally from the
+  provider-logo <=8-visible-pixel rule. Native atomic replacement additionally
+  protects the previous CSV when malformed input fails.
+- `gecko-fetch.json`: five pinned source actual-image/mocked-HTTP cache workflows
+  and six safe-ticker observations. Good cache skips download; corrupt cache is
+  refreshed; invalid bodies never become logos; page failure yields partial exit.
+  Request order, virtual waits, CSV bytes and destination hashes are source
+  observations. This is not live fetch/public CLI/full crash/error acceptance.
+- `gecko-names.json`: six source market-page/long-tail/duplicate-symbol/partial
+  lookup traces with virtual page waits. No live CoinGecko requests; arbitrary
+  primitive coercion and full public fetch/build command parity remain pending.
+- `provider-image.json`: seven pinned source provider-logo observations: 0/8/9
+  visible pixels, alpha 10/11/128, hidden RGB and corrupt bytes. Blank detection
+  runs before fitting; accepted 100x100 PNG/RGBA hashes come from source. The
+  hosted source oracle checks unchanged pixels/refusals and supplies same-platform
+  PNG bytes. Exclusive native output preservation is an additional safety check;
+  real provider downloads and public publishing acceptance remain separate.
+- `cmc-logo.json`: eight source metadata/logo lookup traces, including missing,
+  non-object payload, wrong ID, empty logo and 64-to-128 URL selection. Waits are
+  virtual; actual status/authentication/JSON/logo bytes are tested on bounded
+  numeric-loopback HTTP, never paid CMC calls. `cmc-map.json` adds six explicit
+  ordered-query/source merge traces, unique full/base symbol sets, transient
+  aggregation and stable duplicate-ID position. Python set iteration is unstable;
+  this ordered seam does not certify source process-randomized query precedence
+  or arbitrary mixed-type IDs. Public CLI/persistence parity remains pending.
+- `paprika-search.json`: seven source two-query name/ticker fallback traces,
+  preserving quota stop, partial-not-used and transient recovery with virtual
+  metered waits. It does not contact the provider or certify a live quota.
+- `paprika-resolve.json`: five source resolver traces with per-coin saved snapshots,
+  quota stop, unknown-not-cached, cached misses and explicit retry-unmatched.
+  Fake provider outcomes exercise policy, not live HTTP/publication acceptance.
+  Native durable-cache tests replay those same traces on owned files, fresh
+  readback, competing OS ownership, malformed-cache preservation and controlled
+  search/save failure; required existing fixtures are reused, not target-generated.
+- `inventory-parse.json`: twenty-four exact source block-parser observations,
+  including Unicode/control whitespace, CRLF, unanchored headings, greedy header
+  backtracking and cross-line ticker quirks. No real operator inventory is used.
+- `coin-state.json`: twenty source resume-shape/cursor/order/in-flight refusal
+  observations, including booleans rejected as counts and cursor/order mismatch.
+  These pure invariants are not persisted restart or live publication acceptance.
+- `coin-http.json`: nine independent source retry traces using virtual time:
+  immediate success, quota stop, transient recovery, exhausted retries and
+  Retry-After clamping/defaults. Actual native loopback transport is tested
+  separately; redirect, provider CLI and durable cache parity remain pending.
+- `provider-policy.json`: seven source candidate-precedence observations and
+  fourteen Paprika/CMC status outcomes. Quota, transient, missing and rejected
+  credentials stay distinct. Transport/backoff/cache/CLI integration is separate.
+- `coin-plan.json`: four source-observed deterministic image-group plans and four
+  current-map alias replays. Inventory representative preference, merged keyword
+  order, duplicate ticker names and unapproved shared groups remain explicit.
+  This pure string-ID seam does not cover provider/network/durable map workflows.
+- `coin-aliases.json`: CPython 3.11.9, Unicode 14.0.0; pinned `coins/alias_map.py`
+  AST `DROP`, `norm` and `main`, with in-memory map/CSV/missing-row I/O seams.
+  Expected map order, messages, ambiguity and errors are source observations.
+  The fixture covers 12 normalization, eight grouping and six error cases.
+  Locks, atomic file writes, inventory parsing/refill and the CLI are not
+  exercised by this pure-policy fixture.
+
+- `static-reencode.json`: source lossless WEBP re-encoding with `exact=True`,
+  including RGB under fully transparent pixels and idempotent repeat. Hashes
+  cover source-encoded bytes and every decoded RGBA byte; only owned copies are
+  modified by the test.
+- `static-preview.json`: four pinned source observations for public artwork,
+  alpha edges, invisible RGB and corrupt files. Byte/pixel hashes and aspect/no-
+  enlargement behavior preserve the source's default BICUBIC thumbnail contract;
+  gallery thumbnails use a different filter and remain outside this slice.
+- `static-tint.json`: four pinned source observations over opaque, alpha-edge,
+  invisible RGB and corrupt raster inputs. Exact lossless WEBP/RGBA/alpha hashes,
+  repeat return values and corrupt-byte preservation are verified on owned copies.
+- `static-compare.json`: pinned `emojikit.identity.same_image` results for
+  equal/near/different colour, invisible RGB and corrupt inputs. Unknown remains
+  null, not false. This static contract must not be applied to video timelines.
+- `animated-key.json`: 11 source observations with verified source/runtime hashes:
+  canonical ordering, duplicate keys, Unicode, nonfinite numbers, negative zero,
+  large integers and corrupt JSON/UTF-8 raw-byte fallback. Non-object roots,
+  expansion limits and truncated gzip errors propagate rather than becoming keys.
+  Nonfinite JSON files intentionally exercise CPython's non-standard JSON support.
+  No raster phash is invented for vector artwork.
+- `lottie-file.json`: seven pinned real-file validation observations and six
+  vector comparison pairs. Size and gzip magic precede decoding; truncated gzip
+  is distinct from malformed JSON. The oversized malformed header is stored as
+  UTF-8 Base64 and decoded into owned scratch with its original byte hash checked.
+  A separate native-owned historical replay admits the exact original validator,
+  loader and exception class, then uses external pathlib/gzip/io/json on these
+  seven validation inputs. Input bytes are checked before historical execution;
+  observation drift retains reconstructed scratch for diagnosis. This replay is
+  authored but unexecuted and does not regenerate the six comparison pairs.
+  Canonical equality is true, vector mismatch stays unknown, and only `compare`
+  has the byte-identical shortcut.
+- `tgs-prepare.json`: five pinned source file observations: Unicode re-gzip,
+  colour tint, corrupt-input preservation and compressed size-cap refusals for
+  both re-encode and tint. Repeat return values and output bytes are checked;
+  only test-owned copies are rewritten. The larger synthetic JSON is required
+  to exercise a genuine 64 KiB compressed limit, not a mocked encoder result.
+- `tgs-package.json`: pinned source Unicode/deterministic gzip package bytes,
+  wrong canvas and nested subtract-mask refusal. Native publication additionally
+  preserves existing output and refuses to publish failed candidates.
+- `tgs-load.json`: seven pinned source cases over actual gzip files and plain
+  JSON. Includes corrupt gzip, malformed UTF-8/JSON, non-object roots and an
+  8 MiB expansion refusal. `.tgs` inputs are binary gzip fixtures, including
+  intentionally malformed binary data; they must never be transcoded as UTF-8.
+  Their hashes and expected decoder errors verify this binary-format boundary.
+  The malformed header is stored as UTF-8 Base64 (`corrupt.tgs.b64`) because
+  repository text classification cannot recognize its truncated binary header;
+  the test decodes it into owned scratch and verifies the original byte hash.
+  No encoding exception or hook bypass is used.
+- `coin-inventory.json`: source normalization, safe ticker aliases and text
+  refill/count/newline behavior with string IDs. Header parsing, non-string ID
+  formatting, file writes and locks remain outside this verified slice.
+- `lottie-preview.json`: actual pinned source renders through rlottie-python 1.3.8
+  and Pillow 12.3.0: still, moving circle and one-native-frame clips. Records
+  WebP bytes, decoded frames and durations. These are synthetic artwork inputs,
+  not full real-world animation coverage. CI regenerates an independent source
+  oracle on its own platform and compares target bytes to that source; committed
+  Windows observations remain unchanged. The authored Rust-owned
+  `source-lottie-render` command selects only the fixed original source functions
+  after source, fixture-recipe and physical input admission. It regenerates three
+  previews and two animated gallery observations without target codec output;
+  compilation/runtime acceptance is still pending. The short clip must retain its
+  native rate rather than producing an empty sampled frame list.
+- `lottie-validation.json`: pinned `validate_tgs` policy with already-decoded
+  document and file stat/magic/load seams; 84 source cases cover timeline,
+  numeric coercion, required fields and nested subtract-mask refusal. This is
+  not gzip, JSON decoder, renderer or exception-class parity.
+- `lottie-tint.json`: pinned `emojikit/repaint.py` pure source AST under
+  CPython 3.11.9; tint parsing/errors, boolean numeric quirks, solid/keyframed
+  colours and gradient opacity preservation. This does not cover animation
+  rendering, gzip packaging, file replacement or runtime cancellation.
+
+- `source-assertions.json`: parse-only CPython 3.11.9 assertion spans and
+  loop/with/subTest/branch contexts from two hash-pinned original test modules
+  plus one Unicode/multiline synthetic input. Repository source is never imported
+  or executed. This preserves static evidence for migration review; it does not
+  prove runtime variant completeness or source-to-native case equivalence.
+- `media-continuation/main-policy.json`: eight actual CPython 3.11.9 observations
+  of pinned `media_bridge.main` and log redaction with controlled execute and
+  filesystem seams. Success writes one result; OSError/ValueError/RuntimeError
+  write one redacted error and return 1; TypeError/EOFError/KeyError escape without
+  a response. This is catch/envelope policy, not codec or atomic-write acceptance.
+- `coin-map-lock.json`: two actual pinned `alias_map.main`/`enhance_map.main`
+  canonical-lock refusal outcomes: exit 4, unchanged input map, no filled output
+  and no downstream work. The corresponding original held-lock assertion is
+  identified in the fixture. Native command regression tests are authored but
+  remain unexecuted; this fixture does not prove general concurrent-writer parity.
+
+- `media-continuation/static-errors.json`: six actual pinned CPython 3.11.9 /
+  Pillow 12.3.0 static fingerprint and conversion outcomes. Visible conversion
+  preserves the independently captured PNG hash; blank conversion raises the
+  source MediaError, while corrupt fingerprint and conversion both raise
+  UnidentifiedImageError. Typed error classes, messages and input preservation
+  are tested in authored native code; execution remains pending.
+- `coin-verify-gate.json`: three actual pinned verify command gate outcomes.
+  Unresolved replacement blocks fixing with exit 4; failed fixing returns 4;
+  successful fixing returns 0. Controlled lock/reconcile/fix seams preserve effect
+  ordering but do not prove real replacement, transport or provider acceptance.
+- `tooling-sandbox-source.json`: five actual source parser/panel-argument cases
+  and credential-template scrubbing under CPython 3.11.9. Native-owned historical
+  regeneration admits exact source and input-recipe hashes before runtime access,
+  then selects only the original scrub/parser/argument functions. A private
+  synthetic environment, real template and stdlib parser supply observations;
+  caller-supplied outputs are ignored. No clone, panel, browser or service is
+  started. Success removes only the verified template; failure retains evidence.
+  The new generator is uncompiled/unrun. These are command policy observations,
+  not active-codec cancellation or inherited-process lifetime proof.
+
+The existing `../backend/intent.json`, `resume.json`, `steps.json`, `bot.json`,
+`roster.json`, `reconcile.json`, `view.json`, `ingest.json` and `../similarity.json`
+remain independent pre-port source corpora.
+New native tracer tests reuse their exact outcomes without rewriting the fixtures.
+Pinned byte checks do not replace source regeneration, Python binding error checks
+or complete original-case coverage; those acceptance gates remain pending.
+
+Original executable sources remain in Git history. Fixture regeneration must
+retrieve and verify that exact source and runtime before executing a hermetic,
+bounded source oracle. Never regenerate expected values from the target to
+make a failing parity test pass. Complete native generation/drift tooling and
+full source-case mapping remain migration requirements before source retirement.

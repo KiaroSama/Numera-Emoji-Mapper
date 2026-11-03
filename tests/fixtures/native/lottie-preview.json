@@ -1,0 +1,129 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "5112b55f21d4d241ffe9660d5294de20487d4ea1e9772188fb6bd125f7fef63b",
+  "Pillow": "12.3.0",
+  "cases": [
+    {
+      "name": "still",
+      "input": "tests/fixtures/lottie/red_circle_512.json",
+      "still": true,
+      "size": 52,
+      "fps": 15,
+      "input_sha256": "f12c38be112dddb2ba6d3217034c8396479e6cfcf86cfeca22fa236381b0f9d1",
+      "expected": {
+        "bytes": 450,
+        "webp_sha256": "933d980dcccef16b77ef23e9412efe756bac6a2f82d6403918d52cbd67b24766",
+        "size": [
+          52,
+          52
+        ],
+        "frames": [
+          {
+            "rgba_sha256": "2caf1ee4f651ca50b8054daa1887d7d48485133cd2998fc154b58245c5499a0f",
+            "duration": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "moving",
+      "input": "tests/fixtures/native/lottie-preview/moving.json",
+      "still": false,
+      "size": 52,
+      "fps": 15,
+      "input_sha256": "689bc545cc022669eec1a996940306e4e55ea012ec94a6b3c26e32f1a7f1eebf",
+      "expected": {
+        "bytes": 7026,
+        "webp_sha256": "69a24d677382bf8bfa9d398e8827f0c87d8d035e08583b92d6cd1cf4f309c0a0",
+        "size": [
+          52,
+          52
+        ],
+        "frames": [
+          {
+            "rgba_sha256": "11fe83a933c3adafe2a4eef791f50bc43600115f3b80384b6e27b687f9efdf98",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "e1869dc2484e63b6e86c832c4aef05348aac6deec994d3bc47410f153824c8e7",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "f956a2d5104e130c477979eef1b2842692ffacd5c00b84ac764b9f27236040a5",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "1733f92ea722ca6245049ddb1528edbcf997fd1ecb9c95000dce239bf4c670b2",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "d275384e67ac5cc4840c43cf9654954ab90bb581d5bdb75eafc362cca0db5278",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "229b518cd258b13bdd14d02a82cda1cb8f2d6c9c6d6ffd9cefeff97484b9f7c2",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "43f551861f363c6c95dc31feaaeb07ac14e94a918b25ab6691c1417d2f52d151",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "e2c87cb800c5ec01774bc52b8af30009eb2cfdaeb461139f488a880436771843",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "367e617a2c40586bdf9eb03693676f386381a9f10531b47532f4283bc648326c",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "ce5ab3fcd208a9be48317ccc561d7ff5eaa270e065e8c7590b4f2599d3ae71ee",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "3f1c04528e95e78d78c4f6564f4bfc1fb9f79c0961dc710e6f4e8fcbd58458b7",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "c541cfd0cc66184f7a27668128e127234c735db734cd632e238e5f7670dd87e2",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "e9ce4ffa0694639eac2409c0502bfb85e141bd421bfcec759cd2b633a6267670",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "51df6fca4b9b81a1887616c25873179af02cb74e0a152a593cbc92407bfa8f7c",
+            "duration": 66
+          },
+          {
+            "rgba_sha256": "69fe8bd9052483786048b0605230d67e1b662b7da29260cf2d0e61d8a57b286f",
+            "duration": 66
+          }
+        ]
+      }
+    },
+    {
+      "name": "short",
+      "input": "tests/fixtures/native/lottie-preview/short.json",
+      "still": false,
+      "size": 52,
+      "fps": 15,
+      "input_sha256": "4765744d9fa0db49f5685ba20d8a8c9629deb39ab4cf5f5ebe3cd88b907d4275",
+      "expected": {
+        "bytes": 450,
+        "webp_sha256": "933d980dcccef16b77ef23e9412efe756bac6a2f82d6403918d52cbd67b24766",
+        "size": [
+          52,
+          52
+        ],
+        "frames": [
+          {
+            "rgba_sha256": "2caf1ee4f651ca50b8054daa1887d7d48485133cd2998fc154b58245c5499a0f",
+            "duration": 0
+          }
+        ]
+      }
+    }
+  ]
+}

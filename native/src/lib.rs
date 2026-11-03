@@ -12,16 +12,108 @@ pub mod archive_rows;
 pub mod archive_sync;
 pub mod asset_version;
 pub mod atomic;
+#[cfg(test)]
+mod atomic_tests;
+#[cfg(test)]
+mod binding_domain_tests;
+#[cfg(test)]
+mod binding_ingest_tests;
+#[cfg(test)]
+mod binding_intent_tests;
+#[cfg(test)]
+mod binding_reporting_tests;
+#[cfg(test)]
+mod binding_similarity_tests;
 pub mod bot_payloads;
 pub mod brand_logo;
 pub mod browser_open;
 pub mod catalog;
 pub mod catalog_read;
+mod codec_compare;
+pub mod codec_error;
+pub mod codec_format;
+pub mod codec_image;
+pub mod codec_lottie_identity;
+pub mod codec_lottie_load;
+pub mod codec_lottie_package;
+pub mod codec_lottie_prepare;
+pub mod codec_lottie_preview;
+pub mod codec_lottie_validate;
+pub mod codec_process;
+mod codec_raster;
+mod codec_request;
+pub mod codec_static_identity;
+pub mod codec_static_prepare;
+pub mod codec_svg;
+pub mod codec_tint;
+pub mod codec_video;
+mod codec_video_cache;
+pub mod codec_video_encode;
+mod codec_video_error;
+pub mod codec_video_preview;
+mod codec_video_probe;
+mod codec_video_remux;
+pub mod codec_video_timeline;
+pub mod codec_video_validate;
+pub mod codec_worker;
+pub mod coin_aliases;
+pub mod coin_audit;
+pub mod coin_audit_cli;
+pub mod coin_cmc;
+pub mod coin_gecko;
+pub mod coin_gecko_cli;
+pub mod coin_gecko_fetch;
+pub mod coin_http;
+pub mod coin_inventory;
+pub mod coin_inventory_parse;
+pub mod coin_keywords;
+pub mod coin_keywords_cli;
+pub mod coin_logo_review;
+pub mod coin_manifest;
+pub mod coin_manifest_cli;
+pub mod coin_map_cli;
+#[cfg(test)]
+mod coin_map_cli_tests;
+pub mod coin_map_identity;
+pub mod coin_paprika;
+pub mod coin_plan;
+pub mod coin_plan_disk;
+pub mod coin_provider_cli;
+pub mod coin_provider_effects;
+pub mod coin_provider_policy;
+pub mod coin_provider_proof;
+pub mod coin_provider_publish;
+pub mod coin_provider_recover;
+pub mod coin_provider_resolve;
+pub mod coin_provider_stage;
+pub mod coin_rebuild_cli;
+pub mod coin_rebuild_delete;
+pub mod coin_rebuild_effects;
+pub mod coin_rebuild_links;
+pub mod coin_rebuild_map;
+pub mod coin_rebuild_map_cli;
+pub mod coin_rebuild_map_disk;
+pub mod coin_rebuild_recovery;
+pub mod coin_rebuild_recovery_disk;
+pub mod coin_rebuild_walk;
+pub mod coin_remap;
+pub mod coin_remap_cache;
+pub mod coin_remap_cli;
+pub mod coin_remap_math;
+pub mod coin_remap_policy;
+pub mod coin_replace_disk;
+pub mod coin_replace_effects;
+pub mod coin_replace_proof;
+pub mod coin_replace_publish;
+pub mod coin_replace_recovery;
+pub mod coin_state;
+pub mod coin_verify_cli;
 pub mod collection_manifest;
 pub mod collection_names;
 pub mod collection_notify;
 pub mod collector;
 pub mod config;
+pub mod config_integer;
 pub mod convert_cli;
 pub mod emoji_bot;
 pub mod emoji_ids;
@@ -34,9 +126,11 @@ pub mod identity_survey;
 pub mod ingest;
 pub mod intent;
 pub mod local_cli;
+pub mod lock_diagnostics;
 pub mod locks;
 pub mod logging;
 pub mod media_adapter;
+pub mod media_native_adapter;
 pub mod media_store;
 pub mod migration_apply;
 pub mod migration_bundle;
@@ -66,11 +160,14 @@ pub mod plan_status;
 pub mod plan_steps;
 pub mod process_owner;
 pub mod publication;
+mod publication_download;
+pub mod publication_media;
 pub mod publication_recovery;
 pub mod publish_cli;
 pub mod publish_collection;
 pub mod python_repr;
 pub mod reconcile;
+pub mod repaint_gate;
 pub mod report_bindings;
 pub mod resume;
 pub mod roster;
@@ -79,6 +176,115 @@ pub mod roster_index;
 pub mod roster_markdown;
 pub mod roster_provenance;
 pub mod sandbox_lease;
+pub mod similarity;
+pub mod source_archive_oracle;
+pub mod source_archive_tests;
+pub mod source_assertions;
+pub mod source_benchmark_oracle;
+mod source_binding_policy;
+pub mod source_bot_command_tests;
+pub mod source_bot_oracle;
+pub mod source_bot_tests;
+pub mod source_brand_oracle;
+mod source_catalog_binding;
+pub mod source_catalog_oracle;
+pub mod source_catalog_tests_oracle;
+pub mod source_ci_claims;
+pub mod source_coin_audit_oracle;
+pub mod source_coin_audit_tests;
+pub mod source_coin_cli_tests;
+pub mod source_coin_contracts;
+pub mod source_collection_state_oracle;
+pub mod source_config_oracle;
+pub mod source_coverage_artifacts;
+pub mod source_emoji_ids_oracle;
+pub mod source_entry_points;
+pub mod source_export_tests;
+pub mod source_fake_contracts;
+pub mod source_fitting_oracle;
+pub mod source_fixture;
+pub mod source_gallery_oracle;
+pub mod source_git_inventory;
+pub mod source_http_tests;
+pub mod source_identity_tests;
+mod source_image_identity;
+pub mod source_import_replay;
+pub mod source_ingest_oracle;
+pub mod source_intent_oracle;
+pub mod source_inventory_cli;
+pub mod source_keywords_tests;
+pub mod source_local_ingest_oracle;
+mod source_lock_diagnostics;
+pub mod source_lock_order;
+mod source_logging_format;
+pub mod source_logging_oracle;
+pub mod source_logging_secrets;
+pub mod source_logo_cache_tests;
+pub mod source_lottie_oracle;
+pub mod source_lottie_render;
+pub mod source_media_contracts;
+pub mod source_media_oracle_cli;
+pub mod source_migration_coverage;
+pub mod source_module_discovery;
+pub mod source_operator_oracle;
+mod source_oracle_dispatch;
+mod source_oracle_process;
+mod source_oracle_runtime;
+#[cfg(test)]
+mod source_oracle_runtime_tests;
+pub mod source_oracle_worker;
+pub mod source_package_oracle;
+mod source_panel_concurrency_tests;
+mod source_panel_identity;
+mod source_panel_intent_tests;
+mod source_panel_logging_tests;
+pub mod source_panel_page_tests;
+pub mod source_panel_plan_tests;
+mod source_panel_request_tests;
+mod source_panel_scope_tests;
+pub mod source_panel_view_tests;
+mod source_plan_apply_modules;
+pub mod source_plan_report_tests;
+pub mod source_prebuilt_oracle;
+pub mod source_preflight_oracle;
+pub mod source_provider_image_tests;
+mod source_provider_modules;
+pub mod source_provider_tests;
+pub mod source_publication_contracts;
+pub mod source_publication_tests;
+pub mod source_rebuild_tests;
+mod source_reconcile_namespace;
+pub mod source_reconcile_oracle;
+pub mod source_reconcile_tests;
+pub mod source_reencode_tests;
+pub mod source_reference_behavior;
+mod source_reference_state;
+pub mod source_report_tests;
+pub mod source_resume_oracle;
+mod source_roster_media;
+mod source_roster_modules;
+pub mod source_roster_oracle;
+pub mod source_roster_pack_oracle;
+mod source_roster_pack_recipe;
+pub mod source_roster_tests;
+pub mod source_rows_oracle;
+pub mod source_runtime_discovery;
+pub mod source_sandbox_oracle;
+pub mod source_similarity_oracle;
+pub mod source_snapshot_tests;
+pub mod source_sqlite_oracle;
+pub mod source_state_artifacts_oracle;
+pub mod source_state_compat_oracle;
+pub mod source_static_oracle;
+pub mod source_status_tests;
+pub mod source_steps_oracle;
+pub mod source_sync_order_oracle;
+mod source_telegram_namespace;
+mod source_temporary;
+pub mod source_test_discovery;
+pub mod source_test_inventory;
+pub mod source_tooling_oracle;
+pub mod source_view_oracle;
 pub mod sqlite_snapshot;
 pub mod state_artifacts;
 pub mod state_bindings;
@@ -86,10 +292,50 @@ pub mod status;
 pub mod sync_order;
 pub mod telegram;
 pub mod telegram_bindings;
+pub mod telegram_mutation;
+#[cfg(test)]
+mod telegram_tests;
 pub mod ticker_build;
 pub mod ticker_keywords;
 pub mod ticker_recovery;
 pub mod ticker_state;
+pub mod tooling_build;
+pub mod tooling_check;
+pub mod tooling_convert;
+pub mod tooling_convert_cli;
+#[cfg(test)]
+mod tooling_convert_tests;
+pub mod tooling_doctor;
+pub mod tooling_environment;
+mod tooling_extension;
+pub mod tooling_install;
+mod tooling_interrupt;
+pub mod tooling_launch;
+pub mod tooling_manifest;
+pub mod tooling_menu;
+mod tooling_menu_actions;
+pub mod tooling_menu_cli;
+pub mod tooling_package;
+pub mod tooling_package_cli;
+pub mod tooling_prebuilt;
+pub mod tooling_process;
+pub mod tooling_runtime;
+#[cfg(test)]
+mod tooling_runtime_selection_tests;
+pub mod tooling_sandbox;
+pub mod tooling_sandbox_serve;
+#[cfg(test)]
+mod tooling_sandbox_tests;
+pub mod tooling_similarity_benchmark;
+pub mod tooling_similarity_cli;
+mod tooling_test_cargo;
+pub mod tooling_test_command;
+#[cfg(target_os = "linux")]
+pub mod tooling_test_network_linux;
+mod tooling_test_observation;
+mod tooling_test_plan;
+pub mod tooling_test_runner;
+pub mod tracked_secrets;
 pub mod upload_effect;
 
 use telegram_bindings::NativeTelegram;
@@ -287,7 +533,7 @@ impl NativeLease {
 
 #[pyfunction]
 fn write_state_json(path: String, contents: String) -> PyResult<()> {
-    let value = serde_json::from_str(&contents)
+    let value: serde_json::Value = serde_json::from_str(&contents)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
     atomic::write_json(std::path::Path::new(&path), &value)
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
@@ -315,37 +561,9 @@ fn intent_json(py: Python<'_>, request: String) -> PyResult<String> {
     })
 }
 
-fn greedy(hashes: &[u64]) -> Vec<usize> {
-    if hashes.is_empty() {
-        return Vec::new();
-    }
-    let mut remaining: Vec<usize> = (1..hashes.len()).collect();
-    let mut ordered = Vec::with_capacity(hashes.len());
-    ordered.push(0);
-    let mut last = hashes[0];
-    while !remaining.is_empty() {
-        let (mut best, mut distance) = (0, 65);
-        for (i, &index) in remaining.iter().enumerate() {
-            let d = (hashes[index] ^ last).count_ones();
-            if d < distance {
-                best = i;
-                distance = d;
-                if d == 0 {
-                    break;
-                }
-            }
-        }
-        // swap_remove changes first-minimum ties and therefore the pack order.
-        let index = remaining.remove(best);
-        ordered.push(index);
-        last = hashes[index];
-    }
-    ordered
-}
-
 #[pyfunction]
 fn greedy_indices(py: Python<'_>, hashes: Vec<u64>) -> Vec<usize> {
-    py.detach(move || greedy(&hashes))
+    py.detach(move || similarity::greedy(&hashes))
 }
 
 #[pyfunction]
@@ -355,26 +573,17 @@ fn near_indices(
     query: u64,
     threshold: i32,
 ) -> PyResult<Vec<usize>> {
-    if threshold != -1 && !(0..=16).contains(&threshold) {
-        return Err(pyo3::exceptions::PyValueError::new_err(
-            "phash threshold must be -1 or 0..16",
-        ));
-    }
-    Ok(py.detach(move || {
-        hashes
-            .iter()
-            .enumerate()
-            .filter_map(|(i, hash)| {
-                hash.filter(|h| threshold >= 0 && (h ^ query).count_ones() <= threshold as u32)
-                    .map(|_| i)
-            })
-            .collect()
-    }))
+    py.detach(move || similarity::near(&hashes, query, threshold))
+        .map_err(pyo3::exceptions::PyValueError::new_err)
 }
 
 #[pymodule]
-fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+pub fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("API_VERSION", 1)?;
+    m.add_function(wrap_pyfunction!(
+        publication_media::publication_static_usable,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(announce_bindings::announce_packs_json, m)?)?;
     m.add_function(wrap_pyfunction!(bot_json, m)?)?;
     m.add_function(wrap_pyfunction!(roster_row_json, m)?)?;
@@ -399,7 +608,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::greedy;
+    use super::similarity::greedy;
 
     #[test]
     fn stable_ties_and_empty_input() {

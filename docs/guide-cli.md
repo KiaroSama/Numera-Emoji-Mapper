@@ -2,9 +2,11 @@
 
 ## 12. Full CLI reference
 
-Every entry point, every flag, with defaults and examples. All commands assume
-you run them from the project root with the venv Python
-(`.venv\Scripts\python.exe`). On macOS/Linux use `.venv/bin/python`.
+Every entry point, every flag, with defaults and examples. Native examples run
+from the project root with `.\native\runtime\numera-emoji.exe` on Windows or
+`./native/runtime/numera-emoji` on macOS/Linux. Retained Python coin commands in
+§12.8 use the project venv; additive migration-branch commands are explicitly
+marked there and are not installed until their acceptance gates pass.
 
 ### 12.1 `make-emoji-pngs` — image → 100×100 PNG
 
@@ -49,9 +51,9 @@ Behaviour:
 Examples:
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
-.venv\Scripts\.\native\runtime\numera-emoji.exe make-emoji-pngs --in input\myset --limit 50
-.venv\Scripts\.\native\runtime\numera-emoji.exe make-emoji-pngs            # legacy coin mode
+.\native\runtime\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
+.\native\runtime\numera-emoji.exe make-emoji-pngs --in input\myset --limit 50
+.\native\runtime\numera-emoji.exe make-emoji-pngs            # legacy coin mode
 ```
 
 ### 12.2 `build-pack` — upload a folder of PNGs to emoji sets
@@ -74,7 +76,7 @@ Resumable: progress is saved to `state_<base>.json`; an interrupted/flood-limite
 run continues without recreating existing sets. Use `--dry-run` first.
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe build-pack --base myset --title "My Emojis" `
+.\native\runtime\numera-emoji.exe build-pack --base myset --title "My Emojis" `
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji 😀 --dry-run
 ```
 
@@ -85,7 +87,7 @@ run continues without recreating existing sets. Use `--dry-run` first.
 | `packs...` | *(required)* | One or more pack short-names, `t.me/addemoji/<name>` links, or emoji ids (digits or `premium-id:<id>`) — an id fetches the whole pack it belongs to. Each pack is fetched once; an id that names no pack is reported and counts as a failure (exit 3 when something else succeeded). |
 | `--token-env` | `GENERAL_BOT_TOKEN` | Bot token env var. |
 | `--data-dir` | `collection` | Catalog/media directory. |
-| `--phash-threshold` | `-1` (off) | Hamming distance for near-dup merging; `-1` keeps look-alikes. |
+| `--phash-threshold` | `-1` (off) | Hamming distance `0..16` for near-dup merging; `-1` keeps look-alikes. Out-of-range values are usage errors before pack lookup. |
 | `--limit <n>` | `0` (all) | Max new items per pack. |
 | `--repaintable` | `ask` | What to do with emoji Telegram REPAINTS (`ask`/`skip`/`keep`). The client overrides their colours, so the source pack does not show the stored art: in one of ours they render that art instead — sometimes flat black, sometimes full colour. Look before you decide; with no terminal to answer, `ask` skips them. |
 
@@ -119,14 +121,21 @@ duplicates** (the same real entry repeated inside one file) separately from
 cross-file duplicates. The run reports
 `unique_ids / new / dedup / failed / missing`; `missing` counts IDs Telegram
 could no longer resolve. Each row keeps its origin in `keywords`
-(`premium-id:<n>`). The extraction/dedup logic is covered by
+(`premium-id:<n>`). Original extraction/dedup assertions are retained in
 `tests/test_fetch_emoji_ids.py` (example lines, trailing labels, bullets,
-within-file and cross-file duplicates, bare-ID lists).
+within-file and cross-file duplicates, bare-ID lists). The migration branch
+adds native counterparts in `native/tests/emoji_ids.rs`, including duplicate
+counts, stable first-seen ties, skipped-prose diagnostics and malformed UTF-8
+refusal. The branch also routes `--tint` through the existing shared parser:
+`#RRGGBB` and `RRGGBB` are accepted and stored as uppercase `tint:#RRGGBB`.
+These native tests, command diagnostics and tint normalization remain unexecuted
+and are not installed; malformed UTF-8 is deliberately refused, not silently
+replaced as in the original Python file reader.
 
 Example — pull only the emoji referenced by four bot inventory files:
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe fetch-emoji-ids `
+.\native\runtime\numera-emoji.exe fetch-emoji-ids `
   --ids-file "...\GV Swap bot\bot-emoji-inventory-user.md" `
   --ids-file "...\GV Swap bot\bot-emoji-inventory-admin.md" `
   --ids-file "...\YourBrand Payment Bot\bot-emoji-inventory-admin.md" `
@@ -214,13 +223,13 @@ it never performed:
 | Outcome | Meaning | Effect on the exit code |
 |---------|---------|-------------------------|
 | accepted | Telegram said the file is uploadable. | — |
-| refused | Telegram rejected it (`BotApiError`); the message is printed. | exit 1 |
-| missing | The catalog row points at a file that is not on disk. | exit 1 |
+| refused | Telegram rejected it; the message is printed. | exit 4 |
+| missing | The catalog row points at a file that is not on disk. | exit 4 |
 | not checked | The request never reached Telegram (transport). | exit 3 |
 
 The last row is the one that matters, and the count of unreachable files does
 not change it. A dropped connection is **not** a verdict on the artwork, so it
-is never reported as a refusal — exit 1 is what a refusal returns, and
+is never reported as a refusal — exit 4 is what a refusal returns, and
 answering a lost connection with it sends someone editing artwork that was
 never the problem. It is not reported as an acceptance either: the old counter
 counted attempts, so a run in which every single check failed at the transport
@@ -431,7 +440,7 @@ run it after anything that changes a full pack, and `--sync` to catch up.
 ### 12.5e `status` — is everything current?
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe status
+.\native\runtime\numera-emoji.exe status
 ```
 
 Offline and read-only: runs the roster check (`pack_manifest --check`) and the

@@ -43,6 +43,43 @@ The installed Rust commands `make-emoji-pngs` and `build-pack` power both;
 only the source folder and selected bot token differ. Python retains exact media
 codecs and native-backed bindings for the unchanged coin-provider tools.
 
+The broader first-party Rust rewrite is still in progress: remaining media,
+coin, tooling and test ownership is being migrated separately. The read-only
+`source-inventory`, `package-native`, `package-verify`, `benchmark-similarity`,
+`source-lottie-render`, `source-static-images`, `test-runner`, `runtime-check` and
+`native-convert-owner` contributor commands and conservative
+source-coverage gates are additive migration-branch tools, not features activated
+in the installed package; their new native CLI tests are not yet executed.
+`runtime-check --extension FILE` additionally loads an explicit project-local native
+extension without importing the Python application; its runtime evidence is still pending.
+The explicit [`test-plan`, `test-runner` and `test-cargo` observation candidates](docs/native-launcher.md#compiled-case-observation-candidate)
+snapshot pre-build inputs and bind compiled-case sidecars to actual Cargo metadata.
+The additive Cargo wrapper keeps one original invocation and separate local raw logs;
+all reports remain untrusted, not verified coverage. Main Linux, native browser and
+Windows and migration-checkpoint workflow steps select the wrapper; compiler/runtime
+proof and remaining platform integration are still pending.
+The additive native [`menu`, `doctor`, `check` and `install-prebuilt` candidates](docs/native-launcher.md)
+include foreground execution, retained-source checks and offline-install orchestration.
+The authored `check --python FILE|NAME` override requires a compatible venv and
+independent/embedded runtime agreement; it does not select a different linked
+Python library. Its ordered module-discovery prerequisite gate now avoids the
+unrelated doctor/codec imports and refuses missing dependencies before checks;
+compiler and execution evidence is still pending.
+Runtime and installed-package acceptance is pending; native installation refuses
+until signing, identity/logo and rollback admission is integrated. Existing launch
+and installation procedures are unchanged.
+The separate contributor-only `numera-build` candidate also remains unverified;
+normal installation and the existing launcher do not invoke it.
+The branch also restores call-time native log retention, ID-inventory
+duplicate/prose diagnostics and native-codec requested-ID collection coverage.
+These changes and original-source redaction/retention replays remain unexecuted
+and are not installed.
+Inventory now includes corpus-wide inherited/imported candidates with source
+origins, while keeping unexecuted import and dynamic effects unresolved. See
+[expanded migration status](docs/native-backend.md#expanded-first-party-migration-in-progress).
+The [native codec contracts](docs/native-codec-contracts.md) distinguish authored
+media/error/lifetime/logging changes from still-pending compiler/runtime evidence.
+
 > 📘 **[Full Guide (0 → 100) — docs/GUIDE.md](docs/GUIDE.md)** — complete
 > reference for every workflow and command, written for humans and AI agents.
 
@@ -373,7 +410,32 @@ coin-domain workflows remain Python; shared Telegram transport, upload proofs,
 locks, atomic state, announcements and table rendering use native-backed bindings.
 The generic `build-pack` command also supports the coin bot (`TELEGRAM_BOT_TOKEN`).
 Coin data, scripts and images all live under `coins/`.
-Run every tool as a module from the repository root, e.g.
+The expanded migration branch adds `coin-alias-map`, `coin-enhance-map` and
+`coin-build-keywords`, `coin-fetch-logos [pages]`, `coin-fetch-paprika` and
+`coin-fetch-cmc`, with `--coin-dir DIR` for isolated coin data work. Provider
+commands retain exact `--dry`; Paprika also accepts `--retry-unmatched`. They are not in the
+currently accepted prebuilt runtime yet; see [migration status](docs/native-backend.md).
+Additive `coin-write-manifests` writes read-only live coin reports with
+`--out-dir`, `--state`, `--map` and `--token-env`; full migration acceptance
+and installed-runtime activation remain pending. Additive `coin-check-packs
+[--coin-dir DIR]` resumes a live read-only blank/duplicate audit; failed images
+remain retryable and incomplete listings never replace the report. Additive
+`coin-remap-ids --emoji-dir DIR` rebuilds mappings by content, dry by default;
+calibrated `--apply` preserves a backup and refuses ambiguous/incomplete results.
+It makes no Telegram mutations; full acceptance and installed activation are pending.
+Additive `coin-verify-logos --emoji-dir DIR` is review-only unless explicit
+`--fix --only` selects repairs; fixing mutates Telegram and requires separate
+operator authorization. Full source/platform/installed acceptance is pending.
+Additive `coin-rebuild-map [--coin-dir DIR] [--emoji-dir DIR] [--token-env KEY]`
+uses the frozen rebuild plan and recorded sources to prove every live sticker by
+image content. It preserves current aliases, refuses lost aliases/unreviewed
+shared crowds and writes review candidates rather than overwrite an unproven map.
+It reads Telegram only; source/platform acceptance and installed activation remain pending.
+The branch also authors `coin-rebuild [all|build|map|links]` with the same options.
+**Default `all` and explicit `build` may delete old packs and upload**; `links`
+resends messages, and `map` only reads Telegram. These latest rebuild paths have
+not yet been compiled/runtime-verified or included in accepted installations.
+Run the retained Python tools as modules from the repository root, e.g.
 `python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
 
 - `coins/fetch_logos.py` — download coin logos from CoinGecko + write `coins/keywords.csv`
@@ -472,6 +534,11 @@ published packs, and those files name live custom-emoji ids. They are rebuilt
 from Telegram by `python -m coins.rebuild_dedup map`.
 
 ## Checks
+
+CI starts only by manual dispatch, never by a push, pull request or release tag.
+The full native acceptance step uses Cargo's automatic suite discovery; a new
+integration test does not need adding to a hand-maintained target list. The
+migration checkpoint is a limited diagnostic workflow, not full acceptance.
 
 One command byte-compiles every source file, lints it, and runs the whole unit
 suite — the same one CI runs, so local and CI results cannot drift:

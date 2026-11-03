@@ -1,0 +1,38 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "5112b55f21d4d241ffe9660d5294de20487d4ea1e9772188fb6bd125f7fef63b",
+  "source": "emojikit.media_lottie.to_animated_tgs",
+  "cases": [
+    {
+      "name": "valid",
+      "input": "tests/fixtures/native/tgs-package/valid.json",
+      "input_sha256": "98c87aa14eff37f85f1bb7193e244f5ddecb424a00d77838e8f7375fc056dce5",
+      "expected": {
+        "bytes": 100,
+        "sha256": "8b83d1e5effe7f27100badeeba5fc39883fd2835986305ef6f7e8c736b0040eb",
+        "document": {
+          "v": "5.7.4",
+          "w": 512,
+          "h": 512,
+          "fr": 60,
+          "ip": 0,
+          "op": 180,
+          "layers": [],
+          "nm": "Unicode caf\u00e9 \u96ea"
+        }
+      }
+    },
+    {
+      "name": "wrong-canvas",
+      "input": "tests/fixtures/native/tgs-package/wrong-canvas.json",
+      "input_sha256": "5df60e714554b7433de1f6f2fd1d0850bd1da84cab4ccde63f6f74e4310e2f41",
+      "error": "wrong-canvas.json: animated emoji require a 512x512 Lottie canvas, got 100x512. Re-export the animation at 512x512."
+    },
+    {
+      "name": "subtract",
+      "input": "tests/fixtures/native/tgs-package/subtract.json",
+      "input_sha256": "210ca2e93939e1eb20a9e43303a7fabdadac5dc65380e6b1e2492fb509affdae",
+      "error": "subtract.tgs: layer 'mask' uses a SUBTRACT mask, which Telegram refuses on upload (add masks are fine). Re-export without it."
+    }
+  ]
+}

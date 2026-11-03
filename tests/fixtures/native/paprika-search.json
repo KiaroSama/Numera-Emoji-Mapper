@@ -1,0 +1,167 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "34742583025adaad3c7513ce0031c13d32759e29cfa8076609150a0badeb1acc",
+  "cases": [
+    {
+      "name": "Bitcoin (Token)",
+      "ticker": "btc",
+      "responses": [
+        {
+          "currencies": [
+            {
+              "id": "btc",
+              "name": "Bitcoin",
+              "symbol": "BTC"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "match",
+        "id": "btc",
+        "confidence": "name-exact"
+      },
+      "queries": [
+        "Bitcoin"
+      ],
+      "waits": [
+        2.5
+      ]
+    },
+    {
+      "name": "Bitcoin (Token)",
+      "ticker": "btc",
+      "responses": [
+        {},
+        {
+          "currencies": [
+            {
+              "id": "btc",
+              "name": "Bitcoin",
+              "symbol": "BTC"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "match",
+        "id": "btc",
+        "confidence": "name-exact"
+      },
+      "queries": [
+        "Bitcoin",
+        "btc"
+      ],
+      "waits": [
+        2.5,
+        2.5
+      ]
+    },
+    {
+      "name": "Bitcoin (Token)",
+      "ticker": "btc",
+      "responses": [
+        "transient",
+        {}
+      ],
+      "expected": {
+        "kind": "transient"
+      },
+      "queries": [
+        "Bitcoin",
+        "btc"
+      ],
+      "waits": [
+        2.5,
+        2.5
+      ]
+    },
+    {
+      "name": "Bitcoin (Token)",
+      "ticker": "btc",
+      "responses": [
+        "transient",
+        {
+          "currencies": [
+            {
+              "id": "btc",
+              "name": "Bitcoin",
+              "symbol": "BTC"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "match",
+        "id": "btc",
+        "confidence": "name-exact"
+      },
+      "queries": [
+        "Bitcoin",
+        "btc"
+      ],
+      "waits": [
+        2.5,
+        2.5
+      ]
+    },
+    {
+      "name": "Bitcoin (Token)",
+      "ticker": "btc",
+      "responses": [
+        {},
+        "quota"
+      ],
+      "expected": {
+        "kind": "quota"
+      },
+      "queries": [
+        "Bitcoin",
+        "btc"
+      ],
+      "waits": [
+        2.5
+      ]
+    },
+    {
+      "name": "Bitcoin (Token)",
+      "ticker": "btc",
+      "responses": [
+        {
+          "currencies": [
+            {
+              "id": "a",
+              "name": "Bitco",
+              "symbol": "X"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "kind": "match",
+        "id": null,
+        "confidence": "partial:a"
+      },
+      "queries": [
+        "Bitcoin"
+      ],
+      "waits": [
+        2.5
+      ]
+    },
+    {
+      "name": "Bitcoin (Token)",
+      "ticker": "btc",
+      "responses": [
+        "quota"
+      ],
+      "expected": {
+        "kind": "quota"
+      },
+      "queries": [
+        "Bitcoin"
+      ],
+      "waits": []
+    }
+  ]
+}

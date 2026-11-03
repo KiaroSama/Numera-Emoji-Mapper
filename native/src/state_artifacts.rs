@@ -76,7 +76,11 @@ pub fn rewrite(
                 .as_array_mut()
                 .ok_or("pack plan records must be a list")?
             {
-                key(&mut row["key"], map)?;
+                let value = row
+                    .as_object_mut()
+                    .and_then(|record| record.get_mut("key"))
+                    .ok_or("pack plan record must contain a string key")?;
+                key(value, map)?;
             }
         }
         if let Some(targets) = out.get_mut("targets") {
