@@ -183,8 +183,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     let mut fetched = Vec::new();
     let mut live_ids = BTreeSet::new();
     for (family, set, key) in jobs {
-        let tg =
-            Telegram::new(config.require(key)?.into(), api.clone()).map_err(|e| e.to_string())?;
+        let tg = Telegram::new(config.require(key)?.into(), api.clone())
+            .map_err(|e| e.to_string())?
+            .with_log(log);
         let name = set["name"].as_str().ok_or("recorded pack has no name")?;
         if name.is_empty() || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
             return Err("unsafe recorded pack name".into());

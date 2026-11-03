@@ -3,8 +3,8 @@ use crate::{atomic, publication::Publisher};
 use serde_json::{Value, json};
 use std::path::Path;
 
-pub fn notify(
-    publisher: &Publisher<'_>,
+pub fn notify<M: crate::media_adapter::MediaCodec>(
+    publisher: &Publisher<'_, M>,
     owner: u64,
     state: &mut Value,
     path: &Path,

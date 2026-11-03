@@ -1,11 +1,11 @@
 //! Completion evidence checks SQL references and actual media instead of trusting a migration label.
-use crate::{identity_survey, media_adapter::MediaAdapter};
+use crate::{identity_survey, media_adapter::MediaCodec};
 use serde_json::json;
 use std::path::Path;
 pub fn issues(
     data: &Path,
     root: &Path,
-    media: &MediaAdapter,
+    media: &impl MediaCodec,
     runtime: &tokio::runtime::Runtime,
 ) -> Result<Vec<String>, String> {
     let mut issues = Vec::new();

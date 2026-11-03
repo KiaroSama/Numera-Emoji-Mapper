@@ -46,4 +46,40 @@ fn pinned_inventory_keeps_alias_safeguards_counts_newlines_and_stale_id_clearing
             case["expected"]["total"].as_u64().unwrap() as usize
         );
     }
+    original_inventory_assertions();
+}
+
+fn original_inventory_assertions() {
+    for (ticker, expected) in [
+        ("kibabsc", "kiba"),
+        ("btc", "btc"),
+        ("ghc", "ghc"),
+        ("avaxc", "avax"),
+        ("bttc", "btt"),
+    ] {
+        assert_eq!(base_ticker(ticker), expected);
+    }
+    let blanked = refill(&BTreeMap::new(), "   ticker: btc\n   premium-id: 999\n");
+    assert_eq!((blanked.filled, blanked.total), (0, 1));
+    assert_eq!(blanked.text, "   ticker: btc\n   premium-id:\n");
+    let text = "## 🟡 — Avalanche C-Chain\n   ticker: avaxc\n   premium-id:\n\n## 🟢 — BitTorrent Chain\n   ticker: bttc\n   premium-id:\n";
+    let filled = refill(
+        &BTreeMap::from([
+            ("avaxc".into(), "111".into()),
+            ("bttc".into(), "222".into()),
+        ]),
+        text,
+    );
+    assert_eq!((filled.filled, filled.total), (2, 2));
+    assert_eq!(
+        filled.text,
+        "## 🟡 — Avalanche C-Chain\n   ticker: avaxc\n   premium-id: 111\n\n## 🟢 — BitTorrent Chain\n   ticker: bttc\n   premium-id: 222\n"
+    );
+    assert_eq!(
+        _native::coin_inventory_parse::missing(
+            text,
+            &std::collections::BTreeSet::from(["avaxc".into()])
+        ),
+        [("BitTorrent Chain".into(), "bttc".into())]
+    );
 }

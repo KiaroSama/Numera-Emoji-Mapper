@@ -30,7 +30,7 @@ def execute(request: dict):
     if not isinstance(request, dict):
         raise ValueError("expected a media request object")
     operation = request.get("operation")
-    if operation not in {"fingerprint", "compare", "same_image", "collision", "prepare", "preview", "usable", "dimensions", "image_info", "gallery_thumb", "convert", "animation_info"}:
+    if operation not in {"fingerprint", "compare", "same_image", "collision", "prepare", "preview", "usable", "publication_usable", "dimensions", "image_info", "gallery_thumb", "convert", "animation_info"}:
         raise ValueError("unsupported media operation")
     source = _path(request, "source", exists=True)
     fmt = request.get("format") or media.detect_format(source)
@@ -83,6 +83,11 @@ def execute(request: dict):
                 return {"size": list(image.size), "mode": image.mode,
                         "blank": media.is_blank_image(image)}
             return list(image.size)
+    if operation == "publication_usable":
+        if fmt != "static":
+            raise ValueError("retained publication worker accepts static media only")
+        from emojikit._native import publication_static_usable
+        return publication_static_usable(source)
     if operation == "usable":
         if fmt == "static":
             from PIL import Image

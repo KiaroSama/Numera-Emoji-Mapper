@@ -195,7 +195,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         "https://api.telegram.org".into()
     };
-    let tg = Telegram::new(config.require(&token_key)?.into(), api).map_err(|e| e.to_string())?;
+    let tg = Telegram::new(config.require(&token_key)?.into(), api)
+        .map_err(|e| e.to_string())?
+        .with_log(log);
     let (mut total, mut failed) = (0, 0);
     let mut indices = (0..sets.len())
         .filter(|i| {

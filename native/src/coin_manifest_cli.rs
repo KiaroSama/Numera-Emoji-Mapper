@@ -65,8 +65,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         "https://api.telegram.org"
     };
-    let tg =
-        crate::telegram::Telegram::new(token.into(), api.into()).map_err(|e| e.command_error())?;
+    let tg = crate::telegram::Telegram::new(token.into(), api.into())
+        .map_err(|e| e.command_error())?
+        .with_log(log);
     let (packs, stickers) = crate::coin_manifest::write(&directory, &state, &mapping, |name| {
         tg.read_call(
             "getStickerSet",

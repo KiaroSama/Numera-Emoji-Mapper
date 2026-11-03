@@ -25,10 +25,19 @@ pub fn pack_family_path(root: &Path, base: &str) -> std::path::PathBuf {
 
 pub struct Lease {
     file: File,
+    unlock_on_drop: bool,
 }
 impl Lease {
     pub fn clone_file(&self) -> io::Result<File> {
         self.file.try_clone()
+    }
+    /// Transfer a shared POSIX lifetime to close-only ownership before child inheritance.
+    #[cfg(unix)]
+    pub fn into_inherited_file(mut self) -> io::Result<File> {
+        let file = self.file.try_clone()?;
+        // LOCK_UN on any duplicate would release the child's shared open-file-description lock.
+        self.unlock_on_drop = false;
+        Ok(file)
     }
     pub fn acquire(path: &Path, started: &str) -> io::Result<Self> {
         if let Some(parent) = path.parent() {
@@ -71,12 +80,17 @@ impl Lease {
                 format!("lock holder record write failed: {e}"),
             ));
         }
-        Ok(Self { file })
+        Ok(Self {
+            file,
+            unlock_on_drop: true,
+        })
     }
 }
 impl Drop for Lease {
     fn drop(&mut self) {
-        let _ = release(&self.file);
+        if self.unlock_on_drop {
+            let _ = release(&self.file);
+        }
     }
 }
 

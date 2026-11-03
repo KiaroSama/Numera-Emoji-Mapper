@@ -12,15 +12,18 @@ pub enum ApiError {
     Rejected(String),
     Transport(String),
     Ambiguous(String),
+    Unproven(String),
     FloodWait { method: String, seconds: u64 },
     Invalid(String),
 }
 impl fmt::Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Rejected(s) | Self::Transport(s) | Self::Ambiguous(s) | Self::Invalid(s) => {
-                write!(f, "{s}")
-            }
+            Self::Rejected(s)
+            | Self::Transport(s)
+            | Self::Ambiguous(s)
+            | Self::Unproven(s)
+            | Self::Invalid(s) => write!(f, "{s}"),
             Self::FloodWait { method, seconds } => {
                 write!(f, "Telegram asks to wait {seconds}s before {method}")
             }
@@ -55,6 +58,7 @@ pub struct Telegram {
     token: String,
     base: String,
     client: Client,
+    log: Option<crate::logging::RunLog>,
     pub max_flood_wait: Option<u64>,
 }
 impl Telegram {
@@ -95,8 +99,21 @@ impl Telegram {
             token,
             base: base.trim_end_matches('/').into(),
             client,
+            log: None,
             max_flood_wait: None,
         })
+    }
+    pub fn with_log(mut self, log: &crate::logging::RunLog) -> Self {
+        self.log = Some(log.clone());
+        self
+    }
+    pub(crate) fn log(&self) -> Option<&crate::logging::RunLog> {
+        self.log.as_ref()
+    }
+    fn warning(&self, message: &str) {
+        if let Some(log) = &self.log {
+            log.event("WARNING", "telegram", &self.safe(message));
+        }
     }
     pub fn safe(&self, text: &str) -> String {
         crate::logging::redact(text, std::slice::from_ref(&self.token))
@@ -156,17 +173,38 @@ impl Telegram {
         data: &BTreeMap<String, String>,
         uploads: &[Upload],
         retries: u32,
-        mut applied: Option<F>,
+        applied: Option<F>,
     ) -> Result<Value>
     where
         F: FnMut() -> Result<Option<bool>>,
+    {
+        self.call_with_effects(
+            method,
+            retries,
+            applied,
+            || self.post(method, data, uploads, Duration::from_secs(60)),
+            std::thread::sleep,
+        )
+    }
+    pub(crate) fn call_with_effects<F, P, S>(
+        &self,
+        method: &str,
+        retries: u32,
+        mut applied: Option<F>,
+        mut post: P,
+        mut sleep: S,
+    ) -> Result<Value>
+    where
+        F: FnMut() -> Result<Option<bool>>,
+        P: FnMut() -> Result<Value>,
+        S: FnMut(Duration),
     {
         if retries == 0 || retries > 20 {
             return Err(ApiError::Invalid("retries must be1..20".into()));
         }
         let deadline = Instant::now() + Duration::from_secs(300);
         for attempt in 1..=retries {
-            match self.post(method, data, uploads, Duration::from_secs(60)) {
+            match post() {
                 Ok(payload) => {
                     if payload.get("ok") == Some(&Value::Bool(true)) {
                         return payload.get("result").cloned().ok_or_else(|| {
@@ -199,7 +237,8 @@ impl Telegram {
                         let delay = wait
                             .checked_add(1)
                             .ok_or_else(|| ApiError::Invalid("invalid flood wait".into()))?;
-                        std::thread::sleep(Duration::from_secs(delay));
+                        self.warning(&format!("flood wait {wait}s ({method})"));
+                        sleep(Duration::from_secs(delay));
                         continue;
                     }
                     if lower.contains("stickerset_invalid")
@@ -207,19 +246,25 @@ impl Telegram {
                         && attempt < retries
                         && Instant::now() < deadline
                     {
-                        std::thread::sleep(
-                            Duration::from_secs(u64::from(30 * attempt).min(90))
-                                .min(deadline.saturating_duration_since(Instant::now())),
-                        );
+                        let wait = Duration::from_secs(u64::from(30 * attempt).min(90))
+                            .min(deadline.saturating_duration_since(Instant::now()));
+                        self.warning(&format!(
+                            "stickerset_invalid; name not released yet, wait {:.0}s ({method})",
+                            wait.as_secs_f64()
+                        ));
+                        sleep(wait);
                         continue;
                     }
                     return Err(ApiError::Rejected(format!("{method} failed: {desc}")));
                 }
                 Err(ApiError::Transport(reason)) => {
                     if let Some(check) = applied.as_mut() {
-                        std::thread::sleep(Duration::from_secs(2));
+                        sleep(Duration::from_secs(2));
                         match check()? {
-                            Some(true) => return Ok(json!({"verified_applied":true})),
+                            Some(true) => {
+                                self.warning(&format!("{method}: network error but the change is verified live; not re-sending"));
+                                return Ok(json!({"verified_applied":true}));
+                            }
                             None => {
                                 return Err(ApiError::Ambiguous(format!(
                                     "{method}: network failure and live state unknown ({reason})"
@@ -233,7 +278,12 @@ impl Telegram {
                         )));
                     }
                     if attempt < retries {
-                        std::thread::sleep(Duration::from_secs(u64::from(3 * attempt).min(20)));
+                        let wait = u64::from(3 * attempt).min(20);
+                        self.warning(&format!(
+                            "net retry {attempt}/{retries} ({method}): {} (wait {wait}s)",
+                            self.safe(&reason)
+                        ));
+                        sleep(Duration::from_secs(wait));
                     }
                 }
                 Err(e) => return Err(e),
@@ -318,8 +368,13 @@ impl Telegram {
             match result {
                 Ok(v) => return Ok(v),
                 Err(ApiError::Invalid(e)) => return Err(ApiError::Invalid(e)),
-                Err(_) if attempt < retries => {
-                    std::thread::sleep(Duration::from_secs(u64::from(3 * attempt).min(15)))
+                Err(error) if attempt < retries => {
+                    let wait = u64::from(3 * attempt).min(15);
+                    self.warning(&format!(
+                        "download retry {attempt}/{retries}: {} (wait {wait}s)",
+                        self.safe(&error.to_string())
+                    ));
+                    std::thread::sleep(Duration::from_secs(wait))
                 }
                 Err(e) => return Err(e),
             }

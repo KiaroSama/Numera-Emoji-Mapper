@@ -212,7 +212,8 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             "https://api.telegram.org".into()
         };
         let tg = crate::telegram::Telegram::new(config.require("GENERAL_BOT_TOKEN")?.into(), api)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?
+            .with_log(log);
         for set in state["sets"].as_array().into_iter().flatten() {
             if let Some(name) = set["name"].as_str() {
                 match tg.read_call(

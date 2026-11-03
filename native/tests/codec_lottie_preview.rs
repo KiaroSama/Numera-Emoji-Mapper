@@ -20,6 +20,8 @@ fn lottie_previews_match_pinned_source_and_preserve_existing_outputs() {
         .map(PathBuf::from)
         .unwrap_or_else(|| root.join("tests/fixtures/native/lottie-preview.json"));
     let fixture: Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    let (_, gallery) = _native::source_lottie_render::fixtures().unwrap();
+    _native::source_lottie_render::fixture_identity(&fixture, &gallery).unwrap();
     assert_eq!(
         fixture["source_revision"],
         "1a36a968b006236bd0665a1da65c541938c06061"
@@ -51,7 +53,7 @@ fn lottie_previews_match_pinned_source_and_preserve_existing_outputs() {
             "output":output,"format":"animated","key":"source-fixture",
             "size":case["size"],"fps":case["fps"],"still":case["still"]});
         assert_eq!(
-            _native::codec_worker::execute(&request).unwrap(),
+            _native::codec_worker::execute_typed_at(None, &request).unwrap(),
             serde_json::json!({"bytes":case["expected"]["bytes"]})
         );
         let bytes = std::fs::read(&output).unwrap();
@@ -80,4 +82,36 @@ fn lottie_previews_match_pinned_source_and_preserve_existing_outputs() {
             .contains("expected an object")
     );
     assert!(std::fs::read_dir(&directory.0).unwrap().next().is_none());
+    let validation: Value =
+        serde_json::from_str(include_str!("../../tests/fixtures/native/lottie-file.json")).unwrap();
+    for input in [
+        "tests/fixtures/native/tgs-load/root-list.tgs",
+        "tests/fixtures/native/animated-key/truncated.tgs",
+    ] {
+        let case = validation["validations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|case| case["input"] == input)
+            .unwrap();
+        let source = root.join(input);
+        let before = std::fs::read(&source).unwrap();
+        assert_eq!(
+            _native::tooling_manifest::digest(&source).unwrap(),
+            case["input_sha256"].as_str().unwrap()
+        );
+        let error = _native::codec_worker::execute_typed_at(
+            None,
+            &serde_json::json!({
+                "operation":"preview","source":source,"format":"animated","key":"fixture",
+                "output":directory.0.join("typed-failed.webp")
+            }),
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, case["error_kind"].as_str().unwrap());
+        assert_eq!(error.message, case["error"].as_str().unwrap());
+        assert_eq!(error.handled, case["error_kind"] == "MediaError");
+        assert_eq!(std::fs::read(&source).unwrap(), before);
+        assert!(std::fs::read_dir(&directory.0).unwrap().next().is_none());
+    }
 }

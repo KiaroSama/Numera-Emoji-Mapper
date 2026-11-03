@@ -1,8 +1,9 @@
-//! Darwin codec group accounting; a successful signal alone never permits cleanup.
+//! Darwin group/session accounting; a successful signal alone never permits cleanup.
 use super::*;
 use std::ffi::c_void;
 use std::os::unix::process::CommandExt;
 
+const PROC_ALL_PIDS: u32 = 1;
 const PROC_PGRP_ONLY: u32 = 2;
 const PROC_PIDTASKALLINFO: i32 = 2;
 const PROC_PIDTBSDINFO: i32 = 3;
@@ -70,12 +71,18 @@ unsafe extern "C" {
     fn proc_pidinfo(pid: i32, flavor: i32, arg: u64, buffer: *mut c_void, size: i32) -> i32;
     fn __error() -> *mut i32;
     fn kill(pid: i32, signal: i32) -> i32;
+    fn getsid(pid: i32) -> i32;
+    fn setsid() -> i32;
 }
 
-fn group_pids(group: i32) -> Result<Vec<i32>, String> {
-    if group <= 0 {
+fn pids(group: Option<i32>) -> Result<Vec<i32>, String> {
+    if group.is_some_and(|value| value <= 0) {
         return Err("invalid Darwin codec process group".into());
     }
+    let (kind, selector) = match group {
+        Some(group) => (PROC_PGRP_ONLY, group as u32),
+        None => (PROC_ALL_PIDS, 0),
+    };
     let mut capacity = 256;
     loop {
         let mut pids = vec![0_i32; capacity];
@@ -84,7 +91,7 @@ fn group_pids(group: i32) -> Result<Vec<i32>, String> {
         // libproc returns zero for BOTH an empty list and a failed syscall.
         let (bytes, errno) = unsafe {
             *__error() = 0;
-            let bytes = proc_listpids(PROC_PGRP_ONLY, group as u32, pids.as_mut_ptr().cast(), size);
+            let bytes = proc_listpids(kind, selector, pids.as_mut_ptr().cast(), size);
             (bytes, *__error())
         };
         if bytes < 0 || (bytes == 0 && errno != 0) {
@@ -105,6 +112,10 @@ fn group_pids(group: i32) -> Result<Vec<i32>, String> {
             continue;
         }
         pids.truncate(bytes as usize / 4);
+        // PROC_ALL_PIDS includes kernel_task PID0, not a signalable user process.
+        if group.is_none() {
+            pids.retain(|pid| *pid != 0);
+        }
         pids.sort_unstable();
         if pids.iter().any(|pid| *pid <= 0) || pids.windows(2).any(|pair| pair[0] == pair[1]) {
             return Err("invalid Darwin codec PID-list entries".into());
@@ -195,12 +206,159 @@ pub fn process_birth(pid: u32) -> Result<Option<u64>, String> {
 
 pub struct Tree {
     group: i32,
+    session: Option<Session>,
+}
+
+fn session_id(pid: i32) -> Result<Option<i32>, String> {
+    // SAFETY: query only; errno is thread-local and immediately captured.
+    let sid = unsafe { getsid(pid) };
+    if sid < 0 {
+        let errno = std::io::Error::last_os_error().raw_os_error();
+        return if errno == Some(ESRCH) {
+            Ok(None)
+        } else {
+            Err(format!("cannot inspect Darwin session (errno={errno:?})"))
+        };
+    }
+    Ok(Some(sid))
+}
+
+fn session_identity(pid: i32) -> Result<Option<(BsdInfo, i32)>, String> {
+    let Some(before) = bsd_info(pid)? else {
+        return Ok(None);
+    };
+    let Some(sid) = session_id(pid)? else {
+        return match bsd_info(pid)? {
+            None => Ok(None),
+            Some(info) if info.status == SZOMB => Ok(None),
+            Some(_) => Err("live Darwin process has unknown session identity".into()),
+        };
+    };
+    let Some(after) = bsd_info(pid)? else {
+        return Ok(None);
+    };
+    if (before.birth_sec, before.birth_usec) != (after.birth_sec, after.birth_usec) {
+        return Err("Darwin process identity changed during session inspection".into());
+    }
+    Ok(Some((after, sid)))
 }
 
 impl Tree {
-    pub fn sample(&self) -> Result<Vec<u64>, String> {
+    pub fn ready_to_reap(&self) -> Result<bool, String> {
+        let Some(session) = &self.session else {
+            return Ok(true);
+        };
+        session.before_reap(
+            || {
+                let root = bsd_info(self.group)?
+                    .ok_or("Darwin session root disappeared before verified reaping")?;
+                Ok(root.status == SZOMB)
+            },
+            || self.sample().map(|_| ()),
+        )
+    }
+
+    pub fn root_reaped(&self) {
+        if let Some(session) = &self.session {
+            session.root_reaped();
+        }
+    }
+
+    fn session_members(&self) -> Result<Vec<BsdInfo>, String> {
         let mut values = Vec::new();
-        for pid in group_pids(self.group)? {
+        for pid in pids(None)? {
+            // Query SID before BSD identity: a known foreign session needs no
+            // privileged CPU/identity inspection. Denied SID itself stays unknown.
+            if session_id(pid)? != Some(self.group) {
+                continue;
+            }
+            if let Some((info, sid)) = session_identity(pid)?
+                && sid == self.group
+            {
+                values.push(info);
+            }
+        }
+        let owner = self
+            .session
+            .as_ref()
+            .ok_or("missing Darwin session owner")?;
+        // getsid may exclude a zombie, but our still-unreaped Child prevents root
+        // PID reuse. setsid succeeded before exec and a session leader cannot move
+        // to another session, so its zombie BSD identity is a valid initial anchor.
+        if !owner.is_reaped()
+            && !values.iter().any(|info| info.pid == self.group as u32)
+            && let Some(info) = bsd_info(self.group)?
+            && info.status == SZOMB
+        {
+            values.push(info);
+            values.sort_by_key(|info| info.pid);
+        }
+        let identities: Vec<_> = values
+            .iter()
+            .map(|value| (value.pid as i32, [value.birth_sec, value.birth_usec]))
+            .collect();
+        owner.admit(&identities, |pid| {
+            if pid == self.group
+                && !owner.is_reaped()
+                && let Some(info) = bsd_info(pid)?
+                && info.status == SZOMB
+            {
+                return Ok(Some([info.birth_sec, info.birth_usec]));
+            }
+            Ok(session_identity(pid)?
+                .filter(|(_, sid)| *sid == self.group)
+                .map(|(info, _)| [info.birth_sec, info.birth_usec]))
+        })?;
+        Ok(values)
+    }
+
+    fn session_sample(&self) -> Result<Vec<u64>, String> {
+        let mut values = Vec::new();
+        for expected in self.session_members()? {
+            if expected.status == SZOMB {
+                continue;
+            }
+            let pid = expected.pid as i32;
+            let task = task_info(pid)?;
+            let Some((current, sid)) = session_identity(pid)? else {
+                continue;
+            };
+            if sid != self.group
+                || (current.birth_sec, current.birth_usec)
+                    != (expected.birth_sec, expected.birth_usec)
+            {
+                return Err("Darwin session member identity changed during accounting".into());
+            }
+            if current.status == SZOMB {
+                continue;
+            }
+            let cpu = match task {
+                Some(task)
+                    if (task.bsd.birth_sec, task.bsd.birth_usec)
+                        == (current.birth_sec, current.birth_usec) =>
+                {
+                    [task.task.user, task.task.system]
+                }
+                None if current.flags & 4 != 0 => [0, 0],
+                _ => return Err("Darwin session member has unknown CPU accounting".into()),
+            };
+            values.extend([
+                pid as u64,
+                current.birth_sec,
+                current.birth_usec,
+                cpu[0],
+                cpu[1],
+            ]);
+        }
+        Ok(values)
+    }
+
+    pub fn sample(&self) -> Result<Vec<u64>, String> {
+        if self.session.is_some() {
+            return self.session_sample();
+        }
+        let mut values = Vec::new();
+        for pid in pids(Some(self.group))? {
             let info = match task_info(pid)? {
                 Some(info) => info,
                 None => {
@@ -238,18 +396,57 @@ impl Tree {
                 info.task.system,
             ]);
         }
-        // group_pids sorts by PID, so enumeration order is never false progress.
+        // pids sorts by PID, so enumeration order is never false progress.
         Ok(values)
     }
 
+    pub fn interrupt(&self) -> Result<(), String> {
+        if self.session.is_none() {
+            return Err("console interruption requires an owned session".into());
+        }
+        self.signal(2)
+    }
+
     pub fn terminate(&self) -> Result<(), String> {
+        self.signal(9)
+    }
+
+    fn signal(&self, signal: i32) -> Result<(), String> {
+        if self.session.is_some() {
+            for expected in self.session_members()? {
+                if expected.status == SZOMB {
+                    continue;
+                }
+                let Some((current, sid)) = session_identity(expected.pid as i32)? else {
+                    continue;
+                };
+                if sid != self.group
+                    || current.status == SZOMB
+                    || (current.birth_sec, current.birth_usec)
+                        != (expected.birth_sec, expected.birth_usec)
+                {
+                    continue;
+                }
+                // SAFETY: positive PID rechecked for birth+SID immediately before
+                // signaling. This is not atomic kernel-handle pinning on Darwin.
+                if unsafe { kill(current.pid as i32, signal) } != 0 {
+                    let errno = std::io::Error::last_os_error().raw_os_error();
+                    if errno != Some(ESRCH) {
+                        return Err(format!(
+                            "cannot terminate Darwin session member (errno={errno:?})"
+                        ));
+                    }
+                }
+            }
+            return Ok(());
+        }
         if self.quiescent()? {
             return Ok(());
         }
         // SAFETY: process_group(0) gave this invocation a private positive PGID;
         // the verified Python bridge keeps FFmpeg inside it. Root reaping and
         // fresh libproc quiescence, not this signal, authorize scratch deletion.
-        if unsafe { kill(-self.group, 9) } != 0 {
+        if unsafe { kill(-self.group, signal) } != 0 {
             let errno = std::io::Error::last_os_error().raw_os_error();
             if errno != Some(ESRCH) {
                 return Err(format!(
@@ -265,7 +462,7 @@ impl Tree {
     }
 }
 
-pub fn spawn(command: &mut Command) -> Result<(Child, Tree), String> {
+pub fn spawn(command: &mut Command, scope: Scope) -> Result<(Child, Tree), String> {
     if !cfg!(all(
         target_pointer_width = "64",
         any(target_arch = "x86_64", target_arch = "aarch64")
@@ -276,20 +473,38 @@ pub fn spawn(command: &mut Command) -> Result<(Child, Tree), String> {
     let pid = std::process::id() as i32;
     let own = bsd_info(pid)?.ok_or("cannot inspect Darwin codec owner's identity")?;
     task_info(pid)?.ok_or("cannot inspect Darwin codec owner's CPU accounting")?;
-    group_pids(
-        own.pgid
-            .try_into()
-            .map_err(|_| "invalid Darwin owner process group")?,
-    )?;
-    command
-        .process_group(0)
-        .env("NUMERA_CODEC_OWNED_GROUP", "1");
+    if matches!(scope, Scope::Session | Scope::Console) {
+        // Check all-PID enumeration and SID API before any child can exist.
+        pids(None)?;
+        session_identity(pid)?.ok_or("cannot inspect Darwin owner's session")?;
+        // SAFETY: async-signal-safe setsid, only errno conversion on failure.
+        // std's process_group setup runs before pre_exec, so do not set it here.
+        unsafe {
+            command.pre_exec(|| {
+                if setsid() < 0 {
+                    Err(std::io::Error::last_os_error())
+                } else {
+                    Ok(())
+                }
+            });
+        }
+    } else {
+        pids(Some(
+            own.pgid
+                .try_into()
+                .map_err(|_| "invalid Darwin owner process group")?,
+        ))?;
+        command.process_group(0);
+    }
+    command.env("NUMERA_CODEC_OWNED_GROUP", "1");
     let child = command
         .spawn()
         .map_err(|_| "cannot spawn required codec child".to_owned())?;
     // Darwin pid_t is a positive signed int; no fallible step may abandon this child.
+    let group = child.id() as i32;
     let tree = Tree {
-        group: child.id() as i32,
+        group,
+        session: (matches!(scope, Scope::Session | Scope::Console)).then(|| Session::new(group)),
     };
     Ok((child, tree))
 }

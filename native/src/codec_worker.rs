@@ -37,42 +37,239 @@ fn path_field(request: &Value, field: &str) -> Result<PathBuf, String> {
     if !metadata.is_file() || metadata.file_type().is_symlink() {
         return Err(format!("{field} must be a regular non-symlink file"));
     }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        if metadata.file_attributes() & 0x400 != 0 {
+            return Err(format!("{field} must not be a reparse point"));
+        }
+    }
     Ok(path)
 }
 
 fn output_field(request: &Value) -> Result<PathBuf, String> {
-    request
+    let output = request
         .get("output")
         .and_then(Value::as_str)
         .filter(|path| !path.is_empty())
         .map(PathBuf::from)
-        .ok_or_else(|| "output must be a non-empty path".into())
+        .ok_or_else(|| "output must be a non-empty path".to_owned())?;
+    if !output.is_absolute() {
+        return Err("output must be absolute".into());
+    }
+    match std::fs::symlink_metadata(&output) {
+        Ok(_) => {
+            return Err(match request["operation"].as_str() {
+                Some("convert") => "conversion output already exists",
+                Some("gallery_thumb") => "gallery output already exists",
+                _ => "preview output already exists",
+            }
+            .into());
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(_) => return Err("cannot inspect codec output".into()),
+    }
+    Ok(output)
 }
 
 fn preview_parameters(request: &Value) -> Result<(u32, u32, bool), String> {
-    request
-        .get("key")
+    crate::codec_request::preview(request).map_err(|error| error.message)
+}
+
+fn metadata_result(
+    source: &Path,
+    operation: &str,
+) -> Result<Value, crate::codec_error::CodecError> {
+    crate::codec_static_identity::metadata_operation(source, operation)
+}
+
+pub fn execute_typed_at(
+    root: Option<&Path>,
+    request: &Value,
+) -> Result<Value, crate::codec_error::CodecError> {
+    execute_typed_with(root, request, None)
+}
+
+fn execute_typed_with(
+    root: Option<&Path>,
+    request: &Value,
+    log: Option<&crate::logging::RunLog>,
+) -> Result<Value, crate::codec_error::CodecError> {
+    use crate::codec_error::CodecError;
+    if !request.is_object() {
+        return Err(CodecError::value("expected a media request object"));
+    }
+    if let Some(message) = request
+        .get("operation")
+        .and_then(crate::codec_request::unhashable)
+    {
+        return Err(CodecError::type_error(message));
+    }
+    let operation = request
+        .get("operation")
         .and_then(Value::as_str)
-        .filter(|key| !key.contains(['/', '\\']))
-        .ok_or("invalid preview parameters")?;
-    let size = request.get("size").cloned().unwrap_or(json!(104));
-    let fps = request.get("fps").cloned().unwrap_or(json!(15));
-    let still = request.get("still").cloned().unwrap_or(json!(false));
-    let size = size
-        .as_u64()
-        .and_then(|v| u32::try_from(v).ok())
-        .filter(|v| matches!(v, 52 | 72 | 104))
-        .ok_or("invalid preview parameters")?;
-    let fps = fps
-        .as_u64()
-        .and_then(|v| u32::try_from(v).ok())
-        .filter(|v| (1..=30).contains(v))
-        .ok_or("invalid preview parameters")?;
-    Ok((
-        size,
-        fps,
-        still.as_bool().ok_or("invalid preview parameters")?,
-    ))
+        .ok_or_else(|| CodecError::value("unsupported media operation"))?;
+    if !matches!(
+        operation,
+        "fingerprint"
+            | "compare"
+            | "same_image"
+            | "collision"
+            | "prepare"
+            | "preview"
+            | "usable"
+            | "publication_usable"
+            | "dimensions"
+            | "image_info"
+            | "gallery_thumb"
+            | "convert"
+            | "animation_info"
+    ) {
+        return Err(CodecError::value("unsupported media operation"));
+    }
+    let source = path_field(request, "source").map_err(CodecError::value)?;
+    let format = match request
+        .get("format")
+        .filter(|value| crate::codec_lottie_validate::truthy(value))
+    {
+        None => crate::codec_format::detect_typed(&source)?,
+        Some(Value::String(value)) => value.as_str(),
+        Some(value) => {
+            if let Some(message) = crate::codec_request::unhashable(value) {
+                return Err(CodecError::type_error(message));
+            }
+            if operation != "convert" {
+                return Err(CodecError::value("unsupported media format"));
+            }
+            "unknown"
+        }
+    };
+    if !matches!(format, "static" | "animated" | "video") && operation != "convert" {
+        return Err(CodecError::value("unsupported media format"));
+    }
+    if operation == "publication_usable" {
+        let root =
+            root.ok_or_else(|| CodecError::value("publication admission requires a project root"))?;
+        return crate::publication_media::execute_typed(root, &source, format);
+    }
+    if matches!(operation, "image_info" | "dimensions")
+        || (operation == "usable" && format == "static")
+    {
+        return metadata_result(&source, operation);
+    }
+    if operation == "animation_info" {
+        return crate::codec_image::animation_info_typed(&source).map(Value::Bool);
+    }
+    if operation == "preview" {
+        let (size, fps, still) = crate::codec_request::preview(request)?;
+        let output = output_field(request).map_err(CodecError::value)?;
+        if format == "static" {
+            return crate::codec_image::preview_static_typed(&source, &output, size);
+        }
+        if format == "animated" {
+            return crate::codec_lottie_preview::preview_typed(&source, &output, size, fps, still);
+        }
+        if format == "video" {
+            return crate::codec_video_preview::preview_at(
+                root, &source, &output, size, fps, still,
+            );
+        }
+    }
+    if operation == "fingerprint" && format == "static" {
+        let info = crate::codec_static_identity::fingerprint_typed(&source)?;
+        let extension = crate::codec_format::extension_typed(&source, "static")?;
+        return Ok(
+            json!({"content_key":info["content_key"],"phash":info["phash"],"fmt":"static","extension":extension}),
+        );
+    }
+    if operation == "fingerprint" && format == "animated" {
+        return crate::codec_lottie_identity::fingerprint_typed(&source);
+    }
+    if operation == "fingerprint" && format == "video" {
+        return crate::codec_video::fingerprint_at(root, &source);
+    }
+    if operation == "convert" {
+        let output = output_field(request).map_err(CodecError::value)?;
+        if request.get("target_format").and_then(Value::as_str) == Some("static") {
+            crate::codec_image::to_static_png_typed(&source, &output)?;
+            return execute_typed_at(
+                root,
+                &json!({"operation":"fingerprint","source":output,"format":"static"}),
+            );
+        }
+        if request.get("target_format").and_then(Value::as_str) == Some("animated") {
+            crate::codec_lottie_package::package_typed(&source, &output)?;
+            return crate::codec_lottie_identity::fingerprint_typed(&output);
+        }
+        if request.get("target_format").and_then(Value::as_str) == Some("video") {
+            return crate::codec_video_encode::convert_at(root, &source, &output);
+        }
+        return Err(CodecError::value("invalid target format"));
+    }
+    if operation == "prepare"
+        && !request
+            .get("reencode")
+            .unwrap_or(&Value::Bool(false))
+            .is_boolean()
+    {
+        return Err(CodecError::value("reencode must be boolean"));
+    }
+    if operation == "prepare" {
+        let mut warnings = Vec::new();
+        let result = if format == "animated" {
+            crate::codec_lottie_prepare::prepare(&source, request, &mut warnings)
+        } else if format == "static" {
+            crate::codec_static_prepare::prepare(&source, request, &mut warnings)
+        } else {
+            crate::codec_video_encode::prepare_at(root, &source, request, &mut warnings)
+        };
+        for warning in warnings {
+            let warning = crate::logging::redact(&warning, &[]);
+            if let Some(log) = log {
+                log.event("WARNING", "codec", &warning);
+            }
+            eprintln!("WARNING: {warning}");
+        }
+        return result;
+    }
+    if operation == "gallery_thumb" {
+        let output = output_field(request).map_err(CodecError::value)?;
+        let still = request
+            .get("still")
+            .unwrap_or(&Value::Bool(false))
+            .as_bool()
+            .ok_or_else(|| CodecError::value("gallery still must be boolean"))?;
+        if format == "animated" {
+            return crate::codec_lottie_preview::gallery_typed(&source, &output, still);
+        }
+        if format == "static" {
+            return crate::codec_image::gallery_static_typed(&source, &output);
+        }
+        if format == "video" {
+            return crate::codec_video_preview::gallery_typed(&source, &output);
+        }
+    }
+    if operation == "usable" && format == "animated" {
+        crate::codec_lottie_validate::validate_file_typed(&source)?;
+        return Ok(json!(true));
+    }
+    if operation == "usable" && format == "video" {
+        return crate::codec_video_validate::usable_at(root, &source);
+    }
+    if operation == "collision" {
+        return crate::codec_format::collision_request(&source, &request["key"]);
+    }
+    if matches!(operation, "compare" | "same_image") {
+        let other = path_field(request, "other").map_err(CodecError::value)?;
+        return crate::codec_compare::execute_at(
+            root,
+            &source,
+            &other,
+            format,
+            operation == "compare",
+        );
+    }
+    execute_at(root, request).map_err(CodecError::unverified)
 }
 
 pub fn execute(request: &Value) -> Result<Value, String> {
@@ -82,6 +279,9 @@ pub fn execute(request: &Value) -> Result<Value, String> {
 pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String> {
     if !request.is_object() {
         return Err("expected a media request object".into());
+    }
+    if matches!(request.get("operation"), Some(Value::Array(_))) {
+        return Err("unhashable type: 'list'".into());
     }
     let operation = request
         .get("operation")
@@ -99,23 +299,54 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
             | "prepare"
             | "collision"
             | "usable"
+            | "publication_usable"
             | "gallery_thumb"
             | "animation_info"
     ) {
-        return Err("unsupported native codec operation".into());
+        return Err("unsupported media operation".into());
     }
     let source = path_field(request, "source")?;
-    let format = match request.get("format") {
-        None | Some(Value::Null | Value::Bool(false)) => crate::codec_format::detect(&source)?,
-        Some(Value::String(value)) if value.is_empty() => crate::codec_format::detect(&source)?,
+    let format = match request
+        .get("format")
+        .filter(|value| crate::codec_lottie_validate::truthy(value))
+    {
+        None => crate::codec_format::detect(&source)?,
         Some(Value::String(value)) => value.as_str(),
         _ => return Err("unsupported media format".into()),
     };
     if !matches!(format, "static" | "animated" | "video") && operation != "convert" {
         return Err("unsupported media format".into());
     }
+    if matches!(operation, "publication_usable" | "collision")
+        || (matches!(operation, "usable" | "fingerprint") && format == "video")
+        || (operation == "convert" && request["target_format"] == "video")
+    {
+        return execute_typed_at(root, request).map_err(|error| error.message);
+    }
     if operation == "animation_info" {
-        return Ok(json!(crate::codec_image::animation_info(&source)));
+        return crate::codec_image::animation_info_typed(&source)
+            .map(Value::Bool)
+            .map_err(|error| error.message);
+    }
+    if matches!(operation, "image_info" | "dimensions") {
+        return metadata_result(&source, operation).map_err(|error| error.message);
+    }
+    if operation == "usable" && format == "static" {
+        return metadata_result(&source, operation).map_err(|error| error.message);
+    }
+    if operation == "convert" {
+        let output = output_field(request)?;
+        match request.get("target_format").and_then(Value::as_str) {
+            Some("static") => {
+                crate::codec_image::to_static_png(&source, &output)?;
+            }
+            Some("animated") => crate::codec_lottie_package::package(&source, &output)?,
+            _ => return Err("invalid target format".into()),
+        }
+        return execute_at(
+            root,
+            &json!({"operation":"fingerprint","source":output,"format":request["target_format"]}),
+        );
     }
     if operation == "gallery_thumb" {
         let output = output_field(request)?;
@@ -139,17 +370,7 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
             _ => crate::codec_image::gallery_static(&source, &output),
         };
     }
-    if operation == "collision" {
-        let key = request
-            .get("key")
-            .and_then(Value::as_str)
-            .filter(|key| !key.is_empty())
-            .ok_or("collision requires a content key")?;
-        return crate::codec_format::collision_key(&source, key).map(Value::String);
-    }
-    if (format == "video" && operation != "convert")
-        || (operation == "convert" && request["target_format"] == "video")
-    {
+    if format == "video" {
         let root = root.ok_or("video worker requires an explicit project root")?;
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -158,7 +379,6 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
         let decoder = crate::codec_video::VideoDecoder::new(root)?;
         return runtime.block_on(async {
             match operation {
-                "fingerprint" => decoder.fingerprint(&source).await,
                 "compare" | "same_image" => {
                     let other = path_field(request, "other")?;
                     if operation == "compare"
@@ -170,12 +390,6 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
                         return Ok(json!(true));
                     }
                     Ok(json!(decoder.same_image(&source, &other).await))
-                }
-                "usable" => {
-                    crate::codec_video_validate::validate(&decoder, &source).await?;
-                    Ok(json!(
-                        !crate::codec_video_validate::is_blank(&decoder, &source).await?
-                    ))
                 }
                 "prepare" => {
                     let reencode = request.get("reencode").cloned().unwrap_or(json!(false));
@@ -197,11 +411,6 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
                         &decoder, &source, &output, size, fps, still,
                     )
                     .await
-                }
-                "convert" if request["target_format"] == "video" => {
-                    let output = output_field(request)?;
-                    crate::codec_video_encode::convert(&decoder, &source, &output, 262144).await?;
-                    decoder.fingerprint(&output).await
                 }
                 _ => Err("unsupported video codec operation".into()),
             }
@@ -249,25 +458,8 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
             }
             "preview" => {
                 let (size, fps, still) = preview_parameters(request)?;
-                let output = request
-                    .get("output")
-                    .and_then(Value::as_str)
-                    .filter(|path| !path.is_empty())
-                    .map(PathBuf::from)
-                    .ok_or("output must be a non-empty path")?;
+                let output = output_field(request)?;
                 crate::codec_lottie_preview::preview(&source, &output, size, fps, still)
-            }
-            "convert"
-                if request.get("target_format").and_then(Value::as_str) == Some("animated") =>
-            {
-                let output = request
-                    .get("output")
-                    .and_then(Value::as_str)
-                    .filter(|path| !path.is_empty())
-                    .map(PathBuf::from)
-                    .ok_or("output must be a non-empty path")?;
-                crate::codec_lottie_package::package(&source, &output)?;
-                crate::codec_lottie_identity::fingerprint(&output)
             }
             _ => Err("animated codec operation is not yet supported".into()),
         };
@@ -277,12 +469,7 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
     }
     if operation == "preview" {
         let (size, _, _) = preview_parameters(request)?;
-        let output = request
-            .get("output")
-            .and_then(Value::as_str)
-            .filter(|path| !path.is_empty())
-            .map(PathBuf::from)
-            .ok_or("output must be a non-empty path")?;
+        let output = output_field(request)?;
         return crate::codec_image::preview_static(&source, &output, size);
     }
     if operation == "prepare" {
@@ -299,32 +486,44 @@ pub fn execute_at(root: Option<&Path>, request: &Value) -> Result<Value, String>
             }
         }
     }
-    if operation == "convert" {
-        if request.get("target_format").and_then(Value::as_str) != Some("static") {
-            return Err("invalid target format".into());
-        }
-        let output = request
-            .get("output")
-            .and_then(Value::as_str)
-            .filter(|path| !path.is_empty())
-            .map(PathBuf::from)
-            .ok_or("output must be a non-empty path")?;
-        crate::codec_image::to_static_png(&source, &output)?;
-        return execute_at(
-            root,
-            &json!({"operation":"fingerprint","source":output,"format":"static"}),
-        );
-    }
     let info = crate::codec_image::inspect_and_fingerprint(&source)?;
-    Ok(match operation {
-        "image_info" => json!({"size":info["size"],"mode":info["mode"],"blank":info["blank"]}),
-        "dimensions" => info["size"].clone(),
-        "usable" => json!(info["blank"] == false),
-        _ => {
-            let extension = crate::codec_format::extension(&source, "static")?;
-            json!({"content_key":info["content_key"],"phash":info["phash"],"fmt":"static","extension":extension})
+    let extension = crate::codec_format::extension(&source, "static")?;
+    Ok(
+        json!({"content_key":info["content_key"],"phash":info["phash"],"fmt":"static","extension":extension}),
+    )
+}
+
+pub(crate) fn physical_directory(root: &Path, directory: &Path) -> Result<(), String> {
+    if !directory.is_absolute()
+        || directory
+            .components()
+            .any(|part| matches!(part, std::path::Component::ParentDir))
+    {
+        return Err("codec directory must be absolute without parent traversal".into());
+    }
+    let root = root
+        .canonicalize()
+        .map_err(|_| "cannot resolve codec project root")?;
+    let ancestor = directory
+        .ancestors()
+        .find(|path| std::fs::symlink_metadata(path).is_ok())
+        .ok_or("codec directory has no existing parent")?;
+    envelope_parent(&root, &ancestor.join("directory-check"))?;
+    let mut current = ancestor.to_path_buf();
+    for part in directory
+        .strip_prefix(ancestor)
+        .map_err(|_| "invalid codec directory")?
+        .components()
+    {
+        current.push(part);
+        match std::fs::create_dir(&current) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(_) => return Err("cannot create codec directory".into()),
         }
-    })
+        envelope_parent(&root, &current.join("directory-check"))?;
+    }
+    Ok(())
 }
 
 fn envelope_parent(root: &Path, path: &Path) -> Result<PathBuf, String> {
@@ -365,8 +564,13 @@ fn envelope_parent(root: &Path, path: &Path) -> Result<PathBuf, String> {
 }
 
 pub fn run(root: &Path, arguments: &[String]) -> i32 {
-    let log = crate::logging::RunLog::open(root, "codec-worker", Vec::new());
-    let result = (|| -> Result<bool, String> {
+    let log = std::sync::Arc::new(crate::logging::RunLog::open(
+        root,
+        "codec-worker",
+        Vec::new(),
+    ));
+    log.install_panic_hook();
+    let result = (|| -> Result<i32, String> {
         if arguments.len() != 2 {
             return Err("codec-worker requires request and response paths".into());
         }
@@ -398,23 +602,48 @@ pub fn run(root: &Path, arguments: &[String]) -> i32 {
             return Err("codec request exceeds64KiB".into());
         }
         let operation = serde_json::from_slice::<Value>(&bytes)
-            .map_err(|_| "invalid codec request JSON".to_owned())
+            .map_err(|_| crate::codec_error::CodecError::value("invalid codec request JSON"))
             .and_then(|request| {
                 if let Some(output) = request.get("output").and_then(Value::as_str) {
                     let output = Path::new(output);
-                    if !output.is_absolute() || envelope_parent(root, output)? != response_parent {
+                    if !output.is_absolute()
+                        || envelope_parent(root, output)
+                            .map_err(crate::codec_error::CodecError::value)?
+                            != response_parent
+                    {
                         return Err("codec output must stay in its owned envelope directory".into());
                     }
+                    if output == request_path
+                        || output == response_path
+                        || output
+                            .file_name()
+                            .is_some_and(|name| name == "codec-cleanup-pending.json")
+                    {
+                        return Err(
+                            "codec output must not alias its request, response or ownership marker"
+                                .into(),
+                        );
+                    }
                 }
-                execute_at(Some(root), &request)
+                // Nested capture scratch belongs to this envelope, not a sibling project run.
+                execute_typed_with(Some(&request_parent), &request, Some(&log))
             });
-        let success = operation.is_ok();
-        let response = match operation {
-            Ok(value) => json!({"ok":true,"result":value}),
-            Err(error) => json!({"ok":false,"error":crate::logging::redact(&error,&[])}),
+        let reply = match crate::codec_error::CodecError::worker_reply(operation) {
+            Ok(reply) => reply,
+            Err(error) => {
+                // Source main does not catch this class. Refuse without inventing an error response.
+                let diagnostic = format!("{}: {}", error.kind, error.message);
+                let diagnostic = crate::logging::redact(&diagnostic, &[]);
+                log.event("ERROR", "codec", &diagnostic);
+                eprintln!("{diagnostic}");
+                return Ok(1);
+            }
         };
+        if let Some(error) = &reply.error {
+            log.event("ERROR", "codec", error);
+        }
         let encoded =
-            serde_json::to_vec(&response).map_err(|_| "cannot serialize codec response")?;
+            serde_json::to_vec(&reply.envelope).map_err(|_| "cannot serialize codec response")?;
         if encoded.len() > 65536 {
             return Err("codec response exceeds64KiB".into());
         }
@@ -426,11 +655,10 @@ pub fn run(root: &Path, arguments: &[String]) -> i32 {
             .map_err(|_| "cannot publish exclusive codec response".to_owned());
         let _ = std::fs::remove_file(&staged);
         publish?;
-        Ok(success)
+        Ok(reply.exit)
     })();
     let code = match result {
-        Ok(true) => 0,
-        Ok(false) => 1,
+        Ok(code) => code,
         Err(error) => {
             log.event("ERROR", "codec", &error);
             2

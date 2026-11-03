@@ -108,7 +108,10 @@ pub fn save(
             "catalog identities or visibility changed; export the draft and reload",
         ));
     }
-    let previous = read_plan(plan_path)?;
+    let previous = match read_plan(plan_path) {
+        Ok(plan) => plan,
+        Err(error) => return Ok(response(409, &error)),
+    };
     for card in view.iter_mut() {
         let key = card
             .get("key")

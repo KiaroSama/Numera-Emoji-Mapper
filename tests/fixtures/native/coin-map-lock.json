@@ -1,0 +1,48 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_hashes": {
+    "coins/alias_map.py": "e9361cc868a2dd13f5f9e450f55a95399d1cea24438223fa9e84533cb19f20ff",
+    "coins/enhance_map.py": "3ed2ccca178ec4a68547de0c4dca77e76e8b9775d2a493f006fcca418be5cd25",
+    "tests/test_coin_ticker_map.py": "4308c8c38a774820223b7645f8ff8dfe8e74e3dc309342a2d4d264a7ba3eed91"
+  },
+  "source_case": "tests/test_coin_ticker_map.py::CanonicalMapWritersCannotLoseAnUpdate.test_a_held_lock_stops_the_map_tools_without_writing",
+  "source_runtime": "CPython 3.11.9",
+  "cases": [
+    {
+      "source": "coins/alias_map.py",
+      "command": "coin-alias-map",
+      "input": {
+        "mapping": "{\"btc\":\"111\",\"other\":\"preserved\"}\n",
+        "inventory": "## Bitcoin - Bitcoin\n  ticker: btcbsc\n  premium-id:\n",
+        "keywords": "ticker,name\nbtc,Bitcoin\n"
+      },
+      "expected": {
+        "code": 4,
+        "stdout": "ERROR: fixture canonical map is busy\n",
+        "events": [
+          "lock refused"
+        ],
+        "mapping_unchanged": true,
+        "output_exists": false
+      }
+    },
+    {
+      "source": "coins/enhance_map.py",
+      "command": "coin-enhance-map",
+      "input": {
+        "mapping": "{\"btc\":\"111\",\"other\":\"preserved\"}\n",
+        "inventory": "## Bitcoin - Bitcoin\n  ticker: btcbsc\n  premium-id:\n",
+        "keywords": "ticker,name\nbtc,Bitcoin\n"
+      },
+      "expected": {
+        "code": 4,
+        "stdout": "ERROR: fixture canonical map is busy\n",
+        "events": [
+          "lock refused"
+        ],
+        "mapping_unchanged": true,
+        "output_exists": false
+      }
+    }
+  ]
+}

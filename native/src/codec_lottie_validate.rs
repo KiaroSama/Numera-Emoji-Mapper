@@ -1,147 +1,15 @@
-//! Validation of an already decoded Lottie document; gzip/JSON/file ownership lives elsewhere.
+//! Rust validation policy over external decoded JSON; no lossy serde round trip for file inputs.
+use crate::codec_error::CodecError;
+use crate::codec_lottie_load::source_bytes;
+use pyo3::prelude::*;
+use pyo3::types::{PyDict, PyString};
 use serde_json::Value;
-use std::sync::OnceLock;
 
-fn kind(value: &Value) -> &'static str {
-    match value {
-        Value::Null => "NoneType",
-        Value::Bool(_) => "bool",
-        Value::String(_) => "str",
-        Value::Array(_) => "list",
-        Value::Object(_) => "dict",
-        Value::Number(n) if n.to_string().contains(['.', 'e', 'E']) => "float",
-        Value::Number(_) => "int",
-    }
+fn external<T>(py: Python<'_>, result: PyResult<T>) -> Result<T, CodecError> {
+    result.map_err(|error| CodecError::from_python(py, error))
 }
-fn float_text(value: f64) -> String {
-    if value.is_nan() {
-        return "nan".into();
-    }
-    if value.is_infinite() {
-        return if value.is_sign_negative() {
-            "-inf"
-        } else {
-            "inf"
-        }
-        .into();
-    }
-    let abs = value.abs();
-    if abs != 0.0 && !(1e-4..1e16).contains(&abs) {
-        let raw = format!("{value:e}");
-        let (mantissa, exponent) = raw.split_once('e').expect("scientific format");
-        let exponent: i32 = exponent.parse().expect("scientific exponent");
-        format!("{mantissa}e{exponent:+03}")
-    } else {
-        let mut text = value.to_string();
-        if !text.contains('.') {
-            text.push_str(".0");
-        }
-        text
-    }
-}
-fn repr(value: &Value, nested: bool) -> String {
-    match value {
-        Value::Null => "None".into(),
-        Value::Bool(true) => "True".into(),
-        Value::Bool(false) => "False".into(),
-        Value::String(s) => {
-            if nested {
-                crate::python_repr::quoted(s)
-            } else {
-                s.clone()
-            }
-        }
-        Value::Number(n) if kind(value) == "float" => {
-            float_text(n.as_f64().unwrap_or(f64::INFINITY))
-        }
-        Value::Number(n) => n.to_string(),
-        Value::Array(a) => format!(
-            "[{}]",
-            a.iter()
-                .map(|v| repr(v, true))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        Value::Object(o) => format!(
-            "{{{}}}",
-            o.iter()
-                .map(|(k, v)| format!("{}: {}", crate::python_repr::quoted(k), repr(v, true)))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-    }
-}
-// Unlike str.strip(), CPython float() rejects ASCII record separators.
-fn whitespace(c: char) -> bool {
-    c.is_whitespace()
-}
-fn decimal(c: char) -> Option<char> {
-    static RANGES: OnceLock<Vec<[u32; 2]>> = OnceLock::new();
-    let ranges = RANGES.get_or_init(|| {
-        let doc: Value = serde_json::from_str(include_str!("../data/python311-decimal.json"))
-            .expect("checked decimal table");
-        serde_json::from_value(doc["decimal"].clone()).expect("checked decimal ranges")
-    });
-    let code = c as u32;
-    let index = ranges.partition_point(|r| r[1] < code);
-    ranges
-        .get(index)
-        .filter(|r| r[0] <= code)
-        .map(|r| char::from(b'0' + ((code - r[0]) % 10) as u8))
-}
-fn source_float(value: &Value) -> Result<f64, String> {
-    match value {
-        Value::Bool(v) => Ok(if *v { 1.0 } else { 0.0 }),
-        Value::Number(n) => {
-            let text = n.to_string();
-            let float = text
-                .parse::<f64>()
-                .map_err(|_| "int too large to convert to float".to_owned())?;
-            if !text.contains(['.', 'e', 'E']) && !float.is_finite() {
-                Err("int too large to convert to float".into())
-            } else {
-                Ok(float)
-            }
-        }
-        Value::String(s) => {
-            let text: String = s
-                .trim_matches(whitespace)
-                .chars()
-                .map(|c| decimal(c).unwrap_or(c))
-                .collect();
-            let chars: Vec<char> = text.chars().collect();
-            let underscores_valid = chars.iter().enumerate().all(|(i, c)| {
-                *c != '_'
-                    || (i > 0
-                        && i + 1 < chars.len()
-                        && chars[i - 1].is_ascii_digit()
-                        && chars[i + 1].is_ascii_digit())
-            });
-            if underscores_valid {
-                let cleaned = text.replace('_', "");
-                let special = cleaned.to_ascii_lowercase();
-                match special.as_str() {
-                    "inf" | "+inf" | "infinity" | "+infinity" => return Ok(f64::INFINITY),
-                    "-inf" | "-infinity" => return Ok(f64::NEG_INFINITY),
-                    "nan" | "+nan" | "-nan" => return Ok(f64::NAN),
-                    _ => {}
-                }
-                if let Ok(v) = cleaned.parse::<f64>() {
-                    return Ok(v);
-                }
-            }
-            Err(format!(
-                "could not convert string to float: {}",
-                crate::python_repr::quoted(s)
-            ))
-        }
-        _ => Err(format!(
-            "float() argument must be a string or a real number, not '{}'",
-            kind(value)
-        )),
-    }
-}
-fn truthy(v: &Value) -> bool {
+
+pub(crate) fn truthy(v: &Value) -> bool {
     match v {
         Value::Null => false,
         Value::Bool(v) => *v,
@@ -151,145 +19,250 @@ fn truthy(v: &Value) -> bool {
         Value::Object(v) => !v.is_empty(),
     }
 }
-fn iterable(value: Option<&Value>) -> Result<Vec<Value>, String> {
-    match value.filter(|v| truthy(v)) {
-        None => Ok(Vec::new()),
-        Some(Value::Array(v)) => Ok(v.clone()),
-        Some(Value::Object(v)) => Ok(v.keys().cloned().map(Value::String).collect()),
-        Some(Value::String(v)) => Ok(v.chars().map(|c| Value::String(c.to_string())).collect()),
-        Some(v) => Err(format!("'{}' object is not iterable", kind(v))),
+
+fn items<'py>(
+    py: Python<'py>,
+    value: Option<Bound<'py, PyAny>>,
+) -> Result<Vec<Bound<'py, PyAny>>, CodecError> {
+    let Some(value) = value else {
+        return Ok(Vec::new());
+    };
+    if !external(py, value.is_truthy())? {
+        return Ok(Vec::new());
     }
+    external(py, value.try_iter())?
+        .map(|value| external(py, value))
+        .collect()
 }
 
 pub fn validate_file(path: &std::path::Path) -> Result<(), String> {
-    use std::io::Read;
+    validate_file_typed(path).map_err(|error| error.message)
+}
+
+pub fn validate_file_typed(path: &std::path::Path) -> Result<(), CodecError> {
+    Python::initialize();
     let filename = path
         .file_name()
-        .ok_or("TGS source has no filename")?
+        .ok_or_else(|| CodecError::value("TGS source has no filename"))?
         .to_string_lossy();
-    let size = std::fs::metadata(path)
-        .map_err(|_| "cannot inspect TGS source")?
-        .len();
-    if size > 65536 {
-        return Err(format!("{filename}: TGS {size} > 65536 bytes"));
+    Python::attach(|py| {
+        let size = external(
+            py,
+            (|| -> PyResult<_> {
+                py.import("pathlib")?
+                    .getattr("Path")?
+                    .call1((path.to_path_buf(),))?
+                    .call_method0("stat")?
+                    .getattr("st_size")
+            })(),
+        )?;
+        validate_size(py, &size, &filename)?;
+        let magic = external(py, source_bytes(py, path))?;
+        if !magic.starts_with(&[0x1f, 0x8b]) {
+            return Err(CodecError::media(format!(
+                "{filename}: TGS must be gzip-compressed Lottie"
+            )));
+        }
+        // The second read is inside the original loader's narrower catch;
+        // stat/magic errors above retain their actual filesystem exception.
+        let raw = source_bytes(py, path).map_err(|error| {
+            let caught = error.is_instance_of::<pyo3::exceptions::PyOSError>(py)
+                || error.is_instance_of::<pyo3::exceptions::PyValueError>(py);
+            let error = CodecError::from_python(py, error);
+            if caught {
+                CodecError::media(format!("{filename}: not a valid TGS/Lottie ({error})"))
+            } else {
+                error
+            }
+        })?;
+        validate_bytes(py, &raw, path, &filename)
+    })
+}
+
+pub(crate) fn validate_encoded(
+    py: Python<'_>,
+    raw: &[u8],
+    path: &std::path::Path,
+    compressed_size: u64,
+) -> Result<(), CodecError> {
+    let filename = path
+        .file_name()
+        .ok_or_else(|| CodecError::value("TGS source has no filename"))?
+        .to_string_lossy();
+    validate_size(
+        py,
+        pyo3::types::PyInt::new(py, compressed_size).as_any(),
+        &filename,
+    )?;
+    validate_bytes(py, raw, path, &filename)
+}
+
+fn validate_size(
+    py: Python<'_>,
+    size: &Bound<'_, PyAny>,
+    filename: &str,
+) -> Result<(), CodecError> {
+    if external(py, size.gt(65536))? {
+        let message = external(
+            py,
+            PyString::new(py, "{}: TGS {} > 65536 bytes").call_method1("format", (filename, size)),
+        )?;
+        return Err(CodecError::media(external(
+            py,
+            message.extract::<String>(),
+        )?));
     }
-    let mut magic = [0_u8; 2];
-    let count = std::fs::File::open(path)
-        .and_then(|mut file| file.read(&mut magic))
-        .map_err(|_| "cannot read TGS source")?;
-    if count != 2 || magic != [0x1f, 0x8b] {
-        return Err(format!("{filename}: TGS must be gzip-compressed Lottie"));
-    }
-    let document = crate::codec_lottie_load::load(path).map_err(|error| {
+    Ok(())
+}
+
+fn validate_bytes(
+    py: Python<'_>,
+    raw: &[u8],
+    path: &std::path::Path,
+    filename: &str,
+) -> Result<(), CodecError> {
+    let document = crate::codec_lottie_load::decode(py, raw, path).map_err(|error| {
         if error.raw_fallback {
-            format!("{filename}: not a valid TGS/Lottie ({})", error.message)
+            CodecError::media(format!(
+                "{filename}: not a valid TGS/Lottie ({})",
+                error.message
+            ))
         } else {
-            error.message
+            CodecError {
+                kind: error.kind,
+                message: error.message,
+                handled: error.handled,
+            }
         }
     })?;
-    validate_document(&document, &filename, size)
+    validate_loaded(py, &document, filename)
 }
 
 pub fn validate_document(data: &Value, filename: &str, compressed_size: u64) -> Result<(), String> {
-    if compressed_size > 65536 {
-        return Err(format!("{filename}: TGS {compressed_size} > 65536 bytes"));
-    }
-    let object = data.as_object().ok_or_else(|| {
-        format!(
-            "{filename}: Lottie root is {}, expected an object",
-            kind(data)
-        )
-    })?;
+    validate_document_typed(data, filename, compressed_size).map_err(|error| error.message)
+}
+
+pub fn validate_document_typed(
+    data: &Value,
+    filename: &str,
+    compressed_size: u64,
+) -> Result<(), CodecError> {
+    Python::initialize();
+    Python::attach(|py| {
+        let document = external(py, py.import("json"))?;
+        let document = external(py, document.call_method1("loads", (data.to_string(),)))?;
+        validate_size(
+            py,
+            pyo3::types::PyInt::new(py, compressed_size).as_any(),
+            filename,
+        )?;
+        validate_loaded(py, &document, filename)
+    })
+}
+
+fn validate_loaded(
+    py: Python<'_>,
+    data: &Bound<'_, PyAny>,
+    filename: &str,
+) -> Result<(), CodecError> {
+    let object = match data.cast::<PyDict>() {
+        Ok(object) => object,
+        Err(_) => {
+            let kind = external(py, data.get_type().name())?;
+            return Err(CodecError::media(format!(
+                "{filename}: Lottie root is {kind}, expected an object"
+            )));
+        }
+    };
     for key in ["v", "fr", "ip", "op", "layers"] {
-        if !object.contains_key(key) {
-            return Err(format!("{filename}: Lottie missing required key '{key}'"));
+        if !external(py, object.contains(key))? {
+            return Err(CodecError::media(format!(
+                "{filename}: Lottie missing required key '{key}'"
+            )));
         }
     }
-    let null = Value::Null;
-    let w = object.get("w").unwrap_or(&null);
-    let h = object.get("h").unwrap_or(&null);
-    let canvas = |v: &Value| match v {
-        Value::Number(number) => {
-            let text = number.to_string();
-            if text.contains(['.', 'e', 'E']) {
-                source_float(v) == Ok(512.0)
-            } else {
-                text == "512"
-            }
-        }
-        _ => false,
-    };
-    if !canvas(w) || !canvas(h) {
-        return Err(format!(
-            "{filename}: canvas {}x{}, expected 512x512",
-            repr(w, false),
-            repr(h, false)
-        ));
+    let w = external(py, object.get_item("w"))?.unwrap_or_else(|| py.None().into_bound(py));
+    let h = external(py, object.get_item("h"))?.unwrap_or_else(|| py.None().into_bound(py));
+    if !external(py, w.eq(512))? || !external(py, h.eq(512))? {
+        let w = external(py, w.str())?;
+        let h = external(py, h.str())?;
+        return Err(CodecError::media(format!(
+            "{filename}: canvas {w}x{h}, expected 512x512"
+        )));
     }
-    let number = |key: &str| {
-        source_float(&object[key]).map_err(|e| {
-            if e == "int too large to convert to float" {
-                e
+    let mut values = Vec::with_capacity(3);
+    let mut originals = Vec::with_capacity(3);
+    let float = external(py, py.import("builtins"))?;
+    let float = external(py, float.getattr("float"))?;
+    for key in ["fr", "ip", "op"] {
+        let value = external(py, object.get_item(key))?
+            .ok_or_else(|| CodecError::value("required timeline field disappeared"))?;
+        let number = float.call1((&value,)).map_err(|error| {
+            let caught = error.is_instance_of::<pyo3::exceptions::PyTypeError>(py)
+                || error.is_instance_of::<pyo3::exceptions::PyValueError>(py);
+            let error = CodecError::from_python(py, error);
+            if caught {
+                CodecError::media(format!("{filename}: non-numeric fr/ip/op ({error})"))
             } else {
-                format!("{filename}: non-numeric fr/ip/op ({e})")
+                error
             }
-        })
-    };
-    let fr = number("fr")?;
-    let ip = number("ip")?;
-    let op = number("op")?;
+        })?;
+        values.push(external(py, number.extract::<f64>())?);
+        originals.push(value);
+    }
+    let (fr, ip, op) = (values[0], values[1], values[2]);
     let frames = op - ip;
-    for (name, value) in [("fr", fr), ("ip", ip), ("op", op)] {
+    for (name, value) in ["fr", "ip", "op"].into_iter().zip(&values) {
         if !value.is_finite() {
-            return Err(format!(
-                "{filename}: {name} is {}, not a finite number",
-                float_text(value)
-            ));
+            let value = external(py, float.call1((*value,)))?;
+            let value = external(py, value.str())?;
+            return Err(CodecError::media(format!(
+                "{filename}: {name} is {value}, not a finite number"
+            )));
         }
     }
-    if fr <= 0.0 {
-        return Err(format!(
-            "{filename}: frame rate {} must be positive",
-            float_text(fr)
-        ));
-    }
-    if fr > 60.0 {
-        return Err(format!("{filename}: {} fps > 60 fps", float_text(fr)));
+    if fr <= 0.0 || fr > 60.0 {
+        let value = external(py, float.call1((fr,)))?;
+        let value = external(py, value.str())?;
+        return Err(CodecError::media(if fr <= 0.0 {
+            format!("{filename}: frame rate {value} must be positive")
+        } else {
+            format!("{filename}: {value} fps > 60 fps")
+        }));
     }
     let duration = frames / fr;
     if duration <= 0.0 {
-        return Err(format!(
-            "{filename}: empty timeline (ip={}, op={})",
-            repr(&object["ip"], false),
-            repr(&object["op"], false)
-        ));
+        let ip = external(py, originals[1].str())?;
+        let op = external(py, originals[2].str())?;
+        return Err(CodecError::media(format!(
+            "{filename}: empty timeline (ip={ip}, op={op})"
+        )));
     }
     if duration > 3.01 {
-        return Err(format!("{filename}: {duration:.2}s > 3.0s"));
+        // Formatting is part of the source error contract, including tie rounding.
+        let text = PyString::new(py, "{:.2f}");
+        let text = external(py, text.call_method1("format", (duration,)))?;
+        return Err(CodecError::media(format!("{filename}: {text}s > 3.0s")));
     }
-    let mut layers = iterable(object.get("layers"))?;
-    for asset in iterable(object.get("assets"))? {
-        if let Some(asset) = asset.as_object() {
-            layers.extend(iterable(asset.get("layers"))?);
+    let mut layers = items(py, external(py, object.get_item("layers"))?)?;
+    for asset in items(py, external(py, object.get_item("assets"))?)? {
+        if let Ok(asset) = asset.cast::<PyDict>() {
+            layers.extend(items(py, external(py, asset.get_item("layers"))?)?);
         }
     }
     for layer in layers {
-        let Some(layer) = layer.as_object() else {
+        let Ok(layer) = layer.cast::<PyDict>() else {
             continue;
         };
-        for mask in iterable(layer.get("masksProperties"))? {
-            let mask = mask
-                .as_object()
-                .ok_or_else(|| format!("'{}' object has no attribute 'get'", kind(&mask)))?;
-            if mask.get("mode") == Some(&Value::String("s".into())) {
-                let name = layer
-                    .get("nm")
-                    .cloned()
-                    .unwrap_or_else(|| Value::String("?".into()));
-                return Err(format!(
-                    "{filename}: layer {} uses a SUBTRACT mask, which Telegram refuses on upload (add masks are fine). Re-export without it.",
-                    repr(&name, true)
-                ));
+        for mask in items(py, external(py, layer.get_item("masksProperties"))?)? {
+            let mode = external(py, mask.call_method1("get", ("mode",)))?;
+            if external(py, mode.eq("s"))? {
+                let name = external(py, layer.get_item("nm"))?
+                    .unwrap_or_else(|| PyString::new(py, "?").into_any());
+                let name = external(py, name.repr())?;
+                return Err(CodecError::media(format!(
+                    "{filename}: layer {name} uses a SUBTRACT mask, which Telegram refuses on upload (add masks are fine). Re-export without it."
+                )));
             }
         }
     }

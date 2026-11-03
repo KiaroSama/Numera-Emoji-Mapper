@@ -156,15 +156,30 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         "https://api.telegram.org"
     };
-    let tg =
-        crate::telegram::Telegram::new(token.into(), api.into()).map_err(|e| e.command_error())?;
+    let tg = crate::telegram::Telegram::new(token.into(), api.into())
+        .map_err(|e| e.command_error())?
+        .with_log(log);
     let family = crate::locks::pack_family_path(&files.root, &files.base);
     crate::coin_manifest::output_path(&family)?;
-    let _family = crate::locks::Lease::acquire(&family, &crate::logging::utc())
-        .map_err(|_| "logo repair family is busy or unavailable")?;
+    let _family = match crate::locks::Lease::acquire(&family, &crate::logging::utc()) {
+        Ok(lease) => lease,
+        Err(_) => {
+            log.event(
+                "ERROR",
+                "coins",
+                "logo repair family is busy or unavailable",
+            );
+            return Ok(4);
+        }
+    };
     // Recovery runs before provider requests or any new intent, under the same family lease.
     if !crate::coin_replace_disk::recover_locked(&files, &tg)? {
-        return Err("previous logo replacement remains unresolved".into());
+        log.event(
+            "ERROR",
+            "coins",
+            "previous logo replacement remains unresolved",
+        );
+        return Ok(4);
     }
     let mut fixed = 0;
     for ticker in &tickers {

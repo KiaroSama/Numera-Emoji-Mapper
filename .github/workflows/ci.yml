@@ -1,16 +1,13 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# A superseded push stops instead of running to completion: only the newest
-# commit on a ref is ever reported.
+# A replacement manual batch stops the older one on the same ref. Pushing or
+# opening a pull request never starts another batch.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -96,6 +93,10 @@ jobs:
   panel-browser:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/ms-playwright
+      CARGO_BUILD_JOBS: "2"
+      HOOKMAKER_MAX_TEST_WORKERS: "2"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -135,7 +136,7 @@ jobs:
       - name: Cache Playwright browsers
         uses: actions/cache@v6
         with:
-          path: ~/.cache/ms-playwright
+          path: .cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('requirements-dev.txt') }}
 
       - name: Install Chromium
@@ -151,6 +152,13 @@ jobs:
       # missing from this line.
       - name: Panel browser tests
         run: python -m unittest tests.test_panel_browser tests.test_panel_queues tests.test_panel_curation tests.test_panel_perf -v
+
+      # Rust owns the driver/catalog and typed external Playwright calls. The
+      # existing test runner owns driver/browser descendants (900s wall/180s idle).
+      - name: Native panel browser tests
+        env:
+          PYO3_PYTHON: python
+        run: native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test panel_browser -- --test-threads=1 --nocapture
 
   build:
     runs-on: ubuntu-latest
@@ -176,7 +184,8 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          # Only the source-oracle lane pins the historical patch; other lanes remain current.
+          python-version: ${{ matrix.python-version == '3.11' && '3.11.9' || matrix.python-version }}
           cache: pip
 
       # Both manifests: the core one, plus the coin extra (numpy). Not optional
@@ -185,8 +194,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-coins.txt
-          pip install -r requirements-lint.txt
+          pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt
 
       - name: Select supported Rust toolchain
         run: rustup default 1.99.0
@@ -198,7 +206,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+        run: cargo build --manifest-path native/Cargo.toml --locked --lib --bin numera-emoji --bin numera-build
 
       # INSTALLED here, not merely checked: a hosted runner is a fresh machine
       # with no ffmpeg, where the old self-hosted box had it in its global
@@ -241,17 +249,19 @@ jobs:
         run: |
           cargo fmt --manifest-path native/Cargo.toml --check
           cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
-          python -m tests._static_convert_oracle
-          export NUMERA_STATIC_CONVERT_ORACLE="$PWD/logs/checkpoint/static-convert-source.json"
-          export NUMERA_PROVIDER_IMAGE_ORACLE="$PWD/logs/checkpoint/provider-image-source.json"
-          python -m tests._lottie_preview_oracle
-          export NUMERA_LOTTIE_PREVIEW_ORACLE="$PWD/logs/checkpoint/lottie-preview-source.json"
-          export NUMERA_GALLERY_CODEC_ORACLE="$PWD/logs/checkpoint/gallery-codec-source.json"
-          cargo test --manifest-path native/Cargo.toml --locked -- --test-threads=2
+          native/target/debug/numera-emoji source-static-images --output-dir logs/checkpoint/static-images
+          export NUMERA_STATIC_CONVERT_ORACLE="$PWD/logs/checkpoint/static-images/static-convert-source.json"
+          export NUMERA_PROVIDER_IMAGE_ORACLE="$PWD/logs/checkpoint/static-images/provider-image-source.json"
+          native/target/debug/numera-emoji source-lottie-render --output-dir logs/checkpoint/lottie-render
+          export NUMERA_LOTTIE_PREVIEW_ORACLE="$PWD/logs/checkpoint/lottie-render/lottie-preview-source.json"
+          export NUMERA_GALLERY_CODEC_ORACLE="$PWD/logs/checkpoint/lottie-render/gallery-codec-source.json"
+          rustc --edition=2024 native/tests/fixtures/media_worker.rs -o "$PWD/logs/checkpoint/media-worker-fixture"
+          export NUMERA_MEDIA_FIXTURE_WORKER="$PWD/logs/checkpoint/media-worker-fixture"
+          native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked -- --test-threads=2
 
       - name: Similarity benchmark and parity
         if: matrix.python-version == '3.11'
-        run: python scripts/benchmark_similarity.py
+        run: native/target/debug/numera-emoji benchmark-similarity
 
       - name: build_pack dry-run (no network)
         run: |
@@ -298,10 +308,11 @@ jobs:
           if ($bad) { $bad; exit 1 }
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          # Native/source lock interoperability replays the exact historical runtime.
+          python-version: "3.11.9"
           cache: pip
       - name: Install isolated test dependencies
-        run: python -m pip install -r requirements.txt -r requirements-coins.txt
+        run: python -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt
       - name: Select supported Rust toolchain
         run: rustup default 1.99.0
 
@@ -312,7 +323,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+        run: cargo build --manifest-path native/Cargo.toml --locked --lib --bin numera-emoji --bin numera-build
       - name: Require native Windows and FFmpeg
         shell: pwsh
         run: |
@@ -325,17 +336,32 @@ jobs:
           if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) {
             throw 'ffmpeg and ffprobe are required for native Windows regressions'
           }
+      - name: Build native Windows lifecycle fixture
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force logs/checkpoint, logs/tmp | Out-Null
+          $fixture = Join-Path $PWD 'logs/checkpoint/media-worker-fixture.exe'
+          rustc --edition=2024 native/tests/fixtures/media_worker.rs -o $fixture
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "NUMERA_MEDIA_FIXTURE_WORKER=$fixture" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      # The running driver must not lock the executable Cargo is about to rebuild.
+      - name: Copy native Cargo observation driver
+        shell: pwsh
+        run: |
+          $driver = Join-Path $PWD 'logs/checkpoint/test-cargo-driver.exe'
+          if (Test-Path -LiteralPath $driver) { throw 'Cargo observation driver already exists' }
+          Copy-Item -LiteralPath native/target/debug/numera-emoji.exe -Destination $driver -ErrorAction Stop
       - name: Native codec lifecycle regressions
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_commit --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test atomic_failure --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store --test media_config -- --test-threads=1
+        run: logs/checkpoint/test-cargo-driver.exe test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test tooling_process --test tooling_test_runner --test tooling_runtime --test tooling_doctor --test tooling_menu --test tooling_launch --test tooling_sandbox --test tooling_build --test tooling_install --test tooling_policy --test wheel_package --test catalog_integrity --test catalog_paths --test pack_locks --test source_git_inventory --test source_assertions --test source_state_compat_recipe --test source_logging_admission --test logging_parity --test tooling_sandbox_serve --test tooling_convert_cli --test state_compat_parity --test ingest_parity --test telegram_transport --test bot_commands --test announce_binding --test process_session --test codec_prepare_tint --test codec_static --test codec_format --test codec_static_source_boundary --test codec_static_lifetime --test codec_svg_lifetime --test codec_lottie_file --test codec_reencode --test codec_compare --test codec_video_operations --test codec_process_policy --test codec_video --test codec_video_fidelity --test codec_lottie_lifetime --test codec_lottie_prepare --test repaint_gate --test source_fake_contracts --test source_reference_behavior --test source_lock_order --test codec_worker_error_ipc --test media_native_lifecycle --test media_native_consumers --test media_native_paths --test media_native_identity --test media_native_convert --test media_native_collect --test media_native_ids --test fetch_ids_cli --test coin_audit --test coin_audit_cli --test coin_keywords --test coin_provider_cli --test coin_http --test coin_provider_wire --test coin_gecko_fetch --test coin_provider_image --test coin_provider_effects --test coin_provider_restart --test coin_state --test coin_provider_cache --test coin_inventory --test coin_map_cli --test coin_remap_cli --test coin_remap_cache --test coin_remap_math --test coin_remap --test coin_verify_cli --test coin_replace_effects --test coin_replace_proof --test coin_logo_distance --test coin_rebuild_effects --test coin_rebuild_add_cli --test coin_plan_disk --test coin_plan --test coin_rebuild_map_cli --test coin_rebuild_recovery_disk --test coin_rebuild_links_cli --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_view_parity --test reconcile_commit --test reconcile_identity --test publication_scratch --test operator_config --test sync_order --test archive_state --test archive_commands --test plan_removal --test plan_steps_parity --test pack_export --test status --test roster_state --test roster_commands --test pack_reports --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test atomic_failure --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store --test media_config -- --test-threads=1
 
       - name: Native process-death migration replay
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo test --manifest-path native/Cargo.toml --locked --lib -- --test-threads=1
+        run: logs/checkpoint/test-cargo-driver.exe test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib -- --test-threads=1
 
       - name: Native lock, migration, HTTP persistence, identity and CLI regressions
         env:

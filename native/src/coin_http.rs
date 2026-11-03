@@ -4,6 +4,18 @@ use reqwest::header::HeaderMap;
 use std::io::Read;
 use std::time::Duration;
 
+pub fn page_delay(raw: &str) -> Result<Duration, String> {
+    let seconds = raw
+        .trim_matches(crate::emoji_ids::whitespace)
+        .parse::<f64>()
+        .ok()
+        .filter(|value| value.is_finite())
+        .map(|value| value.max(0.0))
+        .unwrap_or(2.0);
+    Duration::try_from_secs_f64(seconds)
+        .map_err(|_| "COIN_PAGE_DELAY exceeds native duration range".into())
+}
+
 pub struct Reply {
     pub status: u16,
     pub retry_after: Option<String>,
@@ -37,7 +49,8 @@ impl Retry {
         if !seconds.is_finite() || seconds < 0.0 {
             return Err("provider retry wait must be finite and nonnegative".into());
         }
-        Ok(Duration::from_secs_f64(seconds))
+        Duration::try_from_secs_f64(seconds)
+            .map_err(|_| "provider retry wait exceeds native duration range".into())
     }
 }
 
@@ -73,6 +86,50 @@ where
     Ok(None)
 }
 
+fn numeric_loopback(url: &reqwest::Url) -> bool {
+    matches!(url.host_str(), Some("127.0.0.1" | "::1" | "[::1]"))
+}
+
+/// Keep test routing explicit and isolated from process-global environment in policy tests.
+pub fn endpoint(
+    url: &str,
+    hermetic: bool,
+    test_base: Option<&str>,
+) -> Result<reqwest::Url, String> {
+    let url = reqwest::Url::parse(url).map_err(|_| "invalid provider URL")?;
+    if !matches!(url.scheme(), "http" | "https")
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.fragment().is_some()
+    {
+        return Err("unsupported provider URL".into());
+    }
+    if !hermetic {
+        return Ok(url);
+    }
+    if let Some(base) = test_base {
+        let mut base = reqwest::Url::parse(base).map_err(|_| "invalid provider test origin")?;
+        if !matches!(base.scheme(), "http" | "https")
+            || !numeric_loopback(&base)
+            || !base.username().is_empty()
+            || base.password().is_some()
+            || base.path() != "/"
+            || base.query().is_some()
+            || base.fragment().is_some()
+        {
+            return Err("provider test origin must be credential-free numeric loopback".into());
+        }
+        // Provider-supplied CDN URLs must stay on the fixture origin too, not merely API calls.
+        base.set_path(url.path());
+        base.set_query(url.query());
+        return Ok(base);
+    }
+    if !numeric_loopback(&url) {
+        return Err("native tests may connect only to numeric loopback hosts".into());
+    }
+    Ok(url)
+}
+
 pub struct ProviderHttp {
     client: Client,
     timeout: Duration,
@@ -104,19 +161,13 @@ impl ProviderHttp {
         headers: &HeaderMap,
         policy: &Retry,
     ) -> Result<Option<Reply>, String> {
-        let url = reqwest::Url::parse(url).map_err(|_| "invalid provider URL")?;
-        if !matches!(url.scheme(), "http" | "https")
-            || !url.username().is_empty()
-            || url.password().is_some()
-            || url.fragment().is_some()
-        {
-            return Err("unsupported provider URL".into());
-        }
-        if std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1")
-            && !matches!(url.host_str(), Some("127.0.0.1" | "::1" | "[::1]"))
-        {
-            return Err("native tests may connect only to numeric loopback hosts".into());
-        }
+        let hermetic = std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1");
+        let test_base = if hermetic {
+            std::env::var("NUMERA_TEST_PROVIDER_BASE").ok()
+        } else {
+            None
+        };
+        let url = endpoint(url, hermetic, test_base.as_deref())?;
         get_with(
             policy,
             || {

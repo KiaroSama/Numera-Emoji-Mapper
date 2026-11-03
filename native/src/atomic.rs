@@ -1,7 +1,5 @@
 //! Invocation-owned sibling writes; a failed replace cannot truncate durable state.
-#[cfg(unix)]
-use std::fs::File;
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -54,7 +52,7 @@ fn move_new_windows(source: &Path, destination: &Path) -> io::Result<()> {
     }
 }
 
-pub fn write_json(path: &Path, value: &serde_json::Value) -> io::Result<()> {
+pub fn write_json<T: serde::Serialize + ?Sized>(path: &Path, value: &T) -> io::Result<()> {
     let formatter = serde_json::ser::PrettyFormatter::with_indent(b" ");
     let mut bytes = Vec::new();
     let mut serializer = serde_json::Serializer::with_formatter(&mut bytes, formatter);
@@ -63,6 +61,17 @@ pub fn write_json(path: &Path, value: &serde_json::Value) -> io::Result<()> {
 }
 
 pub fn write_bytes(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    write_bytes_with(path, bytes, File::sync_all, |source, destination| {
+        std::fs::rename(source, destination)
+    })
+}
+
+pub(crate) fn write_bytes_with(
+    path: &Path,
+    bytes: &[u8],
+    mut sync: impl FnMut(&File) -> io::Result<()>,
+    mut replace: impl FnMut(&Path, &Path) -> io::Result<()>,
+) -> io::Result<()> {
     let parent = path
         .parent()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "state path has no parent"))?;
@@ -90,7 +99,7 @@ pub fn write_bytes(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let result = (|| {
         file.write_all(bytes)?;
         file.flush()?;
-        file.sync_all()?;
+        sync(&file)?;
         match std::fs::metadata(path) {
             Ok(old) => file.set_permissions(old.permissions())?,
             Err(e) if e.kind() == io::ErrorKind::NotFound => {}
@@ -100,7 +109,7 @@ pub fn write_bytes(path: &Path, bytes: &[u8]) -> io::Result<()> {
         let deadline = Instant::now() + Duration::from_secs(1);
         let mut delay = Duration::from_millis(5);
         loop {
-            match std::fs::rename(&tmp, path) {
+            match replace(&tmp, path) {
                 Ok(()) => break,
                 Err(e)
                     if cfg!(windows)

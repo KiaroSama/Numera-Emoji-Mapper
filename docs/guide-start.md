@@ -122,6 +122,11 @@ EMOJI_ARCHIVE_DIR=<where full packs are archived>
 COIN_EMOJI_DIR=<where the coin logo PNGs live>
 ```
 
+On the active migration branch, native application commands and the panel resolve
+log retention after loading configuration. Only direct regular log files are
+eligible; symlink/reparse entries are retained. The new source/native/CLI checks
+are not executed yet, so this is not a claim about the installed package.
+
 That is the complete set of variables any code reads, plus two environment-only
 switches used for testing: `TELEGRAM_API_BASE` (Bot API endpoint override,
 default `https://api.telegram.org`) and `NUMERA_EMOJI_MAPPER_NO_DOTENV=1` (makes

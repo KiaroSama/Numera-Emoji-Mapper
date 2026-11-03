@@ -25,7 +25,11 @@ pub fn collection(mut state: Value, base: &str) -> Result<Value> {
         .as_object_mut()
         .ok_or("state is not a publish-state object")?;
     if doc.entry("base").or_insert(json!(base)) != base {
-        return Err("state belongs to a different base".into());
+        return Err(format!(
+            "state belongs to base {}, not {}",
+            doc["base"],
+            json!(base)
+        ));
     }
     for field in ["sets", "sent", "sent_full", "skipped"] {
         if !doc.entry(field).or_insert(json!([])).is_array() {
@@ -102,7 +106,7 @@ pub fn collection(mut state: Value, base: &str) -> Result<Value> {
             .ok_or_else(|| format!("sets[{i}] live count is outside 0..200"))?;
         if live < recorded {
             return Err(format!(
-                "sets[{i}] live count is smaller than recorded membership"
+                "sets[{i}] claims {live} live sticker(s) but records {recorded}"
             ));
         }
     }

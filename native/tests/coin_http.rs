@@ -1,7 +1,6 @@
-//! Provider retries are observed with virtual time; one bounded loopback request covers wire transport.
-use _native::coin_http::{ProviderHttp, Reply, Retry, get_with};
+//! Provider retries use virtual time; actual wire behavior belongs to coin_provider_wire.
+use _native::coin_http::{Reply, Retry, get_with};
 use serde_json::{Value, json};
-use std::time::Duration;
 
 #[test]
 fn source_retry_ladder_status_stops_and_retry_after_are_preserved() {
@@ -47,48 +46,76 @@ fn source_retry_ladder_status_stops_and_retry_after_are_preserved() {
         assert_eq!(json!(calls), case["expected"]["calls"]);
         assert_eq!(json!(waits), case["expected"]["waits"]);
     }
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    listener.set_nonblocking(true).unwrap();
-    let port = listener.local_addr().unwrap().port();
-    let server = std::thread::spawn(move || {
-        use std::io::{Read, Write};
-        let deadline = std::time::Instant::now() + Duration::from_secs(5);
-        let mut stream = loop {
-            match listener.accept() {
-                Ok((stream, _)) => break stream,
-                Err(error)
-                    if error.kind() == std::io::ErrorKind::WouldBlock
-                        && std::time::Instant::now() < deadline =>
-                {
-                    std::thread::yield_now()
-                }
-                Err(error) => panic!("loopback accept: {error}"),
-            }
-        };
-        stream
-            .set_read_timeout(Some(Duration::from_secs(2)))
-            .unwrap();
-        stream
-            .set_write_timeout(Some(Duration::from_secs(2)))
-            .unwrap();
-        let mut bytes = [0; 4096];
-        let count = stream.read(&mut bytes).unwrap();
-        assert!(String::from_utf8_lossy(&bytes[..count]).starts_with("GET /fixture "));
-        stream.write_all(b"HTTP/1.1 402 Payment Required\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}").unwrap();
-    });
-    let client = ProviderHttp::new(Duration::from_secs(3)).unwrap();
-    let response = client
-        .get(
-            &format!("http://127.0.0.1:{port}/fixture"),
-            &reqwest::header::HeaderMap::new(),
+    original_retry_assertions();
+    let oversized = Retry {
+        backoff: f64::MAX,
+        max_backoff: f64::MAX,
+        ..Retry::default()
+    };
+    let mut requests = 0;
+    let error = get_with(
+        &oversized,
+        || {
+            requests += 1;
+            Err("transport unavailable".into())
+        },
+        |_| panic!("an unrepresentable retry delay must not reach the waiter"),
+    )
+    .err()
+    .expect("finite but unrepresentable retry delays must return an error");
+    assert_eq!(error, "provider retry wait exceeds native duration range");
+    assert_eq!(requests, 1);
+    assert_eq!(
+        oversized.wait(1, Some("7")).unwrap(),
+        std::time::Duration::from_secs(7)
+    );
+    for (raw, expected) in [("", 2.0), ("15", 15.0), ("12 seconds", 2.0), (" -3 ", 0.0)] {
+        let delay = _native::coin_http::page_delay(raw).unwrap();
+        assert_eq!(delay.as_secs_f64(), expected);
+        if raw.is_empty() {
+            assert!(delay.as_secs_f64() <= 3.0);
+        }
+    }
+}
+
+fn original_retry_assertions() {
+    for (statuses, header, attempts, expected_status, expected_waits) in [
+        (vec![429, 200], "7", 3, Some(200), vec![7.0]),
+        (vec![429, 200], "3600", 3, Some(200), vec![60.0]),
+        (vec![500, 500, 500, 500], "", 4, None, vec![4.0, 8.0, 12.0]),
+        (vec![0, 0], "", 2, None, vec![4.0]),
+    ] {
+        let mut calls = Vec::new();
+        let mut waits = Vec::new();
+        let result = get_with(
             &Retry {
-                stop_on: vec![402],
+                attempts,
                 ..Retry::default()
             },
+            || {
+                let status = statuses[calls.len()];
+                calls.push(status);
+                if status == 0 {
+                    Err("connection reset".into())
+                } else {
+                    Ok(Reply {
+                        status,
+                        retry_after: Some(header.into()),
+                        bytes: b"[]".to_vec(),
+                    })
+                }
+            },
+            |duration| {
+                waits.push(duration.as_secs_f64());
+                Ok(())
+            },
         )
-        .unwrap()
         .unwrap();
-    assert_eq!(response.status, 402);
-    assert_eq!(response.bytes, b"{}");
-    server.join().unwrap();
+        assert_eq!(result.as_ref().map(|reply| reply.status), expected_status);
+        if let Some(reply) = result {
+            assert_eq!(reply.bytes, b"[]");
+        }
+        assert_eq!(calls, statuses);
+        assert_eq!(waits, expected_waits);
+    }
 }

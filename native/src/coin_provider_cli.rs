@@ -47,6 +47,14 @@ fn code(succeeded: usize, failed: usize, unknown: usize) -> u8 {
 }
 
 pub fn run(config: &Config, provider: &str, args: &[String], log: &RunLog) -> Result<u8, String> {
+    let usage = format!(
+        "Usage: numera-emoji coin-fetch-{provider} [--dry] [--coin-dir DIR]{}",
+        if provider == "paprika" {
+            " [--retry-unmatched]"
+        } else {
+            ""
+        }
+    );
     let mut directory = config.root.join("coins");
     let mut dry = false;
     let mut retry = false;
@@ -61,19 +69,16 @@ pub fn run(config: &Config, provider: &str, args: &[String], log: &RunLog) -> Re
                 i += 1;
                 directory = config.path(args.get(i).ok_or("--coin-dir requires a path")?);
             }
-            value => return Err(format!("unknown coin-fetch-{provider} option: {value}")),
+            value => {
+                return Err(format!(
+                    "{usage}\nunknown coin-fetch-{provider} option: {value}"
+                ));
+            }
         }
         i += 1;
     }
     if help {
-        println!(
-            "Usage: numera-emoji coin-fetch-{provider} [--dry] [--coin-dir DIR]{}",
-            if provider == "paprika" {
-                " [--retry-unmatched]"
-            } else {
-                ""
-            }
-        );
+        println!("{usage}");
         return Ok(0);
     }
     let base = config.require("COIN_PACK_BASE")?;
@@ -209,14 +214,14 @@ pub fn run(config: &Config, provider: &str, args: &[String], log: &RunLog) -> Re
             return Ok(code(0, failed, unknown));
         }
         let token = token.ok_or("live provider run has no token")?;
-        let api = config.value("TELEGRAM_API_BASE");
-        let api = if api.is_empty() {
-            "https://api.telegram.org"
+        let api = if config.value("NUMERA_EMOJI_MAPPER_NO_DOTENV") == "1" {
+            config.require("NUMERA_TEST_API_BASE")?
         } else {
-            api
+            "https://api.telegram.org"
         };
-        let tg =
-            crate::telegram::Telegram::new(token, api.into()).map_err(|e| e.command_error())?;
+        let tg = crate::telegram::Telegram::new(token, api.into())
+            .map_err(|e| e.command_error())?
+            .with_log(log);
         let keywords = crate::ticker_keywords::load(&directory.join("keywords.csv"))?
             .into_iter()
             .map(|(k, v)| (k, json!(v)))

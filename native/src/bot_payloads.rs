@@ -2,14 +2,22 @@
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 fn digits(value: &str, min: usize, max: usize) -> bool {
-    (min..=max).contains(&value.chars().count()) && value.chars().all(|c| c.is_ascii_digit())
+    (min..=max).contains(&value.chars().count()) && value.chars().all(crate::emoji_ids::decimal)
 }
 pub fn typed(text: &str) -> Vec<String> {
+    let text = text.trim_matches(crate::emoji_ids::whitespace);
+    if !text.chars().next().is_some_and(crate::emoji_ids::decimal)
+        || !text
+            .chars()
+            .next_back()
+            .is_some_and(crate::emoji_ids::decimal)
+    {
+        return vec![];
+    }
     let mut out = Vec::new();
     let mut seen = BTreeSet::new();
     for part in text
-        .trim()
-        .split(|c: char| c.is_whitespace() || c == ',' || c == ';')
+        .split(|c: char| crate::emoji_ids::whitespace(c) || c == ',' || c == ';')
         .filter(|s| !s.is_empty())
     {
         if !digits(part, 15, 25) {

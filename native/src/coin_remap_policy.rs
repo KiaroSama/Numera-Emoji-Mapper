@@ -25,6 +25,46 @@ pub struct Decision {
     pub backup: bool,
 }
 
+pub struct Nearest {
+    pub indices: Vec<usize>,
+    pub squared: Vec<f64>,
+    pub second: Vec<f64>,
+}
+
+pub fn matches(
+    tickers: &[String],
+    cids: &[String],
+    nearest: Nearest,
+) -> Result<Vec<Match>, String> {
+    if [
+        nearest.indices.len(),
+        nearest.squared.len(),
+        nearest.second.len(),
+    ]
+    .iter()
+    .any(|length| *length != tickers.len())
+    {
+        return Err("remap parallel match arrays disagree".into());
+    }
+    tickers
+        .iter()
+        .enumerate()
+        .map(|(index, ticker)| {
+            let cid = cids
+                .get(nearest.indices[index])
+                .ok_or("remap nearest index is outside candidates")?
+                .clone();
+            let distance = nearest.squared[index].sqrt();
+            Ok(Match {
+                ticker: ticker.clone(),
+                cid,
+                distance,
+                margin: nearest.second[index].sqrt() - distance,
+            })
+        })
+        .collect()
+}
+
 pub fn decide(matches: &[Match], options: Options) -> Result<Decision, String> {
     if options
         .max_distance

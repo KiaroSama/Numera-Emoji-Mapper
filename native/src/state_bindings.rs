@@ -14,11 +14,12 @@ impl NativeStateLease {
     #[new]
     fn new(py: Python<'_>, path: String, started: String) -> PyResult<Self> {
         let path = PathBuf::from(path);
-        let lease=py.detach(||Lease::acquire(&path,&started)).map_err(|error| {
-            let holder=std::fs::read_to_string(&path).ok().and_then(|text|serde_json::from_str::<Value>(text.trim()).ok());
-            let who=holder.map(|doc|format!("record names pid {} (started {})",doc["pid"],doc["started"])).unwrap_or_else(||"another run".into());
-            pyo3::exceptions::PyRuntimeError::new_err(format!("{} is held by {who}. Refusing to mutate the same pack family concurrently. [{error}]",path.file_name().unwrap_or_default().to_string_lossy()))
-        })?;
+        let lease = py
+            .detach(|| {
+                Lease::acquire(&path, &started)
+                    .map_err(|error| crate::lock_diagnostics::busy_message(&path, &error))
+            })
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         Ok(Self {
             lease: Some(lease),
             path,

@@ -1,4 +1,39 @@
 //! Keep the wrapper's inherited POSIX flock until all clone access has stopped.
+
+pub fn validate_marker(data: &std::path::Path) -> Result<(), String> {
+    use std::io::Read;
+    let directory = crate::tooling_environment::physical_root(data)?;
+    let mut selected = None;
+    for name in [".sandbox-owner.json", ".sandbox-recovery.json"] {
+        let path = directory.join(name);
+        match std::fs::symlink_metadata(&path) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => return Err("cannot inspect sandbox marker".into()),
+            Ok(metadata) => {
+                crate::tooling_environment::reject_links(&path, "unsupported sandbox marker path")?;
+                if !metadata.is_file() || metadata.len() > 65536 || selected.is_some() {
+                    return Err("sandbox requires exactly one regular marker under64KiB".into());
+                }
+                selected = Some(path);
+            }
+        }
+    }
+    let marker_path = selected.ok_or("sandbox marker is missing")?;
+    let file = std::fs::File::open(marker_path).map_err(|_| "cannot open sandbox marker")?;
+    let mut bytes = Vec::new();
+    file.take(65537)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "cannot read sandbox marker")?;
+    if bytes.len() > 65536 {
+        return Err("sandbox marker grew beyond64KiB".into());
+    }
+    let marker: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|_| "invalid sandbox marker")?;
+    if marker["version"] != 2 || marker["directory"].as_str() != directory.to_str() {
+        return Err("sandbox marker does not describe this clone".into());
+    }
+    Ok(())
+}
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[allow(unsafe_code)]
 pub fn inherit(data: &std::path::Path) -> Result<Option<std::fs::File>, String> {
@@ -76,17 +111,7 @@ pub fn inherit(data: &std::path::Path) -> Result<Option<std::fs::File>, String> 
     {
         return Err("sandbox descriptor does not own this clone's lifetime file".into());
     }
-    let marker_path = directory.join(".sandbox-owner.json");
-    if !std::fs::symlink_metadata(&marker_path).is_ok_and(|m| m.is_file()) {
-        return Err("unsupported sandbox marker path".into());
-    }
-    let marker: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(marker_path).map_err(|_| "sandbox marker is missing")?,
-    )
-    .map_err(|_| "invalid sandbox marker")?;
-    if marker["version"] != 2 || marker["directory"].as_str() != directory.to_str() {
-        return Err("sandbox marker does not describe this clone".into());
-    }
+    validate_marker(data)?;
     // A separate open-file description must be excluded by the inherited flock.
     let contender = std::fs::OpenOptions::new()
         .read(true)

@@ -1,7 +1,11 @@
 //! Native requested-ID collection; a tint invalidates the source-file shortcut before dedup.
 use crate::{
-    catalog::Catalog, collector::Collector, config::Config, logging::RunLog,
-    media_adapter::MediaAdapter, telegram::Telegram,
+    catalog::Catalog,
+    collector::Collector,
+    config::Config,
+    logging::RunLog,
+    media_adapter::{MediaAdapter, MediaCodec},
+    telegram::Telegram,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -12,6 +16,17 @@ fn take(args: &[String], i: &mut usize) -> Result<String, String> {
         .cloned()
         .ok_or("option requires a value".into())
 }
+fn validate_repaint(repaintable: &str, tint: Option<&str>) -> Result<Option<String>, String> {
+    if !crate::repaint_gate::MODES.contains(&repaintable) {
+        return Err("invalid repaintable choice".into());
+    }
+    tint.map(|text| {
+        let [r, g, b] = crate::codec_tint::parse_tint(text)?;
+        Ok(format!("#{r:02X}{g:02X}{b:02X}"))
+    })
+    .transpose()
+}
+
 pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String> {
     if args.iter().any(|a| a == "-h" || a == "--help") {
         println!(
@@ -49,15 +64,10 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     if threshold != -1 && !(0..=16).contains(&threshold) {
         return Err("phash threshold must be -1 or 0..16".into());
     }
-    if !["ask", "skip", "keep"].contains(&repaintable.as_str()) {
-        return Err("invalid repaintable choice".into());
-    }
-    if tint.as_ref().is_some_and(|s| {
-        s.len() != 7 || !s.starts_with('#') || !s[1..].bytes().all(|b| b.is_ascii_hexdigit())
-    }) {
-        return Err("tint must be #RRGGBB".into());
-    }
-    let ids = crate::emoji_ids::collect(&files, &inline)?;
+    let tint = validate_repaint(&repaintable, tint.as_deref())?;
+    let ids = crate::emoji_ids::collect_with_report(&files, &inline, |message| {
+        log.event("INFO", "fetch_emoji_ids", message);
+    })?;
     if ids.is_empty() {
         return Err("no valid custom-emoji IDs found".into());
     }
@@ -66,7 +76,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         "https://api.telegram.org".into()
     };
-    let tg = Telegram::new(config.require(&token_key)?.into(), api).map_err(|e| e.to_string())?;
+    let tg = Telegram::new(config.require(&token_key)?.into(), api)
+        .map_err(|e| e.to_string())?
+        .with_log(log);
     tg.read_call("getMe", &BTreeMap::new())
         .map_err(|e| e.to_string())?;
     let data = config.path(&data);
@@ -102,6 +114,48 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         data,
         threshold,
     };
+    let counts = fetch_ids(
+        &mut collector,
+        &tg,
+        &runtime,
+        &ids,
+        &repaintable,
+        tint.as_deref(),
+        log,
+    )?;
+    let mut extra = String::new();
+    if counts["repaintable"].as_u64().unwrap_or(0) > 0 {
+        extra.push_str(&format!(" repaintable_skipped={}", counts["repaintable"]));
+    }
+    if counts["repainted"].as_u64().unwrap_or(0) > 0 {
+        extra.push_str(&format!(" repainted={}", counts["repainted"]));
+    }
+    println!(
+        "Done. unique_ids={} new={} dedup={} failed={} missing={}{extra}",
+        ids.len(),
+        counts["new"],
+        counts["dedup"],
+        counts["failed"],
+        counts["missing"]
+    );
+    crate::collector::report_stats(collector.cat)?;
+    Ok(crate::collector::ingest_exit_code(
+        u64::from(counts["new"] != 0 || counts["dedup"] != 0),
+        u64::from(counts["failed"] != 0 || counts["missing"] != 0),
+    ))
+}
+
+pub fn fetch_ids<M: MediaCodec>(
+    collector: &mut Collector<'_, M>,
+    tg: &Telegram,
+    runtime: &tokio::runtime::Runtime,
+    ids: &[String],
+    repaintable: &str,
+    tint: Option<&str>,
+    log: &RunLog,
+) -> Result<Value, String> {
+    let tint = validate_repaint(repaintable, tint)?;
+    let tint = tint.as_deref();
     let mut resolved = serde_json::Map::new();
     for batch in ids.chunks(200) {
         let response = tg
@@ -118,19 +172,14 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     }
     let missing = ids.iter().filter(|id| !resolved.contains_key(*id)).count();
     let (mut new, mut dedup, mut failed, mut repaint_skipped, mut repainted) = (0, 0, 0, 0, 0);
-    let mut keep = repaintable == "keep" || tint.is_some();
-    if !keep && repaintable == "ask" && resolved.values().any(|s| s["needs_repainting"] == true) {
-        use std::io::{IsTerminal, Write};
-        if std::io::stdin().is_terminal() {
-            eprint!("Repaintable emoji use their stored colours here. Ingest anyway? [y/N] ");
-            std::io::stderr().flush().map_err(|e| e.to_string())?;
-            let mut answer = String::new();
-            keep = std::io::stdin().read_line(&mut answer).is_ok()
-                && ["y", "yes"].contains(&answer.trim().to_lowercase().as_str());
-        }
-    }
+    let repainted_ids = resolved
+        .iter()
+        .filter(|(_, sticker)| crate::repaint_gate::is_repaintable(sticker))
+        .map(|(id, _)| id.clone())
+        .collect::<Vec<_>>();
+    let keep = tint.is_some() || crate::repaint_gate::run(&repainted_ids, repaintable, Some(log))?;
     for (id, sticker) in resolved {
-        let repaint = sticker["needs_repainting"] == true;
+        let repaint = crate::repaint_gate::is_repaintable(&sticker);
         if repaint && !keep {
             repaint_skipped += 1;
             continue;
@@ -157,14 +206,14 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             continue;
         }
         if recolour {
-            let tint = tint.as_ref().ok_or("missing tint")?.to_uppercase();
+            let tint = tint.ok_or("missing tint")?;
             labels["keywords"]
                 .as_array_mut()
                 .ok_or("invalid labels")?
                 .push(json!(format!("tint:{tint}")));
             labels["tint"] = json!(tint);
         }
-        match collector.download_ingest(&tg, &runtime, &sticker, labels) {
+        match collector.download_ingest(tg, runtime, &sticker, labels) {
             Ok(true) => {
                 new += 1;
                 if recolour {
@@ -183,23 +232,8 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             }
         }
     }
-    let mut extra = String::new();
-    if repaint_skipped > 0 {
-        extra.push_str(&format!(" repaintable_skipped={repaint_skipped}"));
-    }
-    if repainted > 0 {
-        extra.push_str(&format!(" repainted={repainted}"));
-    }
-    println!(
-        "Done. unique_ids={} new={new} dedup={dedup} failed={failed} missing={missing}{extra}",
-        ids.len()
-    );
-    crate::collector::report_stats(collector.cat)?;
-    Ok(if failed + missing == 0 {
-        0
-    } else if new + dedup > 0 {
-        3
-    } else {
-        4
-    })
+    Ok(
+        json!({"new":new,"dedup":dedup,"failed":failed,"missing":missing,
+        "repaintable":repaint_skipped,"repainted":repainted}),
+    )
 }

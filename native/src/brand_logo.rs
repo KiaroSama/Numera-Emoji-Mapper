@@ -1,5 +1,5 @@
 //! Digest-keyed brand cache; an unreadable/wrong-sized cache cannot lead a new pack.
-use crate::{config::Config, media_adapter::MediaAdapter};
+use crate::{config::Config, media_adapter::MediaCodec};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::path::Path;
@@ -12,7 +12,7 @@ impl Drop for Staged {
     }
 }
 pub async fn prepare(
-    media: &MediaAdapter,
+    media: &impl MediaCodec,
     source: &Path,
     data: &Path,
     config: &Config,
@@ -63,16 +63,6 @@ pub async fn prepare(
         .await?;
     item["file_path"] = json!(output);
     item["emojis"] = json!(["✅"]);
-    let keywords = config
-        .value("BRAND_LOGO_KEYWORDS")
-        .split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>();
-    item["keywords"] = if keywords.is_empty() {
-        json!(["logo"])
-    } else {
-        json!(keywords)
-    };
+    item["keywords"] = json!(config.logo_keywords());
     Ok(item)
 }

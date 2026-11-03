@@ -143,6 +143,24 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             return Ok(4);
         }
     };
+    if command == "report"
+        && let Some(journal) = &journal
+    {
+        println!(
+            "\nAN INTERRUPTED MIGRATION IS RECORDED (stage: {}, started {}).",
+            crate::logging::redact(
+                journal["stage"].as_str().unwrap_or("unknown"),
+                &config.secret_values()
+            ),
+            crate::logging::redact(
+                journal["started_utc"].as_str().unwrap_or("unknown"),
+                &config.secret_values()
+            )
+        );
+        println!(
+            "  Re-run `migrate-video-keys --apply` to complete it; every stage is idempotent."
+        );
+    }
     let inspected = (|| -> Result<u8, String> {
         let recovered = if command == "migrate-video-keys" {
             if let Some(backup) = recovery_backup.as_deref() {

@@ -66,13 +66,22 @@ impl RecoveryIo for Disk<'_> {
             .map_err(str::to_owned)
     }
     fn promote(&mut self, intent: &Value, want: u64) -> Result<bool, String> {
-        self.stage.promote(
+        let promoted = self.stage.promote(
             &self.stage.for_intent(intent)?,
             intent["key"]
                 .as_str()
                 .ok_or("provider intent has no ticker")?,
             want,
-        )
+        )?;
+        if !promoted {
+            let message = "Provider logo was NOT updated: the original uploaded image is unavailable or different. Re-fetch this ticker to refresh it.";
+            if let Some(log) = self.tg.log() {
+                log.event("WARNING", "coins", message);
+            } else {
+                eprintln!("WARNING: {message}");
+            }
+        }
+        Ok(promoted)
     }
 }
 pub(crate) fn object(path: &Path, missing: bool) -> Result<Map<String, Value>, String> {

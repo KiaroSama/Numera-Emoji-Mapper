@@ -1,20 +1,30 @@
 //! Additive native coin commands exercise actual entry points on owned fixtures only.
-use _native::process_owner::OwnedProcess;
+use _native::{logging::RunLog, tooling_process};
 use serde_json::{Value, json};
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::path::Path;
 use std::time::Duration;
+
+#[path = "support/bot_api.rs"]
+mod bot_api;
+#[path = "support/tooling_fixture.rs"]
+mod tooling_fixture;
 
 #[test]
 fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .to_path_buf();
-    let scratch = root
-        .join("logs/tmp")
-        .join(format!("coin map cli {}", std::process::id()));
-    std::fs::create_dir(&scratch).unwrap();
+    let fixture = tooling_fixture::Root::new("coin map original commands");
+    let scratch = &fixture.0;
+    std::fs::create_dir(scratch.join("assets")).unwrap();
+    std::fs::write(scratch.join("assets/panel.html"), b"fixture marker").unwrap();
+    std::fs::write(scratch.join("pyproject.toml"), b"# fixture marker\n").unwrap();
+    let executable = scratch.join(if cfg!(windows) {
+        "numera-emoji.exe"
+    } else {
+        "numera-emoji"
+    });
+    std::fs::copy(env!("CARGO_BIN_EXE_numera-emoji"), &executable).unwrap();
+    let input = scratch.join("command-eof");
+    std::fs::write(&input, b"").unwrap();
+    let log = RunLog::open(scratch, "coin-map-command-owner", Vec::new());
     let coins = scratch.join("coins");
     std::fs::create_dir(&coins).unwrap();
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -131,43 +141,43 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
             &json!({"btc":"111111111","other":"preserved"}),
         )
         .unwrap();
-        let input = if index >= 16 {
+        let arguments: Vec<String> = arguments;
+        let inventory_text = if index >= 16 {
             "## Bitcoin - Bitcoin\nticker: btc\npremium-id:\n"
         } else {
             inventory
         };
-        std::fs::write(coins.join("currency-emoji-inventory.md"), input.as_bytes()).unwrap();
-        let work = scratch.join(format!("run{index}"));
-        std::fs::create_dir(&work).unwrap();
-        let output = scratch.join(format!("stdout{index}.txt"));
-        let errors = scratch.join(format!("stderr{index}.txt"));
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_numera-emoji"));
-        cmd.arg(command)
-            .args(arguments)
-            .env("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1")
-            .env("COIN_PACK_BASE", "cryptoemoji")
-            .env("COIN_PACK_TITLE", "Fixture")
-            .env_remove("TELEGRAM_BOT_TOKEN")
-            .env_remove("CMC_API_KEY")
-            .stdin(Stdio::null())
-            .stdout(Stdio::from(std::fs::File::create(&output).unwrap()))
-            .stderr(Stdio::from(std::fs::File::create(&errors).unwrap()));
+        std::fs::write(
+            coins.join("currency-emoji-inventory.md"),
+            inventory_text.as_bytes(),
+        )
+        .unwrap();
+        let mut observer = bot_api::Server::new(vec![]);
+        let mut environment =
+            _native::tooling_test_runner::scrubbed_environment(&std::env::vars().collect());
+        environment.insert("NUMERA_TEST_API_BASE".into(), observer.base.clone());
+        environment.insert("NUMERA_TEST_PROVIDER_BASE".into(), observer.base.clone());
         if index == 17 {
-            cmd.env("CMC_API_KEY", "synthetic-cli-key");
+            environment.insert("CMC_API_KEY".into(), "synthetic-cli-key".into());
         }
-        let mut owner = OwnedProcess::spawn(&mut cmd, work).unwrap();
-        let code = runtime
-            .block_on(owner.wait(Duration::from_secs(10), Duration::from_secs(5)))
-            .unwrap()
-            .code()
+        let mut argv = vec![executable.as_os_str().to_owned(), command.into()];
+        argv.extend(arguments.into_iter().map(std::ffi::OsString::from));
+        println!("native coin map command admission: {index} {command}");
+        let result = runtime
+            .block_on(tooling_process::capture_with_input(
+                scratch,
+                &argv,
+                &environment,
+                &input,
+                Duration::from_secs(10),
+                Duration::from_secs(5),
+                &log,
+            ))
             .unwrap();
-        owner.finish().unwrap();
-        assert_eq!(
-            code,
-            expected,
-            "{}",
-            std::fs::read_to_string(&errors).unwrap()
-        );
+        assert_eq!(result.code, expected, "{} {}", result.stdout, result.stderr);
+        assert!(!result.stderr.contains("Traceback"));
+        assert!(observer.finish().unwrap().is_empty());
+        assert!(!_native::process_owner::cleanup_pending(scratch));
         let mapping: Value =
             serde_json::from_slice(&std::fs::read(coins.join("ticker_to_id.json")).unwrap())
                 .unwrap();
@@ -182,5 +192,124 @@ fn native_alias_and_chain_commands_refuse_unknown_options_and_write_locked_maps(
             assert!(mapping.get("btctrc20").is_none());
         }
     }
-    std::fs::remove_dir_all(&scratch).unwrap();
+    original_map_assertions(scratch, &executable, &input, &runtime, &log);
+    log.finish(0);
+    assert!(!_native::process_owner::cleanup_pending(scratch));
+    assert!(
+        std::fs::read_dir(scratch.join("logs/tmp/tooling"))
+            .unwrap()
+            .next()
+            .is_none()
+    );
+    fixture.clean().unwrap();
+}
+
+fn original_map_assertions(
+    root: &Path,
+    executable: &Path,
+    input: &Path,
+    runtime: &tokio::runtime::Runtime,
+    log: &RunLog,
+) {
+    for (index, command, held) in [
+        (0, "coin-alias-map", false),
+        (1, "coin-alias-map", true),
+        (2, "coin-enhance-map", false),
+        (3, "coin-enhance-map", true),
+    ] {
+        let data = root.join(format!("original-map-{index}"));
+        std::fs::create_dir(&data).unwrap();
+        let path = data.join("ticker_to_id.json");
+        let alias = command == "coin-alias-map";
+        let initial = if alias {
+            json!({"aaa":"111","bbb":"222","ddd":"333","zzz":"written-by-the-other-tool"})
+        } else {
+            json!({"btc":"111","zzz":"written-by-the-other-tool"})
+        };
+        _native::atomic::write_json(&path, &initial).unwrap();
+        let inventory = if alias {
+            "## 🟡 — Foo Protocol\n   ticker: ccc\n   premium-id:\n\n## 🟢 — Bar Coin\n   ticker: eee\n   premium-id:\n"
+        } else {
+            "   ticker: btcbsc\n   premium-id:\n"
+        };
+        std::fs::write(
+            data.join("currency-emoji-inventory.md"),
+            inventory.as_bytes(),
+        )
+        .unwrap();
+        std::fs::write(data.join("keywords.csv"), if alias {
+            b"ticker,name,format,file,keywords\naaa,Foo Network,svg,logos/svg/aaa.svg,aaa\nbbb,Foo Token,svg,logos/svg/bbb.svg,bbb\nddd,Bar Labs,svg,logos/svg/ddd.svg,ddd\n".as_slice()
+        } else { b"ticker,name\nbtc,Bitcoin\n".as_slice() }).unwrap();
+        let before = std::fs::read(&path).unwrap();
+        let lock_path = root.join(".locks/canonical_map.lock");
+        let lease =
+            held.then(|| _native::locks::Lease::acquire(&lock_path, "original held map").unwrap());
+        let mut observer = bot_api::Server::new(vec![]);
+        let mut environment =
+            _native::tooling_test_runner::scrubbed_environment(&std::env::vars().collect());
+        environment.insert("NUMERA_TEST_API_BASE".into(), observer.base.clone());
+        environment.insert("NUMERA_TEST_PROVIDER_BASE".into(), observer.base.clone());
+        let argv = vec![
+            executable.as_os_str().to_owned(),
+            command.into(),
+            "--coin-dir".into(),
+            data.as_os_str().to_owned(),
+        ];
+        let result = runtime
+            .block_on(tooling_process::capture_with_input(
+                root,
+                &argv,
+                &environment,
+                input,
+                Duration::from_secs(6),
+                Duration::from_secs(3),
+                log,
+            ))
+            .unwrap();
+        assert_eq!(
+            result.code,
+            if held { 4 } else { 0 },
+            "{} {}",
+            result.stdout,
+            result.stderr
+        );
+        assert!(!result.stderr.contains("Traceback"));
+        assert!(observer.finish().unwrap().is_empty());
+        let filled = data.join("currency-emoji-inventory.filled.md");
+        if held {
+            assert_eq!(std::fs::read(&path).unwrap(), before);
+            assert!(!filled.exists());
+            assert!(_native::locks::Lease::acquire(&lock_path, "still held").is_err());
+        } else {
+            let mut expected = initial;
+            expected[if alias { "eee" } else { "btcbsc" }] =
+                json!(if alias { "333" } else { "111" });
+            let mapping: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+            assert_eq!(mapping, expected);
+            let text = std::fs::read_to_string(&filled)
+                .unwrap()
+                .replace("\r\n", "\n");
+            if alias {
+                assert!(mapping.get("ccc").is_none());
+                assert!(result.stdout.contains("AMBIGUOUS ccc"));
+                assert!(result.stdout.contains("aaa, bbb"));
+                assert!(text.contains("ticker: ccc\n   premium-id:\n"));
+                assert!(text.contains("ticker: eee\n   premium-id: 333\n"));
+            } else {
+                assert_eq!(text, "   ticker: btcbsc\n   premium-id: 111\n");
+            }
+        }
+        drop(lease);
+        assert!(lock_path.is_file());
+        drop(_native::locks::Lease::acquire(&lock_path, "original map release").unwrap());
+        assert_eq!(
+            std::fs::read(data.join("currency-emoji-inventory.md")).unwrap(),
+            inventory.as_bytes()
+        );
+        assert_eq!(
+            std::fs::read_dir(&data).unwrap().count(),
+            if held { 3 } else { 4 }
+        );
+        assert!(!_native::process_owner::cleanup_pending(root));
+    }
 }

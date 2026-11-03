@@ -63,7 +63,8 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     };
     let result = (|| {
         let tg = Telegram::new(config.require("GENERAL_BOT_TOKEN")?.into(), api)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?
+            .with_log(log);
         crate::archive_sync::run(config, &tg, log)
     })();
     match result {

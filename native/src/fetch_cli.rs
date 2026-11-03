@@ -72,9 +72,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         return Err("at least one pack or custom emoji ID is required".into());
     }
     if threshold != -1 && !(0..=16).contains(&threshold) {
-        return Err("phash threshold must be -1 or 0..16".into());
+        return Err("phash threshold out of range; must be -1 or 0..16".into());
     }
-    if !["ask", "keep", "skip"].contains(&repaintable.as_str()) {
+    if !crate::repaint_gate::MODES.contains(&repaintable.as_str()) {
         return Err("invalid repaintable choice".into());
     }
     let token = config.require(&token_env)?;
@@ -83,7 +83,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         "https://api.telegram.org".into()
     };
-    let tg = Telegram::new(token.into(), base).map_err(|e| e.to_string())?;
+    let tg = Telegram::new(token.into(), base)
+        .map_err(|e| e.to_string())?
+        .with_log(log);
     let mut ids = Vec::new();
     let mut names = Vec::new();
     for value in packs {
@@ -117,6 +119,11 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         if let Some(name) = resolved.get(&id) {
             names.push(name.clone())
         } else {
+            log.event(
+                "ERROR",
+                "collector",
+                &format!("emoji id {id} belongs to no pack Telegram knows (or is not an id)"),
+            );
             missing += 1;
         }
     }
@@ -192,12 +199,11 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         total["new"], total["dedup"], total["failed"]
     );
     crate::collector::report_stats(collector.cat)?;
-    let succeeded = total["new"].as_u64().unwrap_or(0) + total["dedup"].as_u64().unwrap_or(0);
-    Ok(if total["failed"] == 0 && packs_failed == 0 {
-        0
-    } else if succeeded > 0 {
-        3
-    } else {
-        4
-    })
+    let succeeded =
+        total["new"].as_u64().unwrap_or(0) > 0 || total["dedup"].as_u64().unwrap_or(0) > 0;
+    let failed = total["failed"] != 0 || packs_failed > 0;
+    Ok(crate::collector::ingest_exit_code(
+        u64::from(succeeded),
+        u64::from(failed),
+    ))
 }

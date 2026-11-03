@@ -1,0 +1,223 @@
+{
+  "source_runtime": "CPython 3.11.9",
+  "parser": "stdlib ast; source modules not imported",
+  "cases": [
+    {
+      "name": "inheritance and overrides",
+      "path": "tests/test_sample.py",
+      "source": "from unittest import TestCase as Case\nfrom tests.shared import Fixture\n\nclass Parent(Case):\n    def setUp(self):\n        self.value = 3\n    def test_one(self):\n        self.assertEqual(self.value, 3)\n    def test_inherited(self):\n        self.assertTrue(True)\n\nclass Child(Parent, Fixture):\n    def test_one(self):\n        self.assertEqual(4, 4)\n    async def test_async(self):\n        self.assertIsNone(None)\n",
+      "expected": {
+        "path": "tests/test_sample.py",
+        "sha256": "ae34d7d06a9107b3a594768e8c2ec30beed494a41a6558297266f0b7ab91eb40",
+        "classes": [
+          {
+            "name": "Parent",
+            "line": 4,
+            "bases": [
+              "Case"
+            ],
+            "methods": [
+              {
+                "name": "setUp",
+                "line": 5,
+                "end_line": 6,
+                "async": false,
+                "decorators": [],
+                "assertions": []
+              },
+              {
+                "name": "test_one",
+                "line": 7,
+                "end_line": 8,
+                "async": false,
+                "decorators": [],
+                "assertions": [
+                  "self.assertEqual(self.value, 3)"
+                ]
+              },
+              {
+                "name": "test_inherited",
+                "line": 9,
+                "end_line": 10,
+                "async": false,
+                "decorators": [],
+                "assertions": [
+                  "self.assertTrue(True)"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Child",
+            "line": 12,
+            "bases": [
+              "Parent",
+              "Fixture"
+            ],
+            "methods": [
+              {
+                "name": "test_one",
+                "line": 13,
+                "end_line": 14,
+                "async": false,
+                "decorators": [],
+                "assertions": [
+                  "self.assertEqual(4, 4)"
+                ]
+              },
+              {
+                "name": "test_async",
+                "line": 15,
+                "end_line": 16,
+                "async": true,
+                "decorators": [],
+                "assertions": [
+                  "self.assertIsNone(None)"
+                ]
+              }
+            ]
+          }
+        ],
+        "imports": [
+          {
+            "module": "unittest",
+            "symbol": "TestCase",
+            "local": "Case"
+          },
+          {
+            "module": "tests.shared",
+            "symbol": "Fixture",
+            "local": "Fixture"
+          }
+        ],
+        "cli_arguments": [],
+        "load_tests": false,
+        "declared_test_methods": 4
+      }
+    },
+    {
+      "name": "decorators loops and nested helpers",
+      "path": "tests/test_variants.py",
+      "source": "import unittest as unit\nclass Variants(unit.TestCase):\n    @unit.skipUnless(True, 'fixture')\n    def test_values(self):\n        for number in (0, 1, 2):\n            with self.subTest(number=number):\n                self.assertGreaterEqual(number, 0)\n        def helper():\n            self.assertFalse(False)\n\ndef load_tests(loader, suite, pattern):\n    return suite\n",
+      "expected": {
+        "path": "tests/test_variants.py",
+        "sha256": "5b157816ae4931c68287d7fb525b4aaa3d02490deabecd38b9b32840127ef046",
+        "classes": [
+          {
+            "name": "Variants",
+            "line": 2,
+            "bases": [
+              "unit.TestCase"
+            ],
+            "methods": [
+              {
+                "name": "test_values",
+                "line": 4,
+                "end_line": 9,
+                "async": false,
+                "decorators": [
+                  "unit.skipUnless(True, 'fixture')"
+                ],
+                "assertions": [
+                  "self.assertFalse(False)",
+                  "self.assertGreaterEqual(number, 0)"
+                ]
+              }
+            ]
+          }
+        ],
+        "imports": [
+          {
+            "module": "unittest",
+            "symbol": null,
+            "local": "unit"
+          }
+        ],
+        "cli_arguments": [],
+        "load_tests": true,
+        "declared_test_methods": 1
+      }
+    },
+    {
+      "name": "command and no import execution",
+      "path": "coins/sample.py",
+      "source": "raise RuntimeError('must not execute this module')\nimport argparse\ndef main():\n    parser = argparse.ArgumentParser()\n    parser.add_argument('--dry', action='store_true')\n    parser.add_argument('count', nargs='?')\nif __name__ == '__main__':\n    main()\n",
+      "expected": {
+        "path": "coins/sample.py",
+        "sha256": "3eef00f1c7b5668124bbc82da19259c37472e18be5a3a0a7209d8cd5b3d91d6b",
+        "classes": [],
+        "imports": [
+          {
+            "module": "argparse",
+            "symbol": null,
+            "local": "argparse"
+          }
+        ],
+        "cli_arguments": [
+          [
+            "--dry"
+          ],
+          [
+            "count"
+          ]
+        ],
+        "load_tests": false,
+        "declared_test_methods": 0
+      }
+    },
+    {
+      "name": "unicode and non-test helper",
+      "path": "tests/test_unicode.py",
+      "source": "class Plain:\n    def helper(self):\n        return '\ud83e\ude99'\n    def test_unicode(self):\n        self.assertEqual('\ud83e\ude99', '\ud83e\ude99')\n",
+      "expected": {
+        "path": "tests/test_unicode.py",
+        "sha256": "d8946aa493e1bc0fc5443fd7fd040a3c758f0df3d4d087450240769b8f4815f7",
+        "classes": [
+          {
+            "name": "Plain",
+            "line": 1,
+            "bases": [],
+            "methods": [
+              {
+                "name": "helper",
+                "line": 2,
+                "end_line": 3,
+                "async": false,
+                "decorators": [],
+                "assertions": []
+              },
+              {
+                "name": "test_unicode",
+                "line": 4,
+                "end_line": 5,
+                "async": false,
+                "decorators": [],
+                "assertions": [
+                  "self.assertEqual('\ud83e\ude99', '\ud83e\ude99')"
+                ]
+              }
+            ]
+          }
+        ],
+        "imports": [],
+        "cli_arguments": [],
+        "load_tests": false,
+        "declared_test_methods": 1
+      }
+    }
+  ],
+  "errors": [
+    {
+      "name": "syntax refusal",
+      "path": "tests/test_bad.py",
+      "source": "class Broken(\n",
+      "error_kind": "SyntaxError"
+    },
+    {
+      "name": "nul refusal",
+      "path": "tests/test_nul.py",
+      "source": "a = 1\u0000",
+      "error_kind": "SyntaxError"
+    }
+  ]
+}

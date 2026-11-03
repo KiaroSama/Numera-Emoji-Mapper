@@ -1,0 +1,7 @@
+# Explicit test-only opt-in; normal cargo run is unchanged.
+[target.'cfg(windows)']
+runner = ["native/target/debug/numera-emoji.exe", "test-runner"]
+
+# Linux uses its dedicated subreaper scope; Darwin refuses before suite execution.
+[target.'cfg(unix)']
+runner = ["native/target/debug/numera-emoji", "test-runner"]

@@ -66,6 +66,19 @@ pub fn worker(
     Ok(())
 }
 
+pub fn links_chat_id(config: &Config, owner: u64) -> Result<String, String> {
+    let raw = config
+        .value("PACK_LINKS_CHAT_ID")
+        .trim_matches(crate::emoji_ids::whitespace);
+    if raw.is_empty() {
+        Ok(owner.to_string())
+    } else if raw.starts_with('@') {
+        Ok(raw.into())
+    } else {
+        crate::config_integer::decimal(raw).ok_or_else(|| "invalid PACK_LINKS_CHAT_ID".into())
+    }
+}
+
 pub fn packs(
     config: &Config,
     tg: &Telegram,
@@ -81,16 +94,7 @@ pub fn packs(
         worker(config, packs, bot, note, style, 30.0)?;
         return Ok("the worker".into());
     }
-    let destination = if config.value("PACK_LINKS_CHAT_ID").is_empty() {
-        owner.to_string()
-    } else {
-        let raw = config.value("PACK_LINKS_CHAT_ID");
-        if !raw.starts_with('@') {
-            raw.parse::<i64>()
-                .map_err(|_| "invalid PACK_LINKS_CHAT_ID")?;
-        }
-        raw.to_owned()
-    };
+    let destination = links_chat_id(config, owner)?;
     let send = |text: String| -> Result<(), String> {
         let data = BTreeMap::from([
             ("chat_id".into(), destination.clone()),

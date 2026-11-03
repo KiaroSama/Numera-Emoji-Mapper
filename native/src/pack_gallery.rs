@@ -1,5 +1,5 @@
 //! Native gallery/cache orchestration embeds exact codec bytes and unchanged incumbent assets.
-use crate::{bot_payloads::escape, media_adapter::MediaAdapter};
+use crate::{bot_payloads::escape, media_adapter::MediaCodec};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -26,16 +26,12 @@ fn uri(path: &Path) -> Result<String, String> {
 struct RenderStaging(PathBuf);
 impl RenderStaging {
     fn pending(&self) -> bool {
-        std::fs::read_dir(self.0.join("codec"))
-            .map(|mut entries| {
-                entries.any(|entry| {
-                    entry.is_err()
-                        || entry.is_ok_and(|entry| {
-                            entry.path().join("codec-cleanup-pending.json").exists()
-                        })
-                })
-            })
-            .unwrap_or_else(|error| error.kind() != std::io::ErrorKind::NotFound)
+        let codecs = self.0.join("codec");
+        crate::process_owner::cleanup_pending(&codecs)
+            // Settled failure evidence still belongs to this run if relocation failed.
+            || std::fs::read_dir(&codecs)
+                .map(|mut entries| entries.next().is_some())
+                .unwrap_or_else(|error| error.kind() != std::io::ErrorKind::NotFound)
     }
 }
 impl Drop for RenderStaging {
@@ -49,7 +45,7 @@ impl Drop for RenderStaging {
     }
 }
 async fn render_thumb(
-    media: &MediaAdapter,
+    media: &impl MediaCodec,
     source: &Path,
     fmt: &str,
     dest: &Path,
@@ -71,11 +67,7 @@ async fn render_thumb(
         }
     };
     let workspace = RenderStaging(workspace);
-    let adapter = MediaAdapter {
-        python: media.python.clone(),
-        root: media.root.clone(),
-        scratch: workspace.0.join("codec"),
-    };
+    let adapter = media.with_scratch(workspace.0.join("codec"));
     let output = workspace
         .0
         .join(dest.file_name().ok_or("gallery cache has no filename")?);
@@ -99,7 +91,7 @@ async fn render_thumb(
 }
 
 async fn thumb(
-    media: &MediaAdapter,
+    media: &impl MediaCodec,
     id: &str,
     source: &Path,
     fmt: &str,
@@ -158,7 +150,7 @@ async fn thumb(
 }
 pub async fn render(
     doc: &Value,
-    media: &MediaAdapter,
+    media: &impl MediaCodec,
     art: &std::collections::BTreeMap<String, PathBuf>,
     cache: &Path,
 ) -> Result<String, String> {
@@ -337,4 +329,89 @@ Captured {captured} live from Telegram.
 "#,
         cards.join("\n")
     ))
+}
+
+#[cfg(test)]
+mod cleanup_tests {
+    use super::*;
+
+    struct Fixture(PathBuf);
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.0).expect("clean owned synthetic cleanup fixtures");
+        }
+    }
+
+    #[test]
+    fn cleanup_pending_guard_retains_uncertain_codec_bytes() {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let parent =
+            crate::tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
+        let root = parent.join(format!("gallery cleanup guard {}", std::process::id()));
+        std::fs::create_dir(&root).unwrap();
+        let fixture = Fixture(root);
+        for (case, relative, shape) in [
+            ("legacy", "codec/run/codec-cleanup-pending.json", "file"),
+            (
+                "native",
+                "codec/run/owner/codec-cleanup-pending.json",
+                "file",
+            ),
+            (
+                "marker-directory",
+                "codec/run/codec-cleanup-pending.json",
+                "directory",
+            ),
+            ("owner-file", "codec/run/owner", "file"),
+            ("container-file", "codec", "file"),
+            ("entry-file", "codec/run", "file"),
+            ("settled-request", "codec/run/request.json", "file"),
+            ("settled-response", "codec/run/response.json", "file"),
+            ("empty-envelope", "codec/run/owner", "directory"),
+            ("quiet", "codec", "directory"),
+            ("absent", "", "none"),
+            #[cfg(unix)]
+            (
+                "marker-link",
+                "codec/run/codec-cleanup-pending.json",
+                "link",
+            ),
+            #[cfg(unix)]
+            ("owner-link", "codec/run/owner", "link"),
+            #[cfg(unix)]
+            ("container-link", "codec", "link"),
+        ] {
+            let workspace = fixture.0.join(case);
+            std::fs::create_dir(&workspace).unwrap();
+            let sentinel = workspace.join("keep.bin");
+            let bytes = b"not JSON; unresolved synthetic bytes";
+            std::fs::write(&sentinel, bytes).unwrap();
+            let target = workspace.join(relative);
+            if shape != "none" {
+                std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+                match shape {
+                    "file" => std::fs::write(&target, bytes).unwrap(),
+                    "directory" => std::fs::create_dir(&target).unwrap(),
+                    #[cfg(unix)]
+                    "link" => std::os::unix::fs::symlink("missing", &target).unwrap(),
+                    _ => unreachable!(),
+                }
+            }
+            drop(RenderStaging(workspace.clone()));
+            if matches!(case, "quiet" | "absent") {
+                assert!(!workspace.exists(), "ordinary cleanup did not run: {case}");
+            } else {
+                assert_eq!(std::fs::read(&sentinel).unwrap(), bytes, "{case}");
+                match shape {
+                    "file" => assert_eq!(std::fs::read(&target).unwrap(), bytes, "{case}"),
+                    "directory" => assert!(std::fs::symlink_metadata(&target).unwrap().is_dir()),
+                    #[cfg(unix)]
+                    "link" => {
+                        assert_eq!(std::fs::read_link(&target).unwrap(), Path::new("missing"))
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
 }
