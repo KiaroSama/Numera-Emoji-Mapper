@@ -1,11 +1,14 @@
-# Native launcher migration candidate
+# Native launcher and contributor tools
 
 [Complete guide](GUIDE.md) · [Native backend](native-backend.md)
 
-These commands are authored on the first-party Rust migration branch. They have
-not been compiled or executed, are not installed, and do not replace `run.ps1` or
-`scripts/check.ps1`. Command contracts below describe the candidate implementation,
-not a verified installation procedure. Existing production codec selection is unchanged.
+The Rust launcher and contributor tools are compiled and exercised by automatic
+CI. The public CLI and panel use the same executable's Rust codec worker;
+`numera-build` builds and installs the matching wheel/executable, and
+`install-prebuilt` installs a verified archive offline into a fresh environment.
+See [current CI acceptance](rust-ci-status.md) for revision-specific platform
+results and remaining codec/compatibility dependencies. The detailed checkpoint
+contracts below do not replace that current validation record.
 
 ## Menu and foreground commands
 

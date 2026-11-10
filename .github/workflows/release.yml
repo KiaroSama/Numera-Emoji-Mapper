@@ -31,6 +31,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CARGO_BUILD_JOBS: "2"
+      # Acceptance hashes the actual binaries repeatedly; match ordinary CI's
+      # symbol-free test artifacts without changing production release settings.
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
       PYO3_PYTHON: python
       PYTHONUTF8: "1"
       MACOSX_DEPLOYMENT_TARGET: "15.0"
