@@ -92,9 +92,11 @@ impl Disk<'_> {
         ];
         let mut result = Vec::new();
         for (row, (source, destination)) in rows.iter().zip(expected) {
+            // Native path equality admits equivalent Windows separators without
+            // canonicalizing away parent traversal or following a recorded link.
             if row.as_array().is_none_or(|row| row.len() != 2)
-                || row[0].as_str() != source.to_str()
-                || row[1].as_str() != destination.to_str()
+                || row[0].as_str().map(Path::new) != Some(source.as_path())
+                || row[1].as_str().map(Path::new) != Some(destination.as_path())
             {
                 return Err("replacement promotion inventory is outside its recorded art".into());
             }

@@ -307,11 +307,11 @@ fn typed_static_comparison_finishes_both_keys_before_hash_and_catches_only_excep
             None,
             None,
             move |args, kwargs| -> PyResult<Py<PyAny>> {
-                observed.lock().unwrap().push(
+                observed.lock().unwrap().push(PathBuf::from(
                     args.get_item(0)?
                         .call_method0("__fspath__")?
                         .extract::<String>()?,
-                );
+                ));
                 original
                     .bind(args.py())
                     .call(args, kwargs)
@@ -339,9 +339,7 @@ fn typed_static_comparison_finishes_both_keys_before_hash_and_catches_only_excep
         assert_eq!(key_order.unwrap(), None);
         assert_eq!(
             paths.lock().unwrap().as_slice(),
-            [&left, &right, &left]
-                .map(|p| p.to_string_lossy().into_owned())
-                .as_slice(),
+            [&left, &right, &left].map(|p| p.to_path_buf()).as_slice(),
             "right key precedes first phash failure"
         );
         for method in ["open", "split"] {
@@ -424,7 +422,7 @@ fn typed_static_comparison_finishes_both_keys_before_hash_and_catches_only_excep
                     .get_item(0)?
                     .call_method0("__fspath__")?
                     .extract::<String>()?;
-                seen.lock().unwrap().push(text);
+                seen.lock().unwrap().push(PathBuf::from(text));
                 open.bind(args.py()).call(args, kwargs).map(Bound::unbind)
             },
         )
@@ -439,8 +437,7 @@ fn typed_static_comparison_finishes_both_keys_before_hash_and_catches_only_excep
         drop(restore_open);
         assert_eq!(result.unwrap(), Some(true));
         let order = trace.lock().unwrap();
-        let expected =
-            [&left, &right, &left, &right, &left, &right].map(|p| p.to_string_lossy().into_owned());
+        let expected = [&left, &right, &left, &right, &left, &right].map(|p| p.to_path_buf());
         assert_eq!(
             order.as_slice(),
             expected.as_slice(),

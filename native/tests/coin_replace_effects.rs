@@ -201,6 +201,101 @@ fn promoted(files: &Files, art: &Art) {
 }
 
 #[test]
+fn replacement_recovery_accepts_equivalent_inventory_paths_but_retains_foreign_and_traversing_art()
+{
+    let fixture = tooling_fixture::Root::new("coin replacement inventory paths");
+    let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let art = Art::load(project);
+    let files = files(fixture.0.join("recovery"), &art);
+    let map = std::fs::read(&files.map).unwrap();
+    let state = std::fs::read(&files.state).unwrap();
+    let stage = files.root.join("logos/.incoming/recorded-run");
+    std::fs::create_dir_all(stage.join("png")).unwrap();
+    let raw = stage.join("png").join("btc.png");
+    let prepared = stage.join("btc.png");
+    std::fs::write(&raw, &art.original).unwrap();
+    _native::codec_image::to_static_png(&raw, &prepared).unwrap();
+    let uploaded = std::fs::read(&prepared).unwrap();
+    assert_eq!(hash(&uploaded), art.prepared_hash);
+    let target = |path: &Path| {
+        let text = path.canonicalize().unwrap().to_string_lossy().into_owned();
+        if cfg!(windows) {
+            text.to_lowercase()
+        } else {
+            text
+        }
+    };
+    let intent = json!({"key":"btc","set_name":SET,"set_index":1,"old_cid":OLD,
+        "before":["a",OLD,"c"],"source_dhash":_native::codec_image::source_dhash(&prepared).unwrap(),
+        "source":prepared,"stage":stage,"map_target":target(&files.map),"state_target":target(&files.state),
+        "promote":[[raw,files.root.join("logos/png/btc.png")],[prepared,files.images.join("btc.png")]]});
+    let proof = || {
+        let mut replies = vec![listing(&["a", NEW, "c"])];
+        download(&mut replies, Some(&uploaded));
+        replies
+    };
+    let outside_source = files.root.join("outside-prepared.png");
+    let outside_destination = files.root.join("outside-destination.png");
+    std::fs::write(&outside_source, &uploaded).unwrap();
+    std::fs::write(&outside_destination, &art.foreign).unwrap();
+    for variant in ["outside-source", "outside-destination", "parent-traversal"] {
+        let mut refused = intent.clone();
+        match variant {
+            "outside-source" => refused["promote"][1][0] = json!(outside_source),
+            "outside-destination" => refused["promote"][1][1] = json!(outside_destination),
+            _ => {
+                refused["promote"][0][0] = json!(stage.join("png/../png/btc.png"));
+            }
+        }
+        _native::atomic::write_json(&files.intent, &refused).unwrap();
+        let recorded = std::fs::read(&files.intent).unwrap();
+        assert!(
+            coin_replace_restart::recover_result(&files, proof()).is_err(),
+            "{variant}"
+        );
+        untouched(&files, &art, &map, &state);
+        assert_eq!(std::fs::read(&files.intent).unwrap(), recorded, "{variant}");
+        assert_eq!(std::fs::read(&raw).unwrap(), art.original, "{variant}");
+        assert_eq!(std::fs::read(&prepared).unwrap(), uploaded, "{variant}");
+        assert_eq!(
+            std::fs::read(&outside_source).unwrap(),
+            uploaded,
+            "{variant}"
+        );
+        assert_eq!(
+            std::fs::read(&outside_destination).unwrap(),
+            art.foreign,
+            "{variant}"
+        );
+        released(&files);
+    }
+    // Windows inventories may persist '/' where chained PathBuf joins use '\\'.
+    // An interior current-directory component exercises equivalent native paths on every OS.
+    let mut equivalent = intent;
+    for row in equivalent["promote"].as_array_mut().unwrap() {
+        for value in row.as_array_mut().unwrap() {
+            let path = Path::new(value.as_str().unwrap());
+            let spelling = format!(
+                "{}/./{}",
+                path.parent().unwrap().to_str().unwrap(),
+                path.file_name().unwrap().to_str().unwrap()
+            );
+            assert_ne!(spelling, value.as_str().unwrap());
+            *value = json!(spelling);
+        }
+    }
+    _native::atomic::write_json(&files.intent, &equivalent).unwrap();
+    assert!(coin_replace_restart::recover_result(&files, proof()).unwrap());
+    promoted(&files, &art);
+    assert!(!stage.exists());
+    assert_eq!(std::fs::read(&files.state).unwrap(), state);
+    assert_eq!(std::fs::read(outside_source).unwrap(), uploaded);
+    assert_eq!(std::fs::read(outside_destination).unwrap(), art.foreign);
+    released(&files);
+    fixture.clean().unwrap();
+}
+
+#[test]
 fn native_replacement_uploads_once_and_promotes_only_content_proven_art() {
     let fixture = tooling_fixture::Root::new("coin replacement original effects");
     let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();

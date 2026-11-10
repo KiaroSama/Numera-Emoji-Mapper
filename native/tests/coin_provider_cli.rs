@@ -35,6 +35,9 @@ fn request(listener: &TcpListener, deadline: Instant) -> (TcpStream, Vec<u8>) {
             Err(e) => panic!("provider CLI fixture accept: {e}"),
         }
     };
+    // Winsock inherits the listener's nonblocking mode on accepted sockets.
+    // Header/body reads below are blocking, with their own finite timeouts.
+    stream.set_nonblocking(false).unwrap();
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .unwrap();

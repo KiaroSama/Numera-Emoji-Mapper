@@ -151,6 +151,7 @@ struct Calls {
 struct State {
     workspace: PathBuf,
     calls: Mutex<Calls>,
+    temporary_paths: Mutex<Vec<PathBuf>>,
 }
 impl State {
     fn calls(&self) -> PyResult<std::sync::MutexGuard<'_, Calls>> {
@@ -167,6 +168,12 @@ impl State {
             ));
         }
         self.calls()?.temporary += 1;
+        self.temporary_paths
+            .lock()
+            .map_err(|_| {
+                pyo3::exceptions::PyRuntimeError::new_err("catalog temporary accounting failed")
+            })?
+            .push(physical);
         Ok(())
     }
 }
@@ -228,6 +235,39 @@ impl Boundary {
         self.0.temporary(Path::new(&path))?;
         Ok(temporary)
     }
+    #[pyo3(signature = (path, ignore_errors=false))]
+    fn rmtree(&self, py: Python<'_>, path: PathBuf, ignore_errors: bool) -> PyResult<()> {
+        let physical = crate::tooling_environment::physical_root(&path)
+            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+        let owned = self
+            .0
+            .temporary_paths
+            .lock()
+            .map_err(|_| {
+                pyo3::exceptions::PyRuntimeError::new_err("catalog temporary accounting failed")
+            })?
+            .contains(&physical);
+        if physical == self.0.workspace
+            || !physical.starts_with(&self.0.workspace)
+            || !(owned || physical == self.0.workspace.join("project/tests/__media_paths_rel__"))
+        {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "catalog test cleanup escaped its workspace",
+            ));
+        }
+        // sqlite3's context manager commits without closing. Original test-local
+        // connections can remain in unreachable statement cycles until GC; Windows
+        // cannot unlink their databases during the unchanged tearDown before then.
+        crate::source_oracle_runtime::host_import(py, "gc")?.call_method0("collect")?;
+        crate::source_oracle_runtime::host_import(py, "shutil")?
+            .call_method1("rmtree", (&path, ignore_errors))?;
+        if path.exists() {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "original catalog cleanup left owned scratch; retained for diagnosis",
+            ));
+        }
+        Ok(())
+    }
     fn same_image(
         &self,
         _a: &Bound<'_, PyAny>,
@@ -267,6 +307,7 @@ fn execute(
     let state = Arc::new(State {
         workspace: workspace.into(),
         calls: Mutex::new(Calls::default()),
+        temporary_paths: Mutex::new(Vec::new()),
     });
     let boundary = Py::new(py, Boundary(state.clone()))?;
     let boundary = boundary.bind(py);
@@ -319,7 +360,10 @@ fn execute(
     let test_bindings = PyDict::new(py);
     test_bindings.set_item("Catalog", required(&catalog, "Catalog")?)?;
     test_bindings.set_item("Path", py.import("pathlib")?.getattr("Path")?)?;
-    test_bindings.set_item("shutil", py.import("shutil")?)?;
+    let shutil = py.import("types")?.getattr("SimpleNamespace")?.call0()?;
+    shutil.setattr("move", py.import("shutil")?.getattr("move")?)?;
+    shutil.setattr("rmtree", boundary.getattr("rmtree")?)?;
+    test_bindings.set_item("shutil", shutil)?;
     test_bindings.set_item("sqlite3", &sqlite)?;
     test_bindings.set_item("tempfile", tempfile)?;
     let unittest = py.import("unittest")?;
@@ -523,4 +567,57 @@ pub fn observe(root: &Path, workspace: &Path, sources: &[&Source]) -> Result<Val
         return Err("original catalog tests left scratch; retained for diagnosis".into());
     }
     Ok(report)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn historical_cleanup_collects_unreachable_sqlite_handles_and_refuses_unowned_directories() {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let parent =
+            crate::tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
+        let workspace = parent.join(format!("catalog cleanup boundary {}", std::process::id()));
+        std::fs::create_dir(&workspace).unwrap();
+        let caller = workspace.join("caller");
+        std::fs::create_dir(&caller).unwrap();
+        std::fs::write(caller.join("sentinel"), b"caller evidence").unwrap();
+        let state = Arc::new(State {
+            workspace: workspace.clone(),
+            calls: Mutex::new(Calls::default()),
+            temporary_paths: Mutex::new(Vec::new()),
+        });
+        Python::initialize();
+        Python::attach(|py| {
+            let boundary = Boundary(state);
+            let owned = PathBuf::from(boundary.mkdtemp(py).unwrap());
+            let globals = PyDict::new(py);
+            globals
+                .set_item("database", owned.join("catalog.db"))
+                .unwrap();
+            // A cycle reproduces sqlite3 statement/connection lifetime independently
+            // of the host's willingness to unlink an open database.
+            py.run(c"import sqlite3, weakref\nclass Connection(sqlite3.Connection):\n    pass\nconnection = sqlite3.connect(database, factory=Connection)\nconnection.execute('CREATE TABLE fixture(value)')\nconnection.cycle = connection\nreference = weakref.ref(connection)\ndel connection", Some(&globals), None).unwrap();
+            let reference = globals.get_item("reference").unwrap().unwrap();
+            assert!(!reference.call0().unwrap().is_none());
+            boundary.rmtree(py, owned.clone(), true).unwrap();
+            assert!(reference.call0().unwrap().is_none());
+            assert!(!owned.exists());
+            assert!(
+                boundary
+                    .rmtree(py, caller.clone(), true)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("cleanup escaped")
+            );
+            assert_eq!(
+                std::fs::read(caller.join("sentinel")).unwrap(),
+                b"caller evidence"
+            );
+        });
+        std::fs::remove_file(caller.join("sentinel")).unwrap();
+        std::fs::remove_dir(caller).unwrap();
+        std::fs::remove_dir(workspace).unwrap();
+    }
 }

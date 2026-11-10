@@ -125,6 +125,13 @@ pub(crate) async fn check(
                 command.env(name, value);
             }
         }
+        // CPython 3.11's Windows platform.machine() reads this OS metadata from
+        // the environment. The hermetic worker must retain its actual process
+        // architecture so the unchanged historical platform_id can identify it.
+        #[cfg(all(windows, target_arch = "x86_64"))]
+        command.env("PROCESSOR_ARCHITECTURE", "AMD64");
+        #[cfg(all(windows, target_arch = "aarch64"))]
+        command.env("PROCESSOR_ARCHITECTURE", "ARM64");
         if oracle == "catalog-tests"
             && let Some(path) = std::env::var_os("NUMERA_REAL_CATALOG_FIXTURE")
         {

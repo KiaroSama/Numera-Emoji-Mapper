@@ -16,11 +16,10 @@ fn proof(bytes: &[u8]) -> Vec<Reply> {
     super::download(&mut replies, Some(bytes));
     replies
 }
-fn recover(files: &Files, replies: Vec<Reply>) -> bool {
+pub(super) fn recover_result(files: &Files, replies: Vec<Reply>) -> Result<bool, String> {
     let mut server = Server::new(replies);
     let tg = Telegram::new(super::bot_api::TOKEN.into(), server.base.clone()).unwrap();
-    let outcome =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(files, &tg).unwrap()));
+    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(files, &tg)));
     let requests = server.finish();
     let ok = outcome.unwrap_or_else(|error| std::panic::resume_unwind(error));
     assert!(!requests.unwrap().iter().any(|request| matches!(
@@ -28,6 +27,9 @@ fn recover(files: &Files, replies: Vec<Reply>) -> bool {
         "replaceStickerInSet" | "addStickerToSet" | "createNewStickerSet"
     )));
     ok
+}
+fn recover(files: &Files, replies: Vec<Reply>) -> bool {
+    recover_result(files, replies).unwrap()
 }
 pub(super) fn check(files: &Files, art: &Art, map: &[u8], state: &[u8]) {
     let intent_bytes = std::fs::read(&files.intent).unwrap();

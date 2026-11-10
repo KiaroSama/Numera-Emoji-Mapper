@@ -32,6 +32,11 @@ Native cases run serially because embedded codec patches and descendant custody
 share process state. Tests that exercise concurrent callers and competing
 processes retain their explicit concurrency.
 
+The Cargo batch has a 40-minute aggregate bound on Unix and a 60-minute bound on
+Windows, including compilation. Individual suite and codec watchdogs are
+unchanged. Once the Windows driver is built, all three acceptance buckets run
+even when an earlier bucket fails, and failure logs are retained for diagnosis.
+
 Linux test bootstraps create private user/network namespaces. A checkout-scoped
 AppArmor profile permits that operation on hosted Ubuntu; the loopback-only
 network guard stays enabled. Windows uses Job ownership. Darwin uses the existing

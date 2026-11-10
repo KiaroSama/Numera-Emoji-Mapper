@@ -162,71 +162,108 @@ fn bounded_capture_reads_stdin_after_reaping_and_times_out_the_owned_tree() {
     );
     let call_root = scratch.join("call sites");
     std::fs::create_dir(&call_root).unwrap();
-    let tools = call_root.join("tools");
-    std::fs::create_dir(&tools).unwrap();
-    std::fs::create_dir(call_root.join("cases")).unwrap();
-    for name in ["ffmpeg", "ffprobe"] {
-        std::fs::copy(
-            &worker,
-            tools.join(if cfg!(windows) {
-                format!("{name}.exe")
-            } else {
-                name.into()
-            }),
-        )
-        .unwrap();
-    }
     let original = std::env::vars().collect();
     let child_environment = _native::tooling_test_runner::scrubbed_environment(&original);
-    let mut paths = vec![tools];
-    if let Some(path) = child_environment.get("PATH") {
-        paths.extend(std::env::split_paths(path));
+    // Serially launching all 44 cases nearly consumes the outer deadline even on Linux.
+    // Separate roots/interpreters isolate Python patches and deliberate tool-mtime changes.
+    let mut owners = Vec::new();
+    for cohort in 0..CALL_SITE_COHORTS {
+        let cohort_root = call_root.join(format!("cohort-{cohort}"));
+        std::fs::create_dir(&cohort_root).unwrap();
+        let tools = cohort_root.join("tools");
+        std::fs::create_dir(&tools).unwrap();
+        std::fs::create_dir(cohort_root.join("cases")).unwrap();
+        for name in ["ffmpeg", "ffprobe"] {
+            std::fs::copy(
+                &worker,
+                tools.join(if cfg!(windows) {
+                    format!("{name}.exe")
+                } else {
+                    name.into()
+                }),
+            )
+            .unwrap();
+        }
+        let mut paths = vec![tools];
+        if let Some(path) = child_environment.get("PATH") {
+            paths.extend(std::env::split_paths(path));
+        }
+        let owner_directory = cohort_root.join("owner");
+        std::fs::create_dir(&owner_directory).unwrap();
+        let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--exact",
+                "bounded_capture_reads_stdin_after_reaping_and_times_out_the_owned_tree",
+                "--nocapture",
+                "--test-threads=1",
+            ])
+            .current_dir(&cohort_root)
+            .env_clear()
+            .envs(&child_environment)
+            .env("PATH", std::env::join_paths(&paths).unwrap())
+            .env("NUMERA_CODEC_TIMEOUT_ROOT", &cohort_root)
+            .env("NUMERA_CODEC_TIMEOUT_COHORT", cohort.to_string())
+            .env("EMOJI_FFMPEG_TIMEOUT", "1")
+            .env("TEMP", &cohort_root)
+            .env("TMP", &cohort_root)
+            .env("TMPDIR", &cohort_root)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::fs::File::create(cohort_root.join("stdout.log")).unwrap())
+            .stderr(std::fs::File::create(cohort_root.join("stderr.log")).unwrap());
+        let owner =
+            _native::process_owner::OwnedProcess::spawn_session(&mut command, owner_directory)
+                .unwrap();
+        owners.push((cohort, owner));
     }
-    let owner_directory = call_root.join("owner");
-    std::fs::create_dir(&owner_directory).unwrap();
-    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
-    command
-        .args([
-            "--exact",
-            "bounded_capture_reads_stdin_after_reaping_and_times_out_the_owned_tree",
-            "--nocapture",
-            "--test-threads=1",
-        ])
-        .current_dir(&call_root)
-        .env_clear()
-        .envs(child_environment)
-        .env("PATH", std::env::join_paths(paths).unwrap())
-        .env("NUMERA_CODEC_TIMEOUT_ROOT", &call_root)
-        .env("EMOJI_FFMPEG_TIMEOUT", "1")
-        .env("TEMP", &call_root)
-        .env("TMP", &call_root)
-        .env("TMPDIR", &call_root)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::fs::File::create(call_root.join("stdout.log")).unwrap())
-        .stderr(std::fs::File::create(call_root.join("stderr.log")).unwrap());
-    let mut owner =
-        _native::process_owner::OwnedProcess::spawn_session(&mut command, owner_directory).unwrap();
-    drop(command);
-    let status = runtime.block_on(owner.wait(
-        std::time::Duration::from_secs(25),
-        std::time::Duration::from_secs(12),
-    ));
-    owner.finish().unwrap();
-    assert!(
-        status.unwrap().success(),
-        "{}",
-        std::fs::read_to_string(call_root.join("stderr.log")).unwrap()
-    );
-    for name in CALL_SITES {
+    let outcomes = runtime.block_on(async {
+        let mut waiting = tokio::task::JoinSet::new();
+        for (cohort, mut owner) in owners {
+            waiting.spawn(async move {
+                let status = owner
+                    .wait(
+                        std::time::Duration::from_secs(25),
+                        std::time::Duration::from_secs(12),
+                    )
+                    .await;
+                let finished = owner.finish();
+                (cohort, status, finished)
+            });
+        }
+        let mut outcomes = Vec::new();
+        while let Some(outcome) = waiting.join_next().await {
+            outcomes.push(outcome.unwrap());
+        }
+        outcomes
+    });
+    // Settle every owner before any failed cohort assertion can unwind the fixture.
+    for (cohort, status, finished) in outcomes {
+        finished.unwrap();
+        let cohort_root = call_root.join(format!("cohort-{cohort}"));
+        let stderr = std::fs::read_to_string(cohort_root.join("stderr.log")).unwrap();
+        let status = status.unwrap_or_else(|error| panic!("cohort {cohort}: {error}\n{stderr}"));
+        assert!(status.success(), "cohort {cohort}: {stderr}");
+        assert!(!cohort_root.join("owner").exists());
+    }
+    for (index, name) in CALL_SITES.into_iter().enumerate() {
+        let cohort_root = call_root.join(format!("cohort-{}", index % CALL_SITE_COHORTS));
         assert_eq!(
-            std::fs::read(call_root.join("cases").join(name).join("checked")).unwrap(),
+            std::fs::read(cohort_root.join("cases").join(name).join("checked")).unwrap(),
             b"ok\n"
         );
     }
-    assert!(!call_root.join("owner").exists());
+    let case_count: usize = (0..CALL_SITE_COHORTS)
+        .map(|cohort| {
+            std::fs::read_dir(call_root.join(format!("cohort-{cohort}/cases")))
+                .unwrap()
+                .count()
+        })
+        .sum();
+    assert_eq!(case_count, CALL_SITES.len());
     std::fs::remove_dir_all(scratch).unwrap();
 }
 
+const CALL_SITE_COHORTS: usize = 4;
 const CALL_SITES: [&str; 44] = [
     "probe_video",
     "to_video_webm",
@@ -284,11 +321,19 @@ fn original_call_site_timeouts(root: &Path) {
     .unwrap();
     assert!(root.starts_with(project.join("logs/tmp")));
     assert_eq!(std::env::var("EMOJI_FFMPEG_TIMEOUT").unwrap(), "1");
+    let cohort = std::env::var("NUMERA_CODEC_TIMEOUT_COHORT")
+        .unwrap()
+        .parse::<usize>()
+        .unwrap();
+    assert!(cohort < CALL_SITE_COHORTS);
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap();
-    for name in CALL_SITES {
+    for (index, name) in CALL_SITES.into_iter().enumerate() {
+        if index % CALL_SITE_COHORTS != cohort {
+            continue;
+        }
         let directory = root.join("cases").join(name);
         std::fs::create_dir(&directory).unwrap();
         let source = directory.join("clip.webm");

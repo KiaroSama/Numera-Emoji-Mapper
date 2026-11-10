@@ -121,9 +121,20 @@ impl Native {
                 .join("tests/fixtures/lottie/red_circle_512.tgs"),
             _ => parent.join("preview-alpha.webm"),
         };
-        let expected = json!({"operation":"preview","source":source,"format":format,
+        // The unchanged test serializes pathlib paths. Rust preserves separators embedded
+        // in fixture fragments, whereas WindowsPath normalizes them before str().
+        let path = crate::source_oracle_runtime::host_import(py, "pathlib")?.getattr("Path")?;
+        let source_text: String = path.call1((&source,))?.str()?.extract()?;
+        let output_text: String = path
+            .call1((parent.join(format!(
+                "{format}-{size}-{}.webp",
+                if still { "True" } else { "False" }
+            )),))?
+            .str()?
+            .extract()?;
+        let expected = json!({"operation":"preview","source":source_text,"format":format,
             "key":format!("fixture:{format}"),"fps":fps,"size":size,"still":still,
-            "output":parent.join(format!("{format}-{size}-{}.webp",if still {"True"} else {"False"}))});
+            "output":output_text});
         if request != expected {
             return Err(PyValueError::new_err("original preview request drift"));
         }
