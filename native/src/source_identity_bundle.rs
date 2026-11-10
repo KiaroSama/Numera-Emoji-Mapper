@@ -26,7 +26,17 @@ fn sibling(value: &Value, data: &Path, name: &str) -> bool {
     else {
         return false;
     };
-    path.file_name().and_then(|name| name.to_str()) == Some(name)
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|actual| {
+            // canonical() folds Windows names, including the backup timestamp's T/Z.
+            // Match the host's filename identity while retaining the exact sibling binding.
+            if cfg!(windows) {
+                actual.eq_ignore_ascii_case(name)
+            } else {
+                actual == name
+            }
+        })
         && path
             .parent()
             .and_then(|parent| crate::migration_bundle::canonical(parent).ok())
@@ -538,4 +548,41 @@ pub(super) fn run(
         ));
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundle_sibling_keeps_timestamp_case_semantics_parent_and_link_bindings() {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let parent =
+            crate::tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
+        let workspace = parent.join(format!("bundle sibling boundary {}", std::process::id()));
+        std::fs::create_dir(&workspace).unwrap();
+        let data = workspace.join("collection");
+        std::fs::create_dir(&data).unwrap();
+        let data = crate::migration_bundle::canonical(&data).unwrap();
+        let name = "catalog.before-video-identity-20261110T212800Z.rollback.json";
+        let manifest = data.join(name);
+        std::fs::write(&manifest, b"{}").unwrap();
+        assert!(sibling(&json!(manifest), &data, name));
+        assert_eq!(
+            sibling(&json!(manifest), &data, &name.to_ascii_lowercase()),
+            cfg!(windows)
+        );
+        assert!(!sibling(&json!(manifest), &data, "other.rollback.json"));
+        assert!(!sibling(&json!(manifest), &workspace, name));
+        #[cfg(unix)]
+        {
+            let link = data.join("other.rollback.json");
+            std::os::unix::fs::symlink(&manifest, &link).unwrap();
+            assert!(!sibling(&json!(link), &data, "other.rollback.json"));
+            std::fs::remove_file(link).unwrap();
+        }
+        std::fs::remove_file(manifest).unwrap();
+        std::fs::remove_dir(data).unwrap();
+        std::fs::remove_dir(workspace).unwrap();
+    }
 }

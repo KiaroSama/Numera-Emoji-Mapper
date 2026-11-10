@@ -91,6 +91,16 @@ fn static_prepare_matches_all_nine_source_results_errors_and_warning_observation
             let folder = scratch.0.join(index.to_string());
             std::fs::create_dir(&folder).unwrap();
             let source = folder.join(original_path.file_name().unwrap());
+            // Pillow reports repr(os.fspath(path)), including native Windows separators.
+            let source_repr = py
+                .import("os")
+                .unwrap()
+                .call_method1("fspath", (source.clone(),))
+                .unwrap()
+                .repr()
+                .unwrap()
+                .extract::<String>()
+                .unwrap();
             let hits = Arc::new(AtomicUsize::new(0));
             let _restore = if let Some(kind) = case["injected_kind"].as_str() {
                 assert_eq!(case["fault"], "save");
@@ -146,12 +156,7 @@ fn static_prepare_matches_all_nine_source_results_errors_and_warning_observation
                 if boundary == "prepare" {
                     let warnings = warnings
                         .iter()
-                        .map(|warning| {
-                            warning.replace(
-                                &_native::python_repr::quoted(&source.to_string_lossy()),
-                                "'$source'",
-                            )
-                        })
+                        .map(|warning| warning.replace(&source_repr, "'$source'"))
                         .collect::<Vec<_>>();
                     assert_eq!(serde_json::json!(warnings), case["warnings"]);
                 }

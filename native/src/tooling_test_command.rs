@@ -301,8 +301,9 @@ async fn execute(root: &Path, args: &[String], log: &RunLog) -> Result<i32, Stri
         &environment,
         (&stdout, &stderr),
         // This owns compilation plus every selected suite. Individual suites
-        // retain their own watchdogs; the aggregate needs room for a cold CI build.
-        Duration::from_secs(2400),
+        // retain their own watchdogs. The Windows cohort includes native process
+        // and filesystem proofs; a measured cold run already needed 39m40s.
+        Duration::from_secs(if cfg!(windows) { 3600 } else { 2400 }),
         Duration::from_secs(180),
         log,
     )

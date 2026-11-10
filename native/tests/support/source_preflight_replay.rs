@@ -307,6 +307,9 @@ fn run_cli(root: &Path, runtime: &tokio::runtime::Runtime, reports: &Value) {
                     }
                     Err(error) => panic!("preflight fixture: {error}"),
                 };
+                // Winsock inherits the listener's nonblocking mode. Read/write timeouts
+                // bound the accepted connection once it is explicitly blocking.
+                stream.set_nonblocking(false).unwrap();
                 let method = request(&mut stream, deadline);
                 server_received.lock().unwrap().push(method.clone());
                 let body = if method == "getMe" {

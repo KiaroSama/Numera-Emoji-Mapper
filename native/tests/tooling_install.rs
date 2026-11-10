@@ -378,9 +378,8 @@ fn offline_install_never_compiles_or_reads_an_index() {
         ]
     );
     assert_eq!(
-        argv.last().unwrap(),
-        &Path::new("package with spaces/wheels/numera_emoji_core-2.0.0-fixture.whl")
-            .to_string_lossy()
+        Path::new(argv.last().unwrap()),
+        Path::new("package with spaces/wheels/numera_emoji_core-2.0.0-fixture.whl")
     );
     for wheel in ["../outside.whl", "name:stream.whl", "source.tar.gz"] {
         assert!(tooling_install::offline_install_arguments(Path::new("root"), wheel).is_err());

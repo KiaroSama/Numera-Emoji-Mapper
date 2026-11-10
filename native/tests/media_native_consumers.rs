@@ -189,9 +189,12 @@ fn brand_panel_and_store_requests_publish_only_answered_native_outputs() {
                 if *refused == &blank_logo {
                     assert_eq!(error, "blank.png: image is blank (no visible pixels)");
                 } else {
-                    let normalized = error.replace(
-                        &_native::python_repr::quoted(&refused.to_string_lossy()), "'$source'",
-                    );
+                    use pyo3::prelude::*;
+                    // PyO3 passes pathlib.Path, which normalizes mixed Windows separators.
+                    let source_repr = Python::attach(|py| {
+                        (*refused).into_pyobject(py).unwrap().str().unwrap().repr().unwrap().to_string()
+                    });
+                    let normalized = error.replace(&source_repr, "'$source'");
                     assert_eq!(normalized, corrupt_expected["error"]["message"]);
                 }
                 assert_eq!(std::fs::read(refused).unwrap(), *original);

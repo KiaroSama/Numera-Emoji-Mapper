@@ -84,6 +84,15 @@ impl Imports {
             // import hook, even though the original wrapper imports datetime.
             return crate::source_oracle_runtime::host_import(py, "time");
         }
+        if cfg!(windows)
+            && level == 0
+            && name == "msvcrt"
+            && (fromlist.is_none() || fromlist.extract::<Vec<String>>()?.is_empty())
+        {
+            // NativeStateLease.descriptor transfers its duplicated Windows handle
+            // to Python's CRT while the original wrapper's frame is active.
+            return crate::source_oracle_runtime::host_import(py, "msvcrt");
+        }
         let names = fromlist.extract::<Vec<String>>()?;
         if level == 0 && name == "emojikit" && names == ["_native"] {
             self.native.fetch_add(1, Ordering::Relaxed);

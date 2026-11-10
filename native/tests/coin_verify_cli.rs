@@ -276,8 +276,12 @@ fn verify_command_refuses_foreign_intent_then_recovers_original_art_before_provi
                 runtime.block_on(async {
                     tokio::time::timeout(Duration::from_secs(5), ready)
                         .await
-                        .unwrap()
-                        .unwrap();
+                        .unwrap_or_else(|error| {
+                            panic!("iteration {iteration}: waiting for {method}: {error}")
+                        })
+                        .unwrap_or_else(|error| {
+                            panic!("iteration {iteration}: {method} observation closed: {error}")
+                        });
                 });
                 assert!(
                     _native::locks::Lease::acquire(&family, "verify ownership observer").is_err()
@@ -312,6 +316,15 @@ fn verify_command_refuses_foreign_intent_then_recovers_original_art_before_provi
             Ok(result) => result,
             Err(error) => std::panic::resume_unwind(error),
         };
+        // Report the command's actual refusal before a missing later request can mask it.
+        let expected = &gate["cases"][usize::from(iteration == 2)]["expected"];
+        assert_eq!(
+            i64::from(result.code),
+            expected["code"].as_i64().unwrap(),
+            "iteration {iteration}: {} {}",
+            result.stdout,
+            result.stderr
+        );
         observed.unwrap();
         let requests = requests.unwrap();
         assert_eq!(requests.len(), [0, 3, 4][iteration]);
@@ -319,14 +332,6 @@ fn verify_command_refuses_foreign_intent_then_recovers_original_art_before_provi
             request.method.as_str(),
             "getStickerSet" | "getFile" | "GET fixture.png" | "GET /api/v3/coins/markets"
         )));
-        let expected = &gate["cases"][usize::from(iteration == 2)]["expected"];
-        assert_eq!(
-            i64::from(result.code),
-            expected["code"].as_i64().unwrap(),
-            "{} {}",
-            result.stdout,
-            result.stderr
-        );
         assert!(!result.stderr.contains(bot_api::TOKEN));
         assert_eq!(std::fs::read(&state).unwrap(), state_before);
         if iteration < 2 {
