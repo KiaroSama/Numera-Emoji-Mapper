@@ -1,6 +1,6 @@
 //! Public identity/comparison faults observe external Pillow mode, lookup and ownership boundaries.
 use pyo3::prelude::*;
-use pyo3::types::{PyCFunction, PyDict, PyTuple};
+use pyo3::types::{PyCFunction, PyTuple};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::sync::{
@@ -131,7 +131,8 @@ impl Mode {
         }
     }
 }
-struct Restore<'py>(Vec<(Bound<'py, PyAny>, &'static str, Option<Bound<'py, PyAny>>)>);
+type SavedAttribute<'py> = (Bound<'py, PyAny>, &'static str, Option<Bound<'py, PyAny>>);
+struct Restore<'py>(Vec<SavedAttribute<'py>>);
 impl Drop for Restore<'_> {
     fn drop(&mut self) {
         for (object, name, value) in self.0.iter().rev() {

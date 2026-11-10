@@ -8,10 +8,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-#[path = "retained_cli.rs"]
-mod retained_cli;
-#[path = "tooling_fixture.rs"]
-mod tooling_fixture;
+use crate::{retained_cli, tooling_fixture};
 
 const OLD: &str = "v:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const KEY: &str = "v:3cf3deb8098c04f13c4f989370acac89";

@@ -19,7 +19,9 @@ mod bot_multipart;
 pub const TOKEN: &str = "test-only-token";
 #[derive(Clone, Debug)]
 pub struct Request {
+    #[allow(dead_code)] // Some scripted cohorts validate requests in the handler instead.
     pub method: String,
+    #[allow(dead_code)]
     pub form: BTreeMap<String, String>,
     #[allow(dead_code)] // Replacement readback retains the actual transmitted bytes.
     pub files: BTreeMap<String, Vec<u8>>,
@@ -57,6 +59,7 @@ impl Reply {
         self.held = Some((ready, done));
         (self, reached, release)
     }
+    #[allow(dead_code)] // Shared helper; not every importing cohort constructs replies.
     pub fn new(method: &str, fields: &[(&str, &str)], payload: Value) -> Self {
         assert!(matches!(
             method,

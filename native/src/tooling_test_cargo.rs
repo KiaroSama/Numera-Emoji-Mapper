@@ -151,7 +151,11 @@ fn parse_prefix(reader: impl Read) -> Result<Prefix, String> {
                 }
                 return Ok(Prefix {
                     artifacts,
-                    hash: format!("{:x}", hash.finalize()),
+                    hash: hash
+                        .finalize()
+                        .iter()
+                        .map(|byte| format!("{byte:02x}"))
+                        .collect(),
                     bytes,
                 });
             }

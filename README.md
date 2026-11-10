@@ -9,7 +9,8 @@
 [![CI](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml)
 [![License: GPL-3.0](https://img.shields.io/github/license/KiaroSama/Numera-Emoji-Mapper)](LICENSE)
 [![Python 3.11 | 3.12 | 3.14](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.14-3776AB?logo=python&logoColor=white)](.github/workflows/ci.yml)
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6)](docs/GUIDE.md)
+[![Rust 1.99+](https://img.shields.io/badge/Rust-1.99%2B-DEA584?logo=rust)](native/Cargo.toml)
+[![Builds: Linux, macOS, Windows](https://img.shields.io/badge/builds-Linux%20%7C%20macOS%20%7C%20Windows-0078D6)](.github/workflows/ci.yml)
 <br>
 [![Backend: Cloudflare Workers](https://img.shields.io/badge/backend-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](worker/README.md)
 [![Telegram Bot API](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)

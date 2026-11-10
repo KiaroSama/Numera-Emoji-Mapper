@@ -108,7 +108,7 @@ fn json_cases(
         if let Some(expected) = case.get("error") {
             let error = result.unwrap_err();
             assert!(
-                error.get_type(py).is(&py.get_type::<PyValueError>()),
+                error.get_type(py).is(py.get_type::<PyValueError>()),
                 "{binding}/{name}: {error}"
             );
             assert_eq!(

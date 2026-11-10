@@ -8,6 +8,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+#[path = "support/bot_api.rs"]
+mod bot_api;
+
 #[path = "support/coin_cli_args.rs"]
 mod coin_cli_args;
 #[path = "support/coin_provider_map_race.rs"]

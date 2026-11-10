@@ -235,7 +235,7 @@ fn modules<'py>(
         for attribute in ["__kwdefaults__", "__annotations__"] {
             function.setattr(attribute, original.getattr(attribute)?)?;
         }
-        if !function.getattr("__globals__")?.is(&module.dict()) {
+        if !function.getattr("__globals__")?.is(module.dict()) {
             return Err(PyValueError::new_err(
                 "order globals are not patchable module storage",
             ));

@@ -86,7 +86,7 @@ fn original_alias_and_enhance_reread_the_map_after_actual_lock_acquisition() {
                 crate::atomic::write_json(&path, &current)?;
                 Ok(lease)
             },
-            |path, value| crate::atomic::write_json(path, value),
+            crate::atomic::write_json,
         )
         .unwrap();
         assert_eq!(code, 0);

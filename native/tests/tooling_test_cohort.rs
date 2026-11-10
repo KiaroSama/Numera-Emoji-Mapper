@@ -309,9 +309,8 @@ fn dedicated_runner_reaps_separately_sessioned_orphan_and_preserves_root_status(
         let (pid, birth) = loop {
             if let Ok(raw) = std::fs::read_to_string(scratch.join("orphan-ready")) {
                 let fields = raw.split_whitespace().collect::<Vec<_>>();
-                if fields.len() == 2 {
-                    if let (Ok(pid), Ok(birth)) = (fields[0].parse::<u32>(), fields[1].parse::<u64>()) { break (pid, birth); }
-                }
+                if fields.len() == 2
+                    && let (Ok(pid), Ok(birth)) = (fields[0].parse::<u32>(), fields[1].parse::<u64>()) { break (pid, birth); }
             }
             assert!(Instant::now() < deadline, "orphan did not become ready");
             tokio::select! {

@@ -25,7 +25,7 @@ impl Patch {
         &self,
         py: Python<'py>,
         target: &str,
-        values: &Bound<'_, PyDict>,
+        values: &Bound<'py, PyDict>,
         clear: bool,
     ) -> PyResult<Bound<'py, PyAny>> {
         if target != "os.environ"
@@ -117,7 +117,7 @@ pub(super) fn run(
             continue;
         }
         let targets = node.getattr("targets")?;
-        if targets.len() != 1 {
+        if targets.len()? != 1 {
             continue;
         }
         let target = targets.get_item(0)?;

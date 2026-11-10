@@ -13,8 +13,7 @@ mod announce;
 mod publication_commands;
 #[path = "ticker_resume.rs"]
 mod resume;
-#[path = "retained_cli.rs"]
-mod retained_cli;
+use crate::retained_cli;
 #[path = "ticker_unresolved.rs"]
 mod unresolved;
 

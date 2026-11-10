@@ -55,7 +55,7 @@ impl Patch {
         &self,
         py: Python<'py>,
         target: &str,
-        replacement: &Bound<'_, PyAny>,
+        replacement: &Bound<'py, PyAny>,
     ) -> PyResult<Bound<'py, PyAny>> {
         if target != "tests.reference.build_pack.time.sleep" || !replacement.is_callable() {
             return Err(PyValueError::new_err(

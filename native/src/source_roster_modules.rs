@@ -26,7 +26,7 @@ pub(crate) fn rebind<'py>(
             for attribute in ["__kwdefaults__", "__annotations__"] {
                 rebound.setattr(attribute, value.getattr(attribute)?)?;
             }
-            if !rebound.getattr("__globals__")?.is(&module.dict()) {
+            if !rebound.getattr("__globals__")?.is(module.dict()) {
                 return Err(PyValueError::new_err(
                     "original roster globals not patchable",
                 ));

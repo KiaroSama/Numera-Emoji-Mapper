@@ -306,10 +306,10 @@ fn original_video_conversion_alpha_and_real_container_refusals_are_preserved() {
         })();
         let mut closed = Ok(());
         for frame in frames.iter() {
-            if let Err(error) = frame.call_method0("close") {
-                if closed.is_ok() {
-                    closed = Err(error);
-                }
+            if let Err(error) = frame.call_method0("close")
+                && closed.is_ok()
+            {
+                closed = Err(error);
             }
         }
         saved?;

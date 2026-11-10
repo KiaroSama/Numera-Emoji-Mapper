@@ -3,8 +3,7 @@ use _native::source_git_inventory::Source;
 use serde_json::json;
 use std::path::Path;
 
-#[path = "tooling_fixture.rs"]
-mod tooling_fixture;
+use crate::tooling_fixture;
 
 pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Source]) {
     let sources = ["emojikit/logsetup.py", "tests/test_logsetup.py"]

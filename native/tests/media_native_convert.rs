@@ -5,6 +5,8 @@ use _native::{
 };
 use pyo3::prelude::*;
 use serde_json::Value;
+#[path = "support/retained_cli.rs"]
+mod retained_cli;
 use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::fs::{File, FileTimes};

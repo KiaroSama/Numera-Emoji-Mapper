@@ -221,7 +221,7 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
         for attribute in ["__kwdefaults__", "__annotations__"] {
             rebound.setattr(attribute, original.getattr(attribute)?)?;
         }
-        if !rebound.getattr("__globals__")?.is(&status.dict()) {
+        if !rebound.getattr("__globals__")?.is(status.dict()) {
             return Err(PyValueError::new_err(
                 "status globals are not patchable module storage",
             ));

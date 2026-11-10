@@ -289,7 +289,9 @@ pub(super) fn run(
         || imports.borrow(py).calls.load(Ordering::Relaxed) != 2
         || patch.borrow(py).calls.load(Ordering::Relaxed) != 2
         || keys.extract::<Vec<String>>()? != ["BRAND_LOGO_BOTS"]
-        || required(&modules.environment, "BRAND_LOGO_BOTS")?.extract::<String>()? != ""
+        || !required(&modules.environment, "BRAND_LOGO_BOTS")?
+            .extract::<String>()?
+            .is_empty()
     {
         return Err(PyValueError::new_err(
             "original applier execution or private port restoration incomplete",

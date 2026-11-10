@@ -4,6 +4,8 @@ use _native::{
     publication::Publisher, reconcile, telegram::Telegram,
 };
 use serde_json::{Value, json};
+#[path = "support/retained_cli.rs"]
+mod retained_cli;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 #[path = "support/bot_api.rs"]

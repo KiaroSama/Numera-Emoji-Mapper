@@ -205,6 +205,15 @@ pub async fn is_blank_typed(decoder: &VideoDecoder, path: &Path) -> Result<bool,
     Ok(blank_samples(&raw))
 }
 
+fn blank_samples(raw: &[u8]) -> bool {
+    let blank = raw
+        .as_chunks::<{ crate::codec_video_timeline::FRAME_BYTES }>()
+        .0
+        .iter()
+        .all(|frame| crate::codec_raster::blank_rgba(frame));
+    !raw.is_empty() && raw.len() >= crate::codec_video_timeline::FRAME_BYTES && blank
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -301,13 +310,4 @@ mod tests {
         );
         assert!(error.handled);
     }
-}
-
-fn blank_samples(raw: &[u8]) -> bool {
-    let blank = raw
-        .as_chunks::<{ crate::codec_video_timeline::FRAME_BYTES }>()
-        .0
-        .iter()
-        .all(|frame| crate::codec_raster::blank_rgba(frame));
-    !raw.is_empty() && raw.len() >= crate::codec_video_timeline::FRAME_BYTES && blank
 }

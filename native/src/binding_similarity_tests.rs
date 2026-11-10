@@ -95,7 +95,7 @@ fn registered_similarity_preserves_source_results_exact_errors_and_concurrent_ca
             let error = near
                 .call1((vec![Some(0_u64)], 0_u64, threshold))
                 .unwrap_err();
-            assert!(error.get_type(py).is(&py.get_type::<PyValueError>()));
+            assert!(error.get_type(py).is(py.get_type::<PyValueError>()));
         }
         let callables = [greedy.clone().unbind(), greedy.unbind()];
         // The registered function detaches internally; keeping this attachment while

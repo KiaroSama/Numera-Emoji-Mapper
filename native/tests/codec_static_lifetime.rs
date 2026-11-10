@@ -1,6 +1,5 @@
 //! External Pillow faults keep typed preview errors, unchanged inputs and deterministic ownership.
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyTuple};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 

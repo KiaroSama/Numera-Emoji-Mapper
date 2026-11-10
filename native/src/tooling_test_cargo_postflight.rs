@@ -121,7 +121,7 @@ fn artifacts<'a>(
                 return Err(fail("artifact paths must be absolute"));
             }
             relative(root, path)?;
-            Ok(crate::migration_bundle::resolved(path)?)
+            crate::migration_bundle::resolved(path)
         };
         let manifest = path(&value["manifest_path"])?;
         if value["package_id"] != plan.package_id

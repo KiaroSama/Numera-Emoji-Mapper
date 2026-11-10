@@ -254,12 +254,13 @@ pub fn generate(
             observed_preview["cases"][index]["expected"] = actual;
             std::fs::remove_file(output).map_err(|_| "cannot clean historical preview")?;
         }
-        let mut input_index = preview_cases.len();
-        for (index, case) in gallery_cases
+        for (offset, (index, case)) in gallery_cases
             .iter()
             .enumerate()
             .filter(|(_, case)| case["format"] == "animated")
+            .enumerate()
         {
+            let input_index = preview_cases.len() + offset;
             let output = workspace.join(format!("gallery-{index}.webp"));
             render(
                 py,
@@ -278,7 +279,6 @@ pub fn generate(
             observed_gallery["cases"][index]["sha256"] = json!(digest_hex(&bytes));
             observed_gallery["cases"][index]["bytes"] = json!(bytes.len());
             std::fs::remove_file(output).map_err(|_| "cannot clean historical gallery")?;
-            input_index += 1;
         }
         for (path, bytes) in &inputs {
             if std::fs::read(path).map_err(|_| "cannot verify render input preservation")? != *bytes

@@ -15,7 +15,7 @@ pub fn assert_original_subset(
     log: &RunLog,
 ) {
     // Darwin still refuses descendant custody. This caller branch never represents an OS skip as parity.
-    assert!(cfg!(any(windows, target_os = "linux")));
+    assert!(["windows", "linux"].contains(&std::env::consts::OS));
     let tests = root.join("tests");
     std::fs::create_dir(&tests).unwrap();
     for (name, expected) in [

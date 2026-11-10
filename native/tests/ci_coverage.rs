@@ -1,10 +1,10 @@
-//! CI policy: manual roots and Cargo discovery, not a stale list of native suite names.
+//! CI policy: automatic builds and Cargo discovery, not a stale list of native suite names.
 use _native::source_ci_claims::step_run;
 use std::path::Path;
 
 const FULL_NATIVE: &str = "native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked -- --test-threads=2";
 
-fn manual_root(workflow: &str) -> Result<(), &'static str> {
+fn initiating_events(workflow: &str, automatic: bool) -> Result<(), &'static str> {
     let lines = workflow.lines().collect::<Vec<_>>();
     let start = lines
         .iter()
@@ -19,8 +19,14 @@ fn manual_root(workflow: &str) -> Result<(), &'static str> {
             events.push(line.trim());
         }
     }
-    if events != ["workflow_dispatch:"] {
-        return Err("CI must have exactly one manual initiating event");
+    events.sort_unstable();
+    let expected = if automatic {
+        vec!["pull_request:", "push:", "workflow_dispatch:"]
+    } else {
+        vec!["workflow_dispatch:"]
+    };
+    if events != expected {
+        return Err("CI and package builds must run on every push and pull request");
     }
     Ok(())
 }
@@ -48,7 +54,7 @@ fn full_discovery(run: &str, manifest: &str) -> Result<(), &'static str> {
 }
 
 #[test]
-fn every_workflow_requires_a_manual_dispatch_and_no_automatic_event() {
+fn every_ci_and_package_workflow_requires_push_pull_request_and_manual_dispatch() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let mut count = 0;
     for entry in std::fs::read_dir(root.join(".github/workflows")).unwrap() {
@@ -58,7 +64,12 @@ fn every_workflow_requires_a_manual_dispatch_and_no_automatic_event() {
             Some("yml" | "yaml")
         ) {
             let text = std::fs::read_to_string(&path).unwrap();
-            manual_root(&text).unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+            let automatic = matches!(
+                path.file_name().and_then(|name| name.to_str()),
+                Some("ci.yml" | "release.yml")
+            );
+            initiating_events(&text, automatic)
+                .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
             count += 1;
         }
     }
@@ -66,10 +77,22 @@ fn every_workflow_requires_a_manual_dispatch_and_no_automatic_event() {
         count >= 3,
         "workflow discovery must not silently match nothing"
     );
-    for event in ["push:", "pull_request:", "schedule:", "workflow_run:"] {
-        assert!(manual_root(&format!("on:\n  workflow_dispatch:\n  {event}\njobs:\n")).is_err());
+    let valid = "on:\n  push:\n  pull_request:\n  workflow_dispatch:\njobs:\n";
+    assert!(initiating_events(valid, true).is_ok());
+    for event in ["push:", "pull_request:", "workflow_dispatch:"] {
+        assert!(initiating_events(&valid.replace(&format!("  {event}\n"), ""), true).is_err());
     }
-    assert!(manual_root("on:\n  # workflow_dispatch:\n  push:\njobs:\n").is_err());
+    for event in [
+        "pull_request_target:",
+        "schedule:",
+        "workflow_run:",
+        "push:",
+    ] {
+        assert!(
+            initiating_events(&valid.replace("jobs:", &format!("  {event}\njobs:")), true).is_err()
+        );
+    }
+    assert!(initiating_events("on:\n  # workflow_dispatch:\n  push:\njobs:\n", true).is_err());
 }
 
 #[test]
@@ -232,11 +255,32 @@ fn test_module_wiring(
         .map(str::trim)
         .any(|line| line == "#[test]" || line.starts_with("#[tokio::test"));
     if tests {
-        if library
+        let mut owners = library
             .matches(&format!("#[cfg(test)]\nmod {module};"))
-            .count()
-            != 1
-        {
+            .count();
+        for (parent, source) in parents {
+            if ordinary_module(library, parent) != 1 {
+                continue;
+            }
+            let lines = source.lines().map(str::trim).collect::<Vec<_>>();
+            owners += lines
+                .windows(3)
+                .filter(|lines| {
+                    lines[0] == "#[cfg(test)]"
+                        && lines[1] == format!("#[path = \"{module}.rs\"]")
+                        && lines[2]
+                            .strip_prefix("mod ")
+                            .and_then(|line| line.strip_suffix(';'))
+                            .is_some_and(|name| {
+                                !name.is_empty()
+                                    && name
+                                        .bytes()
+                                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+                            })
+                })
+                .count();
+        }
+        if owners != 1 {
             return Err("crate-private test module is not wired");
         }
         return Ok(());
@@ -248,6 +292,15 @@ fn test_module_wiring(
             continue;
         }
         let lines = source.lines().map(str::trim).collect::<Vec<_>>();
+        owners += lines
+            .windows(3)
+            .filter(|lines| {
+                lines[0] == "#[cfg(all(test, any(windows, target_os = \"linux\")))]"
+                    && lines[1] == path
+                    && lines[2].starts_with("pub(crate) mod ")
+                    && lines[2].ends_with(';')
+            })
+            .count();
         owners += lines
             .windows(2)
             .filter(|pair| {
@@ -340,6 +393,30 @@ fn test_module_discovery_distinguishes_assertion_replayers_without_hiding_native
         .is_err()
     );
     for source in [native, asynchronous] {
+        let nested = format!("#[cfg(test)]\n{parent}");
+        assert!(
+            test_module_wiring(
+                "pub mod source_parent;\n",
+                "source_example_tests",
+                source,
+                &[("source_parent", &nested)]
+            )
+            .is_ok()
+        );
+        for invalid in [
+            nested.replace("#[cfg(test)]", "// #[cfg(test)]"),
+            nested.replace("#[cfg(test)]", "#[cfg(any())]"),
+        ] {
+            assert!(
+                test_module_wiring(
+                    "pub mod source_parent;\n",
+                    "source_example_tests",
+                    source,
+                    &[("source_parent", &invalid)]
+                )
+                .is_err()
+            );
+        }
         assert!(test_module_wiring(public, "source_example_tests", source, &[]).is_err());
         assert!(test_module_wiring(private, "source_example_tests", source, &[]).is_ok());
         assert!(test_module_wiring("", "source_example_tests", source, &[]).is_err());
@@ -404,7 +481,8 @@ fn executable_log_owners_install_panic_capture_without_changing_extension_import
         ("tooling_check.rs", 1),
         ("tooling_prebuilt.rs", 1),
         ("tooling_similarity_cli.rs", 1),
-        ("tooling_test_runner.rs", 1),
+        ("tooling_test_runner.rs", 2),
+        ("tooling_test_command.rs", 1),
     ] {
         let source = std::fs::read_to_string(root.join("src").join(file)).unwrap();
         assert_eq!(source.matches("RunLog::open(").count(), owners, "{file}");
@@ -651,6 +729,14 @@ fn cargo_suites_opt_in_to_the_guard_including_fail_closed_posix_admission() {
             .map(str::trim)
             .filter(|line| !line.starts_with('#'))
         {
+            if line.contains("cargo test ") && line.split_whitespace().any(|arg| arg == "--no-run")
+            {
+                assert!(
+                    line.contains("--manifest-path native/Cargo.toml --locked"),
+                    "compile checks must use the locked native manifest"
+                );
+                continue; // Compilation is checked separately; it never counts as executed coverage.
+            }
             if line.contains("cargo test ") || line.contains(" test-cargo ") {
                 assert!(
                     line.contains("cargo test --config .cargo/tests.toml ")

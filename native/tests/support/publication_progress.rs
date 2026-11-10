@@ -349,7 +349,7 @@ fn real_video_visibility(commands: &Commands<'_>) {
         ));
         let mut frames = vec![0_u8; 100 * 100 * 4 * 30];
         if index == 1 {
-            for pixel in frames[100 * 100 * 4 * 15..].chunks_exact_mut(4) {
+            for pixel in frames[100 * 100 * 4 * 15..].as_chunks_mut::<4>().0 {
                 pixel.copy_from_slice(&[220, 20, 20, 255]);
             }
         }

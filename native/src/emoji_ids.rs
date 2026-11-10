@@ -116,7 +116,7 @@ pub fn within_file_duplicates(text: &str) -> Vec<(String, usize)> {
 fn duplicate_summary(mut counts: Vec<(String, usize)>, limit: usize) -> String {
     counts.retain(|(_, count)| *count > 1);
     // Python's count-only sort preserves first-seen order for tied counts.
-    counts.sort_by(|a, b| b.1.cmp(&a.1));
+    counts.sort_by_key(|entry| std::cmp::Reverse(entry.1));
     counts
         .into_iter()
         .take(limit)

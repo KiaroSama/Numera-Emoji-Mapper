@@ -53,7 +53,7 @@ fn fixture(text: &str, source: &str, expected_hash: &str) -> Value {
 
 fn value_error(py: Python<'_>, error: &PyErr, case: &str) {
     assert!(
-        error.get_type(py).is(&py.get_type::<PyValueError>()),
+        error.get_type(py).is(py.get_type::<PyValueError>()),
         "{case}: expected exact Python ValueError, got {error}"
     );
 }

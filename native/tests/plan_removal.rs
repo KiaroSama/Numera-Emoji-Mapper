@@ -1,6 +1,8 @@
 //! Original removal commands retain durable intent, distinct unknown state and counted budgets.
 use _native::catalog::Catalog;
 use serde_json::{Value, json};
+#[path = "support/retained_cli.rs"]
+mod retained_cli;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;

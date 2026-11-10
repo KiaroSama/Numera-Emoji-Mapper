@@ -226,7 +226,7 @@ fn observe(
     if let Some(expected) = case.get("error") {
         let error = result.unwrap_err();
         assert!(
-            error.get_type(py).is(&py.get_type::<PyValueError>()),
+            error.get_type(py).is(py.get_type::<PyValueError>()),
             "{name}: {error}"
         );
         assert_eq!(

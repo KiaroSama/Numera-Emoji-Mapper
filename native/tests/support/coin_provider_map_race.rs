@@ -4,8 +4,7 @@ use serde_json::{Value, json};
 use std::path::Path;
 use std::time::Duration;
 
-#[path = "bot_api.rs"]
-mod bot_api;
+use crate::bot_api;
 use bot_api::{Reply, Server};
 
 const SET: &str = "cryptoemoji1_by_YourEmojiBot";
@@ -188,7 +187,7 @@ pub fn canonical_map_updates_between_download_and_publication_are_preserved(
                     .enable_all()
                     .build()
                     .unwrap();
-                let wait = |ready| {
+                let wait = |ready: tokio::sync::oneshot::Receiver<()>| {
                     runtime.block_on(async {
                         tokio::time::timeout(Duration::from_secs(5), ready)
                             .await

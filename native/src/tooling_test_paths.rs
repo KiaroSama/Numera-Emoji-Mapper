@@ -1,89 +1,6 @@
 //! Public closure path/role policy shared by plan snapshots, observations and retained capture.
 use super::{refusal, text};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn original_powershell_source_paths_do_not_admit_other_root_or_protected_scripts() {
-        for name in [
-            "run.ps1",
-            "scripts/run-actions.ps1",
-            "tests/test_original.py",
-        ] {
-            assert!(member_path("source", name).is_ok(), "{name}");
-        }
-        for name in [
-            "other-root.ps1",
-            "private/run.ps1",
-            ".claude/hooks/x.ps1",
-            "scripts/private/x.ps1",
-            "scripts/../run.ps1",
-            "tests/other.ps1",
-        ] {
-            assert!(member_path("source", name).is_err(), "{name}");
-        }
-    }
-    #[test]
-    fn public_consumed_assets_and_documents_keep_protected_and_unrelated_files_out() {
-        for name in [
-            "assets/logo.png",
-            "assets/panel.ts",
-            "coins/keywords.csv",
-            "README.md",
-            "CHANGELOG.md",
-            "LICENSE",
-            "docs/GUIDE.md",
-            ".github/CONTRIBUTING.md",
-            "tests/README.md",
-            "tests/oracles/README.md",
-            "tests/reference/README.md",
-            "tests/reference/consumer-provenance.md",
-            "native/data/python311-decimal.json",
-            "native/data/python311-nonprintable.json",
-        ] {
-            assert!(member_path("support", name).is_ok(), "{name}");
-        }
-        for name in ["coins/run_convert.ps1", "coins/run_rebuild_loop.ps1"] {
-            assert!(member_path("source", name).is_ok(), "{name}");
-        }
-        for name in [
-            "assets/nested/logo.png",
-            "assets/logo.ico",
-            "assets/logo.svg",
-            "assets/private/logo.png",
-            "coins/other.csv",
-            "other.md",
-            "tests/other.md",
-            "tests/private/README.md",
-            "docs/private/note.md",
-            "native/data/other.json",
-            "native/data/private/key.json",
-        ] {
-            assert!(member_path("support", name).is_err(), "{name}");
-        }
-        assert!(member_path("source", "coins/other.ps1").is_err());
-        assert!(member_path("config", ".env.example").is_ok());
-        for role in ["source", "target", "fixture", "support"] {
-            assert!(member_path(role, ".env.example").is_err());
-        }
-        for name in [
-            ".env",
-            ".env.local",
-            ".ENV.EXAMPLE",
-            ".env.example.key",
-            ".env.example/other",
-            "private/.env.example",
-            "nested/.env.example",
-            "./.env.example",
-            "../.env.example",
-        ] {
-            assert!(!public_path(name), "{name}");
-            assert!(member_path("config", name).is_err(), "{name}");
-        }
-    }
-}
-
 pub(crate) fn public_path(name: &str) -> bool {
     // This exact public template is a compiled test input, never the operator's environment.
     if name == ".env.example" {
@@ -190,4 +107,87 @@ pub(crate) fn member_path(role: &str, name: &str) -> Result<(), String> {
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn original_powershell_source_paths_do_not_admit_other_root_or_protected_scripts() {
+        for name in [
+            "run.ps1",
+            "scripts/run-actions.ps1",
+            "tests/test_original.py",
+        ] {
+            assert!(member_path("source", name).is_ok(), "{name}");
+        }
+        for name in [
+            "other-root.ps1",
+            "private/run.ps1",
+            ".claude/hooks/x.ps1",
+            "scripts/private/x.ps1",
+            "scripts/../run.ps1",
+            "tests/other.ps1",
+        ] {
+            assert!(member_path("source", name).is_err(), "{name}");
+        }
+    }
+    #[test]
+    fn public_consumed_assets_and_documents_keep_protected_and_unrelated_files_out() {
+        for name in [
+            "assets/logo.png",
+            "assets/panel.ts",
+            "coins/keywords.csv",
+            "README.md",
+            "CHANGELOG.md",
+            "LICENSE",
+            "docs/GUIDE.md",
+            ".github/CONTRIBUTING.md",
+            "tests/README.md",
+            "tests/oracles/README.md",
+            "tests/reference/README.md",
+            "tests/reference/consumer-provenance.md",
+            "native/data/python311-decimal.json",
+            "native/data/python311-nonprintable.json",
+        ] {
+            assert!(member_path("support", name).is_ok(), "{name}");
+        }
+        for name in ["coins/run_convert.ps1", "coins/run_rebuild_loop.ps1"] {
+            assert!(member_path("source", name).is_ok(), "{name}");
+        }
+        for name in [
+            "assets/nested/logo.png",
+            "assets/logo.ico",
+            "assets/logo.svg",
+            "assets/private/logo.png",
+            "coins/other.csv",
+            "other.md",
+            "tests/other.md",
+            "tests/private/README.md",
+            "docs/private/note.md",
+            "native/data/other.json",
+            "native/data/private/key.json",
+        ] {
+            assert!(member_path("support", name).is_err(), "{name}");
+        }
+        assert!(member_path("source", "coins/other.ps1").is_err());
+        assert!(member_path("config", ".env.example").is_ok());
+        for role in ["source", "target", "fixture", "support"] {
+            assert!(member_path(role, ".env.example").is_err());
+        }
+        for name in [
+            ".env",
+            ".env.local",
+            ".ENV.EXAMPLE",
+            ".env.example.key",
+            ".env.example/other",
+            "private/.env.example",
+            "nested/.env.example",
+            "./.env.example",
+            "../.env.example",
+        ] {
+            assert!(!public_path(name), "{name}");
+            assert!(member_path("config", name).is_err(), "{name}");
+        }
+    }
 }

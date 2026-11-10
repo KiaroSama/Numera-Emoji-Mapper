@@ -74,7 +74,7 @@ fn durable_remap_keeps_backup_and_refused_candidates_separate_from_canonical_map
         std::fs::read(output.with_extension("prebroken.json")).unwrap(),
         concurrent
     );
-    assert!(!std::fs::read_dir(&scratch).unwrap().any(|entry| {
+    assert!(!std::fs::read_dir(scratch).unwrap().any(|entry| {
         entry
             .unwrap()
             .file_name()

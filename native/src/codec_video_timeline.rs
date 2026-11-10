@@ -210,6 +210,111 @@ pub(crate) async fn decode(
     parse_with(path, result.stdout, &result.stderr, duration, policy)
 }
 
+fn frame(timeline: &Timeline, index: usize) -> Option<&[u8]> {
+    timeline
+        .rgba
+        .get(index.checked_mul(FRAME_BYTES)?..(index + 1).checked_mul(FRAME_BYTES)?)
+}
+
+fn at(times: &[f64], midpoint: f64) -> usize {
+    times
+        .partition_point(|&time| time <= midpoint)
+        .saturating_sub(1)
+}
+
+pub fn same_image(left: &Timeline, right: &Timeline) -> Option<bool> {
+    compare(left, right, Policy::Legacy).ok().flatten()
+}
+
+fn compare_frame(x: &[u8], y: &[u8], policy: Policy) -> Result<Option<bool>, VideoError> {
+    match crate::codec_raster::same_frame_external(x, y) {
+        Ok(Some(same)) => Ok(Some(same)),
+        Ok(None) if matches!(policy, Policy::Legacy) => Ok(None),
+        Ok(None) => Err(unknown("native comparison raster is incomplete")),
+        Err(_) if matches!(policy, Policy::Legacy) => Ok(None),
+        Err(error) => Err(Python::attach(|py| VideoError::from_python(py, error))),
+    }
+}
+
+pub(crate) fn compare(
+    left: &Timeline,
+    right: &Timeline,
+    policy: Policy,
+) -> Result<Option<bool>, VideoError> {
+    // Public callers can construct a Timeline, so reject incomplete evidence here too.
+    for timeline in [left, right] {
+        if timeline.times.is_empty()
+            || timeline.times.len() > MAX_FRAMES
+            || timeline.rgba.len() != timeline.times.len() * FRAME_BYTES
+            || !timeline.duration.is_finite()
+            || timeline.duration <= 0.0
+            || timeline.times[0] != 0.0
+            || timeline.times.iter().any(|time| !time.is_finite())
+            || timeline.times.windows(2).any(|pair| pair[1] <= pair[0])
+            || timeline
+                .times
+                .last()
+                .is_some_and(|time| *time >= timeline.duration)
+        {
+            return match policy {
+                Policy::Legacy => Ok(None),
+                Policy::Source => Err(unknown("native comparison timeline is incomplete")),
+            };
+        }
+    }
+    if (left.duration - right.duration).abs() > 1.0 / 30.0 + 0.002 {
+        return Ok(Some(false));
+    }
+    for (own, other) in [(left, right), (right, left)] {
+        for (index, &start) in own.times.iter().enumerate() {
+            let end = own.times.get(index + 1).copied().unwrap_or(own.duration);
+            let matched = at(&other.times, (start + end) / 2.0);
+            let (Some(left), Some(right)) = (frame(own, index), frame(other, matched)) else {
+                return Err(unknown("native comparison frame is incomplete"));
+            };
+            match compare_frame(left, right, policy)? {
+                Some(false) => return Ok(Some(false)),
+                None => return Ok(None),
+                Some(true) => {}
+            }
+        }
+    }
+    let stop = left.duration.min(right.duration);
+    let mut edges: Vec<f64> = left
+        .times
+        .iter()
+        .chain(&right.times)
+        .copied()
+        .filter(|&time| time < stop)
+        .collect();
+    edges.push(stop);
+    edges.sort_by(f64::total_cmp);
+    edges.dedup();
+    for pair in edges.windows(2) {
+        let [start, end] = [pair[0], pair[1]];
+        let midpoint = (start + end) / 2.0;
+        let (Some(x), Some(y)) = (
+            frame(left, at(&left.times, midpoint)),
+            frame(right, at(&right.times, midpoint)),
+        ) else {
+            return Err(unknown("native comparison frame is incomplete"));
+        };
+        match compare_frame(x, y, policy)? {
+            Some(false) => {
+                let rounded = end - start <= 0.002 + 1e-9
+                    && ((left.times[1..].contains(&start) && right.times[1..].contains(&end))
+                        || (right.times[1..].contains(&start) && left.times[1..].contains(&end)));
+                if !rounded {
+                    return Ok(Some(false));
+                }
+            }
+            None => return Ok(None),
+            Some(true) => {}
+        }
+    }
+    Ok(Some(true))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -342,109 +447,4 @@ mod tests {
             1.0
         );
     }
-}
-
-fn frame(timeline: &Timeline, index: usize) -> Option<&[u8]> {
-    timeline
-        .rgba
-        .get(index.checked_mul(FRAME_BYTES)?..(index + 1).checked_mul(FRAME_BYTES)?)
-}
-
-fn at(times: &[f64], midpoint: f64) -> usize {
-    times
-        .partition_point(|&time| time <= midpoint)
-        .saturating_sub(1)
-}
-
-pub fn same_image(left: &Timeline, right: &Timeline) -> Option<bool> {
-    compare(left, right, Policy::Legacy).ok().flatten()
-}
-
-fn compare_frame(x: &[u8], y: &[u8], policy: Policy) -> Result<Option<bool>, VideoError> {
-    match crate::codec_raster::same_frame_external(x, y) {
-        Ok(Some(same)) => Ok(Some(same)),
-        Ok(None) if matches!(policy, Policy::Legacy) => Ok(None),
-        Ok(None) => Err(unknown("native comparison raster is incomplete")),
-        Err(_) if matches!(policy, Policy::Legacy) => Ok(None),
-        Err(error) => Err(Python::attach(|py| VideoError::from_python(py, error))),
-    }
-}
-
-pub(crate) fn compare(
-    left: &Timeline,
-    right: &Timeline,
-    policy: Policy,
-) -> Result<Option<bool>, VideoError> {
-    // Public callers can construct a Timeline, so reject incomplete evidence here too.
-    for timeline in [left, right] {
-        if timeline.times.is_empty()
-            || timeline.times.len() > MAX_FRAMES
-            || timeline.rgba.len() != timeline.times.len() * FRAME_BYTES
-            || !timeline.duration.is_finite()
-            || timeline.duration <= 0.0
-            || timeline.times[0] != 0.0
-            || timeline.times.iter().any(|time| !time.is_finite())
-            || timeline.times.windows(2).any(|pair| pair[1] <= pair[0])
-            || timeline
-                .times
-                .last()
-                .is_some_and(|time| *time >= timeline.duration)
-        {
-            return match policy {
-                Policy::Legacy => Ok(None),
-                Policy::Source => Err(unknown("native comparison timeline is incomplete")),
-            };
-        }
-    }
-    if (left.duration - right.duration).abs() > 1.0 / 30.0 + 0.002 {
-        return Ok(Some(false));
-    }
-    for (own, other) in [(left, right), (right, left)] {
-        for (index, &start) in own.times.iter().enumerate() {
-            let end = own.times.get(index + 1).copied().unwrap_or(own.duration);
-            let matched = at(&other.times, (start + end) / 2.0);
-            let (Some(left), Some(right)) = (frame(own, index), frame(other, matched)) else {
-                return Err(unknown("native comparison frame is incomplete"));
-            };
-            match compare_frame(left, right, policy)? {
-                Some(false) => return Ok(Some(false)),
-                None => return Ok(None),
-                Some(true) => {}
-            }
-        }
-    }
-    let stop = left.duration.min(right.duration);
-    let mut edges: Vec<f64> = left
-        .times
-        .iter()
-        .chain(&right.times)
-        .copied()
-        .filter(|&time| time < stop)
-        .collect();
-    edges.push(stop);
-    edges.sort_by(f64::total_cmp);
-    edges.dedup();
-    for pair in edges.windows(2) {
-        let [start, end] = [pair[0], pair[1]];
-        let midpoint = (start + end) / 2.0;
-        let (Some(x), Some(y)) = (
-            frame(left, at(&left.times, midpoint)),
-            frame(right, at(&right.times, midpoint)),
-        ) else {
-            return Err(unknown("native comparison frame is incomplete"));
-        };
-        match compare_frame(x, y, policy)? {
-            Some(false) => {
-                let rounded = end - start <= 0.002 + 1e-9
-                    && ((left.times[1..].contains(&start) && right.times[1..].contains(&end))
-                        || (right.times[1..].contains(&start) && left.times[1..].contains(&end)));
-                if !rounded {
-                    return Ok(Some(false));
-                }
-            }
-            None => return Ok(None),
-            Some(true) => {}
-        }
-    }
-    Ok(Some(true))
 }

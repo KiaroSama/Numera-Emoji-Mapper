@@ -187,8 +187,8 @@ pub fn same_image_typed(
             if (left ^ right).count_ones() > 6 {
                 return Ok(Some(false));
             }
-            let left = comparison_pixels(py, a).map_err(&external)?;
-            let right = comparison_pixels(py, b).map_err(&external)?;
+            let left = comparison_pixels(py, a).map_err(external)?;
+            let right = comparison_pixels(py, b).map_err(external)?;
             close_pixels(&left, &right).map(Some).ok_or_else(|| {
                 (
                     CodecError::unverified("native comparison raster is incomplete"),
