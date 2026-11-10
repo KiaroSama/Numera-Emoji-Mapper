@@ -188,11 +188,18 @@ fn observe<T>(py: Python<'_>, case: Case, body: impl FnOnce() -> T) -> (T, Arc<S
     let closes = state.clone();
     let tracer =
         PyCFunction::new_closure(py, None, None, move |args, kwargs| -> PyResult<Py<PyAny>> {
-            closes
-                .closed
+            let image = args.get_item(0)?;
+            // Pillow also closes unregistered internal temporaries. Their addresses can
+            // be reused later; record only objects already owned by this observation.
+            if closes
+                .owned
                 .lock()
                 .unwrap()
-                .push(args.get_item(0)?.as_ptr() as usize);
+                .iter()
+                .any(|owned| owned.bind(args.py()).is(&image))
+            {
+                closes.closed.lock().unwrap().push(image.as_ptr() as usize);
+            }
             close.bind(args.py()).call(args, kwargs).map(Bound::unbind)
         })
         .unwrap();
@@ -356,7 +363,8 @@ fn resources(py: Python<'_>, state: &State) {
                 .filter(|closed| **closed == id)
                 .count(),
             1,
-            "owned Pillow image close"
+            "owned Pillow image close: {:?}, identity={id}",
+            state.case
         );
     }
 }

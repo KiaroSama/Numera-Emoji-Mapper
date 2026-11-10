@@ -1,6 +1,8 @@
 //! Original static identity/conversion failures preserve Python class, text and no partial output.
 use pyo3::prelude::*;
 use serde_json::{Value, json};
+#[path = "support/conversion_oracle.rs"]
+mod conversion_oracle;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use std::sync::{
@@ -128,8 +130,10 @@ fn source_alpha_calls_keep_order_short_circuit_and_actual_errors() {
         class
             .setattr(
                 "getbbox",
-                PyCFunction::new_closure(py, None, None, |_, _| -> PyResult<()> { Ok(()) })
-                    .unwrap(),
+                PyCFunction::new_closure(py, None, None, |args, _| -> PyResult<Py<PyAny>> {
+                    Ok(args.py().None())
+                })
+                .unwrap(),
             )
             .unwrap();
         class
@@ -429,8 +433,10 @@ fn original_static_fingerprint_and_conversion_errors_keep_class_and_outputs() {
                 assert_eq!(result, *expected);
             } else {
                 let bytes = std::fs::read(&output).unwrap();
-                assert_eq!(hash(&bytes), expected["sha256"]);
-                assert_eq!(bytes.len() as u64, expected["bytes"].as_u64().unwrap());
+                let platform = conversion_oracle::expected(case["input"].as_str().unwrap());
+                assert_eq!(platform["rgba_sha256"], expected["rgba_sha256"]);
+                assert_eq!(hash(&bytes), platform["png_sha256"]);
+                assert_eq!(bytes.len() as u64, platform["bytes"].as_u64().unwrap());
                 assert_eq!(
                     _native::codec_static_identity::fingerprint(&output).unwrap()["content_key"],
                     result["content_key"]

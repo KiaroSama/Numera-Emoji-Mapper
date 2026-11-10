@@ -189,15 +189,18 @@ fn original_non_object_bodies_are_retried_through_the_actual_wire_parser() {
             let telegram = Telegram::new(TOKEN.into(), server.base.clone()).unwrap();
             for body in ["list", "string", "integer"] {
                 println!("malformed transport body started: {body}");
+                let mut delays = Vec::new();
                 let error = telegram
-                    .call(
+                    .call_with_wait(
                         "getMe",
                         &BTreeMap::new(),
                         &[],
                         2,
                         None::<fn() -> _native::telegram::Result<Option<bool>>>,
+                        |delay| delays.push(delay),
                     )
                     .unwrap_err();
+                assert_eq!(delays, [Duration::from_secs(3)]);
                 assert!(matches!(error, _native::telegram::ApiError::Transport(_)));
                 assert_eq!(error.to_string(), "getMe failed after 2 attempts");
                 println!("malformed transport body refused: {body}");

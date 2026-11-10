@@ -1,5 +1,9 @@
 # Native test migration evidence
 
+This document records the authored contract design. Its historical uncompiled
+and unrun notes describe the initial migration snapshot. Current execution and
+acceptance status is maintained in [Rust migration and CI acceptance](rust-ci-status.md).
+
 The expanded first-party migration is in progress. Authored Rust tests and source
 case mappings are not passing tests, source-retirement permission or acceptance
 of an installed package. Retained original sources and independent fixtures remain

@@ -1,5 +1,7 @@
 //! All captured worker outcomes are independent source observations; errors retain their text.
 use serde_json::{Value, json};
+#[path = "support/conversion_oracle.rs"]
+mod conversion_oracle;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -130,12 +132,19 @@ fn every_captured_static_worker_case_preserves_result_error_and_output() {
             );
         } else {
             let bytes = std::fs::read(&output).unwrap();
+            let expected = if name == "convert-static" {
+                let platform =
+                    conversion_oracle::expected(fixture["inputs"]["$source"].as_str().unwrap());
+                json!({"bytes":platform["bytes"],"sha256":platform["png_sha256"]})
+            } else {
+                case["output"].clone()
+            };
             assert_eq!(
                 bytes.len() as u64,
-                case["output"]["bytes"].as_u64().unwrap(),
+                expected["bytes"].as_u64().unwrap(),
                 "{name}"
             );
-            assert_eq!(hash(&bytes), case["output"]["sha256"], "{name}");
+            assert_eq!(hash(&bytes), expected["sha256"], "{name}");
         }
         assert_eq!(std::fs::read(existing).unwrap(), b"preserve", "{name}");
     }

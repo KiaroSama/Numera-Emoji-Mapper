@@ -76,6 +76,11 @@ pub fn backup_with_budget(
     let result = (|| {
         let mut destination = Connection::open(path).map_err(|e| e.to_string())?;
         copy(source, &mut destination, budget)?;
+        // A recovery snapshot must be self-contained when another reader opens it.
+        // Backup copies the source WAL header too; normalize only the destination.
+        destination
+            .execute_batch("PRAGMA journal_mode=DELETE")
+            .map_err(|e| e.to_string())?;
         #[cfg(test)]
         if std::env::var("NUMERA_MIGRATION_TEST_ACTION").as_deref() == Ok("refuse-backup") {
             return Err("controlled backup verification failure".into());

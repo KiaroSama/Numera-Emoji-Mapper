@@ -178,12 +178,29 @@ impl Telegram {
     where
         F: FnMut() -> Result<Option<bool>>,
     {
+        self.call_with_wait(method, data, uploads, retries, applied, std::thread::sleep)
+    }
+
+    /// Keep the real wire parser while allowing a deterministic retry clock.
+    pub fn call_with_wait<F, S>(
+        &self,
+        method: &str,
+        data: &BTreeMap<String, String>,
+        uploads: &[Upload],
+        retries: u32,
+        applied: Option<F>,
+        sleep: S,
+    ) -> Result<Value>
+    where
+        F: FnMut() -> Result<Option<bool>>,
+        S: FnMut(Duration),
+    {
         self.call_with_effects(
             method,
             retries,
             applied,
             || self.post(method, data, uploads, Duration::from_secs(60)),
-            std::thread::sleep,
+            sleep,
         )
     }
     pub(crate) fn call_with_effects<F, P, S>(

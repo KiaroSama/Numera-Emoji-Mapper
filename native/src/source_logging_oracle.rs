@@ -53,7 +53,45 @@ pub(crate) fn required<'py>(
         .ok_or_else(|| PyValueError::new_err("missing original logging definition"))
 }
 
-// Only literal assignment values (or the literal first re.compile argument) are admitted.
+fn integer_product(node: &Bound<'_, PyAny>, depth: usize) -> PyResult<u64> {
+    if depth > 8 {
+        return Err(PyValueError::new_err(
+            "constant product is too deeply nested",
+        ));
+    }
+    let value = match crate::source_test_inventory::kind(node)?.as_str() {
+        "Constant" => {
+            let value = node.getattr("value")?;
+            if !value
+                .get_type()
+                .is(node.py().get_type::<pyo3::types::PyInt>())
+            {
+                return Err(PyValueError::new_err(
+                    "constant product requires integer literals",
+                ));
+            }
+            value.extract::<u64>()?
+        }
+        "BinOp" if crate::source_test_inventory::kind(&node.getattr("op")?)? == "Mult" => {
+            integer_product(&node.getattr("left")?, depth + 1)?
+                .checked_mul(integer_product(&node.getattr("right")?, depth + 1)?)
+                .ok_or_else(|| PyValueError::new_err("constant product overflow"))?
+        }
+        _ => {
+            return Err(PyValueError::new_err(
+                "only literal integer multiplication is admitted",
+            ));
+        }
+    };
+    if value > 64 * 1024 * 1024 {
+        return Err(PyValueError::new_err(
+            "constant product exceeds its admission bound",
+        ));
+    }
+    Ok(value)
+}
+
+// Only literal assignments, bounded integer products or the first re.compile literal are admitted.
 pub(crate) fn literal<'py>(
     py: Python<'py>,
     source: &Source,
@@ -100,7 +138,11 @@ pub(crate) fn literal<'py>(
             }
             value = value.getattr("args")?.get_item(0)?;
         }
-        found = Some(ast.call_method1("literal_eval", (value,))?);
+        found = Some(if crate::source_test_inventory::kind(&value)? == "BinOp" {
+            pyo3::types::PyInt::new(py, integer_product(&value, 0)?).into_any()
+        } else {
+            ast.call_method1("literal_eval", (value,))?
+        });
     }
     found.ok_or_else(|| PyValueError::new_err("missing original logging constant"))
 }
@@ -643,4 +685,41 @@ pub fn generate(source: &Source, test: &Source) -> Result<Value, String> {
             )
         })
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn panel_body_limit_product_is_read_without_executing_names_or_calls() {
+        Python::initialize();
+        Python::attach(|py| {
+            let ast = py.import("ast").unwrap();
+            let expression = |text: &str| {
+                ast.call_method1("parse", (text, "fixture", "eval"))
+                    .unwrap()
+                    .getattr("body")
+                    .unwrap()
+            };
+            assert_eq!(
+                integer_product(&expression("4 * 1024 * 1024"), 0).unwrap(),
+                4_194_304
+            );
+            for refused in [
+                "True * 1",
+                "'text' * 4",
+                "limit * 1024",
+                "4 + 1024",
+                "2 ** 20",
+                "64 * 1024 * 1024 * 2",
+                "0 * __import__('os')",
+            ] {
+                assert!(
+                    integer_product(&expression(refused), 0).is_err(),
+                    "{refused}"
+                );
+            }
+        });
+    }
 }

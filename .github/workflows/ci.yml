@@ -15,7 +15,7 @@ env:
 
 # Every push and pull request is checked; a superseded run stops on the same ref.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 # Jobs use ephemeral GitHub-HOSTED Ubuntu/Windows runners. This account's hosted
@@ -87,7 +87,7 @@ jobs:
   # would be pure waste. A separate job also means a Worker failure is legible
   # as a Worker failure.
   worker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
@@ -141,7 +141,7 @@ jobs:
   # is a hard error, never a silent skip, when the browser is missing, so the
   # opt-out has to be stated somewhere rather than left to chance.
   panel-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/ms-playwright
@@ -205,13 +205,16 @@ jobs:
 
       # Rust owns the driver/catalog and typed external Playwright calls. The
       # existing test runner owns driver/browser descendants (900s wall/180s idle).
+      - name: Permit private test namespaces
+        uses: ./.github/actions/test-network
+
       - name: Native panel browser tests
         env:
           PYO3_PYTHON: python
         run: native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test panel_browser -- --test-threads=1 --nocapture
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # The panel's browser suite has its own job above. Opting out here is
     # deliberate and must stay explicit: test_panel_browser.py raises rather
@@ -292,6 +295,10 @@ jobs:
         if: matrix.python-version == '3.11'
         run: rustup component add rustfmt clippy
 
+      - name: Permit private test namespaces
+        if: matrix.python-version == '3.11'
+        uses: ./.github/actions/test-network
+
       - name: Rust format, lint and unit checks
         if: matrix.python-version == '3.11'
         env:
@@ -308,7 +315,7 @@ jobs:
           export NUMERA_GALLERY_CODEC_ORACLE="$PWD/logs/checkpoint/lottie-render/gallery-codec-source.json"
           rustc --edition=2024 native/tests/fixtures/media_worker.rs -o "$PWD/logs/checkpoint/media-worker-fixture"
           export NUMERA_MEDIA_FIXTURE_WORKER="$PWD/logs/checkpoint/media-worker-fixture"
-          native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked -- --test-threads=2
+          native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked -- --test-threads=1
 
       - name: Similarity benchmark and parity
         if: matrix.python-version == '3.11'

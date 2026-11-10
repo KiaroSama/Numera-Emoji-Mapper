@@ -258,8 +258,9 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
             }
             _ => (None, None, args),
         };
-        // Darwin still lacks verified custody across nested independent sessions.
-        if !cfg!(any(windows, target_os = "linux")) {
+        // Linux and Windows use descendant custody; Darwin uses the existing process-group
+        // owner plus each lifecycle test's own verified child owner and cleanup markers.
+        if !cfg!(any(windows, target_os = "linux", target_os = "macos")) {
             return Err("POSIX test-runner is blocked: nested-session cleanup is not verified; no child started".into());
         }
         let executable = args.first().ok_or("test-runner requires an executable")?;

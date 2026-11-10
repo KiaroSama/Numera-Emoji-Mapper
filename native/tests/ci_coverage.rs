@@ -2,7 +2,7 @@
 use _native::source_ci_claims::step_run;
 use std::path::Path;
 
-const FULL_NATIVE: &str = "native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked -- --test-threads=2";
+const FULL_NATIVE: &str = "native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked -- --test-threads=1";
 
 fn initiating_events(workflow: &str, automatic: bool) -> Result<(), &'static str> {
     let lines = workflow.lines().collect::<Vec<_>>();
@@ -519,13 +519,13 @@ fn windows_tooling_and_codec_ownership_cases_have_a_real_platform_bucket() {
     );
     let checkpoint =
         std::fs::read_to_string(root.join(".github/workflows/native-checkpoint.yml")).unwrap();
-    assert!(checkpoint.lines().any(|line| line.trim() == "bounded atomic-preservation native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib atomic_tests:: -- --test-threads=2"));
-    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded collection-persistence native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib publish_cli::tests -- --test-threads=2").count(), 1);
-    assert!(checkpoint.lines().any(|line| line.trim() == "bounded configuration native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib config::tests -- --test-threads=2"));
-    assert!(checkpoint.lines().any(|line| line.trim() == "bounded lock-diagnostics native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib lock_diagnostics::tests -- --test-threads=2"));
-    assert!(checkpoint.lines().any(|line| line.trim() == "bounded logging-panic native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib logging::tests -- --test-threads=2"));
-    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded telegram-flood native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib telegram_tests:: -- --test-threads=2").count(), 1);
-    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded sandbox-copy native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib tooling_sandbox_tests:: -- --test-threads=2").count(), 1);
+    assert!(checkpoint.lines().any(|line| line.trim() == "bounded atomic-preservation native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib atomic_tests:: -- --test-threads=1"));
+    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded collection-persistence native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib publish_cli::tests -- --test-threads=1").count(), 1);
+    assert!(checkpoint.lines().any(|line| line.trim() == "bounded configuration native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib config::tests -- --test-threads=1"));
+    assert!(checkpoint.lines().any(|line| line.trim() == "bounded lock-diagnostics native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib lock_diagnostics::tests -- --test-threads=1"));
+    assert!(checkpoint.lines().any(|line| line.trim() == "bounded logging-panic native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib logging::tests -- --test-threads=1"));
+    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded telegram-flood native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib telegram_tests:: -- --test-threads=1").count(), 1);
+    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded sandbox-copy native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib tooling_sandbox_tests:: -- --test-threads=1").count(), 1);
     assert!(checkpoint.contains("--test source_tooling_recipe "));
     assert!(checkpoint.contains("--test source_assertions "));
     let seams = checkpoint

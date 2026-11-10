@@ -414,9 +414,10 @@ pub fn run() {
                 }
                 // Drop the actual capture only after the external fixture accepted the delete.
             });
-            release
-                .send(())
-                .expect("held delete response ended before owned cancellation");
+            // Dropping the owned client may already disconnect and drop the held receiver.
+            // Readiness above proves the delete landed; custody and journal checks below
+            // prove cancellation without requiring a disconnected HTTP handler to stay alive.
+            let _ = release.send(());
             interrupted_capture(&root.0);
             assert_eq!(read(&journal_path)["intent"]["cid"], OLD[0]);
         } else if variant == "unknown" {

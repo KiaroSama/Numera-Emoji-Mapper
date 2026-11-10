@@ -248,6 +248,7 @@ fn execute(
         &[
             "__build_class__",
             "range",
+            "list",
             "str",
             "len",
             "all",
@@ -285,8 +286,10 @@ fn execute(
                 "unexpectedSuccesses",
             ] {
                 if result.getattr(field)?.len()? != 0 {
+                    let detail = result.getattr(field)?.repr()?.to_string();
+                    let detail = crate::logging::redact(&detail, &[]);
                     return Err(PyValueError::new_err(format!(
-                        "original panel {name}.{method} reported {field}; retained"
+                        "original panel {name}.{method} reported {field}: {detail}; retained"
                     )));
                 }
             }

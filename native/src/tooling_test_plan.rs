@@ -347,7 +347,8 @@ fn closure(
     let mut files = Vec::new();
     let mut total = 0_u64;
     for name in inventory.keys() {
-        let role = role(name, entries.contains(name.as_str()))?;
+        let role = role(name, entries.contains(name.as_str()))
+            .map_err(|error| format!("{error}: {name}"))?;
         let (hash, _, size) = read_file(&root.join(name), SMALL_LIMIT, false)?;
         total += size;
         if total > 64 * 1024 * 1024 {
