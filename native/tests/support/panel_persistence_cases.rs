@@ -2,7 +2,7 @@
 use _native::{
     catalog::Catalog,
     logging::RunLog,
-    media_adapter::MediaAdapter,
+    media_native_adapter::NativeMediaAdapter,
     panel_events::Events,
     panel_http::{self, Panel},
     panel_preview::Previews,
@@ -511,10 +511,8 @@ pub fn check() {
         log: log.clone(),
         events: Mutex::new(Events::default()),
         previews: Previews::new(
-            MediaAdapter {
-                python: std::env::var_os("PYO3_PYTHON")
-                    .expect("CI must select the retained preview interpreter")
-                    .into(),
+            NativeMediaAdapter {
+                executable: env!("CARGO_BIN_EXE_numera-emoji").into(),
                 root: project.into(),
                 scratch: root.0.join("codec"),
             },

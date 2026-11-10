@@ -1,11 +1,12 @@
 //! Native preview cache policy; the adapter only returns exact rendered codec bytes.
-use crate::media_adapter::{MediaAdapter, MediaCodec};
+use crate::media_adapter::MediaCodec;
+use crate::media_native_adapter::NativeMediaAdapter;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::{Mutex, Semaphore};
 
-pub struct Previews<M = MediaAdapter> {
+pub struct Previews<M = NativeMediaAdapter> {
     adapter: M,
     cache: PathBuf,
     renders: Semaphore,
@@ -68,13 +69,32 @@ impl<M: MediaCodec> Previews<M> {
         Ok(self.cache.join(format!("{digest}@{tier}-{size}.webp")))
     }
     pub async fn warm(&self, view: &serde_json::Value, maximum_fps: u64) -> serde_json::Value {
+        self.warm_selected(view, maximum_fps, None).await
+    }
+    /// Prime a small first viewport with stills. Moving previews are rendered
+    /// on demand, so opening a large catalog never starts a full animation batch.
+    pub async fn warm_initial(
+        &self,
+        view: &serde_json::Value,
+        maximum_fps: u64,
+    ) -> serde_json::Value {
+        self.warm_selected(view, maximum_fps, Some(8)).await
+    }
+    async fn warm_selected(
+        &self,
+        view: &serde_json::Value,
+        maximum_fps: u64,
+        initial_limit: Option<usize>,
+    ) -> serde_json::Value {
         let (mut rendered, mut cached, mut failed) = (0, 0, 0);
         if let Some(cards) = view["view"].as_array() {
+            let cards = cards
+                .iter()
+                .filter(|card| card["isLogo"] != true)
+                .take(initial_limit.unwrap_or(usize::MAX))
+                .collect::<Vec<_>>();
             for (size, fps) in [(104, maximum_fps.min(15)), (72, maximum_fps.min(10))] {
-                for card in cards {
-                    if card["isLogo"] == true {
-                        continue;
-                    }
+                for card in &cards {
                     let Some(key) = card["key"].as_str().filter(|key| !key.is_empty()) else {
                         continue;
                     };
@@ -82,7 +102,9 @@ impl<M: MediaCodec> Previews<M> {
                         continue;
                     };
                     let moving = matches!(card["fmt"].as_str(), Some("animated" | "video"));
-                    let modes: &[bool] = if moving {
+                    let modes: &[bool] = if moving && initial_limit.is_some() {
+                        &[true]
+                    } else if moving {
                         &[true, false]
                     } else if size == 72 && card["included"] == false {
                         &[true]

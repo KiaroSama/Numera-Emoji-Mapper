@@ -83,7 +83,7 @@ process-death scenarios still run inside their original tests.
   Alpine/musl and other CPU targets are not covered by these packages.
 - The native executable and matching extension are mandatory; there is no Python
   application fallback. The Windows menu and doctor use the installed backend;
-  integrated retirement and all four platform package checks have passed. See
+  final migration and package acceptance are tracked in the PR. See
   [native backend evidence and limitations](docs/native-backend.md#verification-status-and-limitations).
 - A Telegram bot (create one with [@BotFather](https://t.me/BotFather))
 - Your numeric Telegram user id (the pack owner) — press **Start** on the bot once

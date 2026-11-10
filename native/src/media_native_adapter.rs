@@ -1,4 +1,4 @@
-//! Additive same-binary codec IPC. Production MediaAdapter stays unchanged until acceptance.
+//! Same-binary codec IPC used by panel previews and the native media acceptance suite.
 use serde_json::{Value, json};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};

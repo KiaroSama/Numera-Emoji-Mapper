@@ -162,6 +162,7 @@ mod tests {
             "tests/oracles/README.md",
             "tests/reference/README.md",
             "tests/reference/consumer-provenance.md",
+            "tests/other.md",
             "native/data/python311-decimal.json",
             "native/data/python311-nonprintable.json",
         ] {
@@ -177,7 +178,6 @@ mod tests {
             "assets/private/logo.png",
             "coins/other.csv",
             "other.md",
-            "tests/other.md",
             "tests/private/README.md",
             "docs/private/note.md",
             "native/data/other.json",

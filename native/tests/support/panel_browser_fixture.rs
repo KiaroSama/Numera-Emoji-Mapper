@@ -2,7 +2,7 @@
 use _native::{
     catalog::Catalog,
     logging::RunLog,
-    media_adapter::MediaAdapter,
+    media_native_adapter::NativeMediaAdapter,
     panel_events::Events,
     panel_http::{self, Panel},
     panel_preview::Previews,
@@ -106,8 +106,8 @@ impl Server {
             events: Mutex::new(Events::default()),
             // Initial fixture is static and included: no codec may be required by this cohort.
             previews: Previews::new(
-                MediaAdapter {
-                    python: "must-not-run-browser-codec".into(),
+                NativeMediaAdapter {
+                    executable: "must-not-run-browser-codec".into(),
                     root: root.clone(),
                     scratch: data.join("codec"),
                 },

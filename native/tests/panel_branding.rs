@@ -2,7 +2,7 @@
 use _native::{
     catalog::Catalog,
     logging::RunLog,
-    media_adapter::MediaAdapter,
+    media_native_adapter::NativeMediaAdapter,
     panel_events::Events,
     panel_http::{self, Panel},
     panel_preview::Previews,
@@ -76,8 +76,8 @@ fn loopback_bot_lookup_accepts_only_verified_username_and_cancels_without_waitin
         log: log.clone(),
         events: Mutex::new(Events::default()),
         previews: Previews::new(
-            MediaAdapter {
-                python: "must-not-run-startup-codec".into(),
+            NativeMediaAdapter {
+                executable: "must-not-run-startup-codec".into(),
                 root: root.0.clone(),
                 scratch: root.0.join("codec"),
             },

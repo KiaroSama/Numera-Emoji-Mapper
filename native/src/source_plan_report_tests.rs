@@ -17,6 +17,7 @@ const METHODS: [&str; 5] = [
 #[pyclass]
 struct Imports {
     artifacts: Py<PyAny>,
+    json: Py<PyAny>,
 }
 #[pymethods]
 impl Imports {
@@ -35,8 +36,12 @@ impl Imports {
             {
                 return Ok(self.artifacts.bind(py).clone());
             }
-            if name == "json" && fromlist.is_none() {
-                return Ok(py.import("json")?.into_any());
+            if name == "json"
+                && (fromlist.is_none()
+                    || (fromlist.is_instance_of::<pyo3::types::PyTuple>()
+                        && fromlist.is_empty()?))
+            {
+                return Ok(self.json.bind(py).clone());
             }
         }
         Err(PyImportError::new_err(
@@ -134,6 +139,7 @@ pub(crate) fn reader<'py>(
             py,
             Imports {
                 artifacts: api.unbind(),
+                json: py.import("json")?.into_any().unbind(),
             },
         )?,
     )?;

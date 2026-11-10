@@ -2,7 +2,7 @@
 use _native::{
     catalog::Catalog,
     logging::RunLog,
-    media_adapter::MediaAdapter,
+    media_native_adapter::NativeMediaAdapter,
     panel_events::Events,
     panel_http::{self, Panel},
     panel_preview::Previews,
@@ -76,8 +76,8 @@ fn loopback_router_validates_mutations_and_persists_curation() {
         log,
         events: Mutex::new(Events::default()),
         previews: Previews::new(
-            MediaAdapter {
-                python: "must-not-run".into(),
+            NativeMediaAdapter {
+                executable: "must-not-run".into(),
                 root: root.clone(),
                 scratch: data.join("codec"),
             },

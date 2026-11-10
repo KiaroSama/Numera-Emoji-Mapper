@@ -168,7 +168,8 @@ pub(crate) fn run<'py>(
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyValueError::new_err(format!(
-                    "original PanelIntentPersistence.{method} reported {field}; retained"
+                    "original PanelIntentPersistence.{method} reported {field}: {}; retained",
+                    crate::logging::redact(&result.getattr(field)?.repr()?.to_string(), &[])
                 )));
             }
         }

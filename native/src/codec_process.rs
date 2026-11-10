@@ -80,9 +80,15 @@ pub fn executable(name: &str) -> Result<PathBuf, String> {
             name.into()
         });
         if candidate.is_file() {
-            return candidate
+            // Cargo and other rustup proxies dispatch by their invocation name.
+            // Resolving the final symlink would turn `cargo metadata` into
+            // `rustup metadata`, which is a different command.
+            let parent = candidate
+                .parent()
+                .ok_or_else(|| format!("cannot resolve {name}"))?
                 .canonicalize()
-                .map_err(|_| format!("cannot resolve {name}"));
+                .map_err(|_| format!("cannot resolve {name}"))?;
+            return Ok(parent.join(candidate.file_name().expect("named executable")));
         }
     }
     Err(format!(

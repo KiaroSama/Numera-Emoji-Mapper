@@ -509,7 +509,7 @@ pub async fn serve_listener(
             Ok(Ok(view)) => {
                 let started = std::time::Instant::now();
                 let fps = warm_panel.options["preview_fps"].as_u64().unwrap_or(15);
-                let counts = warm_panel.previews.warm(&view, fps).await;
+                let counts = warm_panel.previews.warm_initial(&view, fps).await;
                 warm_panel.log.event(
                     "INFO",
                     "preview",

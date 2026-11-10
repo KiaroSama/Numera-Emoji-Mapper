@@ -283,6 +283,32 @@ async fn execute(root: &Path, args: &[String], log: &RunLog) -> Result<i32, Stri
             done.stderr.len()
         ),
     );
+    if done.code != 0 {
+        // Report only bounded, redacted compiler summaries. Source excerpts,
+        // test bodies and arbitrary child output stay in the private split logs.
+        for message in done
+            .stdout
+            .lines()
+            .filter_map(|line| {
+                let value: serde_json::Value = serde_json::from_str(line).ok()?;
+                (value["reason"] == "compiler-message" && value["message"]["level"] == "error")
+                    .then(|| value["message"]["message"].as_str().map(str::to_owned))?
+            })
+            .chain(
+                done.stderr
+                    .lines()
+                    .filter_map(|line| line.strip_prefix("error: ").map(str::to_owned)),
+            )
+            .take(8)
+        {
+            let message = message.chars().take(512).collect::<String>();
+            log.event(
+                "ERROR",
+                "cargo-diagnostic",
+                &crate::logging::redact(&message, &[]),
+            );
+        }
+    }
     // Cargo exit0 does not establish observed cases, source parity or an authenticated CI receipt.
     log.event(
         "INFO",

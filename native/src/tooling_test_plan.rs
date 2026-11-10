@@ -23,6 +23,8 @@ const PATHS: &[&str] = &[
     "LICENSE",
     ".github/CONTRIBUTING.md",
     ".github/workflows",
+    ".github/actions",
+    ".github/dependabot.yml",
     "native/Cargo.toml",
     "native/Cargo.lock",
     ".cargo/tests.toml",

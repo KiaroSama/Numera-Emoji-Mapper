@@ -10,7 +10,7 @@ JavaScript. The requested Rust scope is the local core and contributor tools.
 ## Coverage retained
 
 - All 609 Rust test definitions from the starting migration branch remain, with
-  an additional test for bounded source-constant parsing.
+  additional tests for bounded source-constant parsing and demand-driven preview work.
 - The existing Python regression suite still discovers 1,422 tests; browser and
   Windows cases retain their separate CI jobs.
 - All 119 Worker tests remain. Dependency updates repair the `undici` advisory
@@ -52,3 +52,9 @@ Native installer admission and original-case coverage evidence also remain open.
 Latest hosted checks and failures are visible in the PR. Passing builds on some
 platforms are not a substitute for a green final revision and package acceptance
 on every required platform.
+
+The panel now uses the same executable's Rust codec worker for previews. Opening
+a catalog primes only stills for the first eight cards; full animations are
+rendered on demand and cached. A second warm-up reuses those files. The browser's
+default remains **24 simultaneous animations**, with its existing visibility,
+scroll and background-tab controls.

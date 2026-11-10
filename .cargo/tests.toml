@@ -2,6 +2,6 @@
 [target.'cfg(windows)']
 runner = ["native/target/debug/numera-emoji.exe", "test-runner"]
 
-# Linux uses its dedicated subreaper scope; Darwin refuses before suite execution.
+# Linux uses a subreaper scope; macOS uses the owned process group fallback.
 [target.'cfg(unix)']
 runner = ["native/target/debug/numera-emoji", "test-runner"]

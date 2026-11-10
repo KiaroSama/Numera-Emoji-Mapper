@@ -78,8 +78,8 @@ pub(super) fn run(data: &Path, action: &str) {
                 log: log.clone(),
                 events: Mutex::new(crate::panel_events::Events::default()),
                 previews: crate::panel_preview::Previews::new(
-                    MediaAdapter {
-                        python: "must-not-decode-held-panel".into(),
+                    crate::media_native_adapter::NativeMediaAdapter {
+                        executable: "must-not-decode-held-panel".into(),
                         root: root.into(),
                         scratch: data.join("panel-codec"),
                     },
