@@ -70,6 +70,16 @@ fn every_ci_and_package_workflow_requires_push_pull_request_and_manual_dispatch(
             );
             initiating_events(&text, automatic)
                 .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+            if automatic {
+                assert!(
+                    text.lines().any(|line| {
+                        line.trim_start().starts_with("group:")
+                            && line.contains("github.event_name")
+                    }),
+                    "{}: push and pull-request runs must not cancel each other",
+                    path.display()
+                );
+            }
             count += 1;
         }
     }
