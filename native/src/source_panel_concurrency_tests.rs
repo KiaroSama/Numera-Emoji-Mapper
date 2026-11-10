@@ -121,7 +121,8 @@ pub(crate) fn run<'py>(
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyValueError::new_err(format!(
-                    "original SaveDuringReorder.{method} reported {field}; retained"
+                    "original SaveDuringReorder.{method} reported {field}: {}; retained",
+                    crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                 )));
             }
         }
@@ -177,7 +178,8 @@ pub(crate) fn run<'py>(
     ] {
         if result.getattr(field)?.len()? != 0 {
             return Err(PyValueError::new_err(format!(
-                "original shared-map assertion reported {field}; retained"
+                "original shared-map assertion reported {field}: {}; retained",
+                crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
             )));
         }
     }

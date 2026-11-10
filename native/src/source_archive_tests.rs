@@ -95,8 +95,7 @@ impl Directories {
         let options = PyDict::new(py);
         options.set_item("dir", &self.root)?;
         options.set_item("prefix", "original-archive-")?;
-        let name: String = py
-            .import("tempfile")?
+        let name: String = crate::source_oracle_runtime::host_import(py, "tempfile")?
             .call_method("mkdtemp", (), Some(&options))?
             .extract()?;
         let path = crate::tooling_environment::physical_root(Path::new(&name))
@@ -130,7 +129,10 @@ impl Imports {
             && fromlist.extract::<Vec<String>>()? == ["Telegram"]
         {
             let module = PyModule::new(py, "_original_unused_telegram_type")?;
-            module.add("Telegram", py.import("builtins")?.getattr("object")?)?;
+            module.add(
+                "Telegram",
+                crate::source_oracle_runtime::host_import(py, "builtins")?.getattr("object")?,
+            )?;
             return Ok(module);
         }
         Err(PyImportError::new_err("unexpected original archive import"))
@@ -489,7 +491,8 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
             ] {
                 if result.getattr(field)?.len()? != 0 {
                     return Err(PyValueError::new_err(format!(
-                        "original archive {name}.{method} reported {field}; retained"
+                        "original archive {name}.{method} reported {field}: {}; retained",
+                        crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                     )));
                 }
             }

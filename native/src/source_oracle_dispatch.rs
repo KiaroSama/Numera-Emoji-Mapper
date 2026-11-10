@@ -30,6 +30,11 @@ fn dependency(request: &Value) -> Result<Source, String> {
 }
 
 pub(crate) fn observe(root: &Path, request: &Value, source: &Source) -> Result<Value, String> {
+    pyo3::Python::initialize();
+    pyo3::Python::attach(|py| {
+        crate::source_oracle_runtime::host_import(py, "builtins").map(|_| ())
+    })
+    .map_err(|error| error.to_string())?;
     match request["oracle"].as_str() {
         Some("runtime-discovery") => {
             if request["dependencies"]

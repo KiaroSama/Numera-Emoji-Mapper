@@ -35,8 +35,9 @@ impl Temporary {
 
 #[pyclass]
 struct Imports {
-    panel: Py<PyAny>,
+    reference: Py<PyAny>,
     environment: Py<PyAny>,
+    inspect: Py<PyAny>,
 }
 #[pymethods]
 impl Imports {
@@ -57,15 +58,13 @@ impl Imports {
             .unwrap_or_default();
         if level == 0 {
             if name == "tests.reference" && from == ["panel"] {
-                let package = py.import("types")?.getattr("SimpleNamespace")?.call0()?;
-                package.setattr("panel", self.panel.bind(py))?;
-                return Ok(package);
+                return Ok(self.reference.bind(py).clone());
             }
             if name == "emojikit.cli_env" && from == ["load_env"] {
                 return Ok(self.environment.bind(py).clone());
             }
             if name == "inspect" && from.is_empty() {
-                return Ok(py.import("inspect")?.into_any());
+                return Ok(self.inspect.bind(py).clone());
             }
         }
         Err(PyImportError::new_err(
@@ -116,11 +115,14 @@ pub(super) fn run(
         &bindings,
     )?;
     let panel = crate::source_roster_modules::rebind(py, &main, "_original_panel_entry")?;
+    let reference = ns.call0()?;
+    reference.setattr("panel", &panel)?;
     let imports = Py::new(
         py,
         Imports {
-            panel: panel.clone().into_any().unbind(),
+            reference: reference.unbind(),
             environment: environment.unbind(),
+            inspect: py.import("inspect")?.into_any().unbind(),
         },
     )?;
     panel
@@ -139,7 +141,7 @@ pub(super) fn run(
         py,
         sources[35],
         &["ThePanelCanRunInProcessWithoutAdoptingAListener"],
-        &["__build_class__", "AssertionError"],
+        &["__build_class__", "AssertionError", "str"],
         &values,
     )?;
     required(&tests, "__builtins__")?.set_item("__import__", imports.bind(py))?;
@@ -174,7 +176,8 @@ pub(super) fn run(
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyValueError::new_err(format!(
-                    "original panel entry {method} reported {field}; retained"
+                    "original panel entry {method} reported {field}: {}; retained",
+                    crate::logging::redact(&result.getattr(field)?.repr()?.to_string(), &[])
                 )));
             }
         }

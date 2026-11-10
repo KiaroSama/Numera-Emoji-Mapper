@@ -87,11 +87,9 @@ impl Fault {
         let options = PyDict::new(py);
         options.set_item("side_effect", side_effect)?;
         self.calls.fetch_add(1, Ordering::SeqCst);
-        py.import("unittest.mock")?.getattr("patch")?.call_method(
-            "object",
-            (self.os.bind(py), "replace"),
-            Some(&options),
-        )
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
+            .getattr("patch")?
+            .call_method("object", (self.os.bind(py), "replace"), Some(&options))
     }
 }
 
@@ -186,7 +184,7 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
         py,
         sources[2],
         &["StateFileContract"],
-        &["__build_class__", "list", "len", "OSError"],
+        &["__build_class__", "list", "len", "str", "OSError"],
         &tests,
     )?;
     let class = required(&tests, "StateFileContract")?;
@@ -220,7 +218,8 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyValueError::new_err(format!(
-                    "original collection state {method} reported {field}; evidence retained"
+                    "original collection state {method} reported {field}: {}; evidence retained",
+                    crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                 )));
             }
         }

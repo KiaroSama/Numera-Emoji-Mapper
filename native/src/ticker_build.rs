@@ -1,7 +1,7 @@
 //! Native legacy PNG builder; ticker resume and announcement contracts stay distinct from catalog plans.
 use crate::{
-    atomic, config::Config, logging::RunLog, media_adapter::MediaAdapter, telegram::Telegram,
-    ticker_state, upload_effect::UploadEffect,
+    atomic, config::Config, logging::RunLog, media_native_adapter::NativeMediaAdapter,
+    telegram::Telegram, ticker_state, upload_effect::UploadEffect,
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -26,8 +26,8 @@ fn take(args: &[String], i: &mut usize) -> Result<String, String> {
         .cloned()
         .ok_or("option requires a value".into())
 }
-fn notify(
-    publisher: &UploadEffect<'_>,
+fn notify<M: crate::media_adapter::MediaCodec>(
+    publisher: &UploadEffect<'_, M>,
     config: &Config,
     state: &mut Value,
     path: &std::path::Path,
@@ -279,21 +279,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         .join(format!("ticker-codec-{}", std::process::id()));
     std::fs::create_dir(&scratch).map_err(|e| e.to_string())?;
     let _workspace = Scratch(scratch.clone());
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    let media = MediaAdapter {
-        python,
-        root: config.root.clone(),
-        scratch: scratch.join("codecs"),
-    };
+    let media = NativeMediaAdapter::for_project(&config.root, scratch.join("codecs"))?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

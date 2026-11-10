@@ -139,8 +139,7 @@ impl Directories {
         let options = PyDict::new(py);
         options.set_item("dir", &self.root)?;
         options.set_item("prefix", "original-roster-")?;
-        let name: String = py
-            .import("tempfile")?
+        let name: String = crate::source_oracle_runtime::host_import(py, "tempfile")?
             .call_method("mkdtemp", (), Some(&options))?
             .extract()?;
         let path = crate::tooling_environment::physical_root(Path::new(&name))
@@ -183,7 +182,7 @@ impl Imports {
                     return Ok(self.os.bind(py).clone());
                 }
                 if matches!(name, "sqlite3" | "gzip") {
-                    return Ok(py.import(name)?.into_any());
+                    return Ok(crate::source_oracle_runtime::host_import(py, name)?.into_any());
                 }
             }
         }
@@ -226,7 +225,9 @@ impl Paths {
             .into_bound(py)
             .into_any());
         }
-        py.import("pathlib")?.getattr("Path")?.call1((value,))
+        crate::source_oracle_runtime::host_import(py, "pathlib")?
+            .getattr("Path")?
+            .call1((value,))
     }
 }
 #[pyclass]
@@ -237,12 +238,15 @@ struct Patch {
 #[pymethods]
 impl Patch {
     fn __call__<'py>(&self, py: Python<'py>, target: &str) -> PyResult<Bound<'py, PyAny>> {
-        let patch = py.import("unittest.mock")?.getattr("patch")?;
+        let patch =
+            crate::source_oracle_runtime::host_import(py, "unittest.mock")?.getattr("patch")?;
         if target == "builtins.print" {
             let values = PyDict::new(py);
             values.set_item(
                 "print",
-                py.import("unittest.mock")?.getattr("Mock")?.call0()?,
+                crate::source_oracle_runtime::host_import(py, "unittest.mock")?
+                    .getattr("Mock")?
+                    .call0()?,
             )?;
             return patch.call_method1("dict", (self.builtins.bind(py), values));
         }
@@ -266,21 +270,19 @@ impl Patch {
         }
         let options = PyDict::new(py);
         options.set_item("clear", clear)?;
-        py.import("unittest.mock")?.getattr("patch")?.call_method(
-            "dict",
-            (target, values),
-            Some(&options),
-        )
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
+            .getattr("patch")?
+            .call_method("dict", (target, values), Some(&options))
     }
     #[getter]
     fn object<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .getattr("object")
     }
     #[getter]
     fn multiple<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .getattr("multiple")
     }
@@ -412,7 +414,8 @@ fn execute(
             ] {
                 if result.getattr(field)?.len()? != 0 {
                     return Err(PyValueError::new_err(format!(
-                        "original roster {name}.{method} reported {field}; retained"
+                        "original roster {name}.{method} reported {field}: {}; retained",
+                        crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                     )));
                 }
             }

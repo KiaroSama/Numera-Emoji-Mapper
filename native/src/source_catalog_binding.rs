@@ -32,7 +32,9 @@ impl Ports {
             return Ok(slf.package.bind(py).clone().into_any());
         }
         if level == 0 && name == "unittest" && names == ["mock"] {
-            let mock = py.import("types")?.getattr("SimpleNamespace")?.call0()?;
+            let mock = crate::source_oracle_runtime::host_import(py, "types")?
+                .getattr("SimpleNamespace")?
+                .call0()?;
             mock.setattr("patch", slf.into_pyobject(py)?)?;
             let module = PyModule::new(py, "_catalog_binding_unittest")?;
             module.add("mock", mock)?;
@@ -56,7 +58,7 @@ impl Ports {
         self.patches.fetch_add(1, Ordering::Relaxed);
         let options = PyDict::new(py);
         options.set_item("side_effect", side_effect)?;
-        let mock = py.import("unittest.mock")?;
+        let mock = crate::source_oracle_runtime::host_import(py, "unittest.mock")?;
         let values = PyDict::new(py);
         values.set_item(
             "catalog_identity",

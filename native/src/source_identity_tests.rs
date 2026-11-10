@@ -225,6 +225,7 @@ fn execute(py: Python<'_>, root: &Path, workspace: &Path, sources: &[&Source]) -
         &["MigrationCannotCertifyDamage", "ActualWriterOwnership"],
         &[
             "__build_class__",
+            "bytes",
             "str",
             "next",
             "type",
@@ -322,7 +323,8 @@ fn execute(py: Python<'_>, root: &Path, workspace: &Path, sources: &[&Source]) -
                 ] {
                     if result.getattr(field)?.len()? != 0 {
                         return Err(PyValueError::new_err(format!(
-                            "original {name}.{method} reported {field}; retained"
+                            "original {name}.{method} reported {field}: {}; retained",
+                            crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                         )));
                     }
                 }

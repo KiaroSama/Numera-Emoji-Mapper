@@ -112,7 +112,7 @@ fn contributor_builder_help_and_missing_compiler_are_real_bounded_commands() {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, b"existing installation fixture").unwrap();
     }
-    // A file named cargo must not permit the unfinished signer path to reach any child.
+    // A file named cargo without the compiler toolchain must not start any child.
     let tools = root.join("tools");
     std::fs::create_dir(&tools).unwrap();
     std::fs::copy(
@@ -145,7 +145,7 @@ fn contributor_builder_help_and_missing_compiler_are_real_bounded_commands() {
         assert!(
             result
                 .stderr
-                .contains("approved signing and identity verification")
+                .contains("installed compiler directory is missing rustc")
         );
         assert!(!result.stderr.contains("Maturin 1.15.0 is required"));
         for name in retained {
@@ -239,7 +239,7 @@ fn source_locked_build_commands_are_explicit_and_finite() {
             std::ffi::OsString::from("python"),
         ]
     }));
-    assert_eq!(steps[0].wall, Duration::from_secs(600));
+    assert_eq!(steps[0].wall, Duration::from_secs(1800));
     assert!(steps[0].idle < steps[0].wall);
     let bootstrap = tooling_build::wheel_steps(Path::new("root"), Path::new("python"), false);
     assert_eq!(bootstrap.len(), 2);

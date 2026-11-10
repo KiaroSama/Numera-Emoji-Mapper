@@ -35,7 +35,7 @@ impl Imports {
         }
         if level == 0 {
             if ["tempfile", "argparse", "sqlite3"].contains(&name) && from.is_empty() {
-                return Ok(py.import(name)?.into_any());
+                return Ok(crate::source_oracle_runtime::host_import(py, name)?.into_any());
             }
             if name == "tests.reference.collection_reconcile" && from == ["reconcile_set"] {
                 return Ok(self.reconcile.bind(py).clone());
@@ -44,7 +44,9 @@ impl Imports {
                 return Ok(self.decoder.bind(py).clone());
             }
             if name == "tests.reference" && from == ["migration_bundle"] {
-                let package = py.import("types")?.getattr("SimpleNamespace")?.call0()?;
+                let package = crate::source_oracle_runtime::host_import(py, "types")?
+                    .getattr("SimpleNamespace")?
+                    .call0()?;
                 package.setattr("migration_bundle", self.bundle.bind(py))?;
                 return Ok(package);
             }

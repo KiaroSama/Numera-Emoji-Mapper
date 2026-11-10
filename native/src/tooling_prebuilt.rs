@@ -1,4 +1,4 @@
-//! Offline consumer orchestration; activation remains closed until owner/trust admission is integrated.
+//! Verified offline installation into a fresh package-local environment.
 use crate::{
     logging::RunLog, tooling_build::Step, tooling_environment, tooling_install, tooling_manifest,
     tooling_process, tooling_runtime,
@@ -102,8 +102,11 @@ async fn install(
     log: &RunLog,
 ) -> Result<i32, String> {
     let root = tooling_environment::physical_root(root)?;
-    let manifest = tooling_manifest::verify(&root, &tooling_manifest::embedded_host()?)?;
     tooling_install::require_fresh_environment(&root)?;
+    if !root.join("package.json").is_file() {
+        return Err("package manifest is missing; extract a complete prebuilt archive".into());
+    }
+    let manifest = tooling_manifest::verify(&root, &tooling_manifest::embedded_host()?)?;
     let python = base_python(inherited)?;
     let wheel = manifest["wheel"]
         .as_str()
@@ -233,7 +236,7 @@ async fn install(
 pub fn run(root: &Path, args: &[String]) -> i32 {
     if args == ["--help"] || args == ["-h"] {
         println!(
-            "Usage: numera-emoji install-prebuilt\nOffline installation candidate; currently blocked until approved signing, identity, logo and rollback verification are integrated. Never builds Rust or downloads dependencies."
+            "Usage: numera-emoji install-prebuilt\nVerify this package and install its bundled wheels into a fresh local environment. Existing installations are preserved. Never builds Rust or downloads dependencies."
         );
         return 0;
     }
@@ -243,7 +246,6 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
         if !args.is_empty() {
             return Err("install-prebuilt accepts no arguments".into());
         }
-        tooling_install::require_installation_admission()?;
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()

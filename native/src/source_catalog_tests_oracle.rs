@@ -210,8 +210,7 @@ impl Boundary {
     fn mkdtemp(&self, py: Python<'_>) -> PyResult<String> {
         let kwargs = PyDict::new(py);
         kwargs.set_item("dir", &self.0.workspace)?;
-        let path: String = py
-            .import("tempfile")?
+        let path: String = crate::source_oracle_runtime::host_import(py, "tempfile")?
             .call_method("mkdtemp", (), Some(&kwargs))?
             .extract()?;
         self.0.temporary(Path::new(&path))?;
@@ -220,9 +219,11 @@ impl Boundary {
     fn temporary_directory<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let kwargs = PyDict::new(py);
         kwargs.set_item("dir", &self.0.workspace)?;
-        let temporary =
-            py.import("tempfile")?
-                .call_method("TemporaryDirectory", (), Some(&kwargs))?;
+        let temporary = crate::source_oracle_runtime::host_import(py, "tempfile")?.call_method(
+            "TemporaryDirectory",
+            (),
+            Some(&kwargs),
+        )?;
         let path: String = temporary.getattr("name")?.extract()?;
         self.0.temporary(Path::new(&path))?;
         Ok(temporary)

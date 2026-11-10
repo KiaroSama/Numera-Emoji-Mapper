@@ -1,11 +1,12 @@
 //! Saved intent execution is a separate native command, dry-run unless explicitly applied.
 use crate::{
-    atomic, catalog::Catalog, config::Config, logging::RunLog, media_adapter::MediaAdapter,
-    publication::Publisher, publish_collection::Options, telegram::Telegram,
+    atomic, catalog::Catalog, config::Config, logging::RunLog,
+    media_native_adapter::NativeMediaAdapter, publication::Publisher, publish_collection::Options,
+    telegram::Telegram,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 fn load(path: &Path, default: Value) -> Result<Value, String> {
     match std::fs::read(path) {
         Ok(bytes) => serde_json::from_slice(&bytes)
@@ -175,21 +176,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             )?;
             budget -= 1;
         }
-        let python = std::env::var_os("PYO3_PYTHON")
-            .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-            .map(PathBuf::from)
-            .unwrap_or_else(|| {
-                config.root.join(if cfg!(windows) {
-                    ".venv/Scripts/python.exe"
-                } else {
-                    ".venv/bin/python"
-                })
-            });
-        let media = MediaAdapter {
-            python,
-            root: config.root.clone(),
-            scratch: data.join("tmp/native-codec"),
-        };
+        let media = NativeMediaAdapter::for_project(&config.root, data.join("tmp/native-codec"))?;
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()

@@ -109,7 +109,7 @@ pub fn wheel_steps(root: &Path, python: &Path, maturin_present: bool) -> Vec<Ste
             "--out".into(),
             root.join("native/target/wheels").into_os_string(),
         ],
-        wall: Duration::from_secs(600),
+        wall: Duration::from_secs(1800),
         idle: Duration::from_secs(120),
     });
     steps
@@ -127,7 +127,7 @@ pub fn executable_step(root: &Path) -> Step {
             "--bin".into(),
             "numera-emoji".into(),
         ],
-        wall: Duration::from_secs(600),
+        wall: Duration::from_secs(1800),
         idle: Duration::from_secs(120),
     }
 }
@@ -184,6 +184,12 @@ pub(crate) fn inherited() -> Result<BTreeMap<String, String>, String> {
         "SYSTEMROOT",
         "WINDIR",
         "PATHEXT",
+        "SystemDrive",
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "ProgramW6432",
+        "ProgramData",
+        "LOCALAPPDATA",
         "HOME",
         "USERPROFILE",
         "LD_LIBRARY_PATH",
@@ -380,6 +386,21 @@ async fn build(
         return Ok(code);
     }
     let wheel = wheel(root, env!("CARGO_PKG_VERSION"))?;
+    // Compile both artifacts before changing the selected installation. A
+    // failed or slow executable build must leave its existing wheel untouched.
+    let mut executable = executable_step(root);
+    executable.argv[0] = compiler
+        .join(if cfg!(windows) { "cargo.exe" } else { "cargo" })
+        .into_os_string();
+    let code = execute(root, &[executable], &environment, log).await?;
+    if code != 0 {
+        return Ok(code);
+    }
+    let built = root.join("native/target/release").join(if cfg!(windows) {
+        "numera-emoji.exe"
+    } else {
+        "numera-emoji"
+    });
     let install = Step {
         argv: vec![
             selected.executable.clone().into_os_string(),
@@ -421,19 +442,6 @@ async fn build(
         "build",
         "installed native extension origin and required API checked",
     );
-    let mut executable = executable_step(root);
-    executable.argv[0] = compiler
-        .join(if cfg!(windows) { "cargo.exe" } else { "cargo" })
-        .into_os_string();
-    let code = execute(root, &[executable], &environment, log).await?;
-    if code != 0 {
-        return Ok(code);
-    }
-    let built = root.join("native/target/release").join(if cfg!(windows) {
-        "numera-emoji.exe"
-    } else {
-        "numera-emoji"
-    });
     let installed = tooling_install::install_executable(root, &built)?;
     let probe = tooling_process::capture(
         root,
@@ -461,7 +469,7 @@ async fn build(
 pub fn run(root: &Path, args: &[String]) -> i32 {
     if args == ["--help"] || args == ["-h"] {
         println!(
-            "Usage: numera-build [--install-maturin]\nContributor build candidate; installation is blocked until approved signing, identity, logo and rollback verification are integrated. No automatic environment or toolchain creation."
+            "Usage: numera-build [--install-maturin]\nBuild and install the locked native wheel and executable into this checkout's selected environment. No automatic environment or toolchain creation."
         );
         return 0;
     }
@@ -475,7 +483,6 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
             log.event("ERROR", "build", "Rust 1.99+ and the platform linker are required. Install Rust, then run numera-build.");
             return Ok(2);
         }
-        tooling_install::require_installation_admission()?;
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()

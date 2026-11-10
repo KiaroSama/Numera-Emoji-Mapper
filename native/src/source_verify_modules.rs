@@ -176,7 +176,7 @@ pub(super) fn tests<'py>(
         py,
         sources[22],
         &["VerifyLogosMainContracts"],
-        &["__build_class__", "classmethod", "str", "len"],
+        &["__build_class__", "classmethod", "str", "len", "reversed"],
         &globals,
     )
 }

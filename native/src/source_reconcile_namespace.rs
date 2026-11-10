@@ -193,6 +193,7 @@ pub(crate) fn build<'py>(
         &["FakeTG", "DownloadingTG", "_sticker"],
         &[
             "__build_class__",
+            "list",
             "dict",
             "set",
             "str",

@@ -206,7 +206,8 @@ pub(super) fn run(
             ] {
                 if result.getattr(field)?.len()? != 0 {
                     return Err(PyValueError::new_err(format!(
-                        "original applier {name}.{method} reported {field}; retained"
+                        "original applier {name}.{method} reported {field}: {}; retained",
+                        crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                     )));
                 }
             }
@@ -261,7 +262,8 @@ pub(super) fn run(
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyValueError::new_err(format!(
-                    "original fresh-upload {method} reported {field}; retained"
+                    "original fresh-upload {method} reported {field}: {}; retained",
+                    crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                 )));
             }
         }

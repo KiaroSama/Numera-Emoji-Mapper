@@ -307,11 +307,10 @@ Cargo artifact. A truthful doctest-specific contract remains an open gate.
 ## Offline installation candidate
 
 `numera-emoji install-prebuilt` accepts no options except `--help`. It is an
-additive Rust replacement candidate for the existing Python installer, not an
-approved activation route. It currently refuses **before environment creation**
-until approved signing, embedded identity/logo and rollback admission are integrated.
-The contributor builder shares this same closed admission gate.
-
+Rust offline installer used by the package acceptance workflow. It verifies a
+complete archive before exclusively creating a fresh environment, and refuses
+an existing installation before changing it. The contributor build driver is
+also enabled; it compiles both artifacts before installing either artifact.
 The authored chain verifies the existing schema1 package and preserves an existing
 `.venv`; selects an installed base interpreter; exclusively claims a fresh package
 `.venv`; creates an isolated environment with external stdlib `venv`; verifies its
@@ -326,8 +325,8 @@ checks dependency origins and the actual loaded extension, then the installed
 native executable must start successfully. Every child has finite wall/idle bounds.
 A failed initial environment is retained for diagnosis; it is not renamed, reused
 or deleted automatically. This is not transactional package rollback or OS network
-isolation. Successful offline installation, cryptographic admission and four-platform
-package behavior remain unexecuted acceptance gates.
+isolation. Manifest hashes detect changed payloads; publisher signing is not
+implemented or claimed. Hosted package acceptance exercises all four targets.
 
 ## Logs and evidence
 
@@ -346,4 +345,5 @@ hash-admitted historical Git sources in the existing bounded worker. Its install
 path is refusal-only, not successful package setup. Formatting, source inspection
 and authored replay code are not runtime proof.
 Final acceptance still requires hosted compilation/tests, real console behavior,
-four-platform installed packages, signing/identity/logo and copied-data rollback.
+four-platform installed packages and copied-data preservation. See the current
+[CI status](rust-ci-status.md) before treating authored checks as passing evidence.

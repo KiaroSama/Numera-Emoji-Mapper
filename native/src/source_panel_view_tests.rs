@@ -328,7 +328,8 @@ fn execute(
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyValueError::new_err(format!(
-                    "original panel assets {method} reported {field}; retained"
+                    "original panel assets {method} reported {field}: {}; retained",
+                    crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                 )));
             }
         }
@@ -411,6 +412,39 @@ fn execute(
     }
     let mut kinds = [0; 10];
     for (path, _) in paths.iter() {
+        let database = path.join("catalog.db");
+        if path.join("catalog.db-wal").exists() {
+            // The original scoped-save tests finish with a read-only SQLite
+            // connection. SQLite may leave its WAL/SHM after that last reader
+            // closes. Checkpoint through SQLite, never unlink a journal, then
+            // retain the strict fixture-member check below.
+            for name in ["catalog.db", "catalog.db-wal", "catalog.db-shm"] {
+                crate::tooling_environment::reject_links(
+                    &path.join(name),
+                    "original panel database cannot follow links",
+                )
+                .map_err(PyValueError::new_err)?;
+            }
+            let connection = rusqlite::Connection::open_with_flags(
+                &database,
+                rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE,
+            )
+            .map_err(|error| PyValueError::new_err(error.to_string()))?;
+            connection
+                .busy_timeout(std::time::Duration::ZERO)
+                .map_err(|error| PyValueError::new_err(error.to_string()))?;
+            let busy: i64 = connection
+                .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| row.get(0))
+                .map_err(|error| PyValueError::new_err(error.to_string()))?;
+            if busy != 0 {
+                return Err(PyValueError::new_err(
+                    "original panel database still has an active reader; retained",
+                ));
+            }
+            connection
+                .close()
+                .map_err(|(_, error)| PyValueError::new_err(error.to_string()))?;
+        }
         directories(workspace, path, &mut 64, 0, &mut Vec::new())?;
         let names = |directory: &Path| -> PyResult<BTreeSet<String>> {
             std::fs::read_dir(directory)?

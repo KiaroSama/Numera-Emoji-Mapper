@@ -3,6 +3,29 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 #[test]
+fn mock_assertions_retain_their_receiver_and_source_without_crediting_other_calls() {
+    let evidence = _native::source_assertions::parse(
+        "tests/test_mock_assertions.py",
+        concat!(
+            "class Case:\n",
+            " def test_notification(self):\n",
+            "  worker.assert_not_called()\n",
+            "  tg.send_message.assert_called_once_with('message')\n",
+            "  client.send('ordinary operation')\n",
+            "  client.assert_unknown('not a known mock assertion')\n",
+        ),
+    )
+    .unwrap();
+    let assertions = evidence["methods"][0]["assertions"].as_array().unwrap();
+    assert_eq!(assertions.len(), 2);
+    assert_eq!(assertions[0]["source"], "worker.assert_not_called()");
+    assert_eq!(
+        assertions[1]["source"],
+        "tg.send_message.assert_called_once_with('message')"
+    );
+}
+
+#[test]
 fn same_class_assertion_helpers_keep_exact_definition_and_call_evidence() {
     let source = concat!(
         "import unittest\nclass Case(unittest.TestCase):\n",
@@ -42,6 +65,14 @@ fn same_class_assertion_helpers_keep_exact_definition_and_call_evidence() {
     assert_eq!(helper["call"]["source"], "self._refused('denied')");
     assert_eq!(helper["call"]["line"], 5);
     assert_eq!(file["case_assertions"]["runtime_variants_complete"], false);
+    let ordinary = inspect(&source.replace("_refused", "refuse"));
+    assert_eq!(
+        ordinary["files"][0]["case_assertions"]["cases"][0]["helper_assertions"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
     for text in [
         "import unittest\nclass Other:\n def _refused(self, value): self.fail('not this class')\nclass Case(unittest.TestCase):\n def test_refusal(self): self._refused('denied')\n",
         "import unittest\nclass Case(unittest.TestCase):\n def _refused(self, value): return value\n def test_refusal(self): self._refused('denied')\n",

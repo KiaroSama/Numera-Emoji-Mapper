@@ -218,12 +218,6 @@ pub fn installed_extension(root: &Path, report: &serde_json::Value) -> Result<Pa
         .ok_or("installed wheel has no native module".into())
 }
 
-pub(crate) fn require_installation_admission() -> Result<(), String> {
-    // Contributors and offline consumers must verify the same owner/trust contract
-    // before any wheel/environment write, not after replacing a working runtime.
-    Err("native build/install is blocked: approved signing and identity verification, logo inclusion and installation rollback are not integrated; no build or installation was started".into())
-}
-
 /// Refuse before even environment/log directory creation; no live installation overwritten.
 pub fn require_fresh_environment(root: &Path) -> Result<(), String> {
     if std::fs::symlink_metadata(root.join(".venv")).is_ok() {

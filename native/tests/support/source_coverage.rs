@@ -262,7 +262,7 @@ pub fn binding_fixture(source: &str, name: &str) -> Option<(&'static str, &'stat
             "NativeMigrationCLI.test_generated_video_bundle_replays_between_backends",
         ) => (
             "tests/fixtures/native/video-fingerprint.json",
-            "5cd389f29767999b245c53f3fb1ea7e317c1d207bf0235d825c6f17237a7c32f",
+            "4e0a495924e0ae466aa8e482fe102ecc2957155cbffb041aff8721eac82ac176",
         ),
         (
             "tests/test_native_bot.py",

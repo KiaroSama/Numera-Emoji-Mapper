@@ -389,9 +389,11 @@ impl RetentionTemporary {
     fn temporary_directory<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let options = PyDict::new(py);
         options.set_item("dir", &self.workspace)?;
-        let temporary =
-            py.import("tempfile")?
-                .call_method("TemporaryDirectory", (), Some(&options))?;
+        let temporary = crate::source_oracle_runtime::host_import(py, "tempfile")?.call_method(
+            "TemporaryDirectory",
+            (),
+            Some(&options),
+        )?;
         let name: std::path::PathBuf = temporary.getattr("name")?.extract()?;
         let physical =
             crate::tooling_environment::physical_root(&name).map_err(PyValueError::new_err)?;

@@ -337,6 +337,7 @@ pub(super) fn run(
             ],
             &[
                 "__build_class__",
+                "reversed",
                 "range",
                 "str",
                 "len",
@@ -391,7 +392,8 @@ pub(super) fn run(
                 ] {
                     if result.getattr(field)?.len()? != 0 {
                         return Err(PyValueError::new_err(format!(
-                            "original publication {name}.{method} reported {field}; retained"
+                            "original publication {name}.{method} reported {field}: {}; retained",
+                            crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                         )));
                     }
                 }

@@ -259,6 +259,13 @@ fn main() -> std::process::ExitCode {
     {
         return match root() {
             Ok(root) => {
+                // SAFETY: private worker dispatch precedes Python initialization
+                // and creation of any application thread or async runtime.
+                #[allow(unsafe_code)]
+                if let Err(error) = unsafe { _native::tooling_runtime::initialize_codec(&root) } {
+                    eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                    return 2.into();
+                }
                 std::process::ExitCode::from(_native::codec_worker::run(&root, &args[1..]) as u8)
             }
             Err(error) => {

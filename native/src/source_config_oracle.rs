@@ -79,11 +79,9 @@ impl NumericEnvironment {
         }
         let options = PyDict::new(py);
         options.set_item("clear", clear)?;
-        let manager = py.import("unittest.mock")?.getattr("patch")?.call_method(
-            "dict",
-            (self.values.bind(py), values),
-            Some(&options),
-        )?;
+        let manager = crate::source_oracle_runtime::host_import(py, "unittest.mock")?
+            .getattr("patch")?
+            .call_method("dict", (self.values.bind(py), values), Some(&options))?;
         self.calls
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(manager)

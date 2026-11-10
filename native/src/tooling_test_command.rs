@@ -267,7 +267,9 @@ async fn execute(root: &Path, args: &[String], log: &RunLog) -> Result<i32, Stri
         &argv,
         &environment,
         (&stdout, &stderr),
-        Duration::from_secs(900),
+        // This owns compilation plus every selected suite. Individual suites
+        // retain their own watchdogs; the aggregate needs room for a cold CI build.
+        Duration::from_secs(2400),
         Duration::from_secs(180),
         log,
     )
@@ -284,6 +286,32 @@ async fn execute(root: &Path, args: &[String], log: &RunLog) -> Result<i32, Stri
         ),
     );
     if done.code != 0 {
+        for value in done
+            .stdout
+            .lines()
+            .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        {
+            if value["reason"] != "compiler-message" || value["message"]["level"] != "error" {
+                continue;
+            }
+            for message in value["message"]["children"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|child| child["message"].as_str())
+                .flat_map(str::lines)
+                .filter(|line| {
+                    line.contains("LNK") || line.contains("link:") || line.contains("ld:")
+                })
+                .take(8)
+            {
+                let message = crate::logging::redact(message, &[])
+                    .chars()
+                    .take(512)
+                    .collect::<String>();
+                log.event("ERROR", "cargo-linker", &message);
+            }
+        }
         // Report only bounded, redacted compiler summaries. Source excerpts,
         // test bodies and arbitrary child output stay in the private split logs.
         for message in done

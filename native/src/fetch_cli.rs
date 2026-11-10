@@ -1,11 +1,10 @@
 //! Native whole-pack collection entry point; exact media is the only source-runtime adapter.
 use crate::{
     catalog::Catalog, collector::Collector, config::Config, logging::RunLog,
-    media_adapter::MediaAdapter, telegram::Telegram,
+    media_native_adapter::NativeMediaAdapter, telegram::Telegram,
 };
 use serde_json::json;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 
 fn option(args: &[String], i: &mut usize) -> Result<String, String> {
     *i += 1;
@@ -137,21 +136,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     let data = config.path(&data);
     std::fs::create_dir_all(&data).map_err(|e| e.to_string())?;
     let data = data.canonicalize().map_err(|e| e.to_string())?;
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    let adapter = MediaAdapter {
-        python,
-        root: config.root.clone(),
-        scratch: data.join("tmp/native-codec"),
-    };
+    let adapter = NativeMediaAdapter::for_project(&config.root, data.join("tmp/native-codec"))?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

@@ -99,8 +99,7 @@ impl Directories {
         let options = PyDict::new(py);
         options.set_item("dir", &dir)?;
         options.set_item("prefix", "original-prebuilt-")?;
-        let name: String = py
-            .import("tempfile")?
+        let name: String = crate::source_oracle_runtime::host_import(py, "tempfile")?
             .call_method("mkdtemp", (), Some(&options))?
             .extract()?;
         let path = crate::tooling_environment::physical_root(Path::new(&name))
@@ -343,7 +342,8 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyRuntimeError::new_err(format!(
-                    "original prebuilt {name} reported {field}"
+                    "original prebuilt {name} reported {field}: {}",
+                    crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                 )));
             }
         }

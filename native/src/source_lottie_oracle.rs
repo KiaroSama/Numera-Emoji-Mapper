@@ -124,8 +124,7 @@ impl InputPath {
         self.calls.record("stat")?;
         let options = PyDict::new(py);
         options.set_item("st_size", self.size)?;
-        Ok(py
-            .import("types")?
+        Ok(crate::source_oracle_runtime::host_import(py, "types")?
             .getattr("SimpleNamespace")?
             .call((), Some(&options))?
             .unbind())

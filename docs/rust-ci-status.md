@@ -10,7 +10,8 @@ JavaScript. The requested Rust scope is the local core and contributor tools.
 ## Coverage retained
 
 - All 609 Rust test definitions from the starting migration branch remain, with
-  additional tests for bounded source-constant parsing and demand-driven preview work.
+  additional tests for bounded source-constant parsing, demand-driven preview work
+  and source-bound mock assertion accounting.
 - The existing Python regression suite still discovers 1,422 tests; browser and
   Windows cases retain their separate CI jobs.
 - All 119 Worker tests remain. Dependency updates repair the `undici` advisory
@@ -44,10 +45,13 @@ the fixture encoder version while the codec migration is incomplete.
 
 ## Remaining work
 
-The production media bridge, Python-backed third-party codecs, compatibility
-modules and original Python regression driver are still present. They must be
-retired or replaced before calling this a complete Rust-only local runtime.
-Native installer admission and original-case coverage evidence also remain open.
+The CLI and panel now use the same executable's Rust media worker. The build
+driver, package builder and fresh offline installer are Rust commands.
+Third-party codecs still require CPython, and compatibility modules plus the
+original regression suite remain for behavioral coverage. This is not a
+Python-free local runtime. Original-case migration rows remain pending until
+reviewed evidence authorizes retiring their historical cases. Packages verify
+manifest hashes; they do not claim cryptographic publisher signatures.
 
 Latest hosted checks and failures are visible in the PR. Passing builds on some
 platforms are not a substitute for a green final revision and package acceptance

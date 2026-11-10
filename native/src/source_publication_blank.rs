@@ -25,13 +25,13 @@ impl Patch {
             ));
         }
         self.calls.fetch_add(1, Ordering::SeqCst);
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .call_method1("object", (self.subprocess.bind(py), "Popen", replacement))
     }
     #[getter]
     fn object<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .getattr("object")
     }

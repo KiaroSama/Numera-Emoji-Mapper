@@ -1,8 +1,7 @@
 //! Source grouping, resume/quarantine and output ownership stay native; pixels use exact codecs.
 use crate::{
-    config::Config,
-    logging::RunLog,
-    media_adapter::{MediaAdapter, MediaCodec},
+    config::Config, logging::RunLog, media_adapter::MediaCodec,
+    media_native_adapter::NativeMediaAdapter,
 };
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
@@ -81,23 +80,9 @@ fn groups(path: &Path) -> Result<Vec<Vec<PathBuf>>, String> {
     Ok(groups.into_values().collect())
 }
 pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String> {
-    run_with_codec(config, args, log, |scratch| {
-        let python = std::env::var_os("PYO3_PYTHON")
-            .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-            .map(PathBuf::from)
-            .unwrap_or_else(|| {
-                config.root.join(if cfg!(windows) {
-                    ".venv/Scripts/python.exe"
-                } else {
-                    ".venv/bin/python"
-                })
-            });
-        MediaAdapter {
-            python,
-            root: config.root.clone(),
-            scratch,
-        }
-    })
+    let media =
+        NativeMediaAdapter::for_project(&config.root, config.root.join("logs/tmp/native-codec"))?;
+    run_with_codec(config, args, log, |scratch| media.with_scratch(scratch))
 }
 
 pub fn run_with_codec<M: MediaCodec>(

@@ -22,9 +22,28 @@ fn assertion(
         if kind(&callable)? == "Attribute" {
             let owner = callable.getattr("value")?;
             let name: String = callable.getattr("attr")?.extract()?;
-            (kind(&owner)? == "Name"
-                && owner.getattr("id")?.extract::<String>()? == "self"
-                && (name.starts_with("assert") || name == "fail"))
+            let mock_assertion = matches!(
+                name.as_str(),
+                "assert_called"
+                    | "assert_called_once"
+                    | "assert_called_with"
+                    | "assert_called_once_with"
+                    | "assert_any_call"
+                    | "assert_has_calls"
+                    | "assert_not_called"
+                    | "assert_awaited"
+                    | "assert_awaited_once"
+                    | "assert_awaited_with"
+                    | "assert_awaited_once_with"
+                    | "assert_any_await"
+                    | "assert_has_awaits"
+                    | "assert_not_awaited"
+                    | "wait_for_function"
+            );
+            (mock_assertion
+                || (kind(&owner)? == "Name"
+                    && owner.getattr("id")?.extract::<String>()? == "self"
+                    && (name.starts_with("assert") || name == "fail")))
                 .then_some(name)
         } else {
             None
@@ -217,7 +236,7 @@ pub fn parse(path: &str, source: &str) -> Result<Value, String> {
                         let called: String = callable.getattr("attr")?.extract()?;
                         if kind(&owner)? == "Name"
                             && owner.getattr("id")?.extract::<String>()? == "self"
-                            && called.starts_with('_') && !called.starts_with("__")
+                            && !called.starts_with("test") && !called.starts_with("__")
                         {
                             calls.push(json!({"name":called,"source":segment(&ast,&node,source)?,
                                 "line":node.getattr("lineno")?.extract::<u64>()?,

@@ -65,7 +65,7 @@ impl Imports {
     ) -> PyResult<Bound<'py, PyAny>> {
         if level == 0 {
             if name == "json" && fromlist.is_none() {
-                return Ok(py.import("json")?.into_any());
+                return Ok(crate::source_oracle_runtime::host_import(py, "json")?.into_any());
             }
             if name == "emojikit" && fromlist.extract::<Vec<String>>()? == ["_native"] {
                 return Ok(self.native.bind(py).clone());
@@ -233,7 +233,8 @@ pub(crate) fn run(
             ] {
                 if result.getattr(field)?.len()? != 0 {
                     return Err(PyValueError::new_err(format!(
-                        "original report {name}.{method} reported {field}; retained"
+                        "original report {name}.{method} reported {field}: {}; retained",
+                        crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                     )));
                 }
             }

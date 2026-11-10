@@ -275,7 +275,7 @@ impl Ports {
                 "controlled open failure",
             )),
             Fault::Sqlite => Err(PyErr::from_value(
-                py.import("sqlite3")?
+                crate::source_oracle_runtime::host_import(py, "sqlite3")?
                     .getattr("OperationalError")?
                     .call1(("controlled sqlite failure",))?,
             )),
