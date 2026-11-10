@@ -415,37 +415,36 @@ on that port is refused; use another port for a separate panel session.
 
 ## Crypto-coin workflow (one component: `coins/`)
 
-The crypto-coin tool is a self-contained component under `coins/`. Provider and
-coin-domain workflows remain Python; shared Telegram transport, upload proofs,
-locks, atomic state, announcements and table rendering use native-backed bindings.
+The Rust CLI owns provider and coin-domain workflows, including Telegram
+transport, upload proofs, locks, atomic state, announcements and table rendering.
 The generic `build-pack` command also supports the coin bot (`TELEGRAM_BOT_TOKEN`).
-Coin data, scripts and images all live under `coins/`.
-The expanded migration branch adds `coin-alias-map`, `coin-enhance-map` and
+Coin data, images and retained compatibility modules live under `coins/`.
+The executable includes `coin-alias-map`, `coin-enhance-map` and
 `coin-build-keywords`, `coin-fetch-logos [pages]`, `coin-fetch-paprika` and
 `coin-fetch-cmc`, with `--coin-dir DIR` for isolated coin data work. Provider
-commands retain exact `--dry`; Paprika also accepts `--retry-unmatched`. They are not in the
-currently accepted prebuilt runtime yet; see [migration status](docs/native-backend.md).
-Additive `coin-write-manifests` writes read-only live coin reports with
-`--out-dir`, `--state`, `--map` and `--token-env`; full migration acceptance
-and installed-runtime activation remain pending. Additive `coin-check-packs
+commands retain exact `--dry`; Paprika also accepts `--retry-unmatched`.
+`coin-write-manifests` writes read-only live coin reports with
+`--out-dir`, `--state`, `--map` and `--token-env`. `coin-check-packs
 [--coin-dir DIR]` resumes a live read-only blank/duplicate audit; failed images
-remain retryable and incomplete listings never replace the report. Additive
+remain retryable and incomplete listings never replace the report.
 `coin-remap-ids --emoji-dir DIR` rebuilds mappings by content, dry by default;
 calibrated `--apply` preserves a backup and refuses ambiguous/incomplete results.
-It makes no Telegram mutations; full acceptance and installed activation are pending.
-Additive `coin-verify-logos --emoji-dir DIR` is review-only unless explicit
+It makes no Telegram mutations.
+`coin-verify-logos --emoji-dir DIR` is review-only unless explicit
 `--fix --only` selects repairs; fixing mutates Telegram and requires separate
-operator authorization. Full source/platform/installed acceptance is pending.
-Additive `coin-rebuild-map [--coin-dir DIR] [--emoji-dir DIR] [--token-env KEY]`
+operator authorization.
+`coin-rebuild-map [--coin-dir DIR] [--emoji-dir DIR] [--token-env KEY]`
 uses the frozen rebuild plan and recorded sources to prove every live sticker by
 image content. It preserves current aliases, refuses lost aliases/unreviewed
 shared crowds and writes review candidates rather than overwrite an unproven map.
-It reads Telegram only; source/platform acceptance and installed activation remain pending.
-The branch also authors `coin-rebuild [all|build|map|links]` with the same options.
+It reads Telegram only.
+`coin-rebuild [all|build|map|links]` accepts the same options.
 **Default `all` and explicit `build` may delete old packs and upload**; `links`
 resends messages, and `map` only reads Telegram. These Rust commands are exercised against synthetic providers and Telegram
 fixtures in CI. Platform/package results are tracked in
 [CI acceptance](docs/rust-ci-status.md); tests do not publish to real accounts.
+The historical source-retirement ledger remains a separate review gate in
+[migration status](docs/native-backend.md).
 Run the installed executable from your package root, for example
 `native/runtime/numera-emoji coin-rebuild map` (`.exe` on Windows):
 
