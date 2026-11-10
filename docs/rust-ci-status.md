@@ -27,6 +27,9 @@ CI and package workflows run on every push and pull request, with manual dispatc
 available. Release binaries and every Rust test target compile on Linux x64,
 Windows x64, Intel macOS and Apple Silicon macOS. Matrix jobs do not stop their
 siblings when one fails.
+Concurrency groups separate push, pull-request and manual events so simultaneous
+checks of one commit complete without cancelling each other. Superseded runs of
+the same event and branch still stop.
 
 Native cases run serially because embedded codec patches and descendant custody
 share process state. Tests that exercise concurrent callers and competing
