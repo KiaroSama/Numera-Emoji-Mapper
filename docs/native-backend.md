@@ -1,5 +1,12 @@
 # Native local backend
 
+Current branch integration: the public CLI and panel use `NativeMediaAdapter`
+and the same executable's Rust codec worker. `numera-build`, `package-native`
+and `install-prebuilt` provide the Rust build and packaging path. The historical
+checkpoint notes below describe earlier snapshots; current validation and
+remaining codec/compatibility dependencies are tracked in
+[CI acceptance](rust-ci-status.md).
+
 The installed Rust backend is now the primary local command path. The Windows
 menu and doctor invoke it; superseded Python application modules have been
 retired from production. Final integrated source-retirement acceptance and all
