@@ -106,6 +106,8 @@ pub(super) fn check(harness: &Harness<'_>, art: &[u8]) {
                 expected = "'deleted_old'";
             }
             "legacy-marker" => {
+                // The unchanged original repair starts after the old packs were deleted.
+                state["deleted_old"] = json!(true);
                 plan = json!([
                     {"rep":"seed","tickers":["seed"],"kw":"seed"},
                     {"rep":"aaa","tickers":["aaa"],"kw":"aaa"},

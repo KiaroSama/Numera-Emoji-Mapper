@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: prebuilt-${{ github.ref }}
+  group: prebuilt-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -124,8 +124,11 @@ jobs:
         run: python -m unittest tests.test_prebuilt_environment -v
       - name: Build guarded native test runner
         run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+      - name: Permit private test namespaces
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/test-network
       - name: Native lifecycle and storage acceptance
-        run: cargo test --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test tooling_test_runner --test process_lifecycle --test darwin_exit --test ownership --test atomic_failure --test media_config --test sandbox_lease --test sandbox_lease_windows -- --test-threads=2
+        run: cargo test --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test tooling_test_runner --test process_lifecycle --test darwin_exit --test ownership --test atomic_failure --test media_config --test sandbox_lease --test sandbox_lease_windows -- --test-threads=1
       - name: Sandbox wrapper death and owned clone reclamation
         shell: bash
         run: |

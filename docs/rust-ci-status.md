@@ -1,0 +1,54 @@
+# Rust migration and CI acceptance
+
+The migration branch is `feature/first-party-rust`, reviewed in
+[PR #70](https://github.com/KiaroSama/Numera-Emoji-Mapper/pull/70). It must remain
+unmerged until the complete migration and required CI checks pass.
+
+The Cloudflare Worker and browser interface intentionally retain TypeScript and
+JavaScript. The requested Rust scope is the local core and contributor tools.
+
+## Coverage retained
+
+- All 609 Rust test definitions from the starting migration branch remain, with
+  an additional test for bounded source-constant parsing.
+- The existing Python regression suite still discovers 1,422 tests; browser and
+  Windows cases retain their separate CI jobs.
+- All 119 Worker tests remain. Dependency updates repair the `undici` advisory
+  without changing the Worker's implementation language.
+- Native acceptance uses unfiltered Cargo discovery. Compilation-only jobs are
+  additional checks and never count as executed test coverage.
+- Original-case migration mappings remain pending until actual parity evidence
+  is verified. A larger Rust suite alone does not authorize deleting old cases.
+
+## Build and test policy
+
+CI and package workflows run on every push and pull request, with manual dispatch
+available. Release binaries and every Rust test target compile on Linux x64,
+Windows x64, Intel macOS and Apple Silicon macOS. Matrix jobs do not stop their
+siblings when one fails.
+
+Native cases run serially because embedded codec patches and descendant custody
+share process state. Tests that exercise concurrent callers and competing
+processes retain their explicit concurrency.
+
+Linux test bootstraps create private user/network namespaces. A checkout-scoped
+AppArmor profile permits that operation on hosted Ubuntu; the loopback-only
+network guard stays enabled. Windows uses Job ownership. Darwin uses the existing
+process-group owner and each lifecycle test's own child owner and cleanup markers;
+it does not claim Linux subreaper semantics.
+
+Image output checks preserve independent source generation and input hashes.
+Compressed PNG/WebP bytes come from the historical encoder on the current platform;
+pixel identity and deterministic cache reuse remain checked. Pillow is pinned to
+the fixture encoder version while the codec migration is incomplete.
+
+## Remaining work
+
+The production media bridge, Python-backed third-party codecs, compatibility
+modules and original Python regression driver are still present. They must be
+retired or replaced before calling this a complete Rust-only local runtime.
+Native installer admission and original-case coverage evidence also remain open.
+
+Latest hosted checks and failures are visible in the PR. Passing builds on some
+platforms are not a substitute for a green final revision and package acceptance
+on every required platform.

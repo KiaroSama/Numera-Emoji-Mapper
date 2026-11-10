@@ -39,6 +39,8 @@ fn snapshot_contains_wal_rows_and_restores_timeouts() {
             "ok"
         );
         destination.close().unwrap();
+        assert!(!root.0.join(format!("{name}-wal")).exists());
+        assert!(!root.0.join(format!("{name}-shm")).exists());
         let before = std::fs::read(&backup).unwrap();
         assert!(_native::sqlite_snapshot::backup(&source, &backup).is_err());
         assert_eq!(std::fs::read(&backup).unwrap(), before);

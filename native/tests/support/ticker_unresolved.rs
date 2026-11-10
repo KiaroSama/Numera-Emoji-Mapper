@@ -64,6 +64,7 @@ fn checked_call(
         .collect::<Vec<_>>();
     let mut server = Server::new(replies);
     let result = commands.call(images, path, &server.base, extra);
+    let requests = server.finish().unwrap();
     assert_eq!(
         result.code,
         code,
@@ -72,7 +73,6 @@ fn checked_call(
         result.stdout,
         result.stderr
     );
-    let requests = server.finish().unwrap();
     assert_eq!(requests.len(), expected.len());
     for (request, (method, form)) in requests.iter().zip(expected) {
         assert_eq!(request.method, method);
@@ -275,7 +275,9 @@ fn later_sets(commands: &Commands<'_>, inputs: &[Vec<u8>; 3]) {
                     download(
                         &mut replies,
                         "created-b",
-                        &inputs[if variant == "foreign" { 2 } else { 1 }],
+                        // The hidden-RGB fixture is equivalent to alpha-edge after normalization.
+                        // Opaque artwork supplies the independently different foreign content.
+                        &inputs[if variant == "foreign" { 0 } else { 1 }],
                     );
                 }
             }

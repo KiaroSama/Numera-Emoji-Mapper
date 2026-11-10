@@ -121,6 +121,7 @@ impl MediaAdapter {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .env("PYTHONUTF8", "1")
+            .env("PYTHONPATH", &self.root)
             .env("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1")
             .env("EMOJI_FFMPEG_TIMEOUT", ffmpeg_timeout.to_string())
             .env("TEMP", &directory)

@@ -401,7 +401,7 @@ fn actual_runner_scrubs_before_child_and_preserves_failure_without_leaking_scrat
     ] {
         environment.insert(key.into(), "synthetic-never-forwarded".into());
     }
-    if !cfg!(any(windows, target_os = "linux")) {
+    if !cfg!(any(windows, target_os = "linux", target_os = "macos")) {
         let argv = [
             OsString::from(env!("CARGO_BIN_EXE_numera-emoji")),
             "test-runner".into(),

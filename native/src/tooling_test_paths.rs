@@ -85,6 +85,13 @@ pub(crate) fn member_path(role: &str, name: &str) -> Result<(), String> {
                         | "native/data/python311-nonprintable.json"
                 )
                 || (name.starts_with("docs/") && name.ends_with(".md"))
+                || (name.starts_with(".github/") && name.ends_with(".md"))
+                || (name.starts_with("tests/") && name.ends_with(".md"))
+                || name == "CONTEXT.md"
+                || (name.starts_with("worker/")
+                    && [".ts", ".json", ".toml", ".sql", ".md", ".ps1"]
+                        .iter()
+                        .any(|suffix| name.ends_with(suffix)))
         }
         "config" => {
             matches!(
@@ -95,8 +102,10 @@ pub(crate) fn member_path(role: &str, name: &str) -> Result<(), String> {
                     | ".env.example"
                     | "pyproject.toml"
                     | "ruff.toml"
+                    | ".github/dependabot.yml"
             ) || (!name.contains('/') && name.starts_with("requirements") && name.ends_with(".txt"))
-                || (name.starts_with(".github/workflows/")
+                || ((name.starts_with(".github/workflows/")
+                    || name.starts_with(".github/actions/"))
                     && (name.ends_with(".yml") || name.ends_with(".yaml")))
         }
         _ => false,
@@ -143,6 +152,12 @@ mod tests {
             "LICENSE",
             "docs/GUIDE.md",
             ".github/CONTRIBUTING.md",
+            ".github/ISSUE_TEMPLATE/bug_report.md",
+            ".github/SECURITY.md",
+            "CONTEXT.md",
+            "worker/src/index.ts",
+            "worker/package-lock.json",
+            "worker/migrations/0001_logs.sql",
             "tests/README.md",
             "tests/oracles/README.md",
             "tests/reference/README.md",
