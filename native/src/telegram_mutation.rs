@@ -14,9 +14,23 @@ fn live(tg: &Telegram, name: &str) -> Option<Vec<Value>> {
         _ => None,
     }
 }
-pub fn mutate<F>(tg: &Telegram, request: &Value, mut compare: F) -> crate::telegram::Result<Value>
+pub fn mutate<F>(tg: &Telegram, request: &Value, compare: F) -> crate::telegram::Result<Value>
 where
     F: FnMut(&Telegram, &Value, &str, &str) -> crate::telegram::Result<Option<bool>>,
+{
+    mutate_with_wait(tg, request, compare, std::thread::sleep)
+}
+
+/// Preserve the public mutation and wire proof while injecting only its retry clock.
+pub fn mutate_with_wait<F, S>(
+    tg: &Telegram,
+    request: &Value,
+    mut compare: F,
+    sleep: S,
+) -> crate::telegram::Result<Value>
+where
+    F: FnMut(&Telegram, &Value, &str, &str) -> crate::telegram::Result<Option<bool>>,
+    S: FnMut(std::time::Duration),
 {
     let name = text(request, "name")?;
     let source = text(request, "source")?;
@@ -95,7 +109,7 @@ where
                 None => Ok(None),
             }
         };
-        tg.call(method, &data, &[file], 5, Some(&mut check))?;
+        tg.call_with_wait(method, &data, &[file], 5, Some(&mut check), sleep)?;
     }
     if creating || !fired {
         return Ok(Value::Null);

@@ -17,6 +17,39 @@ fn error(message: &str) -> String {
 fn text(value: &str) -> bool {
     !value.is_empty() && !value.chars().any(char::is_control)
 }
+fn test_failure_summaries(output: &str) -> Vec<String> {
+    let mut messages = Vec::new();
+    let mut lines = output.lines();
+    while let Some(line) = lines.next() {
+        if !line.starts_with("thread '") || !line.contains(" panicked at ") {
+            continue;
+        }
+        messages.push(
+            crate::logging::redact(line, &[])
+                .chars()
+                .take(512)
+                .collect(),
+        );
+        for line in lines.by_ref().take(5) {
+            if line == "stack backtrace:" || messages.len() == 16 {
+                break;
+            }
+            if !line.is_empty() {
+                messages.push(
+                    crate::logging::redact(line, &[])
+                        .chars()
+                        .take(512)
+                        .collect(),
+                );
+            }
+        }
+        if messages.len() == 16 {
+            break;
+        }
+    }
+    messages
+}
+
 fn arguments(args: &[String]) -> Result<Options, String> {
     if args.len() > 1024 || args.iter().map(String::len).sum::<usize>() > 65536 {
         return Err(error("argument budget exceeded"));
@@ -286,6 +319,9 @@ async fn execute(root: &Path, args: &[String], log: &RunLog) -> Result<i32, Stri
         ),
     );
     if done.code != 0 {
+        for message in test_failure_summaries(&done.stdout) {
+            log.event("ERROR", "cargo-test-failure", &message);
+        }
         for value in done
             .stdout
             .lines()
@@ -312,8 +348,8 @@ async fn execute(root: &Path, args: &[String], log: &RunLog) -> Result<i32, Stri
                 log.event("ERROR", "cargo-linker", &message);
             }
         }
-        // Report only bounded, redacted compiler summaries. Source excerpts,
-        // test bodies and arbitrary child output stay in the private split logs.
+        // Compiler summaries and panic context are bounded and redacted.
+        // Source excerpts, complete test bodies and unrelated output stay local.
         for message in done
             .stdout
             .lines()
@@ -494,5 +530,27 @@ mod tests {
             &invocation[boundary - 3..boundary],
             ["--message-format=json", "--config", "/owned/runner.toml"]
         );
+    }
+    #[test]
+    fn failed_test_diagnostics_keep_bounded_redacted_panic_context_only() {
+        let token = "1234567890:AAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+        let output = format!(
+            "private successful output\nthread 'fixture' (7) panicked at tests/fixture.rs:4:9:\n\nassertion failed: token={token}\nstack backtrace:\nprivate stack detail\n"
+        );
+        let messages = test_failure_summaries(&output);
+        assert_eq!(messages.len(), 2);
+        assert!(messages[0].contains("tests/fixture.rs:4:9"));
+        assert!(messages[1].contains("[REDACTED]"));
+        assert!(!messages.join("\n").contains(token));
+        assert!(!messages.join("\n").contains("private"));
+        let huge = format!(
+            "thread 'fixture' panicked at x:1:1:\n{}\n",
+            "é".repeat(1024)
+        )
+        .repeat(100);
+        let bounded = test_failure_summaries(&huge);
+        assert!(bounded.len() <= 16);
+        assert!(bounded.iter().all(|message| message.chars().count() <= 512));
+        assert!(test_failure_summaries("arbitrary unrelated failure output").is_empty());
     }
 }

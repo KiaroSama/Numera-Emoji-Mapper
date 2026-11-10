@@ -2,7 +2,7 @@
 use _native::source_ci_claims::step_run;
 use std::path::Path;
 
-const FULL_NATIVE: &str = "native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked -- --test-threads=1";
+const FULL_NATIVE: &str = "native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --no-fail-fast -- --test-threads=1";
 
 fn initiating_events(workflow: &str, automatic: bool) -> Result<(), &'static str> {
     let lines = workflow.lines().collect::<Vec<_>>();
@@ -512,6 +512,8 @@ fn windows_tooling_and_codec_ownership_cases_have_a_real_platform_bucket() {
     )
     .unwrap();
     assert!(build.contains("--lib --bin numera-emoji --bin numera-build"));
+    let archive = step_run(windows, "Native Windows archive regression").unwrap();
+    assert_eq!(archive, "logs/checkpoint/test-cargo-driver.exe test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test archive_commands -- --test-threads=1");
     let library = step_run(windows, "Native process-death migration replay").unwrap();
     assert_eq!(
         library,
