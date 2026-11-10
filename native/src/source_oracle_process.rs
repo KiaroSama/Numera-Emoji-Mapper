@@ -149,6 +149,10 @@ pub(crate) async fn check(
         drop(command);
         let (wall, idle) = if oracle == "benchmark" {
             (120, 15)
+        } else if oracle == "panel-view-tests" {
+            // This cohort owns 146 assertions, including 27 real HTTP server
+            // lifecycles. Their shutdown waits alone exceed the tiny codec budget.
+            (90, 30)
         } else {
             (15, 8)
         };

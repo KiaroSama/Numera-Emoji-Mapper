@@ -1,10 +1,13 @@
 //! Delayed original fixture teardown: acknowledge cleanup, inventory before removing any evidence.
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
+#[cfg(test)]
 use pyo3::types::PyDict;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+
+static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[pyclass]
 pub(crate) struct Temporary {
@@ -74,13 +77,34 @@ impl Directories {
                 directory
             }
         };
-        let options = PyDict::new(py);
-        options.set_item("dir", &directory)?;
-        options.set_item("prefix", prefix)?;
-        let name: String = py
-            .import("tempfile")?
-            .call_method("mkdtemp", (), Some(&options))?
-            .extract()?;
+        // This Rust callback may be invoked from a restricted historical
+        // Python namespace. Importing tempfile here would re-enter that
+        // namespace's import facade; create the owned directory directly.
+        let name = loop {
+            let path = directory.join(format!(
+                "{prefix}{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
+            let mut builder = std::fs::DirBuilder::new();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::DirBuilderExt;
+                builder.mode(0o700);
+            }
+            match builder.create(&path) {
+                Ok(()) => {
+                    break path
+                        .to_str()
+                        .ok_or_else(|| {
+                            PyValueError::new_err("original temporary path is not UTF-8")
+                        })?
+                        .to_owned();
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => return Err(PyRuntimeError::new_err(error.to_string())),
+            }
+        };
         let path = crate::tooling_environment::physical_root(Path::new(&name))
             .map_err(PyValueError::new_err)?;
         if path.parent() != Some(directory.as_path()) {

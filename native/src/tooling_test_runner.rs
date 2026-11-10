@@ -381,7 +381,6 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
                     .ok_or("suite workspace must be UTF-8")?
                     .into(),
             );
-            #[cfg(any(windows, target_os = "linux"))]
             if let Some(observation) = observation.as_mut() {
                 let mut listing = argv[..prefix].to_vec();
                 listing.extend(observation.list_args().into_iter().map(OsString::from));
@@ -389,6 +388,15 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
                 custody_settled = false;
                 #[cfg(any(windows, target_os = "linux"))]
                 let listed = runtime.block_on(tooling_process::capture_descendants(
+                    &cwd,
+                    &listing,
+                    &environment,
+                    wall,
+                    wall,
+                    &log,
+                ))?;
+                #[cfg(not(any(windows, target_os = "linux")))]
+                let listed = runtime.block_on(tooling_process::capture(
                     &cwd,
                     &listing,
                     &environment,

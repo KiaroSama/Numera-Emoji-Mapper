@@ -1,7 +1,7 @@
 #![deny(unsafe_code)]
 
 use _native::{
-    config::Config, logging::RunLog, media_adapter::MediaAdapter, panel_http,
+    config::Config, logging::RunLog, media_native_adapter::NativeMediaAdapter, panel_http,
     panel_preview::Previews, panel_session,
 };
 use serde_json::{Value, json};
@@ -468,22 +468,9 @@ fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), 
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect::<String>();
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| config.value("NUMERA_EMOJI_MAPPER_NO_DOTENV") == "1")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    if !python.is_file() {
-        return Err("required exact-media Python environment is missing".into());
-    }
     let previews = Previews::new(
-        MediaAdapter {
-            python,
+        NativeMediaAdapter {
+            executable: std::env::current_exe().map_err(|e| e.to_string())?,
             root: config.root.clone(),
             scratch: data.join("tmp/native-codec"),
         },

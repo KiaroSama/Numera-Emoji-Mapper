@@ -3,7 +3,7 @@ use _native::{
     catalog::Catalog,
     config::Config,
     logging::RunLog,
-    media_adapter::MediaAdapter,
+    media_native_adapter::NativeMediaAdapter,
     panel_events::Events,
     panel_http::{self, Panel},
     panel_preview::Previews,
@@ -116,8 +116,8 @@ fn branding(root: &Path, project: &Path, logo: &Path, deadline: Instant) {
         log: log.clone(),
         events: Mutex::new(Events::default()),
         previews: Previews::new(
-            MediaAdapter {
-                python: "must-not-run-view-codec".into(),
+            NativeMediaAdapter {
+                executable: "must-not-run-view-codec".into(),
                 root: project.into(),
                 scratch: directory.join("codec"),
             },
