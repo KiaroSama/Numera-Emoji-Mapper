@@ -132,6 +132,32 @@ pub fn executable_step(root: &Path) -> Step {
     }
 }
 
+/// Maturin repairs a hard link to Cargo's cdylib on Linux. Its renamed
+/// dependencies cannot be reused as raw linker output on the next build.
+/// Remove only these generated artifacts; the installed runtime is untouched.
+pub fn refresh_wheel_artifact(root: &Path) -> Result<(), String> {
+    let name = format!(
+        "{}_native{}",
+        std::env::consts::DLL_PREFIX,
+        std::env::consts::DLL_SUFFIX
+    );
+    for folder in ["release", "release/deps", "maturin"] {
+        let directory = tooling_environment::confined_directory(
+            root,
+            &format!("native/target/wheel-build/{folder}"),
+            false,
+        )?;
+        let artifact = directory.join(&name);
+        tooling_environment::reject_links(&artifact, "Linked wheel build artifact")?;
+        match std::fs::remove_file(&artifact) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(format!("cannot refresh wheel build artifact: {error}")),
+        }
+    }
+    Ok(())
+}
+
 pub fn wheel(root: &Path, version: &str) -> Result<PathBuf, String> {
     let prefix = format!("numera_emoji_core-{version}-");
     let directory = root.join("native/target/wheels");
@@ -370,6 +396,7 @@ async fn build(
     if !maturin && !consent {
         return Err("Maturin 1.15.0 is required; use --install-maturin to approve installation into the selected .venv".into());
     }
+    refresh_wheel_artifact(root)?;
     log.event(
         "INFO",
         "build",
@@ -512,6 +539,15 @@ pub async fn execute(
             tooling_process::capture(root, &step.argv, environment, step.wall, step.idle, log)
                 .await?;
         if result.code != 0 {
+            for output in [&result.stdout, &result.stderr] {
+                let diagnostic = crate::logging::redact(output, &[])
+                    .chars()
+                    .take(8192)
+                    .collect::<String>();
+                if !diagnostic.is_empty() {
+                    eprintln!("{diagnostic}");
+                }
+            }
             log.event(
                 "ERROR",
                 "build",

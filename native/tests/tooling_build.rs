@@ -258,3 +258,33 @@ fn source_locked_build_commands_are_explicit_and_finite() {
         "numera-emoji"
     );
 }
+
+#[test]
+fn repaired_wheel_refresh_keeps_installed_bytes_and_other_build_outputs() {
+    let root = tooling_fixture::Root::new("wheel refresh");
+    let name = format!(
+        "{}_native{}",
+        std::env::consts::DLL_PREFIX,
+        std::env::consts::DLL_SUFFIX
+    );
+    let retained = root.0.join("emojikit/installed-codec");
+    std::fs::create_dir_all(retained.parent().unwrap()).unwrap();
+    std::fs::write(&retained, b"working installation").unwrap();
+    let mut outputs = Vec::new();
+    for folder in ["release", "release/deps", "maturin"] {
+        let directory = root.0.join("native/target/wheel-build").join(folder);
+        std::fs::create_dir_all(&directory).unwrap();
+        let artifact = directory.join(&name);
+        std::fs::write(&artifact, b"repaired shared library").unwrap();
+        let unrelated = directory.join("other-output");
+        std::fs::write(&unrelated, b"retained build output").unwrap();
+        outputs.push((artifact, unrelated));
+    }
+    tooling_build::refresh_wheel_artifact(&root.0).unwrap();
+    tooling_build::refresh_wheel_artifact(&root.0).unwrap();
+    assert_eq!(std::fs::read(retained).unwrap(), b"working installation");
+    for (artifact, unrelated) in outputs {
+        assert!(!artifact.exists());
+        assert_eq!(std::fs::read(unrelated).unwrap(), b"retained build output");
+    }
+}
