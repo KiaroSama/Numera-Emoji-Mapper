@@ -121,7 +121,7 @@ fn run_case(root: &Root, source: &Path, bytes: &[u8], name: &str) {
             listing(&after)
         };
         if matches!(name, "add-no-change" | "create-missing") {
-            // A real proof read separates the required 2s settle and 3s retry waits.
+            // A real proof read separates the recorded 2s settle and 3s retry waits.
             let (probe, reached, release) = probe.hold();
             replies.push(probe);
             progress = Some((reached, release));
@@ -156,6 +156,7 @@ fn run_case(root: &Root, source: &Path, bytes: &[u8], name: &str) {
         "title":"Pack","user_id":111111111,"emojis":["😀"],"keywords":["kw"],"needs_repainting":repaint,
         "expected_before":if no_snapshot {Value::Null} else if size_read {json!(1)} else {json!(2)}});
     let mut compared = Vec::new();
+    let mut waits = Vec::new();
     let result = std::thread::scope(|scope| {
         let observer = progress.map(|(mut reached, release)| {
             scope.spawn(move || {
@@ -174,24 +175,29 @@ fn run_case(root: &Root, source: &Path, bytes: &[u8], name: &str) {
                 runtime.shutdown_timeout(std::time::Duration::from_secs(1));
             })
         });
-        let result = _native::telegram_mutation::mutate(&tg, &request, |_, member, path, fmt| {
-            assert_eq!(Path::new(path), source);
-            assert_eq!(fmt, "static");
-            println!("mutation proof content compared: {name}");
-            let id = member["file_unique_id"].as_str().unwrap();
-            compared.push(id.to_owned());
-            Ok(if size_read {
-                match id {
-                    "OURS" => Some(true),
-                    "THEIRS" => Some(false),
-                    _ => None,
-                }
-            } else if name.contains("unreadable") {
-                None
-            } else {
-                Some(!name.contains("foreign"))
-            })
-        });
+        let result = _native::telegram_mutation::mutate_with_wait(
+            &tg,
+            &request,
+            |_, member, path, fmt| {
+                assert_eq!(Path::new(path), source);
+                assert_eq!(fmt, "static");
+                println!("mutation proof content compared: {name}");
+                let id = member["file_unique_id"].as_str().unwrap();
+                compared.push(id.to_owned());
+                Ok(if size_read {
+                    match id {
+                        "OURS" => Some(true),
+                        "THEIRS" => Some(false),
+                        _ => None,
+                    }
+                } else if name.contains("unreadable") {
+                    None
+                } else {
+                    Some(!name.contains("foreign"))
+                })
+            },
+            |duration| waits.push(duration),
+        );
         if let Some(observer) = observer {
             observer.join().unwrap();
         }
@@ -212,6 +218,21 @@ fn run_case(root: &Root, source: &Path, bytes: &[u8], name: &str) {
             "{name}: {result:?}"
         );
     }
+    let expected_waits = if clean {
+        vec![]
+    } else if negative {
+        vec![2, 3]
+    } else {
+        vec![2]
+    };
+    assert_eq!(
+        waits,
+        expected_waits
+            .into_iter()
+            .map(std::time::Duration::from_secs)
+            .collect::<Vec<_>>(),
+        "{name}: retry and proof settle delays"
+    );
     let expected_comparisons: &[&str] = match name {
         "add-ours" => &["MINE", "MINE"],
         "add-foreign" => &["THEIRS"],
