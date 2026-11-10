@@ -94,8 +94,7 @@ impl StageDirectories {
         let options = PyDict::new(py);
         options.set_item("prefix", prefix)?;
         options.set_item("dir", &dir)?;
-        let name: String = py
-            .import("tempfile")?
+        let name: String = crate::source_oracle_runtime::host_import(py, "tempfile")?
             .call_method("mkdtemp", (), Some(&options))?
             .extract()?;
         let path = crate::tooling_environment::physical_root(Path::new(&name))

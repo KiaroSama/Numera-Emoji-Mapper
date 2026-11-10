@@ -280,7 +280,7 @@ fn prebuilt_cli_refuses_activation_before_creating_an_environment() {
     for (args, code, expected) in [
         (vec!["--help"], 0, "install-prebuilt"),
         (vec!["--install"], 1, "accepts no arguments"),
-        (vec![], 1, "approved signing and identity verification"),
+        (vec![], 1, "package manifest is missing"),
     ] {
         let mut argv = vec![binary.clone().into_os_string(), "install-prebuilt".into()];
         argv.extend(args.into_iter().map(std::ffi::OsString::from));
@@ -314,11 +314,7 @@ fn prebuilt_cli_refuses_activation_before_creating_an_environment() {
         ))
         .unwrap();
     assert_eq!(refused.code, 1);
-    assert!(
-        refused
-            .stderr
-            .contains("approved signing and identity verification")
-    );
+    assert!(refused.stderr.contains("Existing installation preserved"));
     assert_eq!(
         std::fs::read(prior).unwrap(),
         b"previous working environment"

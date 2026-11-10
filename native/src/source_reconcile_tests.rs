@@ -247,7 +247,8 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
             ] {
                 if result.getattr(field)?.len()? != 0 {
                     return Err(PyValueError::new_err(format!(
-                        "original reconciliation {name}.{method} reported {field}; evidence retained"
+                        "original reconciliation {name}.{method} reported {field}: {}; evidence retained",
+                        crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                     )));
                 }
             }
@@ -351,7 +352,8 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
                 ] {
                     if result.getattr(field)?.len()? != 0 {
                         return Err(PyValueError::new_err(format!(
-                            "original identity {name}.{method} reported {field}; evidence retained"
+                            "original identity {name}.{method} reported {field}: {}; evidence retained",
+                            crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                         )));
                     }
                 }

@@ -241,7 +241,8 @@ pub(super) fn run(
     ] {
         if result.getattr(field)?.len()? != 0 {
             return Err(PyValueError::new_err(format!(
-                "original real-catalog reported {field}; private evidence retained"
+                "original real-catalog reported {field}: {}; private evidence retained",
+                crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
             )));
         }
     }

@@ -1,10 +1,7 @@
 //! Local files are converted by codecs; Rust owns catalog, traversal and ingest decisions.
 use crate::{
-    catalog::Catalog,
-    collector::Collector,
-    config::Config,
-    logging::RunLog,
-    media_adapter::{MediaAdapter, MediaCodec},
+    catalog::Catalog, collector::Collector, config::Config, logging::RunLog,
+    media_adapter::MediaCodec, media_native_adapter::NativeMediaAdapter,
 };
 use serde_json::json;
 use std::io::Read;
@@ -87,26 +84,7 @@ pub async fn choose_format(
 
 pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String> {
     run_with_codec(config, args, log, |scratch| {
-        let python = if std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1") {
-            std::env::var_os("PYO3_PYTHON").map(PathBuf::from)
-        } else {
-            None
-        }
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-        if python.is_absolute() && !python.is_file() {
-            return Err("required exact-media Python environment is missing".into());
-        }
-        Ok(MediaAdapter {
-            python,
-            root: config.root.clone(),
-            scratch,
-        })
+        NativeMediaAdapter::for_project(&config.root, scratch)
     })
 }
 

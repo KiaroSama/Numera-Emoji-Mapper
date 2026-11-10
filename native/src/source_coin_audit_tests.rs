@@ -100,8 +100,7 @@ impl Directories {
         let options = PyDict::new(py);
         options.set_item("dir", &self.root)?;
         options.set_item("prefix", "original-audit-")?;
-        let name: String = py
-            .import("tempfile")?
+        let name: String = crate::source_oracle_runtime::host_import(py, "tempfile")?
             .call_method("mkdtemp", (), Some(&options))?
             .extract()?;
         let path = crate::tooling_environment::physical_root(Path::new(&name))

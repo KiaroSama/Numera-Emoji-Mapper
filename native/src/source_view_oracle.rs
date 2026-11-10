@@ -45,7 +45,9 @@ impl Configuration {
         py: Python<'py>,
         _kwargs: Option<&Bound<'py, PyDict>>,
     ) -> PyResult<Bound<'py, PyAny>> {
-        py.import("builtins")?.getattr("frozenset")?.call0()
+        crate::source_oracle_runtime::host_import(py, "builtins")?
+            .getattr("frozenset")?
+            .call0()
     }
 }
 
@@ -73,7 +75,8 @@ impl Catalog {
 impl Catalog {
     fn all_items<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyList>> {
         self.record("all_items")?;
-        let namespace = py.import("types")?.getattr("SimpleNamespace")?;
+        let namespace =
+            crate::source_oracle_runtime::host_import(py, "types")?.getattr("SimpleNamespace")?;
         let items = self.field(py, "items")?.cast_into::<PyList>()?;
         let output = PyList::empty(py);
         for item in items.iter() {

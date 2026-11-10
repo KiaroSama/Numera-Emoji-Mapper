@@ -176,7 +176,7 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
         py,
         sources[16],
         &["AliasMapAmbiguity", "CanonicalMapWritersCannotLoseAnUpdate"],
-        &["__build_class__", "classmethod"],
+        &["__build_class__", "classmethod", "str"],
         &map_bindings,
     )?;
     let map_names = [
@@ -355,7 +355,8 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
             ] {
                 if result.getattr(field)?.len()? != 0 {
                     return Err(PyValueError::new_err(format!(
-                        "original provider {class_name}.{method} reported {field}; retained"
+                        "original provider {class_name}.{method} reported {field}: {}; retained",
+                        crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                     )));
                 }
             }
@@ -494,46 +495,69 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
         .getattr("calls")?
         .extract()?;
     let replacement_proofs = verify_replacements::finish(&replacements)?;
-    if result.getattr("testsRun")?.extract::<usize>()? != 97
-        || !result.call_method0("wasSuccessful")?.extract::<bool>()?
-        || primary.len() != 85
-        || replacement_paths.len() != 19
-        || verify_paths.len() != 8
-        || verify_loads != 1
-        || required(&verify_bindings, "verify_refusal")?
-            .getattr("call_count")?
-            .extract::<usize>()?
-            != 0
-        || required(&verify_bindings, "verify_constructor")?
-            .getattr("call_count")?
-            .extract::<usize>()?
-            != 5
-        || required(&verify_bindings, "verify_telegram")?
-            .getattr("mock_calls")?
-            .len()?
-            != 0
-        || remap_paths.len() != 13
-        || required(&remap_bindings, "remap_refusal")?
-            .getattr("call_count")?
-            .extract::<usize>()?
-            != 0
-        || required(&remap_bindings, "remap_load")?
-            .getattr("call_count")?
-            .extract::<usize>()?
-            != 0
-        || inventory_paths.len() != 4
-        || map_paths.len() != 6
-        || map_loads != 6
-        || loads != 4
-        || http_patches != 1
-        || required(&bindings, "command_refusal")?
-            .getattr("call_count")?
-            .extract::<usize>()?
-            != 0
-    {
-        return Err(PyValueError::new_err(
-            "original provider assertions incomplete",
-        ));
+    let checks = [
+        ("tests", result.getattr("testsRun")?.extract::<usize>()?, 97),
+        ("primary_paths", primary.len(), 85),
+        ("replacement_paths", replacement_paths.len(), 19),
+        ("verify_paths", verify_paths.len(), 8),
+        ("verify_loads", verify_loads, 1),
+        (
+            "verify_refusals",
+            required(&verify_bindings, "verify_refusal")?
+                .getattr("call_count")?
+                .extract()?,
+            0,
+        ),
+        (
+            "verify_constructors",
+            required(&verify_bindings, "verify_constructor")?
+                .getattr("call_count")?
+                .extract()?,
+            5,
+        ),
+        (
+            "verify_telegram",
+            required(&verify_bindings, "verify_telegram")?
+                .getattr("mock_calls")?
+                .len()?,
+            0,
+        ),
+        ("remap_paths", remap_paths.len(), 13),
+        (
+            "remap_refusals",
+            required(&remap_bindings, "remap_refusal")?
+                .getattr("call_count")?
+                .extract()?,
+            0,
+        ),
+        (
+            "remap_loads",
+            required(&remap_bindings, "remap_load")?
+                .getattr("call_count")?
+                .extract()?,
+            0,
+        ),
+        ("inventory_paths", inventory_paths.len(), 4),
+        ("map_paths", map_paths.len(), 6),
+        ("map_loads", map_loads, 6),
+        ("loads", loads, 4),
+        ("http_patches", http_patches, 1),
+        (
+            "command_refusals",
+            required(&bindings, "command_refusal")?
+                .getattr("call_count")?
+                .extract()?,
+            0,
+        ),
+    ];
+    let mismatches = checks
+        .into_iter()
+        .filter(|(_, actual, expected)| actual != expected)
+        .collect::<Vec<_>>();
+    if !result.call_method0("wasSuccessful")?.extract::<bool>()? || !mismatches.is_empty() {
+        return Err(PyValueError::new_err(format!(
+            "original provider assertions incomplete: {mismatches:?}"
+        )));
     }
     let proof_calls: usize = proof.getattr("call_count")?.extract()?;
     let ledger = ledger.borrow(py);

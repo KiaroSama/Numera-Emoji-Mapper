@@ -146,7 +146,8 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
     ] {
         if result.getattr(field)?.len()? != 0 {
             return Err(PyValueError::new_err(format!(
-                "original brand assertions reported {field}; scratch retained"
+                "original brand assertions reported {field}: {}; scratch retained",
+                crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
             )));
         }
     }

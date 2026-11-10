@@ -198,7 +198,8 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
             ] {
                 if result.getattr(field)?.len()? != 0 {
                     return Err(PyValueError::new_err(format!(
-                        "original rebuild {name}.{method} reported {field}; retained"
+                        "original rebuild {name}.{method} reported {field}: {}; retained",
+                        crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                     )));
                 }
             }

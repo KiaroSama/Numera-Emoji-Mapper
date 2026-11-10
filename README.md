@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml)
 [![License: GPL-3.0](https://img.shields.io/github/license/KiaroSama/Numera-Emoji-Mapper)](LICENSE)
-[![Python 3.11 | 3.12 | 3.14](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.14-3776AB?logo=python&logoColor=white)](.github/workflows/ci.yml)
+[![Codec runtime: CPython 3.11](https://img.shields.io/badge/codec%20runtime-CPython%203.11-3776AB?logo=python&logoColor=white)](requirements.txt)
 [![Rust 1.99+](https://img.shields.io/badge/Rust-1.99%2B-DEA584?logo=rust)](native/Cargo.toml)
 [![Builds: Linux, macOS, Windows](https://img.shields.io/badge/builds-Linux%20%7C%20macOS%20%7C%20Windows-0078D6)](.github/workflows/ci.yml)
 <br>
@@ -41,8 +41,9 @@ It ships with two independent workflows that share the same engine:
 | <img src="assets/numera-emoji-mapper-logo.png" alt="" width="42"> | **General** | `GENERAL_BOT_TOKEN` (`@YourEmojiBot`) | any folder of images you provide | any non-coin emoji pack |
 
 The installed Rust commands `make-emoji-pngs` and `build-pack` power both;
-only the source folder and selected bot token differ. Python retains exact media
-codecs and native-backed bindings for the unchanged coin-provider tools.
+only the source folder and selected bot token differ. The Rust CLI and panel use
+the same executable's bounded media worker; third-party Python libraries provide
+Pillow, SVG and Lottie codecs.
 
 The first-party Rust migration is being completed on
 [`feature/first-party-rust`](https://github.com/KiaroSama/Numera-Emoji-Mapper/pull/70).
@@ -113,24 +114,25 @@ process-death scenarios still run inside their original tests.
 **Windows:**
 
 ```powershell
-py -3.11 scripts\install_prebuilt.py
+.\native\runtime\numera-emoji.exe install-prebuilt
 ```
 
 ```powershell
-.venv\Scripts\python.exe scripts\launch_prebuilt.py --help
+.\native\runtime\numera-emoji.exe --help
 ```
 
 **Linux / macOS:**
 
 ```bash
-python3.11 scripts/install_prebuilt.py
+chmod +x native/runtime/numera-emoji
+./native/runtime/numera-emoji install-prebuilt
 ```
 
 ```bash
-.venv/bin/python scripts/launch_prebuilt.py --help
+./native/runtime/numera-emoji --help
 ```
 
-Run `scripts/launch_prebuilt.py panel` with that same `.venv` interpreter to
+Run `./native/runtime/numera-emoji panel` to
 open the curation panel, or pass another native command shown by `--help`.
 On Windows, `./run.ps1` opens the menu and `./run.ps1 -Check` runs the doctor;
 neither compiles Rust or silently falls back to old Python applications.
@@ -150,7 +152,11 @@ build caches are removed only after the current installation/rollback gates pass
 ### Developer source build (not required for package users)
 
 Only contributors building modified Rust source need Rust 1.99+, a platform
-linker (MSVC C++ tools on Windows), and `scripts/build_native.py`. Public ready
+linker (MSVC C++ tools on Windows). Bootstrap the Rust build driver with
+`cargo build --manifest-path native/Cargo.toml --locked --bin numera-build`, then
+run `native/target/debug/numera-build` (`.exe` on Windows) to build and install
+the locked wheel and executable. Maturin 1.15.0 must be installed in `.venv`;
+`--install-maturin` explicitly permits installing it. Public ready
 packages are built and tested on hosted CI, not on the user's workstation.
 
 `.env` keys (see `.env.example`):
@@ -171,20 +177,20 @@ a tool that needs one stops and names it. Keep your logo in the git-ignored
 
 ## Quick start — general emoji pack (new bot)
 
-Run from the extracted package or installed checkout. `scripts/launch_prebuilt.py`
-selects its own environment/root; on Windows, `run.ps1` provides the same native
+Run from the extracted package or installed checkout. `native/runtime/numera-emoji`
+selects its package root and codec environment; on Windows, `run.ps1` provides the same native
 commands through the menu and `run.ps1 -Check` verifies the installed runtime.
 
 ```powershell
 # Put your source images in a folder, e.g. input/myset/
-.venv\Scripts\python.exe scripts\launch_prebuilt.py make-emoji-pngs --in input\myset --out build\myset
+.\native\runtime\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
 
 # Validate without calling Telegram
-.venv\Scripts\python.exe scripts\launch_prebuilt.py build-pack --base myset --title "My Emojis" `
+.\native\runtime\numera-emoji.exe build-pack --base myset --title "My Emojis" `
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji "😀" --dry-run
 
 # Build for real
-.venv\Scripts\python.exe scripts\launch_prebuilt.py build-pack --base myset --title "My Emojis" `
+.\native\runtime\numera-emoji.exe build-pack --base myset --title "My Emojis" `
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji "😀"
 ```
 
@@ -193,7 +199,7 @@ to attach searchable keywords to each emoji. Without it, the file name is used.
 
 ## `build-pack` options
 
-Use `scripts/launch_prebuilt.py build-pack --help` with the package interpreter;
+Use `native/runtime/numera-emoji build-pack --help` with the package interpreter;
 the [GUIDE CLI reference](docs/guide-cli.md) explains the options
 and defaults. The ones you need first:
 `--base` and `--title` (required), `--source-dir`, `--token-env` (`TELEGRAM_BOT_TOKEN` announces as the coin bot, any other as the general bot) and `--dry-run`.
@@ -249,16 +255,16 @@ deduplicates at **ingest** time, not after publishing:
 
 ```powershell
 # 1. Download from one or more existing packs into the catalog
-.venv\Scripts\python.exe scripts\launch_prebuilt.py fetch-pack https://t.me/addemoji/somepack_by_bot `
+.\native\runtime\numera-emoji.exe fetch-pack https://t.me/addemoji/somepack_by_bot `
     --token-env GENERAL_BOT_TOKEN
 
 # 2. (optional) Build extra emoji from your own files (auto static/video/animated)
-.venv\Scripts\python.exe scripts\launch_prebuilt.py add-media --in input\myset --emoji 😀
+.\native\runtime\numera-emoji.exe add-media --in input\myset --emoji 😀
 
 # 3. Preview, then publish into new per-format packs (resumable)
-.venv\Scripts\python.exe scripts\launch_prebuilt.py build-collection --base mypack --title "My Pack" `
+.\native\runtime\numera-emoji.exe build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN --dry-run
-.venv\Scripts\python.exe scripts\launch_prebuilt.py build-collection --base mypack --title "My Pack" `
+.\native\runtime\numera-emoji.exe build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN
 ```
 
@@ -281,7 +287,7 @@ premium custom-emoji IDs with tap-to-copy buttons (Telegram `copy_text`):
   from new posts. (Bots cannot read past channel history, only new posts.)
 
 ```powershell
-.venv\Scripts\python.exe scripts\launch_prebuilt.py emoji-bot     # or run.ps1 -> C1
+.\native\runtime\numera-emoji.exe emoji-bot     # or run.ps1 -> C1
 ```
 
 ## Cloudflare Worker (both bots, hosted)
@@ -375,10 +381,10 @@ tokens, labels, media IDs and arbitrary error text are excluded. Log delivery
 is bounded and does not block saving.
 
 ```powershell
-.venv\Scripts\python.exe scripts\launch_prebuilt.py panel        # or run.ps1 -> B4
-.venv\Scripts\python.exe scripts\launch_prebuilt.py panel --preview-fps 12
+.\native\runtime\numera-emoji.exe panel        # or run.ps1 -> B4
+.\native\runtime\numera-emoji.exe panel --preview-fps 12
 # Branding without a Telegram username lookup:
-.venv\Scripts\python.exe scripts\launch_prebuilt.py panel --bot-username YourEmojiBot
+.\native\runtime\numera-emoji.exe panel --bot-username YourEmojiBot
 ```
 
 B4 reopens an existing panel on the requested port instead of starting a second
@@ -445,8 +451,8 @@ Convert coin logos to 100×100 PNGs (images live in `coins/logos/{svg,png}` →
 `coins/logos/emoji`):
 
 ```powershell
-.venv\Scripts\python.exe scripts\launch_prebuilt.py make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
-.venv\Scripts\python.exe scripts\launch_prebuilt.py make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
+.\native\runtime\numera-emoji.exe make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
+.\native\runtime\numera-emoji.exe make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
 ```
 
 Then build/rebuild with the coin bot:
@@ -487,7 +493,7 @@ Numera Emoji Mapper/                  # the whole project
   run.ps1                      # launcher (single-pack + collection workflows)
   scripts/run-actions.ps1      # the launcher's menu actions (dot-sourced by run.ps1)
   scripts/check.ps1            # byte-compile + full unit suite (also used by CI)
-  scripts/launch_prebuilt.py   # own environment -> installed native command
+  native/runtime/numera-emoji   # own environment -> installed native command
   scripts/run-native.ps1       # menu/doctor native boundary (no Cargo)
   docs/native-backend.md       # runtime boundaries, acceptance and rollback
   scripts/panel_sandbox.py     # the panel against a throwaway copy of the catalog
@@ -531,7 +537,7 @@ suite — the same one CI runs, so local and CI results cannot drift:
 .\scripts\check.ps1
 .\scripts\check.ps1 -Tests test_catalog -SkipCompile -SkipLint   # chosen suites only
 .\run.ps1 -Check      # separate: environment doctor (venv, Python 3.11+, deps, ffmpeg, unset .env keys)
-.venv\Scripts\python.exe scripts\launch_prebuilt.py status   # is the roster/archive current? offline, exit 3 if stale
+.\native\runtime\numera-emoji.exe status   # is the roster/archive current? offline, exit 3 if stale
 ```
 
 If anything the gate needs is missing, `check.ps1` prints that one install line

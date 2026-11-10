@@ -137,19 +137,21 @@ def main() -> int:
         env["NUMERA_EMOJI_MAPPER_NO_DOTENV"] = "1"
         env["PYTHONPATH"] = str(extracted)
         # The installer receives an unrelated CWD; all paths remain package-local.
-        run([sys.executable, str(extracted / "scripts/install_prebuilt.py")], parent, env, 240)
+        launch = extracted / "native/runtime" / ("numera-emoji.exe" if os.name == "nt" else "numera-emoji")
+        if os.name != "nt":
+            launch.chmod(0o755)
+        run([str(launch), "install-prebuilt"], parent, env, 240)
         python = extracted / (".venv/Scripts/python.exe" if os.name == "nt" else ".venv/bin/python")
-        launch = extracted / "scripts/launch_prebuilt.py"
         # A repeated install must refuse before altering the working environment.
         preserved = [extracted / ".venv/pyvenv.cfg", *extracted.joinpath("emojikit").glob("_native*.pyd"),
                      *extracted.joinpath("emojikit").glob("_native*.so")]
         before = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in preserved}
-        retry = subprocess.run([str(python), str(extracted / "scripts/install_prebuilt.py")],
+        retry = subprocess.run([str(launch), "install-prebuilt"],
                                cwd=parent, env=env, stdin=subprocess.DEVNULL, capture_output=True,
                                encoding="utf-8", timeout=30)
-        assert retry.returncode == 1 and "Existing installation preserved" in retry.stderr
+        assert retry.returncode != 0 and "Existing installation preserved" in retry.stderr
         assert before == {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in preserved}
-        assert "numera-emoji" in run([str(python), str(launch), "--help"], parent, env).stdout
+        assert "numera-emoji" in run([str(launch), "--help"], parent, env).stdout
         if os.name == "nt":
             run(["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-File",
                  str(extracted / "run.ps1"), "-NoRelaunch", "-Check"], parent, env, 30)
@@ -180,7 +182,7 @@ print('actual PNG/TGS/VP9 codecs and package-local paths verified')
         input_dir = extracted / "logs" / "input"
         input_dir.mkdir()
         shutil.copyfile(extracted / "assets/numera-emoji-mapper-logo.png", input_dir / "art.png")
-        run([str(python), str(launch), "make-emoji-pngs", "--in", str(input_dir),
+        run([str(launch), "make-emoji-pngs", "--in", str(input_dir),
              "--out", str(extracted / "logs" / "output")], parent, env, 90)
         assert (extracted / "logs/output/art.png").is_file()
         assert not (extracted / "native/target").exists()

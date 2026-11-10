@@ -184,6 +184,9 @@ pub(crate) fn noncoverage_reason(
     }
     // A changed source must be reviewed again, not silently inherit a platform exemption.
     let hash = match (name, source) {
+        ("darwin_exit", "native/tests/darwin_exit.rs") if !cfg!(target_os = "macos") => {
+            "46b78a55bf1985631fa276fb96ac9a117331fbf54472d43e828b7186a5e010bd"
+        }
         ("sandbox_lease_windows", "native/tests/sandbox_lease_windows.rs")
             if cfg!(all(
                 target_os = "linux",
@@ -197,7 +200,7 @@ pub(crate) fn noncoverage_reason(
         ("tooling_test_cohort", "native/tests/tooling_test_cohort.rs")
             if cfg!(all(windows, target_arch = "x86_64", target_env = "msvc")) =>
         {
-            "8d2989b99aadb93f7663fe89825441f7d7633b7ac9c16e339e8b8ae3cc0df4ff"
+            "26019ab49ab33348875191ddfe233e4e2b127e4c4781ad0670e05712682887c7"
         }
         _ => return None,
     };
@@ -537,6 +540,12 @@ mod tests {
         assert!(validate_target(&observed, &[]).is_ok());
         for (name, source, hash, inactive) in [
             (
+                "darwin_exit",
+                "native/tests/darwin_exit.rs",
+                "46b78a55bf1985631fa276fb96ac9a117331fbf54472d43e828b7186a5e010bd",
+                !cfg!(target_os = "macos"),
+            ),
+            (
                 "sandbox_lease_windows",
                 "native/tests/sandbox_lease_windows.rs",
                 "8d109d5487a650b109e82165f5b41750b9fcccf0b09ab5d34d04e845ea2ff5db",
@@ -550,7 +559,7 @@ mod tests {
             (
                 "tooling_test_cohort",
                 "native/tests/tooling_test_cohort.rs",
-                "8d2989b99aadb93f7663fe89825441f7d7633b7ac9c16e339e8b8ae3cc0df4ff",
+                "26019ab49ab33348875191ddfe233e4e2b127e4c4781ad0670e05712682887c7",
                 cfg!(all(windows, target_arch = "x86_64", target_env = "msvc")),
             ),
         ] {

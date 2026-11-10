@@ -225,41 +225,61 @@ fn pinned_git_corpus_matches_every_original_source_hash_and_rejects_omission() {
     assert_eq!(coin_contracts.files.len(), 19);
     _native::source_media_contracts::check(&sources).unwrap();
     _native::source_publication_contracts::check(&sources).unwrap();
-    source_oracle_replay::check(root, &runtime, &sources);
-    source_panel_view_replay::check(root, &runtime, &sources);
-    source_snapshot_replay::check(root, &runtime, &sources);
-    source_identity_replay::check(root, &runtime, &sources);
-    source_bot_replay::check(root, &runtime, &sources);
-    source_reconcile_replay::check(root, &runtime, &sources);
-    source_publication_replay::check(root, &runtime, &sources);
-    source_preflight_replay::check(root, &runtime, &sources);
-    source_catalog_replay::check(root, &runtime, &sources);
-    source_reference_replay::check(root, &runtime, &sources);
-    source_real_video_replay::check(root, &runtime, &sources);
-    source_benchmark_replay::check(root, &runtime, &sources);
-    source_rows_replay::check(root, &runtime, &sources);
-    source_lottie_replay::check(root, &runtime, &sources);
-    source_static_replay::check(root, &runtime, &sources);
-    source_state_compat_replay::check(root, &runtime, &sources);
-    source_logging_replay::check(root, &runtime, &sources);
-    source_config_replay::check(root, &runtime, &sources);
-    source_sync_order_replay::check(root, &runtime, &sources);
-    source_archive_tests_replay::check(root, &runtime, &sources);
-    source_export_replay::check(root, &runtime, &sources);
-    source_status_replay::check(root, &runtime, &sources);
-    source_roster_replay::check(root, &runtime, &sources);
-    source_emoji_ids_replay::check(root, &runtime, &sources);
-    source_local_ingest_replay::check(root, &runtime, &sources);
-    source_coin_audit_replay::check(root, &runtime, &sources);
-    source_keywords_replay::check(root, &runtime, &sources);
-    source_http_replay::check(root, &runtime, &sources);
-    source_coin_cli_replay::check(root, &runtime, &sources);
-    source_logo_cache_replay::check(root, &runtime, &sources);
-    source_provider_image_replay::check(root, &runtime, &sources);
-    source_provider_replay::check(root, &runtime, &sources);
-    source_rebuild_replay::check(root, &runtime, &sources);
-    source_prebuilt_replay::check(root, &runtime, &sources);
-    source_tooling_replay::check(root, &runtime, &sources);
+    // Every replay owns a separate worker and scratch directory. Keep running
+    // independent cohorts after a refusal so one broken fixture cannot conceal
+    // the remaining parity failures in CI; every panic still fails this target.
+    let mut replay_failures = Vec::new();
+    macro_rules! replay {
+        ($module:ident) => {
+            if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                $module::check(root, &runtime, &sources)
+            }))
+            .is_err()
+            {
+                replay_failures.push(stringify!($module));
+            }
+        };
+    }
+    replay!(source_oracle_replay);
+    replay!(source_panel_view_replay);
+    replay!(source_snapshot_replay);
+    replay!(source_identity_replay);
+    replay!(source_bot_replay);
+    replay!(source_reconcile_replay);
+    replay!(source_publication_replay);
+    replay!(source_preflight_replay);
+    replay!(source_catalog_replay);
+    replay!(source_reference_replay);
+    replay!(source_real_video_replay);
+    replay!(source_benchmark_replay);
+    replay!(source_rows_replay);
+    replay!(source_lottie_replay);
+    replay!(source_static_replay);
+    replay!(source_state_compat_replay);
+    replay!(source_logging_replay);
+    replay!(source_config_replay);
+    replay!(source_sync_order_replay);
+    replay!(source_archive_tests_replay);
+    replay!(source_export_replay);
+    replay!(source_status_replay);
+    replay!(source_roster_replay);
+    replay!(source_emoji_ids_replay);
+    replay!(source_local_ingest_replay);
+    replay!(source_coin_audit_replay);
+    replay!(source_keywords_replay);
+    replay!(source_http_replay);
+    replay!(source_coin_cli_replay);
+    replay!(source_logo_cache_replay);
+    replay!(source_provider_image_replay);
+    replay!(source_provider_replay);
+    replay!(source_rebuild_replay);
+    replay!(source_prebuilt_replay);
+    replay!(source_tooling_replay);
+    assert!(
+        replay_failures.is_empty(),
+        "Historical replay failures: {}",
+        replay_failures.join(", ")
+    );
     let discovered = _native::source_git_inventory::inventory(&sources).unwrap();
     assert_eq!(discovered["baseline_revision"], BASELINE);
     assert_eq!(discovered["files"].as_array().unwrap().len(), 277);
@@ -406,6 +426,41 @@ fn pinned_git_corpus_matches_every_original_source_hash_and_rejects_omission() {
                     "declaration cannot stand in for inherited binding evidence"
                 );
             }
+            // These pinned original smoke cases assert success by returning
+            // normally. Preserve their exact operation instead of inventing
+            // assertion calls that never appeared in the source.
+            let successful_call = match (source, case["source_case"].as_str().unwrap()) {
+                (
+                    "tests/test_resume_safety.py",
+                    "StateShapeValidation.test_a_sound_state_passes",
+                ) => Some("ps.validate_state_shape(self._ok(), base=\"t\", per_set=200)"),
+                (
+                    "tests/test_lottie_repaint.py",
+                    "ATimelineMustBeFiniteNumbers.test_a_valid_timeline_still_passes",
+                ) => Some("media.validate_tgs(_tgs(VALID, self.path))"),
+                (
+                    "tests/test_media.py",
+                    "SubtractMasksAreRefusedBeforeTelegramRefusesThem.test_an_ADD_mask_is_still_allowed",
+                ) => Some(
+                    "media.validate_tgs(self._masked(\"a\", inside_precomp=True))\n        media.validate_tgs(self._masked(\"a\", inside_precomp=False))",
+                ),
+                ("tests/test_media.py", "TestVideo.test_compliant_webm_is_accepted") => {
+                    Some("media.validate_video(self._lavfi(\"ok.webm\", *self.VP9, \"-an\"))")
+                }
+                ("tests/test_entry_points.py", "SuiteIsHermetic.test_loopback_still_works") => {
+                    Some(
+                        "with socket.create_connection(srv.getsockname(), timeout=5):\n                pass",
+                    )
+                }
+                _ => None,
+            };
+            let validator_success = successful_call.is_some_and(|call| {
+                sources.iter().any(|original| {
+                    original.path == source
+                        && original.sha256 == case["source_hash"].as_str().unwrap()
+                        && original.text.contains(call)
+                })
+            });
             assert!(
                 !assertion["method"]["assertions"]
                     .as_array()
@@ -433,12 +488,14 @@ fn pinned_git_corpus_matches_every_original_source_hash_and_rejects_omission() {
                                         .any(|method| method == &helper["method"])
                             })
                         })
+                    || validator_success
                     || (source == "tests/test_pack_locks.py"
                         && !assertion["method"]["contexts"]
                             .as_array()
                             .unwrap()
                             .is_empty()),
-                "original case must retain inline/helper assertions or acquisition contexts"
+                "original case {source}::{} must retain inline/helper assertions or acquisition contexts",
+                case["source_case"]
             );
             assert_eq!(assertion["defined_in_hash"], case["source_hash"]);
             let candidate = &case["candidate"];
@@ -471,7 +528,7 @@ fn pinned_git_corpus_matches_every_original_source_hash_and_rejects_omission() {
             {
                 (
                     "tests/fixtures/native/static-codec.json",
-                    "9219e276df282f93d200af0f87c8bf39897a645d3ae52c84e50b8a74193f064c",
+                    "b179fa97ab139b8f1ae0a695838ac8f9fd65b906185d07f7b56b706ef6fdab1b",
                 )
             } else if source == "tests/test_rebuild_dedup_plan.py"
                 && case["source_case"]
@@ -479,7 +536,7 @@ fn pinned_git_corpus_matches_every_original_source_hash_and_rejects_omission() {
             {
                 (
                     "tests/fixtures/native/coin-plan-disk.json",
-                    "0e68f36019f033f00e8ab9aab3a44bd617f4bc07a75108bc8b34d945c0a790da",
+                    "215c81c421dd8d3ecf2153cd2931de9a2a0bfcda61a6078f2ece0919c368415a",
                 )
             } else if source == "tests/test_rebuild_dedup_plan.py"
                 && case["source_case"]
@@ -487,7 +544,7 @@ fn pinned_git_corpus_matches_every_original_source_hash_and_rejects_omission() {
             {
                 (
                     "tests/fixtures/native/coin-rebuild-walk.json",
-                    "5b8068ef8529c29e9e1dbde5820e2d2e62424df006bd47a1d4ae8f5ba9de58a6",
+                    "6d6486918e9ab4dc7143e75f4732c1b4062709da6b61488bc937fb99ad595b21",
                 )
             } else if source == "tests/test_contracts_shared.py" {
                 let (fixture, hash) = match case["source_case"].as_str().unwrap() {

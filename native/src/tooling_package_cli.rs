@@ -2,8 +2,6 @@
 use crate::{
     config::Config, logging::RunLog, tooling_environment, tooling_manifest, tooling_package,
 };
-use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -20,51 +18,116 @@ pub enum Arguments {
     Exit(u8),
 }
 
-/// Delegate the original CLI grammar to the unchanged external stdlib parser.
+const PACKAGE_USAGE: &str = "usage: numera-emoji package-native [-h] --executable EXECUTABLE --wheel WHEEL --dependencies DEPENDENCIES [--out OUT]";
+
+fn argument_error(message: &str) -> Arguments {
+    eprintln!(
+        "{PACKAGE_USAGE}\nnumera-emoji package-native: error: {}",
+        crate::logging::redact(message, &[])
+    );
+    Arguments::Exit(2)
+}
+fn negative_path(value: &str) -> bool {
+    let Some(number) = value.strip_prefix('-') else {
+        return false;
+    };
+    let digits = |text: &str| !text.is_empty() && text.chars().all(crate::emoji_ids::decimal);
+    digits(number)
+        || number.split_once('.').is_some_and(|(whole, fraction)| {
+            (whole.is_empty() || digits(whole)) && digits(fraction)
+        })
+}
+
+/// Preserve the original path parser's prefixes, attached values, last-value
+/// wins and help/error exits without starting the Python runtime.
 pub fn arguments(root: &Path, args: &[String]) -> Result<Arguments, String> {
-    Python::initialize();
-    Python::attach(|py| -> Result<Arguments, String> {
-        let result = (|| -> PyResult<Arguments> {
-            let kwargs = PyDict::new(py);
-            kwargs.set_item("prog", "numera-emoji package-native")?;
-            kwargs.set_item("description", "Build a public source-schema1 archive; no installation or source build is performed.")?;
-            let parser = py
-                .import("argparse")?
-                .getattr("ArgumentParser")?
-                .call((), Some(&kwargs))?;
-            let path = py.import("pathlib")?.getattr("Path")?;
-            for name in ["--executable", "--wheel", "--dependencies", "--out"] {
-                let option = PyDict::new(py);
-                option.set_item("type", &path)?;
-                if name == "--out" {
-                    option.set_item("default", path.call1((root.join("dist"),))?)?;
-                } else {
-                    option.set_item("required", true)?;
-                }
-                parser.call_method("add_argument", (name,), Some(&option))?;
-            }
-            match parser.call_method1("parse_args", (PyList::new(py, args)?,)) {
-                Ok(parsed) => Ok(Arguments::Package(PackageOptions {
-                    executable: parsed.getattr("executable")?.extract()?,
-                    wheel: parsed.getattr("wheel")?.extract()?,
-                    dependencies: parsed.getattr("dependencies")?.extract()?,
-                    output: parsed.getattr("out")?.extract()?,
-                })),
-                Err(error) if error.is_instance_of::<pyo3::exceptions::PySystemExit>(py) => {
-                    Ok(Arguments::Exit(error.value(py).getattr("code")?.extract()?))
-                }
-                Err(error) => Err(error),
-            }
-        })();
-        // Embedded CPython is not finalized by native exit, so help/errors need an explicit flush.
-        let sys = py.import("sys").map_err(|error| error.to_string())?;
-        for stream in ["stdout", "stderr"] {
-            sys.getattr(stream)
-                .and_then(|stream| stream.call_method0("flush"))
-                .map_err(|error| error.to_string())?;
+    const FLAGS: [&str; 5] = [
+        "--help",
+        "--executable",
+        "--wheel",
+        "--dependencies",
+        "--out",
+    ];
+    let mut values = BTreeMap::new();
+    let mut unknown = Vec::new();
+    let mut index = 0;
+    while index < args.len() {
+        let raw = &args[index];
+        index += 1;
+        if raw == "--" {
+            unknown.extend(args[index..].iter().cloned());
+            break;
         }
-        result.map_err(|error| error.to_string())
-    })
+        let (name, attached) = raw
+            .split_once('=')
+            .map_or((raw.as_str(), None), |(name, value)| (name, Some(value)));
+        let matches = FLAGS
+            .iter()
+            .copied()
+            .filter(|flag| {
+                name == *flag
+                    || (name.len() > 2 && name.starts_with("--") && flag.starts_with(name))
+            })
+            .collect::<Vec<_>>();
+        let flag = if name == "-h" {
+            "--help"
+        } else if matches.len() == 1 {
+            matches[0]
+        } else {
+            unknown.push(raw.clone());
+            continue;
+        };
+        if flag == "--help" {
+            if attached.is_some() {
+                return Ok(argument_error("argument --help: ignored explicit argument"));
+            }
+            println!(
+                "{PACKAGE_USAGE}\n\nBuild a public source-schema1 archive; no installation or source build is performed.\n\noptions:\n  -h, --help            show this help message and exit\n  --executable EXECUTABLE\n  --wheel WHEEL\n  --dependencies DEPENDENCIES\n  --out OUT"
+            );
+            return Ok(Arguments::Exit(0));
+        }
+        let value = if let Some(value) = attached {
+            value
+        } else {
+            let Some(value) = args.get(index).filter(|value| {
+                !value.starts_with('-') || value.as_str() == "-" || negative_path(value)
+            }) else {
+                return Ok(argument_error(&format!(
+                    "argument {flag}: expected one argument"
+                )));
+            };
+            index += 1;
+            value
+        };
+        values.insert(
+            flag,
+            PathBuf::from(if value.is_empty() { "." } else { value }),
+        );
+    }
+    let required = ["--executable", "--wheel", "--dependencies"];
+    let missing = required
+        .iter()
+        .filter(|flag| !values.contains_key(**flag))
+        .copied()
+        .collect::<Vec<_>>();
+    if !missing.is_empty() {
+        return Ok(argument_error(&format!(
+            "the following arguments are required: {}",
+            missing.join(", ")
+        )));
+    }
+    if !unknown.is_empty() {
+        return Ok(argument_error(&format!(
+            "unrecognized arguments: {}",
+            unknown.join(" ")
+        )));
+    }
+    Ok(Arguments::Package(PackageOptions {
+        executable: values.remove("--executable").expect("required argument"),
+        wheel: values.remove("--wheel").expect("required argument"),
+        dependencies: values.remove("--dependencies").expect("required argument"),
+        output: values.remove("--out").unwrap_or_else(|| root.join("dist")),
+    }))
 }
 
 pub fn options(root: &Path, args: &[String]) -> Result<PackageOptions, String> {

@@ -79,6 +79,11 @@ impl Imports {
     ) -> PyResult<Bound<'py, PyModule>> {
         let _ = (globals, locals);
         let py = fromlist.py();
+        if level == 0 && name == "time" {
+            // datetime.strftime imports time through the calling frame's
+            // import hook, even though the original wrapper imports datetime.
+            return crate::source_oracle_runtime::host_import(py, "time");
+        }
         let names = fromlist.extract::<Vec<String>>()?;
         if level == 0 && name == "emojikit" && names == ["_native"] {
             self.native.fetch_add(1, Ordering::Relaxed);
@@ -577,7 +582,8 @@ fn execute(py: Python<'_>, workspace: &Path, sources: &[&Source]) -> PyResult<Va
     ] {
         if result.getattr(field)?.len()? != 0 {
             return Err(PyRuntimeError::new_err(format!(
-                "original state compatibility reported {field}; scratch retained"
+                "original state compatibility reported {field}: {}; scratch retained",
+                crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
             )));
         }
     }

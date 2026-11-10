@@ -32,7 +32,8 @@ impl Imports {
             .transpose()?
             .unwrap_or_default();
         if level == 0 {
-            let namespace = py.import("types")?.getattr("SimpleNamespace")?;
+            let namespace = crate::source_oracle_runtime::host_import(py, "types")?
+                .getattr("SimpleNamespace")?;
             if name == "emojikit" && from == ["similarity"] {
                 let package = namespace.call0()?;
                 package.setattr("similarity", self.similarity.bind(py))?;
@@ -136,7 +137,8 @@ pub(super) fn check(
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyValueError::new_err(format!(
-                    "original missing-module assertions reported {field}; retained"
+                    "original missing-module assertions reported {field}: {}; retained",
+                    crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                 )));
             }
         }

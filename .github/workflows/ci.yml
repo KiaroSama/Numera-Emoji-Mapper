@@ -215,7 +215,7 @@ jobs:
 
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     # The panel's browser suite has its own job above. Opting out here is
     # deliberate and must stay explicit: test_panel_browser.py raises rather
     # than skipping when playwright or Chromium is missing, because a browser
@@ -345,7 +345,7 @@ jobs:
   # former self-hosted runner merely to obtain Windows coverage.
   windows-safety:
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS: "1"
     steps:

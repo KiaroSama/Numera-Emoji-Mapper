@@ -84,8 +84,7 @@ impl Native {
         py: Python<'py>,
         request: &Bound<'py, PyDict>,
     ) -> PyResult<Bound<'py, PyAny>> {
-        let encoded: String = py
-            .import("json")?
+        let encoded: String = crate::source_oracle_runtime::host_import(py, "json")?
             .call_method1("dumps", (request,))?
             .extract()?;
         let request: Value = serde_json::from_str(&encoded)
@@ -131,10 +130,16 @@ impl Native {
         let before = std::fs::read(&source)?;
         let result = py
             .detach(|| {
-                crate::codec_worker::execute_typed_at(
-                    Some(&self.workspace.join("process")),
-                    &request,
-                )
+                let adapter = crate::media_native_adapter::NativeMediaAdapter {
+                    executable: std::env::current_exe().map_err(|error| error.to_string())?,
+                    root: self.project.clone(),
+                    scratch: self.workspace.join("process"),
+                };
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|error| error.to_string())?
+                    .block_on(adapter.call(request.clone()))
             })
             .map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
         if std::fs::read(source)? != before {
@@ -144,7 +149,7 @@ impl Native {
         }
         self.calls.fetch_add(1, Ordering::SeqCst);
         println!("original/native preview request {} completed", index + 1);
-        py.import("json")?
+        crate::source_oracle_runtime::host_import(py, "json")?
             .call_method1("loads", (result.to_string(),))
     }
 }
@@ -288,7 +293,8 @@ pub(super) fn run<'py>(
     ] {
         if result.getattr(field)?.len()? != 0 {
             return Err(PyValueError::new_err(format!(
-                "original preview reported {field}; retained"
+                "original preview reported {field}: {}; retained",
+                crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
             )));
         }
     }

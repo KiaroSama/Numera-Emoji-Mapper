@@ -224,12 +224,12 @@ impl Main {
                 "original local ingest left temporary files",
             ));
         }
-        self.observations
-            .bind(py)
-            .append(py.import("json")?.call_method1(
+        self.observations.bind(py).append(
+            crate::source_oracle_runtime::host_import(py, "json")?.call_method1(
                 "loads",
                 (json!({"code":code,"stdout":stdout,"items":rows}).to_string(),),
-            )?)?;
+            )?,
+        )?;
         Ok(code)
     }
 }
@@ -538,7 +538,8 @@ fn execute(
     ] {
         if result.getattr(field)?.len()? != 0 {
             return Err(PyRuntimeError::new_err(format!(
-                "original local ingest reported {field}"
+                "original local ingest reported {field}: {}",
+                crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
             )));
         }
     }

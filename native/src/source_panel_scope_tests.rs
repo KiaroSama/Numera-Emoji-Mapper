@@ -325,7 +325,8 @@ pub(crate) fn run<'py>(
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyValueError::new_err(format!(
-                    "original ConnectionsAreReused.{method} reported {field}; retained"
+                    "original ConnectionsAreReused.{method} reported {field}: {}; retained",
+                    crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                 )));
             }
         }

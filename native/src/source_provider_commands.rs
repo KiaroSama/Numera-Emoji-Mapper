@@ -5,6 +5,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[pyclass]
@@ -26,7 +27,32 @@ impl EnvironmentLoad {
 struct PrivatePatch {
     http: Py<PyAny>,
     environment: Py<PyAny>,
-    calls: AtomicUsize,
+    calls: Arc<AtomicUsize>,
+}
+#[pyclass]
+struct ObjectPatch {
+    http: Py<PyAny>,
+    object: Py<PyAny>,
+    calls: Arc<AtomicUsize>,
+}
+#[pymethods]
+impl ObjectPatch {
+    #[pyo3(signature = (target, attribute, *args, **kwargs))]
+    fn __call__<'py>(
+        &self,
+        py: Python<'py>,
+        target: &Bound<'py, PyAny>,
+        attribute: &str,
+        args: &Bound<'py, PyTuple>,
+        kwargs: Option<&Bound<'py, PyDict>>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        if target.is(self.http.bind(py)) && attribute == "get" {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+        }
+        let mut values = vec![target.clone(), attribute.into_pyobject(py)?.into_any()];
+        values.extend(args.iter());
+        self.object.bind(py).call(PyTuple::new(py, values)?, kwargs)
+    }
 }
 #[pymethods]
 impl PrivatePatch {
@@ -50,20 +76,30 @@ impl PrivatePatch {
         ];
         values.extend(args.iter());
         let values = PyTuple::new(py, values)?;
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .getattr("object")?
             .call(values, kwargs)
     }
     #[getter]
     fn object<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        py.import("unittest.mock")?
+        let object = crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
-            .getattr("object")
+            .getattr("object")?;
+        Ok(Py::new(
+            py,
+            ObjectPatch {
+                http: self.http.clone_ref(py),
+                object: object.unbind(),
+                calls: self.calls.clone(),
+            },
+        )?
+        .into_bound(py)
+        .into_any())
     }
     #[getter]
     fn multiple<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .getattr("multiple")
     }
@@ -259,7 +295,7 @@ pub(super) fn augment<'py>(
             http: http.clone().unbind(),
             environment: crate::source_config_oracle::private_environment_patch(py, &environment)?
                 .unbind(),
-            calls: AtomicUsize::new(0),
+            calls: Arc::new(AtomicUsize::new(0)),
         },
     )?;
     let private_mock = ns.call0()?;

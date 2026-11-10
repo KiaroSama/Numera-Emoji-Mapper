@@ -46,7 +46,7 @@ impl FixedClock {
     fn now<'py>(py: Python<'py>, tz: Option<&Bound<'py, PyAny>>) -> PyResult<Bound<'py, PyAny>> {
         let options = PyDict::new(py);
         options.set_item("tzinfo", tz)?;
-        py.import("datetime")?
+        crate::source_oracle_runtime::host_import(py, "datetime")?
             .getattr("datetime")?
             .call((2026, 10, 7), Some(&options))
     }

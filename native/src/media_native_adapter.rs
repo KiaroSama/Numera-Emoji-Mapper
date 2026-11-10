@@ -236,6 +236,43 @@ fn finalize(
 }
 
 impl NativeMediaAdapter {
+    /// Locate the native companion for both CLI commands and library callers.
+    /// Installed hosts use the package runtime; Cargo-built hosts use the
+    /// adjacent executable so they never invoke a Python application bridge.
+    pub fn for_project(root: &Path, scratch: PathBuf) -> Result<Self, String> {
+        let current = std::env::current_exe().map_err(|error| error.to_string())?;
+        let name = if cfg!(windows) {
+            "numera-emoji.exe"
+        } else {
+            "numera-emoji"
+        };
+        let executable = if current.file_name().is_some_and(|file| file == name) {
+            current
+        } else {
+            let directory = current
+                .parent()
+                .ok_or("native host has no executable directory")?;
+            let directory = if directory.file_name().is_some_and(|name| name == "deps") {
+                directory
+                    .parent()
+                    .ok_or("native host has no companion directory")?
+            } else {
+                directory
+            };
+            let companion = directory.join(name);
+            if companion.is_file() {
+                companion
+            } else {
+                root.join("native/runtime").join(name)
+            }
+        };
+        Ok(Self {
+            executable,
+            root: root.into(),
+            scratch,
+        })
+    }
+
     pub async fn call(&self, request: Value) -> Result<Value, String> {
         self.call_with_budget(request, Duration::from_secs(320), Duration::from_secs(60))
             .await
@@ -373,6 +410,11 @@ impl NativeMediaAdapter {
                 command.env(key, value);
             }
         }
+        if root.join(".venv/pyvenv.cfg").is_file() {
+            // A parent PYTHONHOME would override the worker's package-local
+            // program name and silently import codecs from a different runtime.
+            command.env_remove("PYTHONHOME");
+        }
         command
             .env("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1")
             .env("PYTHONUTF8", "1")
@@ -460,6 +502,22 @@ impl crate::media_adapter::MediaCodec for NativeMediaAdapter {
 
     async fn call(&self, request: Value) -> Result<Value, String> {
         NativeMediaAdapter::call(self, request).await
+    }
+
+    async fn publication_usable<'a>(
+        &'a self,
+        source: &'a Path,
+        format: &'a str,
+    ) -> Result<bool, String> {
+        if format != "static" {
+            // Video blankness admission already owns its Rust/FFmpeg capture;
+            // it needs no extra codec envelope or application scratch directory.
+            return crate::publication_media::usable(&self.root, source, format).await;
+        }
+        self.call(json!({"operation":"publication_usable","source":source,"format":format}))
+            .await?
+            .as_bool()
+            .ok_or_else(|| "invalid publication media admission result".into())
     }
 }
 

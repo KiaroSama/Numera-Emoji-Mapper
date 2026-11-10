@@ -5,7 +5,7 @@ use crate::{
     collection_names,
     config::Config,
     logging::RunLog,
-    media_adapter::MediaAdapter,
+    media_native_adapter::NativeMediaAdapter,
     publication::Publisher,
     publish_collection::{self, Options},
     reconcile, resume,
@@ -13,7 +13,7 @@ use crate::{
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn take(args: &[String], i: &mut usize) -> Result<String, String> {
     *i += 1;
@@ -239,21 +239,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             (user_id, log),
         );
     }
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    let media = MediaAdapter {
-        python,
-        root: config.root.clone(),
-        scratch: data.join("tmp/native-codec"),
-    };
+    let media = NativeMediaAdapter::for_project(&config.root, data.join("tmp/native-codec"))?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

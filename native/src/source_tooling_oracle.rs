@@ -8,6 +8,14 @@ use std::collections::BTreeSet;
 use std::path::{Component, Path};
 
 const BASELINE: &str = "1a36a968b006236bd0665a1da65c541938c06061";
+
+pub(crate) fn assertion_detail(result: &Bound<'_, PyAny>, field: &str) -> PyResult<String> {
+    let detail = result.getattr(field)?.repr()?.to_string();
+    Ok(crate::logging::redact(&detail, &[])
+        .chars()
+        .take(8192)
+        .collect())
+}
 const IDENTITIES: [(&str, &str); 2] = [
     (
         "scripts/local_environment.py",

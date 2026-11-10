@@ -110,8 +110,7 @@ impl Temporary {
         let options = PyDict::new(py);
         options.set_item("dir", &dir)?;
         options.set_item("prefix", prefix)?;
-        let name: String = py
-            .import("tempfile")?
+        let name: String = crate::source_oracle_runtime::host_import(py, "tempfile")?
             .call_method("mkdtemp", (), Some(&options))?
             .extract()?;
         let path = crate::tooling_environment::physical_root(Path::new(&name))
@@ -126,7 +125,7 @@ impl Temporary {
             .map_err(|_| PyValueError::new_err("package temporary accounting poisoned"))?
             .push(path);
         // The original with-body still runs; deletion waits until every observation passes.
-        py.import("contextlib")?
+        crate::source_oracle_runtime::host_import(py, "contextlib")?
             .call_method1("nullcontext", (name,))
     }
 }

@@ -140,13 +140,13 @@ impl Patch {
             return Err(PyValueError::new_err("unexpected original coin CLI patch"));
         }
         self.calls.fetch_add(1, Ordering::Relaxed);
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .call_method1("object", (self.http.bind(py), "get", replacement))
     }
     #[getter]
     fn object<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .getattr("object")
     }
@@ -334,7 +334,8 @@ fn execute(py: Python<'_>, root: &Path, sources: &[&Source]) -> PyResult<Value> 
         ] {
             if result.getattr(field)?.len()? != 0 {
                 return Err(PyValueError::new_err(format!(
-                    "original coin CLI {method} reported {field}"
+                    "original coin CLI {method} reported {field}: {}",
+                    crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                 )));
             }
         }

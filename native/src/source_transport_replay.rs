@@ -16,15 +16,14 @@ struct Patch {
 impl Patch {
     #[getter]
     fn object<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .getattr("object")
     }
     fn __call__<'py>(&self, py: Python<'py>, target: &str) -> PyResult<Bound<'py, PyAny>> {
         if target == "sys.stdout" {
             self.stdout_calls.fetch_add(1, Ordering::Relaxed);
-            return py
-                .import("unittest.mock")?
+            return crate::source_oracle_runtime::host_import(py, "unittest.mock")?
                 .getattr("patch")?
                 .call1((target,));
         }
@@ -37,9 +36,11 @@ impl Patch {
         let values = PyDict::new(py);
         values.set_item(
             "print",
-            py.import("unittest.mock")?.getattr("Mock")?.call0()?,
+            crate::source_oracle_runtime::host_import(py, "unittest.mock")?
+                .getattr("Mock")?
+                .call0()?,
         )?;
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .call_method1("dict", (self.builtins.bind(py), values))
     }
@@ -300,7 +301,8 @@ pub(super) fn run(
             ] {
                 if result.getattr(field)?.len()? != 0 {
                     return Err(PyValueError::new_err(format!(
-                        "original transport {class}.{method} reported {field}; retained"
+                        "original transport {class}.{method} reported {field}: {}; retained",
+                        crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                     )));
                 }
             }

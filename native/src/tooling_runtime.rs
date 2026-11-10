@@ -135,6 +135,18 @@ fn initialize(selected: &Selection) -> Result<(), String> {
     Ok(())
 }
 
+/// Configure the codec worker with its package environment before any Python
+/// attachment. Source checkouts without a venv use their selected build runtime.
+///
+/// # Safety
+/// Call only in a fresh, single-threaded process before Python is initialized.
+pub unsafe fn initialize_codec(root: &Path) -> Result<(), String> {
+    if root.join(".venv/pyvenv.cfg").is_file() {
+        initialize(&selection(root)?)?;
+    }
+    Ok(())
+}
+
 fn observe(selected: &Selection, codecs: bool) -> Result<Value, String> {
     Python::attach(|py| -> Result<Value, String> {
         let inspect = || -> PyResult<Value> {

@@ -29,8 +29,13 @@ impl Imports {
                 return Ok(self.0.bind(py).clone());
             }
             if name == "unittest" && from == ["mock"] {
-                let module = py.import("types")?.getattr("SimpleNamespace")?.call0()?;
-                module.setattr("mock", py.import("unittest.mock")?)?;
+                let module = crate::source_oracle_runtime::host_import(py, "types")?
+                    .getattr("SimpleNamespace")?
+                    .call0()?;
+                module.setattr(
+                    "mock",
+                    crate::source_oracle_runtime::host_import(py, "unittest.mock")?,
+                )?;
                 return Ok(module);
             }
         }

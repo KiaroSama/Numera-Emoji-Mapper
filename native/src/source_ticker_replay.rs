@@ -16,7 +16,7 @@ struct Patch {
 impl Patch {
     #[getter]
     fn object<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .getattr("object")
     }
@@ -43,7 +43,7 @@ impl Patch {
             ));
         }
         self.calls.fetch_add(1, Ordering::Relaxed);
-        py.import("unittest.mock")?
+        crate::source_oracle_runtime::host_import(py, "unittest.mock")?
             .getattr("patch")?
             .call_method1("dict", (self.environment.bind(py), values))
     }
@@ -347,7 +347,8 @@ pub(super) fn run(
                 ] {
                     if result.getattr(field)?.len()? != 0 {
                         return Err(PyValueError::new_err(format!(
-                            "original ticker {name}.{method} reported {field}; retained"
+                            "original ticker {name}.{method} reported {field}: {}; retained",
+                            crate::source_tooling_oracle::assertion_detail(result.as_any(), field)?
                         )));
                     }
                 }

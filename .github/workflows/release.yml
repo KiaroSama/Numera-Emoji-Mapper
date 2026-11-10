@@ -15,7 +15,7 @@ concurrency:
 jobs:
   package:
     name: Package ${{ matrix.platform }}
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -108,8 +108,13 @@ jobs:
             "PATH=$env:PATH" >> $env:GITHUB_ENV
           }
           if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) { throw 'FFmpeg and FFprobe are required' }
+      - name: Bootstrap Rust build driver
+        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-build
       - name: Build matching extension and executable on hosted runner
-        run: python scripts/build_native.py
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then builder=native/target/debug/numera-build.exe; else builder=native/target/debug/numera-build; fi
+          "$builder"
       - name: Download binary-only dependencies for offline installation
         run: |
           python -m pip download --only-binary=:all: -r requirements.txt -r requirements-coins.txt --dest native/target/dependency-wheels
@@ -119,7 +124,7 @@ jobs:
           if [[ "$RUNNER_OS" == "Windows" ]]; then binary=native/runtime/numera-emoji.exe; else binary=native/runtime/numera-emoji; fi
           wheels=(native/target/wheels/*.whl)
           test "${#wheels[@]}" -eq 1
-          python scripts/package_native.py --executable "$binary" --wheel "${wheels[0]}" --dependencies native/target/dependency-wheels --out dist
+          "$binary" package-native --executable "$binary" --wheel "${wheels[0]}" --dependencies native/target/dependency-wheels --out dist
       - name: Verify project-local temp/cache confinement
         run: python -m unittest tests.test_prebuilt_environment -v
       - name: Build guarded native test runner

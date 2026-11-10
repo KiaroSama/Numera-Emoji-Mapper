@@ -6,6 +6,17 @@ use pyo3::types::{PyCode, PyCodeMethods, PyDict, PyList, PyModule};
 
 const MODULE: &str = "pinned_source_oracle";
 
+/// Rust-side fixture ports import through importlib, outside an original
+/// function's deliberately restricted __import__ facade. Cache the importer
+/// before calling original code so a callback cannot recursively import itself.
+pub(crate) fn host_import<'py>(py: Python<'py>, name: &str) -> PyResult<Bound<'py, PyModule>> {
+    static IMPORTER: pyo3::sync::PyOnceLock<Py<PyAny>> = pyo3::sync::PyOnceLock::new();
+    let importer = IMPORTER.get_or_try_init(py, || -> PyResult<_> {
+        Ok(py.import("importlib")?.getattr("import_module")?.unbind())
+    })?;
+    Ok(importer.bind(py).call1((name,))?.cast_into::<PyModule>()?)
+}
+
 pub(crate) struct ModuleRegistration<'py> {
     modules: Bound<'py, PyDict>,
     previous: Option<Bound<'py, PyAny>>,

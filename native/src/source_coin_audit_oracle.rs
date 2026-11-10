@@ -212,7 +212,7 @@ impl Io {
         self.cache.clone_ref(py)
     }
     fn save(&self, py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<()> {
-        let json = py.import("json")?;
+        let json = crate::source_oracle_runtime::host_import(py, "json")?;
         let snapshot = json.call_method1("loads", (json.call_method1("dumps", (value,))?,))?;
         self.writes.bind(py).append(snapshot)
     }
@@ -230,7 +230,7 @@ impl Io {
         }
         let state = PyDict::new(py);
         state.set_item("sets", rows)?;
-        py.import("json")?
+        crate::source_oracle_runtime::host_import(py, "json")?
             .call_method1("dumps", (state,))?
             .extract()
     }
