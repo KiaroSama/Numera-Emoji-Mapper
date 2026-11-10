@@ -158,10 +158,9 @@ fn select(
                 .parent()
                 .ok_or_else(|| fail("package path has no parent"))?,
         )? == root.join("native")
+            && selected.replace(package).is_some()
         {
-            if selected.replace(package).is_some() {
-                return Err(fail("multiple metadata packages bind native manifest"));
-            }
+            return Err(fail("multiple metadata packages bind native manifest"));
         }
     }
     let package = selected.ok_or_else(|| fail("metadata has no owning native package"))?;

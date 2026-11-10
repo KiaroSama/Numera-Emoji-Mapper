@@ -8,8 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-#[path = "retained_cli.rs"]
-mod retained_cli;
+use crate::retained_cli;
 
 pub const UTC: &str = "2026-10-07 00:00:00 UTC";
 pub fn name(index: usize) -> String {

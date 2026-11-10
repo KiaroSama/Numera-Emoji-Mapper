@@ -7,8 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-#[path = "retained_cli.rs"]
-mod retained_cli;
+use crate::retained_cli;
 
 const UTC: &str = "2026-10-07 00:00:00 UTC";
 const NAMES: [&str; 3] = [
@@ -395,7 +394,7 @@ pub fn run() {
             );
             assert_eq!(std::fs::read(&state_path).unwrap(), state_bytes);
             assert_eq!(std::fs::read(&journal_path).unwrap(), journal_bytes);
-            let mut catalog = Catalog::open(&data.join("catalog.db"), UTC, &root.0).unwrap();
+            let catalog = Catalog::open(&data.join("catalog.db"), UTC, &root.0).unwrap();
             assert_eq!(catalog.all(None).unwrap(), rows);
             drop(catalog);
             assert_eq!(std::fs::read(&plan_path).unwrap(), plan_bytes);
@@ -427,7 +426,7 @@ pub fn run() {
             assert_eq!(std::fs::read(&state_path).unwrap(), state_bytes);
             assert!(!journal_path.exists());
             assert!(!data.join("tmp/native-codec").exists());
-            let mut cat = Catalog::open(&data.join("catalog.db"), UTC, &root.0).unwrap();
+            let cat = Catalog::open(&data.join("catalog.db"), UTC, &root.0).unwrap();
             assert_eq!(cat.all(None).unwrap(), rows);
             drop(cat);
         } else if variant.ends_with("flood") {

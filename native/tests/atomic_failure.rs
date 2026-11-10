@@ -94,7 +94,7 @@ fn original_basic_json_writes_leave_only_the_target_and_replace_its_contents() {
             .unwrap()
             .map(|entry| entry.unwrap().path())
             .collect::<Vec<_>>();
-        assert_eq!(members, [path.clone()]);
+        assert_eq!(members.as_slice(), std::slice::from_ref(&path));
     }
     root.clean().unwrap();
 }

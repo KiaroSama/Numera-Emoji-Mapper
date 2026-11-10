@@ -225,12 +225,12 @@ pub(crate) async fn capture_retained(
     root: &Path,
     argv: &[OsString],
     environment: &BTreeMap<String, String>,
-    stdout: &Path,
-    stderr: &Path,
+    outputs: (&Path, &Path),
     wall: Duration,
     idle: Duration,
     log: &RunLog,
 ) -> Result<Completed, String> {
+    let (stdout, stderr) = outputs;
     #[cfg(not(any(windows, target_os = "linux")))]
     {
         let _ = (root, argv, environment, stdout, stderr, wall, idle, log);

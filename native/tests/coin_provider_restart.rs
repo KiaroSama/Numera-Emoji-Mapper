@@ -273,7 +273,7 @@ fn interrupted_provider_recovers_original_art_map_and_tally_without_mutation() {
             .unwrap()
             .map(|e| e.unwrap().path())
             .collect::<Vec<_>>();
-        assert_eq!(directories, [old_directory.clone()]);
+        assert_eq!(directories.as_slice(), std::slice::from_ref(&old_directory));
         assert_eq!(
             std::fs::read_dir(&old_directory).unwrap().count(),
             usize::from(matches!(scenario, "unknown" | "not-landed"))

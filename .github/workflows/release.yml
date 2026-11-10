@@ -1,6 +1,8 @@
 name: Prebuilt packages
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
 
 permissions:

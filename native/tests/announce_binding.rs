@@ -152,7 +152,7 @@ fn child(role: &str) -> PyResult<()> {
                 for message in ["HTTP 503", "outcome unknown"] {
                     let error = invoke("", "cards", false, 30).unwrap_err();
                     assert!(
-                        error.get_type(py).is(&py.get_type::<PyRuntimeError>()),
+                        error.get_type(py).is(py.get_type::<PyRuntimeError>()),
                         "{error}"
                     );
                     assert!(
@@ -483,10 +483,10 @@ impl Server {
 }
 impl Drop for Server {
     fn drop(&mut self) {
-        if self.thread.is_some() {
-            if let Err(error) = self.finish() {
-                eprintln!("Announcement fixture cleanup: {error}");
-            }
+        if self.thread.is_some()
+            && let Err(error) = self.finish()
+        {
+            eprintln!("Announcement fixture cleanup: {error}");
         }
     }
 }

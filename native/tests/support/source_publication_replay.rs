@@ -1,6 +1,6 @@
 //! Original publisher assertions share the existing admitted corpus and historical process owner.
 use _native::{source_git_inventory::Source, source_publication_tests as oracle};
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::path::Path;
 
 pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Source]) {

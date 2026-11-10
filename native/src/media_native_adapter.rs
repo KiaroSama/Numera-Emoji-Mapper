@@ -8,6 +8,11 @@ use std::time::Duration;
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
 const ENVELOPE_LIMIT: usize = 65536;
+type CapturedResponse = (
+    Value,
+    Option<(crate::codec_video_encode::Staged, PathBuf)>,
+    Vec<u8>,
+);
 
 pub struct NativeMediaAdapter {
     pub executable: PathBuf,
@@ -381,14 +386,7 @@ impl NativeMediaAdapter {
         // cancellation/unwind drops this earlier workspace only after the owner.
         workspace.diagnostics_root = Some(root.clone());
         let mut owner = crate::process_owner::OwnedProcess::spawn_session(&mut command, ownership)?;
-        let result: Result<
-            (
-                Value,
-                Option<(crate::codec_video_encode::Staged, PathBuf)>,
-                Vec<u8>,
-            ),
-            String,
-        > = async {
+        let result: Result<CapturedResponse, String> = async {
             let status = owner.wait(wall, idle).await?;
             // Keep envelope/output files outside owner/ so containment stops before reading them.
             owner.finish()?;

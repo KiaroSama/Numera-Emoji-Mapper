@@ -64,7 +64,7 @@ pub fn run(config: &Config, command: &str, args: &[String], log: &RunLog) -> Res
         args,
         log,
         |path| crate::locks::Lease::acquire(path, &crate::logging::utc()),
-        |path, value| crate::atomic::write_json(path, value),
+        crate::atomic::write_json,
     )
 }
 

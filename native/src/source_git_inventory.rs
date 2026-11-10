@@ -361,118 +361,6 @@ fn parse_blobs(
     Ok(sources)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::BTreeSet;
-
-    const OID: &str = "1111111111111111111111111111111111111111";
-
-    #[test]
-    fn tree_admission_requires_exact_regular_unique_terminated_selection() {
-        let record = |mode: &str, kind: &str, oid: &str, path: &str| {
-            format!("{mode} {kind} {oid}\t{path}\0").into_bytes()
-        };
-        let valid = record("100644", "blob", OID, "tests/a.py");
-        let selected = BTreeSet::from(["tests/a.py"]);
-        assert_eq!(
-            tree_sources(&valid, Some(&selected)).unwrap(),
-            BTreeMap::from([("tests/a.py".to_owned(), OID.to_owned())])
-        );
-        let executable = record("100755", "blob", OID, "tests/a.py");
-        assert!(tree_sources(&executable, Some(&selected)).is_ok());
-        let other = record("100644", "blob", OID, "README.md");
-        assert_eq!(
-            tree_sources(&[valid.clone(), other.clone()].concat(), None)
-                .unwrap()
-                .len(),
-            1
-        );
-        let missing = BTreeSet::from(["tests/a.py", "tests/b.py"]);
-        assert!(tree_sources(&valid, Some(&missing)).is_err());
-        for invalid in [
-            Vec::new(),
-            vec![0],
-            valid[..valid.len() - 1].to_vec(),
-            [valid.clone(), vec![0]].concat(),
-            [valid.clone(), valid.clone()].concat(),
-            [valid.clone(), other].concat(),
-            record("100644", "blob", OID, "tests/b.py"),
-            record("120000", "blob", OID, "tests/a.py"),
-            record("040000", "tree", OID, "tests/a.py"),
-            record("100644", "commit", OID, "tests/a.py"),
-            record("100644", "blob", &"A".repeat(40), "tests/a.py"),
-            record("100644", "blob", "123", "tests/a.py"),
-            b"bad record\0".to_vec(),
-            vec![0xff, 0],
-        ] {
-            assert!(
-                tree_sources(&invalid, Some(&selected)).is_err(),
-                "{invalid:?}"
-            );
-        }
-        for path in [
-            "../a.py",
-            "/a.py",
-            "tests/a\n.py",
-            "tests/a\t.py",
-            "tests\\a.py",
-        ] {
-            assert!(
-                tree_sources(&record("100644", "blob", OID, path), None).is_err(),
-                "{path:?}"
-            );
-        }
-    }
-
-    #[test]
-    fn blob_batch_preserves_exact_bytes_and_refuses_missing_mismatched_or_partial_records() {
-        let files = || BTreeMap::from([("tests/a.py".to_owned(), OID.to_owned())]);
-        let response = |oid: &str, kind: &str, size: &str, bytes: &[u8]| {
-            [format!("{oid} {kind} {size}\n").as_bytes(), bytes, b"\n"].concat()
-        };
-        let content = b"a\r\n";
-        let valid = response(OID, "blob", "3", content);
-        let sources = parse_blobs(OID, files(), &valid).unwrap();
-        assert_eq!(sources.len(), 1);
-        assert_eq!(sources[0].path, "tests/a.py");
-        assert_eq!(sources[0].baseline_revision, OID);
-        assert_eq!(sources[0].text.as_bytes(), content);
-        assert_eq!(sources[0].sha256, crate::codec_raster::digest_hex(content));
-        assert_eq!(
-            parse_blobs(OID, files(), &response(OID, "blob", "0", b"")).unwrap()[0].text,
-            ""
-        );
-        let repeated = BTreeMap::from([
-            ("tests/a.py".to_owned(), OID.to_owned()),
-            ("tests/b.py".to_owned(), OID.to_owned()),
-        ]);
-        assert_eq!(
-            parse_blobs(OID, repeated, &[valid.clone(), valid.clone()].concat())
-                .unwrap()
-                .len(),
-            2
-        );
-        for invalid in [
-            Vec::new(),
-            format!("{OID} missing\n").into_bytes(),
-            response(&"2".repeat(40), "blob", "3", content),
-            response(OID, "tree", "3", content),
-            response(OID, "blob", "invalid", content),
-            response(OID, "blob", "-1", content),
-            response(OID, "blob", &(SOURCE_LIMIT + 1).to_string(), b""),
-            response(OID, "blob", "4", content),
-            response(OID, "blob", "2", content),
-            response(OID, "blob", "1", &[0xff]),
-            valid[..valid.len() - 1].to_vec(),
-            [valid.clone(), b"trailing".to_vec()].concat(),
-            [vec![b'x'; 257], b"\n".to_vec()].concat(),
-        ] {
-            assert!(parse_blobs(OID, files(), &invalid).is_err(), "{invalid:?}");
-        }
-    }
-}
-
 pub fn inventory(sources: &[Source]) -> Result<Value, String> {
     let baseline = sources
         .first()
@@ -599,4 +487,116 @@ pub fn verify(sources: &[Source], inventory: &Value) -> Result<(), String> {
         return Err("pinned source inventory has omitted, extra or changed source files".into());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    const OID: &str = "1111111111111111111111111111111111111111";
+
+    #[test]
+    fn tree_admission_requires_exact_regular_unique_terminated_selection() {
+        let record = |mode: &str, kind: &str, oid: &str, path: &str| {
+            format!("{mode} {kind} {oid}\t{path}\0").into_bytes()
+        };
+        let valid = record("100644", "blob", OID, "tests/a.py");
+        let selected = BTreeSet::from(["tests/a.py"]);
+        assert_eq!(
+            tree_sources(&valid, Some(&selected)).unwrap(),
+            BTreeMap::from([("tests/a.py".to_owned(), OID.to_owned())])
+        );
+        let executable = record("100755", "blob", OID, "tests/a.py");
+        assert!(tree_sources(&executable, Some(&selected)).is_ok());
+        let other = record("100644", "blob", OID, "README.md");
+        assert_eq!(
+            tree_sources(&[valid.clone(), other.clone()].concat(), None)
+                .unwrap()
+                .len(),
+            1
+        );
+        let missing = BTreeSet::from(["tests/a.py", "tests/b.py"]);
+        assert!(tree_sources(&valid, Some(&missing)).is_err());
+        for invalid in [
+            Vec::new(),
+            vec![0],
+            valid[..valid.len() - 1].to_vec(),
+            [valid.clone(), vec![0]].concat(),
+            [valid.clone(), valid.clone()].concat(),
+            [valid.clone(), other].concat(),
+            record("100644", "blob", OID, "tests/b.py"),
+            record("120000", "blob", OID, "tests/a.py"),
+            record("040000", "tree", OID, "tests/a.py"),
+            record("100644", "commit", OID, "tests/a.py"),
+            record("100644", "blob", &"A".repeat(40), "tests/a.py"),
+            record("100644", "blob", "123", "tests/a.py"),
+            b"bad record\0".to_vec(),
+            vec![0xff, 0],
+        ] {
+            assert!(
+                tree_sources(&invalid, Some(&selected)).is_err(),
+                "{invalid:?}"
+            );
+        }
+        for path in [
+            "../a.py",
+            "/a.py",
+            "tests/a\n.py",
+            "tests/a\t.py",
+            "tests\\a.py",
+        ] {
+            assert!(
+                tree_sources(&record("100644", "blob", OID, path), None).is_err(),
+                "{path:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn blob_batch_preserves_exact_bytes_and_refuses_missing_mismatched_or_partial_records() {
+        let files = || BTreeMap::from([("tests/a.py".to_owned(), OID.to_owned())]);
+        let response = |oid: &str, kind: &str, size: &str, bytes: &[u8]| {
+            [format!("{oid} {kind} {size}\n").as_bytes(), bytes, b"\n"].concat()
+        };
+        let content = b"a\r\n";
+        let valid = response(OID, "blob", "3", content);
+        let sources = parse_blobs(OID, files(), &valid).unwrap();
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].path, "tests/a.py");
+        assert_eq!(sources[0].baseline_revision, OID);
+        assert_eq!(sources[0].text.as_bytes(), content);
+        assert_eq!(sources[0].sha256, crate::codec_raster::digest_hex(content));
+        assert_eq!(
+            parse_blobs(OID, files(), &response(OID, "blob", "0", b"")).unwrap()[0].text,
+            ""
+        );
+        let repeated = BTreeMap::from([
+            ("tests/a.py".to_owned(), OID.to_owned()),
+            ("tests/b.py".to_owned(), OID.to_owned()),
+        ]);
+        assert_eq!(
+            parse_blobs(OID, repeated, &[valid.clone(), valid.clone()].concat())
+                .unwrap()
+                .len(),
+            2
+        );
+        for invalid in [
+            Vec::new(),
+            format!("{OID} missing\n").into_bytes(),
+            response(&"2".repeat(40), "blob", "3", content),
+            response(OID, "tree", "3", content),
+            response(OID, "blob", "invalid", content),
+            response(OID, "blob", "-1", content),
+            response(OID, "blob", &(SOURCE_LIMIT + 1).to_string(), b""),
+            response(OID, "blob", "4", content),
+            response(OID, "blob", "2", content),
+            response(OID, "blob", "1", &[0xff]),
+            valid[..valid.len() - 1].to_vec(),
+            [valid.clone(), b"trailing".to_vec()].concat(),
+            [vec![b'x'; 257], b"\n".to_vec()].concat(),
+        ] {
+            assert!(parse_blobs(OID, files(), &invalid).is_err(), "{invalid:?}");
+        }
+    }
 }

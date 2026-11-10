@@ -60,10 +60,8 @@ fn real_operator_map_keeps_unreviewed_shared_groups_below_the_original_limit() {
         &selected,
         "real coin directory cannot follow links",
     )
-    .ok()
     .expect("real coin directory admission failed");
     let directory = _native::tooling_environment::physical_root(&selected)
-        .ok()
         .expect("real coin directory is unavailable");
     assert!(
         directory.starts_with(&project),
@@ -72,7 +70,6 @@ fn real_operator_map_keeps_unreviewed_shared_groups_below_the_original_limit() {
     let read = |name: &str| {
         let path = directory.join(name);
         _native::tooling_environment::reject_links(&path, "real coin input cannot follow links")
-            .ok()
             .expect("real coin input admission failed");
         let file = std::fs::File::open(&path).expect("real coin input is unavailable");
         let metadata = file.metadata().expect("cannot inspect real coin input");
@@ -93,9 +90,8 @@ fn real_operator_map_keeps_unreviewed_shared_groups_below_the_original_limit() {
     let mapping_bytes = read("ticker_to_id.json");
     let groups_bytes = read("shared_logo_groups.json");
     // Never use Debug assertions or raw parse errors on private tickers and IDs.
-    let mapping: Value = serde_json::from_slice(&mapping_bytes)
-        .ok()
-        .expect("real coin map is not valid JSON");
+    let mapping: Value =
+        serde_json::from_slice(&mapping_bytes).expect("real coin map is not valid JSON");
     let mapping = mapping
         .as_object()
         .expect("real coin map must be an object");
@@ -106,9 +102,8 @@ fn real_operator_map_keeps_unreviewed_shared_groups_below_the_original_limit() {
             .all(|value| value.as_str().is_some_and(|id| !id.is_empty())),
         "real coin map IDs must be nonempty strings"
     );
-    let groups: Value = serde_json::from_slice(&groups_bytes)
-        .ok()
-        .expect("real shared groups are not valid JSON");
+    let groups: Value =
+        serde_json::from_slice(&groups_bytes).expect("real shared groups are not valid JSON");
     let groups = groups
         .as_object()
         .expect("real shared groups must be an object");
@@ -124,7 +119,6 @@ fn real_operator_map_keeps_unreviewed_shared_groups_below_the_original_limit() {
         }
     }
     let observed = _native::coin_plan::replay(mapping, &serde_json::Map::new(), &approved)
-        .ok()
         .expect("real coin shared-group analysis failed");
     let bad = observed["unapproved"]
         .as_object()

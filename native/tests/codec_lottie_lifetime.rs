@@ -16,7 +16,8 @@ impl State {
 struct Factory(Arc<State>);
 #[pymethods]
 impl Factory {
-    fn from_data(&self, py: Python<'_>, text: &str) -> PyResult<Py<Animation>> {
+    #[pyo3(name = "from_data")]
+    fn create_from_data(&self, py: Python<'_>, text: &str) -> PyResult<Py<Animation>> {
         assert!(text.contains("layers"));
         self.0.event("create");
         Py::new(py, Animation(self.0.clone()))

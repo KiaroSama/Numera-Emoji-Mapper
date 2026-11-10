@@ -35,7 +35,8 @@ impl HashFault {
         Err(fault(self.kind, "controlled static hash"))
     }
 }
-struct Restore<'py>(Vec<(Bound<'py, PyAny>, &'static str, Option<Bound<'py, PyAny>>)>);
+type SavedAttribute<'py> = (Bound<'py, PyAny>, &'static str, Option<Bound<'py, PyAny>>);
+struct Restore<'py>(Vec<SavedAttribute<'py>>);
 impl Drop for Restore<'_> {
     fn drop(&mut self) {
         for (target, name, value) in self.0.iter().rev() {

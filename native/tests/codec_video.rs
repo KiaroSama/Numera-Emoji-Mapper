@@ -281,7 +281,7 @@ fn original_publication_blank_rule_checks_every_complete_frame_without_validatin
     let _guard = PIL_METHODS.lock().unwrap();
     let frame = |count: usize, alpha: u8| {
         let mut bytes = vec![0; 64 * 64 * 4];
-        for pixel in bytes.chunks_exact_mut(4).take(count) {
+        for pixel in bytes.as_chunks_mut::<4>().0.iter_mut().take(count) {
             pixel[3] = alpha;
         }
         bytes

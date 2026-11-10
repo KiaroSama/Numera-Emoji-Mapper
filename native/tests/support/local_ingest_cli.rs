@@ -7,8 +7,7 @@ use std::path::{Path, PathBuf};
 
 #[path = "local_ingest_native.rs"]
 mod local_ingest_native;
-#[path = "retained_cli.rs"]
-mod retained_cli;
+use crate::retained_cli;
 
 struct Scratch(PathBuf);
 impl Drop for Scratch {

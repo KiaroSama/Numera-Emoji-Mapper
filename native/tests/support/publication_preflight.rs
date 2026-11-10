@@ -36,7 +36,7 @@ pub(super) fn run(
         };
         let mut item_keys = keys.to_vec();
         item_keys.push("s:preflight-skipped".into());
-        for index in 0..total {
+        for (index, key) in item_keys.iter().enumerate().take(total) {
             let file = if (variant == "missing" && index == 0)
                 || (variant == "categories" && index == 3)
             {
@@ -46,7 +46,7 @@ pub(super) fn run(
             };
             assert!(
                 cat.insert(
-                    &json!({"content_key":item_keys[index],"fmt":"static",
+                    &json!({"content_key":key,"fmt":"static",
                 "file_path":file,"emojis":["😀"],"keywords":["public | artwork"]}),
                     UTC
                 )
@@ -206,10 +206,10 @@ pub(super) fn run(
             cat.dispatch(json!({"operation":"published_sets"})).unwrap(),
             publications
         );
-        for index in 0..total {
+        for (index, key) in item_keys.iter().enumerate().take(total) {
             assert_eq!(
                 cat.dispatch(json!({"operation":"custom_id","base":"fixture",
-                "content_key":item_keys[index]}))
+                "content_key":key}))
                     .unwrap(),
                 if variant == "filtered" && index == 2 {
                     json!("3")

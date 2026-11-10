@@ -2,7 +2,7 @@
 use _native::{
     catalog::Catalog, logging::RunLog, panel_session, tooling_environment, tooling_process,
 };
-use serde_json::{Value, json};
+use serde_json::json;
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::Path;

@@ -11,7 +11,8 @@ pub(crate) fn decimal(raw: &str) -> Option<String> {
     for ch in body.chars() {
         if ch == '_' && previous_digit {
             previous_digit = false;
-        } else if let Some(digit) = crate::emoji_ids::decimal_value(ch) {
+        } else {
+            let digit = crate::emoji_ids::decimal_value(ch)?;
             previous_digit = true;
             count += 1;
             // The pinned CPython 3.11 oracle uses its default decimal digit limit.
@@ -21,8 +22,6 @@ pub(crate) fn decimal(raw: &str) -> Option<String> {
             if !normalized.is_empty() || digit != 0 {
                 normalized.push(char::from(b'0' + digit as u8));
             }
-        } else {
-            return None;
         }
     }
     if !previous_digit {
@@ -58,31 +57,29 @@ pub fn resolve(
     };
     let value = normalized.parse::<i64>();
     // A valid decimal outside i64 still compares exactly against an i64 bound.
-    if let Some(minimum) = minimum {
-        if value
+    if let Some(minimum) = minimum
+        && value
             .as_ref()
             .map_or(normalized.starts_with('-'), |n| *n < minimum)
-        {
-            return (
-                minimum.to_string(),
-                Some(format!(
-                    "WARNING: {key}={normalized} below {minimum}; using {minimum}.\n"
-                )),
-            );
-        }
+    {
+        return (
+            minimum.to_string(),
+            Some(format!(
+                "WARNING: {key}={normalized} below {minimum}; using {minimum}.\n"
+            )),
+        );
     }
-    if let Some(maximum) = maximum {
-        if value
+    if let Some(maximum) = maximum
+        && value
             .as_ref()
             .map_or(!normalized.starts_with('-'), |n| *n > maximum)
-        {
-            return (
-                maximum.to_string(),
-                Some(format!(
-                    "WARNING: {key}={normalized} above {maximum}; using {maximum}.\n"
-                )),
-            );
-        }
+    {
+        return (
+            maximum.to_string(),
+            Some(format!(
+                "WARNING: {key}={normalized} above {maximum}; using {maximum}.\n"
+            )),
+        );
     }
     (normalized, None)
 }

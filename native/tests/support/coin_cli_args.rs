@@ -5,8 +5,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-#[path = "bot_api.rs"]
-mod bot_api;
+use crate::bot_api;
 
 pub fn check(root: &Path, executable: &Path, runtime: &tokio::runtime::Runtime) {
     let data = root.join("argument-admission");

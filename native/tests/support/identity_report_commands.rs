@@ -6,10 +6,7 @@ use std::ffi::OsString;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-#[path = "retained_cli.rs"]
-mod retained_cli;
-#[path = "tooling_fixture.rs"]
-mod tooling_fixture;
+use crate::{retained_cli, tooling_fixture};
 
 pub fn check(project: &Path, runtime: &tokio::runtime::Runtime, original: &Value) {
     assert_eq!(

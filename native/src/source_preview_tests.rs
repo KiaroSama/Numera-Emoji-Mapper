@@ -98,7 +98,7 @@ impl Native {
         }
         let format = ["static", "animated", "video"][index / 4];
         let (size, fps) = [(104, 15), (72, 10)][index % 4 / 2];
-        let still = index % 2 == 0;
+        let still = index.is_multiple_of(2);
         let output = PathBuf::from(
             request["output"]
                 .as_str()

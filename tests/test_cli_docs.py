@@ -54,6 +54,7 @@ def sections() -> dict[str, tuple[list[Path], str]]:
         if "`coins/`" in title:
             files = [ROOT / "coins" / f"{m}.py"
                      for m in sorted(set(re.findall(r"coins[\\/](\w+)\.py", body)))]
+            files += sorted(set(re.findall(r"numera-emoji (coin-[a-z-]+)", body)))
         out[num] = (files, body)
     return out
 

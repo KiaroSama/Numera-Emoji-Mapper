@@ -170,10 +170,10 @@ impl<'py> Browser<'py> {
             options.set_item("headless", true)?;
             options.set_item("timeout", 30_000)?;
             options.set_item("downloads_path", root.join("browser-downloads"))?;
-            if let Ok(channel) = std::env::var("NUMERA_EMOJI_MAPPER_BROWSER_CHANNEL") {
-                if !channel.is_empty() {
-                    options.set_item("channel", channel)?;
-                }
+            if let Ok(channel) = std::env::var("NUMERA_EMOJI_MAPPER_BROWSER_CHANNEL")
+                && !channel.is_empty()
+            {
+                options.set_item("channel", channel)?;
             }
             playwright
                 .getattr("chromium")?
@@ -560,14 +560,12 @@ impl<'py> Page<'py> {
         if self.closed {
             return Ok(());
         }
-        if failed {
-            if let Some(page) = &self.page {
-                let options = PyDict::new(self.context.py());
-                options.set_item("path", self.evidence.with_extension("png"))?;
-                options.set_item("timeout", 2000)?;
-                if let Err(error) = page.call_method("screenshot", (), Some(&options)) {
-                    eprintln!("ERROR: browser failure screenshot unavailable: {error}");
-                }
+        if failed && let Some(page) = &self.page {
+            let options = PyDict::new(self.context.py());
+            options.set_item("path", self.evidence.with_extension("png"))?;
+            options.set_item("timeout", 2000)?;
+            if let Err(error) = page.call_method("screenshot", (), Some(&options)) {
+                eprintln!("ERROR: browser failure screenshot unavailable: {error}");
             }
         }
         let options = PyDict::new(self.context.py());

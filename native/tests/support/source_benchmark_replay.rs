@@ -24,7 +24,7 @@ fn comparison(case: &Value) {
     assert_eq!(events.len(), if mismatch { 6 } else { 30 });
     let mut source_samples = [0.0; 5];
     let mut native_samples = [0.0; 5];
-    for (index, pair) in events.chunks_exact(6).enumerate() {
+    for (index, pair) in events.as_chunks::<6>().0.iter().enumerate() {
         assert_eq!(
             pair.iter()
                 .map(|event| event[0].as_str().unwrap())

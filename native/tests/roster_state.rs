@@ -45,7 +45,9 @@ fn original_live_ids_brand_exemption_and_retired_history_follow_content_not_slot
     assert_eq!(row["source_emoji_ids"], json!(["999"]));
     assert_eq!(row["previous_custom_emoji_ids"], json!(["111"]));
     assert_eq!(row["custom_emoji_id"], "222");
-    let prior = json!(_native::roster_provenance::history(&[second.clone()]));
+    let prior = json!(_native::roster_provenance::history(std::slice::from_ref(
+        &second
+    )));
     let third = pack("333", &prior);
     assert_eq!(
         third["emoji"][1]["previous_custom_emoji_ids"],
@@ -53,7 +55,9 @@ fn original_live_ids_brand_exemption_and_retired_history_follow_content_not_slot
     );
     let repeated = pack(
         "333",
-        &json!(_native::roster_provenance::history(&[third.clone()])),
+        &json!(_native::roster_provenance::history(std::slice::from_ref(
+            &third
+        ))),
     );
     assert_eq!(
         repeated["emoji"][1]["previous_custom_emoji_ids"],

@@ -155,7 +155,9 @@ fn original_static_white_repaint_preserves_the_exact_silhouette() {
         before.iter().skip(3).step_by(4).collect::<Vec<_>>()
     );
     let visible = after
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|pixel| pixel[3] > 0)
         .collect::<Vec<_>>();
     assert_eq!(visible.len(), 900);

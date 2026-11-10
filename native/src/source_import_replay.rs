@@ -434,43 +434,6 @@ pub(crate) async fn observe_mode(
     result
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn successful_codec_log_retention_preserves_bytes_and_refuses_unknown_members() {
-        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-        let parent = tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
-        let root = parent.join(format!("import log retention {}", std::process::id()));
-        std::fs::create_dir(&root).unwrap();
-        std::fs::create_dir(root.join("logs")).unwrap();
-        let input = root.join("codec-logs");
-        std::fs::create_dir(&input).unwrap();
-        let name = "media_bridge_2026-11-02_00-00-00_UTC_abcdef12.log";
-        std::fs::write(input.join(name), b"synthetic owned codec diagnostic").unwrap();
-        let unknown = input.join("caller.txt");
-        std::fs::write(&unknown, b"caller bytes").unwrap();
-        assert!(retain_codec_logs(&root, &input).is_err());
-        assert_eq!(std::fs::read(&unknown).unwrap(), b"caller bytes");
-        assert_eq!(std::fs::read_dir(root.join("logs")).unwrap().count(), 0);
-        std::fs::remove_file(unknown).unwrap();
-        retain_codec_logs(&root, &input).unwrap();
-        assert!(!input.exists());
-        let destinations = std::fs::read_dir(root.join("logs"))
-            .unwrap()
-            .map(|entry| entry.unwrap().path())
-            .collect::<Vec<_>>();
-        assert_eq!(destinations.len(), 1);
-        assert_eq!(
-            std::fs::read(destinations[0].join("codec-logs").join(name)).unwrap(),
-            b"synthetic owned codec diagnostic"
-        );
-        // No child or real operational log belongs to this policy fixture.
-        std::fs::remove_dir_all(root).unwrap();
-    }
-}
-
 fn retain_codec_logs(root: &Path, directory: &Path) -> Result<(), String> {
     tooling_environment::reject_links(directory, "private codec logs cannot follow links")?;
     let mut count = 0;
@@ -550,7 +513,7 @@ async fn observe_interpreter(
         &environment,
         Duration::from_secs(5),
         Duration::from_secs(3),
-        &log,
+        log,
     )
     .await?;
     if version.code != 0 || version.stdout.trim() != "Python 3.11.9" || !version.stderr.is_empty() {
@@ -599,7 +562,7 @@ async fn observe_interpreter(
         &environment,
         Duration::from_secs(wall),
         Duration::from_secs(idle),
-        &log,
+        log,
     )
     .await?;
     #[cfg(not(any(windows, target_os = "linux")))]
@@ -670,4 +633,41 @@ async fn observe_interpreter(
         "tests_run":cases.len(),"cases":cases,"source_files":277,"errors":0,"failures":0,
         "skipped":0,"ports":"unchanged original whole modules and selected assertions; external selected CPython, shared descendant owner; not native-only package acceptance"}),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn successful_codec_log_retention_preserves_bytes_and_refuses_unknown_members() {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let parent = tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
+        let root = parent.join(format!("import log retention {}", std::process::id()));
+        std::fs::create_dir(&root).unwrap();
+        std::fs::create_dir(root.join("logs")).unwrap();
+        let input = root.join("codec-logs");
+        std::fs::create_dir(&input).unwrap();
+        let name = "media_bridge_2026-11-02_00-00-00_UTC_abcdef12.log";
+        std::fs::write(input.join(name), b"synthetic owned codec diagnostic").unwrap();
+        let unknown = input.join("caller.txt");
+        std::fs::write(&unknown, b"caller bytes").unwrap();
+        assert!(retain_codec_logs(&root, &input).is_err());
+        assert_eq!(std::fs::read(&unknown).unwrap(), b"caller bytes");
+        assert_eq!(std::fs::read_dir(root.join("logs")).unwrap().count(), 0);
+        std::fs::remove_file(unknown).unwrap();
+        retain_codec_logs(&root, &input).unwrap();
+        assert!(!input.exists());
+        let destinations = std::fs::read_dir(root.join("logs"))
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .collect::<Vec<_>>();
+        assert_eq!(destinations.len(), 1);
+        assert_eq!(
+            std::fs::read(destinations[0].join("codec-logs").join(name)).unwrap(),
+            b"synthetic owned codec diagnostic"
+        );
+        // No child or real operational log belongs to this policy fixture.
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }

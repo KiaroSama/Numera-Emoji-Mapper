@@ -325,7 +325,15 @@ pub(crate) fn read_file(
     if identity(&regular(path)?)? != opened_identity || identity(&file)? != opened_identity {
         return Err(refusal("input path changed its opened file identity"));
     }
-    Ok((format!("{:x}", hasher.finalize()), bytes, count))
+    Ok((
+        hasher
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect(),
+        bytes,
+        count,
+    ))
 }
 pub(super) fn sync_existing(path: &Path) -> Result<(), String> {
     crate::tooling_environment::reject_links(path, "sidecar sync cannot follow links")?;

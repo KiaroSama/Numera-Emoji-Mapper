@@ -310,7 +310,7 @@ pub(crate) fn module<'py>(
         for attribute in ["__kwdefaults__", "__annotations__"] {
             rebound.setattr(attribute, original.getattr(attribute)?)?;
         }
-        if !rebound.getattr("__globals__")?.is(&module.dict()) {
+        if !rebound.getattr("__globals__")?.is(module.dict()) {
             return Err(PyValueError::new_err(
                 "archive globals are not patchable module storage",
             ));

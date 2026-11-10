@@ -40,7 +40,7 @@ impl CodecError {
             handled: true,
         }
     }
-    pub(crate) fn escaped(kind: &str, message: impl Into<String>) -> Self {
+    pub fn escaped(kind: &str, message: impl Into<String>) -> Self {
         Self {
             kind: kind.into(),
             message: message.into(),

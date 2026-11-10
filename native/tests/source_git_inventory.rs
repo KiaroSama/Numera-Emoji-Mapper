@@ -2,6 +2,8 @@
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 const BASELINE: &str = "1a36a968b006236bd0665a1da65c541938c06061";
+#[path = "support/retained_cli.rs"]
+mod retained_cli;
 #[path = "support/source_archive_tests_replay.rs"]
 mod source_archive_tests_replay;
 #[path = "support/source_benchmark_replay.rs"]
@@ -78,6 +80,8 @@ mod source_status_replay;
 mod source_sync_order_replay;
 #[path = "support/source_tooling_replay.rs"]
 mod source_tooling_replay;
+#[path = "support/tooling_fixture.rs"]
+mod tooling_fixture;
 
 #[cfg(unix)]
 #[test]

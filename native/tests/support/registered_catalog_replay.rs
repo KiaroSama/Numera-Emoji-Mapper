@@ -44,7 +44,7 @@ fn call(binding: &Bound<'_, PyAny>, mut request: Value) -> PyResult<Value> {
 
 fn runtime_error(py: Python<'_>, error: &PyErr) {
     assert!(
-        error.get_type(py).is(&py.get_type::<PyRuntimeError>()),
+        error.get_type(py).is(py.get_type::<PyRuntimeError>()),
         "expected exact Python RuntimeError, got {error}"
     );
 }

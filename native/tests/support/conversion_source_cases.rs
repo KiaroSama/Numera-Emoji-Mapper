@@ -10,8 +10,7 @@ const OLD: u64 = 1_700_000_000;
 const RED: (u8, u8, u8, u8) = (240, 20, 20, 255);
 const BLUE: (u8, u8, u8, u8) = (20, 20, 240, 255);
 const CLEAR: (u8, u8, u8, u8) = (0, 0, 0, 0);
-#[path = "retained_cli.rs"]
-mod retained_cli;
+use crate::retained_cli;
 
 const EMPTY_SVG: &str =
     "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\"></svg>";

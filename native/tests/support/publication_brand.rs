@@ -68,7 +68,7 @@ fn family(
     for sticker in [&mut first, &mut second] {
         sticker["is_animated"] = json!(animated);
     }
-    let add = |slot| {
+    let add = |slot: usize| {
         let mut reply = mutation(&path, name, &keys[slot], (&bytes[slot], false), false);
         reply.fields.insert(
             "sticker".into(),

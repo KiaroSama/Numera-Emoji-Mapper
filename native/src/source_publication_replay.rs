@@ -419,7 +419,9 @@ pub(super) fn run(
             || result.getattr("testsRun")?.extract::<usize>()? != 84
             || !result.call_method0("wasSuccessful")?.extract::<bool>()?
             || modules.environment.len() != 1
-            || required(&modules.environment, "BRAND_LOGO_BOTS")?.extract::<String>()? != ""
+            || !required(&modules.environment, "BRAND_LOGO_BOTS")?
+                .extract::<String>()?
+                .is_empty()
             || modules
                 .build
                 .getattr("__file__")?
