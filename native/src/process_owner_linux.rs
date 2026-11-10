@@ -1,6 +1,6 @@
 //! Linux group/session accounting; SID membership alone is never a PID identity.
 use super::*;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Read, Seek};
 use std::os::unix::process::CommandExt;
 
 unsafe extern "C" {
@@ -25,7 +25,7 @@ pub struct Tree {
     descendants: Option<super::descendants::Descendants>,
 }
 
-fn process_stat(result: std::io::Result<String>) -> Result<Option<String>, String> {
+fn process_stat<T>(result: std::io::Result<T>) -> Result<Option<T>, String> {
     match result {
         Ok(value) => Ok(Some(value)),
         // proc_single_show returns ESRCH when the task exits after enumeration.
@@ -41,13 +41,63 @@ fn process_stat(result: std::io::Result<String>) -> Result<Option<String>, Strin
 }
 
 pub(super) fn member(pid: i32) -> Result<Option<Member>, String> {
-    let Some(stat) = process_stat(std::fs::read_to_string(format!("/proc/{pid}/stat")))? else {
+    let Some(mut file) = process_stat(std::fs::File::open(format!("/proc/{pid}/stat")))? else {
         return Ok(None);
     };
-    parse_member(pid, &stat).map(Some)
+    // Keep this proc inode pinned: reopening the numeric PID could inspect a replacement task.
+    member_from_stat(pid, || process_stat(read_stat(&mut file)))
 }
 
-fn parse_member(pid: i32, stat: &str) -> Result<Member, String> {
+fn read_stat(file: &mut std::fs::File) -> std::io::Result<String> {
+    file.rewind()?;
+    let mut stat = String::new();
+    file.read_to_string(&mut stat)?;
+    Ok(stat)
+}
+
+#[derive(Debug)]
+enum MemberParseError {
+    Invalid(&'static str),
+    Reaped,
+}
+impl From<&'static str> for MemberParseError {
+    fn from(error: &'static str) -> Self {
+        Self::Invalid(error)
+    }
+}
+impl MemberParseError {
+    fn message(self) -> &'static str {
+        match self {
+            Self::Invalid(error) => error,
+            Self::Reaped => "invalid Linux process group/session identity",
+        }
+    }
+}
+
+fn member_from_stat(
+    pid: i32,
+    mut read: impl FnMut() -> Result<Option<String>, String>,
+) -> Result<Option<Member>, String> {
+    let Some(stat) = read()? else {
+        return Ok(None);
+    };
+    match parse_member(pid, &stat) {
+        Ok(value) => Ok(Some(value)),
+        Err(MemberParseError::Reaped) => {
+            // do_task_stat can retain ppid0/PGID-1/SID-1 after lock_task_sighand
+            // loses a concurrent reap. This is unknown membership until the same
+            // open stat inode independently confirms ENOENT/ESRCH on one reread.
+            if read()?.is_none() {
+                Ok(None)
+            } else {
+                Err(MemberParseError::Reaped.message().into())
+            }
+        }
+        Err(error) => Err(error.message().into()),
+    }
+}
+
+fn parse_member(pid: i32, stat: &str) -> Result<Member, MemberParseError> {
     let (head, fields) = stat
         .rsplit_once(") ")
         .ok_or("malformed Linux process accounting")?;
@@ -92,6 +142,10 @@ fn parse_member(pid: i32, stat: &str) -> Result<Member, String> {
         live: !matches!(fields[0], "Z" | "X" | "x"),
         zombie: fields[0] == "Z",
     };
+    // Classify only the exact sentinel after validating PID, state, birth and CPU fields.
+    if value.parent == 0 && value.group == -1 && value.session == -1 {
+        return Err(MemberParseError::Reaped);
+    }
     // Kernel threads legitimately report PGID/SID0; they cannot match our positive owner ID.
     if value.parent < 0 || value.group < 0 || value.session < 0 {
         return Err("invalid Linux process group/session identity".into());
@@ -282,7 +336,101 @@ pub fn spawn(command: &mut Command, scope: Scope) -> Result<(Child, Tree), Strin
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_member, process_stat};
+    use super::{member_from_stat, parse_member, process_stat, read_stat};
+
+    #[test]
+    fn reaped_task_sentinel_requires_absence_from_the_same_stat_reader() {
+        // do_task_stat leaves ppid0/PGID-1/SID-1 when lock_task_sighand loses a reap race.
+        let detached = "10 (exiting) X 0 -1 -1 0 0 0 0 0 0 0 7 8 0 0 0 0 0 0 123";
+        for errno in [2, 3] {
+            let mut reads = 0;
+            let observed = member_from_stat(10, || {
+                reads += 1;
+                if reads == 1 {
+                    process_stat(Ok(detached.to_owned()))
+                } else {
+                    process_stat(Err(std::io::Error::from_raw_os_error(errno)))
+                }
+            });
+            assert!(observed.unwrap().is_none());
+            assert_eq!(reads, 2, "missing identity needs independent absence proof");
+        }
+    }
+
+    #[test]
+    fn unresolved_or_replaced_stat_identity_is_never_admitted_as_absence() {
+        let detached = "10 (exiting) X 0 -1 -1 0 0 0 0 0 0 0 7 8 0 0 0 0 0 0 123";
+        for next in [
+            detached,
+            "10 (replacement) S 1 10 10 0 0 0 0 0 0 0 7 8 0 0 0 0 0 0 456",
+        ] {
+            let mut reads = 0;
+            assert!(
+                member_from_stat(10, || {
+                    reads += 1;
+                    Ok(Some(if reads == 1 { detached } else { next }.to_owned()))
+                })
+                .is_err()
+            );
+            assert_eq!(reads, 2, "a readable identity cannot prove disappearance");
+        }
+        for errno in [5, 13] {
+            let mut reads = 0;
+            assert!(
+                member_from_stat(10, || {
+                    reads += 1;
+                    if reads == 1 {
+                        Ok(Some(detached.to_owned()))
+                    } else {
+                        process_stat(Err(std::io::Error::from_raw_os_error(errno)))
+                    }
+                })
+                .is_err()
+            );
+            assert_eq!(reads, 2, "verification errors must not be suppressed");
+        }
+    }
+
+    #[test]
+    fn malformed_identity_never_uses_a_later_missing_record_as_absence_proof() {
+        for stat in [
+            "10 (exiting) X 0 -1 -2 0 0 0 0 0 0 0 7 8 0 0 0 0 0 0 123",
+            "10 (exiting) X -1 -1 -1 0 0 0 0 0 0 0 7 8 0 0 0 0 0 0 123",
+            "10 (exiting) X 0 -1 -1 0 0 0 0 0 0 0 bad 8 0 0 0 0 0 0 123",
+            "11 (exiting) X 0 -1 -1 0 0 0 0 0 0 0 7 8 0 0 0 0 0 0 123",
+        ] {
+            let mut reads = 0;
+            assert!(
+                member_from_stat(10, || {
+                    reads += 1;
+                    Ok((reads == 1).then(|| stat.to_owned()))
+                })
+                .is_err()
+            );
+            assert_eq!(reads, 1, "malformed accounting must fail immediately");
+        }
+    }
+
+    #[test]
+    fn pinned_stat_inode_reports_absence_after_each_rapid_exit_is_reaped() {
+        for _ in 0..128 {
+            let mut child = std::process::Command::new("/bin/true").spawn().unwrap();
+            let pid = child.id() as i32;
+            let mut file = std::fs::File::open(format!("/proc/{pid}/stat")).unwrap();
+            let before = member_from_stat(pid, || process_stat(read_stat(&mut file)))
+                .unwrap()
+                .unwrap();
+            assert_eq!(before.pid, pid);
+            assert!(before.group > 0 && before.session > 0);
+            assert!(child.wait().unwrap().success());
+            assert!(
+                member_from_stat(pid, || process_stat(read_stat(&mut file)))
+                    .unwrap()
+                    .is_none(),
+                "the same proc inode must report absence after reaping"
+            );
+        }
+    }
 
     #[test]
     fn malformed_accounting_is_unknown_not_quiescence() {
@@ -333,17 +481,17 @@ mod tests {
     #[test]
     fn disappeared_task_is_not_an_accounting_failure_but_permission_and_io_are() {
         assert_eq!(
-            process_stat(Ok("record".into())).unwrap(),
+            process_stat::<String>(Ok("record".into())).unwrap(),
             Some("record".into())
         );
         for errno in [2, 3] {
             assert_eq!(
-                process_stat(Err(std::io::Error::from_raw_os_error(errno))).unwrap(),
+                process_stat::<String>(Err(std::io::Error::from_raw_os_error(errno))).unwrap(),
                 None
             );
         }
         for errno in [5, 13] {
-            assert!(process_stat(Err(std::io::Error::from_raw_os_error(errno))).is_err());
+            assert!(process_stat::<String>(Err(std::io::Error::from_raw_os_error(errno))).is_err());
         }
     }
 }

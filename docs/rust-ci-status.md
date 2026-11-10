@@ -12,8 +12,8 @@ JavaScript. The requested Rust scope is the local core and contributor tools.
 - The original Rust tests from the starting migration branch remain, with
   additional tests for bounded source-constant parsing, demand-driven preview work,
   source-bound mock assertion accounting and repeatable wheel builds.
-- The existing Python regression suite still discovers 1,422 tests; browser and
-  Windows cases retain their separate CI jobs.
+- Original Python regression cases are retained, with an added journal-integrity
+  regression; browser and Windows cases retain their separate CI jobs.
 - All 119 Worker tests remain. Dependency updates repair the `undici` advisory
   without changing the Worker's implementation language.
 - Native acceptance uses unfiltered Cargo discovery. Compilation-only jobs are
