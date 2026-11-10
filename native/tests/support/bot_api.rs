@@ -445,9 +445,24 @@ impl Server {
         if self.threads.load(Ordering::SeqCst) != 0 {
             return Err("bot fixture runtime threads remain".into());
         }
-        match std::net::TcpStream::connect_timeout(&self.address, Duration::from_millis(250)) {
+        // Windows can report a closed loopback port only after its SYN retry
+        // interval. A timeout is still not proof of closure: require refusal.
+        let refusal_deadline = if cfg!(windows) {
+            Duration::from_secs(3)
+        } else {
+            Duration::from_millis(250)
+        };
+        match std::net::TcpStream::connect_timeout(&self.address, refusal_deadline) {
             Err(error) if error.kind() == std::io::ErrorKind::ConnectionRefused => Ok(()),
-            _ => Err("bot fixture listener shutdown unverified".into()),
+            Err(error) => Err(format!(
+                "bot fixture listener shutdown unverified: {error} ({:?}, OS {:?})",
+                error.kind(),
+                error.raw_os_error()
+            )),
+            Ok(stream) => {
+                drop(stream);
+                Err("bot fixture listener still accepts connections after shutdown".into())
+            }
         }
     }
     pub fn finish(&mut self) -> Result<Vec<Request>, String> {

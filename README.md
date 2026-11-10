@@ -151,13 +151,35 @@ build caches are removed only after the current installation/rollback gates pass
 
 ### Developer source build (not required for package users)
 
-Only contributors building modified Rust source need Rust 1.99+, a platform
-linker (MSVC C++ tools on Windows). Bootstrap the Rust build driver with
-`cargo build --manifest-path native/Cargo.toml --locked --bin numera-build`, then
-run `native/target/debug/numera-build` (`.exe` on Windows) to build and install
-the locked wheel and executable. Maturin 1.15.0 must be installed in `.venv`;
-`--install-maturin` explicitly permits installing it. Public ready
-packages are built and tested on hosted CI, not on the user's workstation.
+Contributors need Rust 1.99+, Python 3.11 with its shared runtime/development
+libraries, and a platform linker (MSVC C++ tools on Windows). Create the selected
+project environment explicitly; the Rust builder never creates one automatically.
+
+**Windows:**
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-coins.txt maturin==1.15.0
+$env:PYO3_PYTHON = (Resolve-Path '.venv\Scripts\python.exe').Path
+cargo build --manifest-path native/Cargo.toml --locked --bin numera-build
+.\native\target\debug\numera-build.exe
+```
+
+**Linux / macOS:**
+
+```bash
+python3.11 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt -r requirements-coins.txt maturin==1.15.0 'patchelf; sys_platform == "linux"'
+PYO3_PYTHON="$PWD/.venv/bin/python" cargo build --manifest-path native/Cargo.toml --locked --bin numera-build
+native/target/debug/numera-build
+```
+
+Linux wheel repair also needs `patchelf` on PATH; it can be installed into the
+selected environment with `.venv/bin/python -m pip install patchelf`. The builder
+adds that environment's scripts directory to its child PATH. It compiles both
+locked artifacts before installing the wheel and executable. `--install-maturin`
+explicitly permits installing Maturin 1.15.0 when it is missing. Public ready
+packages are built and tested on hosted CI; package users do not compile Rust.
 
 `.env` keys (see `.env.example`):
 

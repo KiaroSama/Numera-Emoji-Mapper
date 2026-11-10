@@ -1,9 +1,10 @@
 # Native codec compatibility contracts
 
-The first-party migration is still in progress. The contracts and assertions below
-are authored and source-reviewed, not new passing runtime or platform guarantees.
-The production media adapter and retained original sources remain unchanged.
-See [native test migration evidence](native-test-migration.md) for the wider scope.
+These historical contracts describe the codec compatibility assertions and
+independent source fixtures. The public CLI and panel now select the Rust media
+worker; third-party Pillow, SVG and Lottie codecs still use CPython. Current
+runtime and platform results are tracked in [CI acceptance](rust-ci-status.md),
+and historical source mappings in [native test migration evidence](native-test-migration.md).
 
 ## Gallery reads and preview lifetimes
 
