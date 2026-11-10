@@ -92,8 +92,7 @@ class _LockHarness(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
         self.lock = self.dir / "pack_family.lock"
-        self.journal = self.dir / "journal.jsonl"
-        self.journal.write_text("", encoding="utf-8")
+        self.journals: list[Path] = []
         self.child = self.dir / "child.py"
         self.child.write_text(CHILD, encoding="utf-8")
         self.procs: list[subprocess.Popen] = []
@@ -110,14 +109,20 @@ class _LockHarness(unittest.TestCase):
         self.tmp.cleanup()
 
     def spawn(self, *, crash=False, start_at=0.0, hold=HOLD):
+        # Windows CRT append seeks before writing, so independent writers can
+        # overwrite an owner's enter event. Give each child its own journal;
+        # recording must never serialize contenders or hide overlapping owners.
+        journal = self.dir / f"journal-{len(self.procs)}.jsonl"
+        journal.write_text("", encoding="utf-8")
         env = dict(os.environ, REPO=str(ROOT), LOCK=str(self.lock),
-                   JOURNAL=str(self.journal), HOLD=str(hold),
+                   JOURNAL=str(journal), HOLD=str(hold),
                    START_AT=str(start_at), PYTHONUTF8="1")
         if crash:
             env["CRASH"] = "1"
         p = subprocess.Popen([PY, str(self.child)], env=env,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              text=True)
+        self.journals.append(journal)
         self.procs.append(p)
         return p
 
@@ -128,8 +133,9 @@ class _LockHarness(unittest.TestCase):
 
     def intervals(self):
         """[(pid, enter, exit)] for every child that believed it held the lock."""
-        events = [json.loads(line) for line in
-                  self.journal.read_text(encoding="utf-8").splitlines() if line.strip()]
+        events = [json.loads(line) for journal in self.journals
+                  for line in journal.read_text(encoding="utf-8").splitlines()
+                  if line.strip()]
         spans = {}
         for e in events:
             spans.setdefault(e["pid"], {})[e["what"]] = e["t"]
@@ -156,6 +162,22 @@ class _LockHarness(unittest.TestCase):
                         "started": "2020-01-01 00:00:00 UTC"}), encoding="utf-8")
         old = time.time() - 10_000
         os.utime(self.lock, (old, old))
+
+
+class JournalRecordsAreComplete(_LockHarness):
+    def test_separate_child_journals_keep_overlapping_owners_visible(self):
+        self.journals = [self.dir / "journal-0.jsonl", self.dir / "journal-1.jsonl"]
+        for journal, events in zip(self.journals, [
+                [{"what": "enter", "pid": 4104, "t": 10.0},
+                 {"what": "exit", "pid": 4104, "t": 11.0}],
+                [{"what": "enter", "pid": 5312, "t": 10.5},
+                 {"what": "exit", "pid": 5312, "t": 11.5}]], strict=True):
+            journal.write_text("".join(json.dumps(event) + "\n" for event in events),
+                               encoding="utf-8")
+        spans = self.intervals()
+        self.assertEqual(spans, [(4104, 10.0, 11.0), (5312, 10.5, 11.5)])
+        with self.assertRaisesRegex(AssertionError, "both held the lock"):
+            self.assertNeverTwoOwners(spans)
 
 
 class OnlyOneProcessHoldsTheLock(_LockHarness):

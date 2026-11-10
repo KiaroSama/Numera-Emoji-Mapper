@@ -136,10 +136,16 @@ fn actual_metadata_package_and_explicit_target_selection_preserve_cargo_identity
         (
             "tooling_test_cohort",
             "native/tests/tooling_test_cohort.rs",
-            "8d2989b99aadb93f7663fe89825441f7d7633b7ac9c16e339e8b8ae3cc0df4ff",
+            "26019ab49ab33348875191ddfe233e4e2b127e4c4781ad0670e05712682887c7",
             cfg!(all(windows, target_arch = "x86_64", target_env = "msvc")),
         ),
     ] {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        assert_eq!(
+            crate::codec_raster::digest_hex(&std::fs::read(project.join(source)).unwrap()),
+            hash,
+            "platform fixture must match its reviewed source bytes on every host"
+        );
         std::fs::write(
             root.0.join(source),
             b"synthetic source, not an emptiness proof",

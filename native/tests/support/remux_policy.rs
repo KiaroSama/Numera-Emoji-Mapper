@@ -67,7 +67,11 @@ pub fn check(directory: &Path, case: &str, runtime: &tokio::runtime::Runtime) {
         let outcome = runtime.block_on(reencode_typed(&decoder, &source)).unwrap();
         (outcome.rewritten, outcome.warning)
     };
-    assert_eq!(changed, matches!(case, "remux_short" | "remux_nan"));
+    assert_eq!(
+        changed,
+        matches!(case, "remux_short" | "remux_nan"),
+        "{case}: {warning:?}"
+    );
     let expected_warning = match case {
         "remux_source_long" => Some("re-encode of clip.webm would declare 2.500s, over the 3.0s cap (the source under-declares its own length); keeping the original".to_owned()),
         "remux_second_nan" => Some("re-encode of clip.webm would declare nans, over the 3.0s cap (the source under-declares its own length); keeping the original".to_owned()),

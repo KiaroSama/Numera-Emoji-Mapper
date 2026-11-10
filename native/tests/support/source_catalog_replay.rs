@@ -267,6 +267,10 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, sources: &[Source])
         }
     }
     std::fs::create_dir(&workspace).unwrap();
+    // The source worker and registered replay resolve this fixture root before
+    // building inputs. Share that spelling with the core replay: on Windows,
+    // the scratch parent's "logs/tmp" fragment otherwise survives in JSON paths.
+    let workspace = _native::tooling_environment::physical_root(&workspace).unwrap();
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let report = runtime
             .block_on(_native::source_oracle_worker::observe_catalog(

@@ -320,6 +320,9 @@ fn original_call_site_timeouts(root: &Path) {
     )
     .unwrap();
     assert!(root.starts_with(project.join("logs/tmp")));
+    // The tool fixture canonicalizes cwd; use the same Windows verbatim path spelling
+    // for its exact argument and executable-parent assertions.
+    let root = root.canonicalize().unwrap();
     assert_eq!(std::env::var("EMOJI_FFMPEG_TIMEOUT").unwrap(), "1");
     let cohort = std::env::var("NUMERA_CODEC_TIMEOUT_COHORT")
         .unwrap()
