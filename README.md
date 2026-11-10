@@ -90,7 +90,7 @@ process-death scenarios still run inside their original tests.
 - Your numeric Telegram user id (the pack owner) — press **Start** on the bot once
 - Ready packages install the core dependencies offline: Pillow, resvg-py and
   rlottie-python for exact media; requests for retained coin-provider tools.
-  `coins/remap_ids.py` additionally uses NumPy (`requirements-coins.txt`),
+  Coin compatibility/similarity bindings additionally use NumPy (`requirements-coins.txt`),
   unnecessary for ordinary packs. Source developers install these manifests.
 - **ffmpeg + ffprobe** on `PATH` — only required for **video** emoji (`.webm`).
   Install on Windows with `winget install Gyan.FFmpeg`. Static and animated
@@ -320,7 +320,7 @@ its own webhook secret, answering only the ids in `ADMIN_USER_IDS`. It also
 exposes `POST /publish`, so a finished pack is announced **by the bot** in your
 channel rather than by this machine: set `WORKER_PUBLISH_URL` and
 `WORKER_PUBLISH_SECRET` in `.env` and **all three publishers** — `build-pack`,
-`build-collection` and `coins/rebuild_dedup.py` — route their links through
+`build-collection` and `coin-rebuild` — route their links through
 it. Leave either unset and the existing direct path is used, unchanged.
 
 It keeps its own log: a D1 table of warnings, errors and publishes, capped at the
@@ -443,31 +443,27 @@ shared crowds and writes review candidates rather than overwrite an unproven map
 It reads Telegram only; source/platform acceptance and installed activation remain pending.
 The branch also authors `coin-rebuild [all|build|map|links]` with the same options.
 **Default `all` and explicit `build` may delete old packs and upload**; `links`
-resends messages, and `map` only reads Telegram. These latest rebuild paths have
-not yet been compiled/runtime-verified or included in accepted installations.
-Run the retained Python tools as modules from the repository root, e.g.
-`python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
+resends messages, and `map` only reads Telegram. These Rust commands are exercised against synthetic providers and Telegram
+fixtures in CI. Platform/package results are tracked in
+[CI acceptance](docs/rust-ci-status.md); tests do not publish to real accounts.
+Run the installed executable from your package root, for example
+`native/runtime/numera-emoji coin-rebuild map` (`.exe` on Windows):
 
-- `coins/fetch_logos.py` — download coin logos from CoinGecko + write `coins/keywords.csv`
-- `coins/fetch_paprika.py` / `coins/fetch_cmc.py` — fill remaining coins from CoinPaprika / CoinMarketCap.
-  A lookup the provider never answers is *unknown*, not "no match": it is not
-  cached and the run exits 3 so it is retried. `coins.fetch_paprika --retry-unmatched`
-  searches again for coins an older run cached as unmatched. A rejected
-  `CMC_API_KEY` stops `coins.fetch_cmc` with a message naming it.
-- `coins/build_keywords.py` — (re)build `coins/keywords.csv` from logos on disk
-  (it and `fetch_logos.py` share one writer; either exits 3 when a lookup or
-  page was incomplete, keeping names an earlier run found)
-- `coins/rebuild_dedup.py` — duplicate-proof full rebuild + inventory fill
-- `coins/remap_ids.py` — rebuild `ticker_to_id.json` from image content, never positions
-- `coins/enhance_map.py` / `coins/alias_map.py` — point chain-variant tickers at the base coin's id
-- `coins/verify_logos.py` — review logos against official art; fix only the tickers you name
-- `coins/write_manifests.py` — write a per-pack manifest (ticker + emoji id)
-- `coins/check_all_packs.py` — audit every pack for blank/duplicate stickers
-- `coins/run_convert.ps1` / `coins/run_rebuild_loop.ps1` — watchdog drivers for long runs
+- `coin-fetch-logos` — download CoinGecko logos and write `coins/keywords.csv`.
+- `coin-fetch-paprika` / `coin-fetch-cmc` — fill missing logos from the other providers.
+  Unanswered lookups remain unknown and uncached; partial runs exit 3.
+  `coin-fetch-paprika --retry-unmatched` retries older unmatched searches.
+- `coin-build-keywords` — rebuild the CSV while preserving earlier resolved names.
+- `coin-rebuild [all|build|map|links]` — rebuild packs, identifiers and link messages.
+- `coin-remap-ids` — reconstruct `ticker_to_id.json` from image content.
+- `coin-enhance-map` / `coin-alias-map` — preserve chain-variant aliases.
+- `coin-verify-logos` — review official art and repair only explicitly selected tickers.
+- `coin-write-manifests` — write each pack's ticker/emoji-ID manifest.
+- `coin-check-packs` — audit packs for blank and duplicate stickers.
 
-Extra dependency: `coins/remap_ids.py` imports numpy —
-`pip install -r requirements-coins.txt`. Every other coin script runs on the core
-manifest alone.
+Coin compatibility/similarity dependencies are installed from
+`requirements-coins.txt`. The retained Python modules support the original
+regression suite; public coin commands use Rust.
 
 Convert coin logos to 100×100 PNGs (images live in `coins/logos/{svg,png}` →
 `coins/logos/emoji`):
@@ -482,7 +478,7 @@ Then build/rebuild with the coin bot:
 ```powershell
 # build + rebuild the id map + send the links (DESTRUCTIVE: deletes the old packs
 # first). Subcommands: build = upload only, map = rebuild the id map, links = resend.
-.venv\Scripts\python.exe -m coins.rebuild_dedup
+.\native\runtime\numera-emoji.exe coin-rebuild
 ```
 
 ## Project layout
@@ -490,11 +486,11 @@ Then build/rebuild with the coin bot:
 ```
 Numera Emoji Mapper/                  # the whole project
   native/                      # Rust-owned local backend
-    src/                       # SQLite, state, Telegram, CLI, panel, reports, recovery
+    src/                       # core, media worker, CLI, panel, build/install and recovery
     runtime/                   # installed numera-emoji executable, not a build cache
     tests/                     # native contract and platform acceptance
   emojikit/                    # bounded Python compatibility, not CLI applications
-    media_bridge.py            # exact codec/identity IPC boundary
+    media_bridge.py            # retained compatibility IPC for original regressions
     media.py media_lottie.py    # static/video/Lottie decode, convert, validate, preview
     video_decode.py            # decoder selection and frame caching
     identity.py repaint.py     # stable content identity and exact tint operations
@@ -512,7 +508,7 @@ Numera Emoji Mapper/                  # the whole project
   assets/                      # the project's own images + the panel page and its scripts:
                                # panel-grid, -motion, -save, -drag, -actions, -holding, -draft
                                # (.js, in load order) + jsconfig.json/panel-globals.d.ts (tsc)
-  run.ps1                      # launcher (single-pack + collection workflows)
+  run.ps1                      # compatibility launcher; native menu is numera-emoji menu
   scripts/run-actions.ps1      # the launcher's menu actions (dot-sourced by run.ps1)
   scripts/check.ps1            # byte-compile + full unit suite (also used by CI)
   native/runtime/numera-emoji   # own environment -> installed native command
