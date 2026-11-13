@@ -7,6 +7,84 @@ const BUILD_EVENTS: &[&str] = &["pull_request:", "push:", "workflow_dispatch:"];
 const MANUAL_EVENTS: &[&str] = &["workflow_dispatch:"];
 const SECURITY_EVENTS: &[&str] = &["pull_request:", "push:", "schedule:", "workflow_dispatch:"];
 
+#[test]
+fn secret_scan_triage_cannot_hide_future_matches_or_disclose_values() {
+    use pyo3::prelude::*;
+    use pyo3::types::PyModule;
+    use std::ffi::CString;
+
+    let workflow = include_str!("../../.github/workflows/gitleaks.yml");
+    let run = workflow
+        .split_once("      - name: Scan Git history with the verified Gitleaks CLI\n")
+        .unwrap()
+        .1;
+    let script = run
+        .split_once("          python3 -I - <<'PYTHON'\n")
+        .unwrap()
+        .1
+        .split_once("          PYTHON")
+        .unwrap()
+        .0
+        .lines()
+        .map(|line| line.strip_prefix("          ").unwrap_or(line))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let script = CString::new(script).unwrap();
+    Python::initialize();
+    Python::attach(|py| -> PyResult<()> {
+        let module = PyModule::from_code(
+            py,
+            &script,
+            c"gitleaks_workflow.py",
+            c"gitleaks_workflow_test",
+        )?;
+        py.run(
+            c"
+from types import SimpleNamespace
+
+cases = [
+    ('native/src/source_logging_oracle.rs', 227, 'fd9ce1dbc42e35a14879b9c3c2b56fa5b70d933d'),
+    ('native/tests/logging_parity.rs', 26, 'fd9ce1dbc42e35a14879b9c3c2b56fa5b70d933d'),
+    ('tests/fixtures/native/provider-image.json', 5, '7cd8ebecb282361891f9d6aae8303da771c50b80'),
+    ('tests/fixtures/native/provider-policy.json', 4, 'e3cdd76b5830c1b30cfbc790b5d7e133b319114f'),
+]
+findings = [dict(RuleID='generic-api-key', File=path, StartLine=line, Commit=commit,
+                 Secret='NEVER_OUTPUT_VALUE', Match='NEVER_OUTPUT_SNIPPET')
+            for path, line, commit in cases]
+assert partition_findings(findings) == ([], 4)
+for finding in findings:
+    for field, changed in [('RuleID', 'another-rule'), ('File', finding['File'] + '.copy'),
+                           ('StartLine', finding['StartLine'] + 1), ('Commit', 'f' * 40)]:
+        unknown = dict(finding, **{field: changed})
+        assert partition_findings([*findings, unknown]) == ([unknown], 4), field
+    spoofed = dict(finding, Commit='f' * 40,
+                   Fingerprint=f\"{finding['Commit']}:{finding['File']}:generic-api-key:{finding['StartLine']}\")
+    assert partition_findings([spoofed]) == ([spoofed], 0)
+    for field in ('RuleID', 'File', 'StartLine', 'Commit'):
+        incomplete = {key: value for key, value in finding.items() if key != field}
+        assert partition_findings([incomplete]) == ([incomplete], 0)
+assert partition_findings([]) == ([], 0)
+with tempfile.TemporaryDirectory() as directory:
+    summary = Path(directory) / 'summary.md'
+    original_os = os
+    try:
+        os = SimpleNamespace(environ={'GITHUB_STEP_SUMMARY': str(summary)})
+        write_summary([spoofed], 'test scope', 4)
+        output = summary.read_text(encoding='utf-8')
+        assert 'NEVER_OUTPUT_VALUE' not in output
+        assert 'NEVER_OUTPUT_SNIPPET' not in output
+        assert '4' in output and 'reviewed' in output
+        assert '1 potential secrets detected' in output
+    finally:
+        os = original_os
+",
+            Some(&module.dict()),
+            None,
+        )
+    })
+    .unwrap();
+}
+
 fn initiating_events(workflow: &str, expected: &[&str]) -> Result<(), &'static str> {
     let lines = workflow.lines().collect::<Vec<_>>();
     let start = lines
