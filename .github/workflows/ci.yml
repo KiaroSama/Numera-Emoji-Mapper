@@ -419,6 +419,19 @@ jobs:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
         run: logs/checkpoint/test-cargo-driver.exe test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test archive_commands -- --test-threads=1
+      - name: Native Windows successful-command cleanup regression
+        if: ${{ !cancelled() && steps.native-cargo-driver.outcome == 'success' }}
+        env:
+          PYO3_PYTHON: python
+          CARGO_BUILD_JOBS: "2"
+        shell: pwsh
+        run: |
+          # Exercise the real descendant-handle race before compiling the full
+          # acceptance cohort. Its original unfiltered suite still runs below.
+          for ($attempt = 0; $attempt -lt 8; $attempt++) {
+            logs/checkpoint/test-cargo-driver.exe test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test tooling_process -- --test-threads=1
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Native codec lifecycle regressions
         if: ${{ !cancelled() && steps.native-cargo-driver.outcome == 'success' }}
         env:
