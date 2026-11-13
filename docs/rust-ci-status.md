@@ -31,6 +31,10 @@ Concurrency groups separate push, pull-request and manual events so simultaneous
 checks of one commit complete without cancelling each other. Superseded runs of
 the same event and branch still stop.
 
+The Gitleaks workflow inherited from main retains its scheduled and pull-request
+secret scans. Its security event policy is checked separately from automatic
+builds and the manual native checkpoint; the scanner and privacy guards are unchanged.
+
 Native cases run serially because embedded codec patches and descendant custody
 share process state. Tests that exercise concurrent callers and competing
 processes retain their explicit concurrency.
