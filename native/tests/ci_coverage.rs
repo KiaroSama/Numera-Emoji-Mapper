@@ -3,8 +3,11 @@ use _native::source_ci_claims::step_run;
 use std::path::Path;
 
 const FULL_NATIVE: &str = "native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --no-fail-fast -- --test-threads=1";
+const BUILD_EVENTS: &[&str] = &["pull_request:", "push:", "workflow_dispatch:"];
+const MANUAL_EVENTS: &[&str] = &["workflow_dispatch:"];
+const SECURITY_EVENTS: &[&str] = &["pull_request:", "push:", "schedule:", "workflow_dispatch:"];
 
-fn initiating_events(workflow: &str, automatic: bool) -> Result<(), &'static str> {
+fn initiating_events(workflow: &str, expected: &[&str]) -> Result<(), &'static str> {
     let lines = workflow.lines().collect::<Vec<_>>();
     let start = lines
         .iter()
@@ -20,13 +23,8 @@ fn initiating_events(workflow: &str, automatic: bool) -> Result<(), &'static str
         }
     }
     events.sort_unstable();
-    let expected = if automatic {
-        vec!["pull_request:", "push:", "workflow_dispatch:"]
-    } else {
-        vec!["workflow_dispatch:"]
-    };
-    if events != expected {
-        return Err("CI and package builds must run on every push and pull request");
+    if events.as_slice() != expected {
+        return Err("workflow triggers must preserve their build, security or manual policy");
     }
     Ok(())
 }
@@ -64,11 +62,16 @@ fn every_ci_and_package_workflow_requires_push_pull_request_and_manual_dispatch(
             Some("yml" | "yaml")
         ) {
             let text = std::fs::read_to_string(&path).unwrap();
-            let automatic = matches!(
-                path.file_name().and_then(|name| name.to_str()),
-                Some("ci.yml" | "release.yml")
-            );
-            initiating_events(&text, automatic)
+            let name = path.file_name().and_then(|name| name.to_str());
+            let automatic = matches!(name, Some("ci.yml" | "release.yml"));
+            // The inherited security scan also runs on a schedule. Build and
+            // checkpoint workflows retain their existing, stricter event sets.
+            let expected = match name {
+                Some("ci.yml" | "release.yml") => BUILD_EVENTS,
+                Some("gitleaks.yml") => SECURITY_EVENTS,
+                _ => MANUAL_EVENTS,
+            };
+            initiating_events(&text, expected)
                 .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
             if automatic {
                 assert!(
@@ -80,17 +83,27 @@ fn every_ci_and_package_workflow_requires_push_pull_request_and_manual_dispatch(
                     path.display()
                 );
             }
+            if name == Some("gitleaks.yml") {
+                assert!(
+                    text.lines().any(|line| {
+                        line.trim_start().starts_with("group:") && line.contains("github.ref")
+                    }),
+                    "security runs must retain their ref-scoped concurrency group"
+                );
+            }
             count += 1;
         }
     }
     assert!(
-        count >= 3,
+        count >= 4,
         "workflow discovery must not silently match nothing"
     );
     let valid = "on:\n  push:\n  pull_request:\n  workflow_dispatch:\njobs:\n";
-    assert!(initiating_events(valid, true).is_ok());
+    assert!(initiating_events(valid, BUILD_EVENTS).is_ok());
     for event in ["push:", "pull_request:", "workflow_dispatch:"] {
-        assert!(initiating_events(&valid.replace(&format!("  {event}\n"), ""), true).is_err());
+        assert!(
+            initiating_events(&valid.replace(&format!("  {event}\n"), ""), BUILD_EVENTS).is_err()
+        );
     }
     for event in [
         "pull_request_target:",
@@ -99,10 +112,42 @@ fn every_ci_and_package_workflow_requires_push_pull_request_and_manual_dispatch(
         "push:",
     ] {
         assert!(
-            initiating_events(&valid.replace("jobs:", &format!("  {event}\njobs:")), true).is_err()
+            initiating_events(
+                &valid.replace("jobs:", &format!("  {event}\njobs:")),
+                BUILD_EVENTS
+            )
+            .is_err()
         );
     }
-    assert!(initiating_events("on:\n  # workflow_dispatch:\n  push:\njobs:\n", true).is_err());
+    assert!(
+        initiating_events(
+            "on:\n  # workflow_dispatch:\n  push:\njobs:\n",
+            BUILD_EVENTS
+        )
+        .is_err()
+    );
+    let security = valid.replace("jobs:", "  schedule:\n    - cron: '21 4 * * 4'\njobs:");
+    assert!(initiating_events(&security, SECURITY_EVENTS).is_ok());
+    assert!(initiating_events(&security, BUILD_EVENTS).is_err());
+    assert!(initiating_events(valid, SECURITY_EVENTS).is_err());
+    for event in SECURITY_EVENTS {
+        assert!(
+            initiating_events(
+                &security.replace(&format!("  {event}\n"), ""),
+                SECURITY_EVENTS
+            )
+            .is_err()
+        );
+    }
+    for event in ["pull_request_target:", "workflow_run:", "schedule:"] {
+        assert!(
+            initiating_events(
+                &security.replace("jobs:", &format!("  {event}\njobs:")),
+                SECURITY_EVENTS
+            )
+            .is_err()
+        );
+    }
 }
 
 #[test]
