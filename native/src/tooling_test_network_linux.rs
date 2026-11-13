@@ -321,6 +321,13 @@ fn verify_loopback() -> Result<(), String> {
         return Err("private test network must contain only lo; no test started".into());
     }
     struct Addresses(*mut libc::ifaddrs);
+    impl Addresses {
+        fn first(&self) -> Option<&libc::ifaddrs> {
+            // SAFETY: getifaddrs initialized this owned list. Tie its references
+            // to this borrow so the allocation cannot be freed during traversal.
+            unsafe { self.0.as_ref() }
+        }
+    }
     impl Drop for Addresses {
         fn drop(&mut self) {
             if !self.0.is_null() {
@@ -332,14 +339,12 @@ fn verify_loopback() -> Result<(), String> {
     if unsafe { libc::getifaddrs(&mut addresses.0) } != 0 {
         return Err(failed("cannot enumerate private loopback addresses"));
     }
-    let mut item = addresses.0;
+    let mut item = addresses.first();
     let (mut ipv4, mut ipv6) = (false, false);
     for _ in 0..16 {
-        if item.is_null() {
+        let Some(entry) = item else {
             break;
-        }
-        // SAFETY: entries/family-specific sockaddr storage remain owned by the successful libc list.
-        let entry = unsafe { &*item };
+        };
         if entry.ifa_name.is_null()
             || unsafe { CStr::from_ptr(entry.ifa_name) }.to_bytes() != b"lo"
             || entry.ifa_flags & (libc::IFF_UP | libc::IFF_LOOPBACK) as u32
@@ -382,9 +387,11 @@ fn verify_loopback() -> Result<(), String> {
                 }
             }
         }
-        item = entry.ifa_next;
+        // SAFETY: the next entry belongs to the same live libc list; a null
+        // successor becomes None rather than an unchecked raw-pointer cursor.
+        item = unsafe { entry.ifa_next.as_ref() };
     }
-    if !item.is_null() || !ipv4 || !ipv6 {
+    if item.is_some() || !ipv4 || !ipv6 {
         return Err(
             "private test loopback requires complete IPv4 and IPv6; no test started".into(),
         );
