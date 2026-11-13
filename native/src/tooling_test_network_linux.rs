@@ -335,10 +335,13 @@ fn verify_loopback() -> Result<(), String> {
             }
         }
     }
-    let mut addresses = Addresses(std::ptr::null_mut());
-    if unsafe { libc::getifaddrs(&mut addresses.0) } != 0 {
+    let mut initialized = std::mem::MaybeUninit::<*mut libc::ifaddrs>::uninit();
+    // SAFETY: libc writes the list pointer on success; never read its output on
+    // failure. Keep uninitialized output separate from the owning allocation.
+    if unsafe { libc::getifaddrs(initialized.as_mut_ptr()) } != 0 {
         return Err(failed("cannot enumerate private loopback addresses"));
     }
+    let addresses = Addresses(unsafe { initialized.assume_init() });
     let mut item = addresses.first();
     let (mut ipv4, mut ipv6) = (false, false);
     for _ in 0..16 {
