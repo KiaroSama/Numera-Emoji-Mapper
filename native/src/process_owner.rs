@@ -8,6 +8,33 @@ use std::time::{Duration, Instant};
 const CLEANUP: Duration = Duration::from_secs(10);
 const POLL: Duration = Duration::from_millis(100);
 
+#[cfg(any(windows, test))]
+fn job_settled(
+    active: u32,
+    signals: impl IntoIterator<Item = Result<bool, String>>,
+) -> Result<bool, String> {
+    let mut settled = active == 0;
+    // Inspect every handle: an earlier live member must not hide an unknown signal.
+    for signal in signals {
+        settled &= signal?;
+    }
+    Ok(settled)
+}
+
+#[cfg(test)]
+mod job_settlement_tests {
+    use super::job_settled;
+
+    #[test]
+    fn zero_active_count_cannot_certify_a_still_unsignaled_pinned_process() {
+        assert!(!job_settled(0, [Ok(false)]).unwrap());
+        assert!(!job_settled(1, [Ok(true)]).unwrap());
+        assert!(job_settled(0, [Ok(true), Ok(true)]).unwrap());
+        assert!(job_settled(0, []).unwrap());
+        assert!(job_settled(0, [Ok(false), Err("unknown process signal".into())]).is_err());
+    }
+}
+
 pub(crate) enum WaitOutcome {
     Finished(ExitStatus),
     Wall(Duration),
@@ -333,21 +360,30 @@ mod platform {
     use super::*;
     use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
     use std::os::windows::process::CommandExt;
-    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::Foundation::{
+        ERROR_INVALID_PARAMETER, GetLastError, INVALID_HANDLE_VALUE, WAIT_OBJECT_0, WAIT_TIMEOUT,
+    };
     use windows_sys::Win32::System::Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First, Thread32Next,
     };
     use windows_sys::Win32::System::JobObjects::{
-        AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-        JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-        JobObjectBasicAndIoAccountingInformation, JobObjectExtendedLimitInformation,
-        QueryInformationJobObject, SetInformationJobObject, TerminateJobObject,
+        AssignProcessToJobObject, CreateJobObjectW, IsProcessInJob,
+        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION,
+        JOBOBJECT_BASIC_PROCESS_ID_LIST, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+        JobObjectBasicAndIoAccountingInformation, JobObjectBasicProcessIdList,
+        JobObjectExtendedLimitInformation, QueryInformationJobObject, SetInformationJobObject,
+        TerminateJobObject,
     };
     use windows_sys::Win32::System::Threading::{
-        CREATE_NO_WINDOW, CREATE_SUSPENDED, OpenThread, ResumeThread, THREAD_SUSPEND_RESUME,
+        CREATE_NO_WINDOW, CREATE_SUSPENDED, OpenProcess, OpenThread,
+        PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, ResumeThread,
+        THREAD_SUSPEND_RESUME, WaitForSingleObject,
     };
 
-    pub struct Tree(OwnedHandle);
+    pub struct Tree(
+        OwnedHandle,
+        std::sync::Mutex<std::collections::BTreeMap<u32, OwnedHandle>>,
+    );
 
     impl Tree {
         fn new() -> Result<Self, String> {
@@ -357,7 +393,10 @@ mod platform {
                 return Err("cannot create codec process job".into());
             }
             // SAFETY: newly created non-null handle has exactly one owner.
-            let tree = Self(unsafe { OwnedHandle::from_raw_handle(handle) });
+            let tree = Self(
+                unsafe { OwnedHandle::from_raw_handle(handle) },
+                Default::default(),
+            );
             let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
             info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
             // SAFETY: owned handle and initialized correctly sized native structure.
@@ -382,6 +421,7 @@ mod platform {
             {
                 return Err("cannot contain codec child in a process job".into());
             }
+            self.record_members()?;
             // SAFETY: no pointer arguments. Snapshot only enumerates thread identity.
             let raw = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0) };
             if raw == INVALID_HANDLE_VALUE {
@@ -435,6 +475,112 @@ mod platform {
             Ok(info)
         }
 
+        fn signaled(process: &OwnedHandle) -> Result<bool, String> {
+            // SAFETY: the original process object stays pinned by this owned handle.
+            match unsafe { WaitForSingleObject(process.as_raw_handle(), 0) } {
+                WAIT_OBJECT_0 => Ok(true),
+                WAIT_TIMEOUT => Ok(false),
+                _ => Err("cannot verify pinned codec process termination".into()),
+            }
+        }
+
+        fn record_members(&self) -> Result<(), String> {
+            const SLOTS: usize = 8192;
+            // usize storage supplies native alignment for the flexible PID array.
+            let mut storage = vec![0usize; SLOTS + 2];
+            let length = std::mem::size_of_val(storage.as_slice());
+            // SAFETY: initialized, aligned writable storage covers the header and
+            // SLOTS PIDs on both 32-bit and 64-bit Windows.
+            if unsafe {
+                QueryInformationJobObject(
+                    self.0.as_raw_handle(),
+                    JobObjectBasicProcessIdList,
+                    storage.as_mut_ptr().cast(),
+                    length as u32,
+                    std::ptr::null_mut(),
+                )
+            } == 0
+            {
+                return Err("cannot inspect complete codec job member inventory".into());
+            }
+            // SAFETY: successful query initialized the SDK header in aligned storage.
+            let header = unsafe { &*storage.as_ptr().cast::<JOBOBJECT_BASIC_PROCESS_ID_LIST>() };
+            let count = header.NumberOfProcessIdsInList as usize;
+            if count > SLOTS || header.NumberOfAssignedProcesses as usize != count {
+                return Err("codec job member inventory is incomplete or exceeds its bound".into());
+            }
+            // SAFETY: derive from the whole allocation, not the SDK's one-element
+            // placeholder. The checked count fits the allocated native PID array.
+            let members = unsafe {
+                std::slice::from_raw_parts(
+                    storage
+                        .as_ptr()
+                        .cast::<u8>()
+                        .add(std::mem::offset_of!(
+                            JOBOBJECT_BASIC_PROCESS_ID_LIST,
+                            ProcessIdList
+                        ))
+                        .cast::<usize>(),
+                    count,
+                )
+            };
+            let mut pinned = self
+                .1
+                .lock()
+                .map_err(|_| "codec member accounting lock is poisoned")?;
+            // A confirmed terminal process can never become live again. Release
+            // those handles so a long Cargo/build invocation does not retain
+            // every completed compiler or test process until final cleanup.
+            let mut finished = Vec::new();
+            for (&pid, process) in pinned.iter() {
+                if Self::signaled(process)? {
+                    finished.push(pid);
+                }
+            }
+            for pid in finished {
+                pinned.remove(&pid);
+            }
+            for &id in members {
+                let pid = u32::try_from(id).map_err(|_| "invalid codec job member identity")?;
+                if let Some(process) = pinned.get(&pid)
+                    && !Self::signaled(process)?
+                {
+                    continue; // A live pinned process cannot have its PID recycled.
+                }
+                // SAFETY: only inspection rights; verify private Job membership
+                // before enrolling a numeric PID that might have exited/recycled.
+                let raw = unsafe {
+                    OpenProcess(
+                        PROCESS_SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION,
+                        0,
+                        pid,
+                    )
+                };
+                if raw.is_null() {
+                    // ERROR_INVALID_PARAMETER confirms the PID has no live object.
+                    if unsafe { GetLastError() } == ERROR_INVALID_PARAMETER {
+                        continue;
+                    }
+                    return Err("cannot pin codec job member for termination verification".into());
+                }
+                // SAFETY: fresh process handle has exactly one owner on every path.
+                let process = unsafe { OwnedHandle::from_raw_handle(raw) };
+                let mut member = 0;
+                if unsafe {
+                    IsProcessInJob(process.as_raw_handle(), self.0.as_raw_handle(), &mut member)
+                } == 0
+                {
+                    return Err("cannot verify pinned codec process Job membership".into());
+                }
+                if member != 0 {
+                    pinned.insert(pid, process);
+                }
+                // Non-members are never enrolled or signaled: the old member
+                // exited and its PID may now identify an unrelated process.
+            }
+            Ok(())
+        }
+
         pub fn ready_to_reap(&self) -> Result<bool, String> {
             Ok(true)
         }
@@ -442,6 +588,7 @@ mod platform {
         pub fn root_reaped(&self) {}
 
         pub fn sample(&self) -> Result<Vec<u64>, String> {
+            self.record_members()?;
             let info = self.accounting()?;
             Ok(vec![
                 info.BasicInfo.TotalUserTime as u64,
@@ -458,6 +605,7 @@ mod platform {
         }
 
         pub fn terminate(&self) -> Result<(), String> {
+            self.record_members()?;
             if self.quiescent()? {
                 return Ok(());
             }
@@ -468,7 +616,14 @@ mod platform {
             Ok(())
         }
         pub fn quiescent(&self) -> Result<bool, String> {
-            Ok(self.accounting()?.BasicInfo.ActiveProcesses == 0)
+            let active = self.accounting()?.BasicInfo.ActiveProcesses;
+            let pinned = self
+                .1
+                .lock()
+                .map_err(|_| "codec member accounting lock is poisoned")?;
+            // Windows can decrement ActiveProcesses before the original process
+            // objects signal. Retain those handles through asynchronous termination.
+            job_settled(active, pinned.values().map(Self::signaled))
         }
     }
 
