@@ -35,8 +35,9 @@ The Gitleaks workflow inherited from main retains its scheduled and pull-request
 secret scans. Its security event policy is checked separately from automatic
 builds and the manual native checkpoint. Four historical false positives (two
 source SHA-256 digests and two synthetic redaction-test identifiers) have exact
-commit/file/line/rule identities; future matches remain reportable. A Rust
-regression checks those boundaries and summary privacy. Scanner integrity,
+introduction commit/file/line/rule identities. Repeated merge-diff matches require
+Git blame to prove the unchanged line's reviewed origin; new matches remain
+reportable. A Rust regression checks those boundaries and summary privacy. Scanner integrity,
 full-history coverage, repository-suppression refusal and privacy guards remain.
 
 Native cases run serially because embedded codec patches and descendant custody
