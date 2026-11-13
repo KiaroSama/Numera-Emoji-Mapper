@@ -51,7 +51,10 @@ even when an earlier bucket fails, and failure logs are retained for diagnosis.
 
 Linux test bootstraps create private user/network namespaces. A checkout-scoped
 AppArmor profile permits that operation on hosted Ubuntu; the loopback-only
-network guard stays enabled. Windows uses Job ownership. Darwin uses the existing
+network guard stays enabled. Windows uses Job ownership and retains verified
+member handles until both the Job's active count is zero and each original
+process object signals termination; a zero counter alone cannot finish cleanup.
+Its existing 10-second cleanup ceiling remains. Darwin uses the existing
 process-group owner and each lifecycle test's own child owner and cleanup markers;
 it does not claim Linux subreaper semantics.
 
