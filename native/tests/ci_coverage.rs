@@ -39,7 +39,7 @@ fn secret_scan_triage_cannot_hide_future_matches_or_disclose_values() {
             c"gitleaks_workflow_test",
         )?;
         py.run(
-            c"
+            cr#"
 from types import SimpleNamespace
 
 cases = [
@@ -48,7 +48,7 @@ cases = [
     ('tests/fixtures/native/provider-image.json', 5, '7cd8ebecb282361891f9d6aae8303da771c50b80'),
     ('tests/fixtures/native/provider-policy.json', 4, 'e3cdd76b5830c1b30cfbc790b5d7e133b319114f'),
 ]
-findings = [dict(RuleID='generic-api-key', File=path, StartLine=line, Commit=commit,
+findings = [dict(RuleID='generic-api-key', File=path, StartLine=line, EndLine=line, Commit=commit,
                  Secret='NEVER_OUTPUT_VALUE', Match='NEVER_OUTPUT_SNIPPET')
             for path, line, commit in cases]
 assert partition_findings(findings) == ([], 4)
@@ -58,12 +58,65 @@ for finding in findings:
         unknown = dict(finding, **{field: changed})
         assert partition_findings([*findings, unknown]) == ([unknown], 4), field
     spoofed = dict(finding, Commit='f' * 40,
-                   Fingerprint=f\"{finding['Commit']}:{finding['File']}:generic-api-key:{finding['StartLine']}\")
+                   Fingerprint=f"{finding['Commit']}:{finding['File']}:generic-api-key:{finding['StartLine']}")
     assert partition_findings([spoofed]) == ([spoofed], 0)
     for field in ('RuleID', 'File', 'StartLine', 'Commit'):
         incomplete = {key: value for key, value in finding.items() if key != field}
         assert partition_findings([incomplete]) == ([incomplete], 0)
 assert partition_findings([]) == ([], 0)
+with tempfile.TemporaryDirectory() as directory:
+    repository = Path(directory)
+    command = ['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+               '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false', '-C', directory]
+    def git(*args):
+        result = subprocess.run(command + list(args), capture_output=True, text=True, timeout=15)
+        assert result.returncode == 0, 'synthetic provenance fixture Git operation failed'
+        return result.stdout.strip()
+    git('init', '--quiet', '--initial-branch=main', '--template=')
+    path = 'native/tests/logging_parity.rs'
+    source = repository / path
+    source.parent.mkdir(parents=True)
+    source.write_text('synthetic identity fixture\n', encoding='utf-8')
+    git('add', '.')
+    git('commit', '--quiet', '-m', 'original synthetic fixture')
+    original = git('rev-parse', 'HEAD')
+    git('checkout', '--quiet', '-b', 'feature')
+    (repository / 'feature.txt').write_text('feature\n')
+    git('add', '.')
+    git('commit', '--quiet', '-m', 'feature')
+    git('checkout', '--quiet', 'main')
+    (repository / 'main.txt').write_text('main\n')
+    git('add', '.')
+    git('commit', '--quiet', '-m', 'main')
+    git('checkout', '--quiet', 'feature')
+    git('merge', '--quiet', '--no-ff', '-m', 'synthetic merge', 'main')
+    merge = git('rev-parse', 'HEAD')
+    saved_reviews = REVIEWED_NON_SECRETS
+    try:
+        REVIEWED_NON_SECRETS = {('generic-api-key', path, 1, original)}
+        repeated = dict(RuleID='generic-api-key', File=path, StartLine=1, EndLine=1, Commit=merge)
+        assert partition_findings([repeated], repository / '.git') == ([], 1)
+        for change in [dict(Commit='f' * 40), dict(File='feature.txt'),
+                       dict(StartLine=2), dict(EndLine=2), dict(RuleID='another-rule')]:
+            unknown = dict(repeated, **change)
+            assert partition_findings([unknown], repository / '.git') == ([unknown], 0)
+        source.write_text('changed synthetic credential fixture\nnew synthetic credential fixture\n', encoding='utf-8')
+        git('add', '.')
+        git('commit', '--quiet', '-m', 'new content must stay reportable')
+        changed = git('rev-parse', 'HEAD')
+        git('checkout', '--quiet', 'main')
+        (repository / 'main.txt').write_text('main advanced\n')
+        git('add', '.')
+        git('commit', '--quiet', '-m', 'main advanced')
+        git('checkout', '--quiet', 'feature')
+        git('merge', '--quiet', '--no-ff', '-m', 'changed content merge', 'main')
+        changed_merge = git('rev-parse', 'HEAD')
+        for revision in (changed, changed_merge):
+            for line in (1, 2):
+                unknown = dict(repeated, Commit=revision, StartLine=line, EndLine=line)
+                assert partition_findings([unknown], repository / '.git') == ([unknown], 0)
+    finally:
+        REVIEWED_NON_SECRETS = saved_reviews
 with tempfile.TemporaryDirectory() as directory:
     summary = Path(directory) / 'summary.md'
     original_os = os
@@ -77,7 +130,7 @@ with tempfile.TemporaryDirectory() as directory:
         assert '1 potential secrets detected' in output
     finally:
         os = original_os
-",
+"#,
             Some(&module.dict()),
             None,
         )
