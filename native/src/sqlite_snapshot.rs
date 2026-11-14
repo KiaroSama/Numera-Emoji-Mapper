@@ -81,7 +81,7 @@ pub fn backup_with_budget(
         destination
             .execute_batch("PRAGMA journal_mode=DELETE")
             .map_err(|e| e.to_string())?;
-        #[cfg(test)]
+        #[cfg(all(test, not(numera_native_runtime)))]
         if std::env::var("NUMERA_MIGRATION_TEST_ACTION").as_deref() == Ok("refuse-backup") {
             return Err("controlled backup verification failure".into());
         }

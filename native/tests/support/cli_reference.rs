@@ -31,7 +31,7 @@ const COINS: &[(&str, &str)] = &[
 pub struct Section {
     body: String,
     commands: BTreeSet<String>,
-    coin_sources: BTreeSet<String>,
+    coin_commands: BTreeSet<String>,
 }
 
 pub fn flags(text: &str) -> BTreeSet<String> {
@@ -84,7 +84,7 @@ pub fn sections(text: &str) -> Result<BTreeMap<String, Section>, String> {
                     Section {
                         body: title.into(),
                         commands,
-                        coin_sources: BTreeSet::new(),
+                        coin_commands: BTreeSet::new(),
                     },
                 )
                 .is_some()
@@ -96,13 +96,14 @@ pub fn sections(text: &str) -> Result<BTreeMap<String, Section>, String> {
             out.get_mut(number).unwrap().body.push_str(line);
         }
     }
-    for section in out.values_mut().filter(|section| {
-        section
-            .body
-            .lines()
-            .next()
-            .unwrap_or("")
-            .contains("`coins/`")
+    for (_, section) in out.iter_mut().filter(|(number, section)| {
+        number.as_str() == "12.8"
+            || section
+                .body
+                .lines()
+                .next()
+                .unwrap_or("")
+                .contains("`coins/`")
     }) {
         for prefix in ["coins/", "coins\\"] {
             for (index, _) in section.body.match_indices(prefix) {
@@ -119,13 +120,33 @@ pub fn sections(text: &str) -> Result<BTreeMap<String, Section>, String> {
                     .iter()
                     .find(|(source, _)| *source == name)
                     .ok_or_else(|| format!("unmapped documented coin tool: {name}"))?;
-                section.coin_sources.insert(name.into());
+                section.coin_commands.insert((*command).into());
                 section.commands.insert((*command).into());
             }
         }
-        // This additive command has no separate Python entry point in the original inventory.
-        if section.body.contains("`coin-rebuild-map ") {
-            section.commands.insert("coin-rebuild-map".into());
+        // Current references document actual native commands. Keep the legacy
+        // source-name mapping above for its original parser canaries, and count
+        // each command once if both forms are present during a documentation edit.
+        for (index, _) in section.body.match_indices("coin-") {
+            if section.body[..index]
+                .chars()
+                .next_back()
+                .is_some_and(|ch| ch == '-' || ch == '_' || ch.is_alphanumeric())
+            {
+                continue;
+            }
+            let tail = &section.body[index..];
+            let length = tail
+                .bytes()
+                .take_while(|ch| ch.is_ascii_alphanumeric() || matches!(*ch, b'_' | b'-'))
+                .count();
+            let command = &tail[..length];
+            if command != "coin-rebuild-map" && !COINS.iter().any(|(_, native)| *native == command)
+            {
+                return Err(format!("unmapped documented coin command: {command}"));
+            }
+            section.coin_commands.insert(command.into());
+            section.commands.insert(command.into());
         }
     }
     Ok(out)
@@ -139,9 +160,9 @@ pub fn inventory(sections: &BTreeMap<String, Section>) -> Result<BTreeSet<String
     }
     if sections
         .get("12.8")
-        .is_none_or(|section| section.coin_sources.len() < 5)
+        .is_none_or(|section| section.coin_commands.len() < 5)
     {
-        return Err("CLI reference must discover at least five coin source tools".into());
+        return Err("CLI reference must discover at least five distinct coin commands".into());
     }
     Ok(sections
         .values()
@@ -236,4 +257,26 @@ pub fn canaries() {
         BTreeSet::from(["--alpha".into(), "--beta2".into(), "--help".into()])
     );
     assert!(!inventory(&parsed).unwrap().contains("emoji-bot"));
+    let mut native_guide = guide.to_owned();
+    for (source, command) in COINS {
+        native_guide = native_guide.replace(&format!("coins/{source}.py"), &format!("`{command}`"));
+    }
+    let native = sections(&native_guide).unwrap();
+    assert_eq!(inventory(&native).unwrap(), inventory(&parsed).unwrap());
+    assert!(check(&native, &helps).is_ok());
+    assert!(
+        inventory(&sections(&native_guide.replace("`coin-enhance-map`", "")).unwrap()).is_err()
+    );
+    assert!(sections(&native_guide.replace("coin-alias-map", "coin-unknown")).is_err());
+    assert!(sections(&native_guide.replace("coin-alias-map", "coin-alias-map-stale")).is_err());
+    assert!(sections(&native_guide.replace("coin-alias-map", "coin-alias-map_STALE")).is_err());
+    assert!(sections(&format!("{native_guide}\n--coin-not-a-command")).is_ok());
+    assert!(check(&native, &BTreeMap::new()).is_err());
+    let mut stale = helps.clone();
+    stale.insert("build-pack".into(), "--base".into());
+    assert!(
+        check(&native, &stale)
+            .unwrap_err()
+            .contains("unsupported=[\"--title\"]")
+    );
 }

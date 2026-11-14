@@ -163,10 +163,9 @@ fn successful_fix(harness: &Harness<'_>) {
         ],
         json!({"ok":true,"result":true}),
     );
-    replacement.upload_sha256.insert(
-        "file0".into(),
-        art["expected"]["png_sha256"].as_str().unwrap().into(),
-    );
+    replacement
+        .upload_rgba
+        .insert("file0".into(), art["expected"].clone());
     replacement.observation = Some((
         intent.clone(),
         "/before".into(),
@@ -293,7 +292,7 @@ fn successful_fix(harness: &Harness<'_>) {
         .collect::<Vec<_>>();
     assert_eq!(writes.len(), 1);
     let uploaded = &writes[0].files["file0"];
-    assert_eq!(hash(uploaded), art["expected"]["png_sha256"]);
+    super::bot_api::assert_rgba(uploaded, &art["expected"]);
     assert_eq!(
         document(&map),
         json!({"sol":"cid-new","wrapped":"cid-new","eth":"keep"})

@@ -563,14 +563,14 @@ mod tests {
         )
         .unwrap();
         assert!(check(&root.0, &plan, &log, &stderr, 0).is_err());
-        let source = root.0.join("native/src/main.rs");
+        let source = root.0.join("native/src/runtime_main.rs");
         std::fs::create_dir_all(source.parent().unwrap()).unwrap();
         std::fs::write(&source, b"abc").unwrap();
         artifact["target"]["name"] = json!("numera-emoji");
         artifact["target"]["kind"] = json!(["bin"]);
         artifact["target"]["src_path"] = json!(source);
         let mut p: Value = serde_json::from_slice(&std::fs::read(&plan).unwrap()).unwrap();
-        p["targets"] = json!([{"name":"numera-emoji","kind":["bin"],"src_path":"native/src/main.rs","mode":"noncoverage","reason":"Not mapped case evidence"}]);
+        p["targets"] = json!([{"name":"numera-emoji","kind":["bin"],"src_path":"native/src/runtime_main.rs","mode":"noncoverage","reason":"Not mapped case evidence"}]);
         crate::atomic::write_json(&plan, &p).unwrap();
         std::fs::write(
             &log,

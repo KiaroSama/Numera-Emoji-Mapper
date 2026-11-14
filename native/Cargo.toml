@@ -11,6 +11,7 @@ name = "_native"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+numera-emoji-runtime = { path = "../runtime" }
 pyo3 = { version = "=0.30.1", features = ["abi3-py311"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order", "arbitrary_precision"] }
 rusqlite = { version = "=0.40.2", features = ["bundled", "backup"] }
@@ -29,6 +30,10 @@ tokio = { version = "=1.53.2", features = ["rt-multi-thread", "net", "signal", "
 
 [[bin]]
 name = "numera-emoji"
+path = "src/runtime_main.rs"
+
+[[bin]]
+name = "numera-compat"
 path = "src/main.rs"
 
 [[bin]]
@@ -44,3 +49,6 @@ windows-sys = { version = "=0.61.2", features = ["Win32_Storage_FileSystem", "Wi
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(numera_native_runtime)"] }

@@ -121,7 +121,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, sources: &[Source])
     let observed = runtime
         .block_on(oracle::observe_owned(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             &admitted,
         ))
@@ -265,7 +265,7 @@ fn run_cli(root: &Path, runtime: &tokio::runtime::Runtime, reports: &Value) {
         } else {
             "numera-emoji"
         });
-        std::fs::copy(env!("CARGO_BIN_EXE_numera-emoji"), &executable).unwrap();
+        std::fs::copy(env!("CARGO_BIN_EXE_numera-compat"), &executable).unwrap();
         let data = scratch.join("collection");
         let image = scratch.join("missing.png");
         let key = "s:missing";

@@ -1,517 +1,61 @@
 <#
 .SYNOPSIS
-    Numera Emoji Mapper launcher: prepares the Python environment and offers a colored,
-    sectioned menu to build/collect/publish Telegram custom-emoji packs and run
-    the premium-emoji bot.
-
+    Opens the standalone Rust menu, or runs its environment doctor with -Check.
 .DESCRIPTION
-    - Resolves paths relative to this file, works from any current directory.
-    - Prefers Windows Terminal + PowerShell 7 (pwsh); falls back gracefully.
-    - Creates/reuses .venv and offers to install requirements (Enter = Yes).
-    - Reads tokens from .env (never printed).
-    - Menu is grouped into sections; each section has its own numbering with a
-      one-letter prefix (A = Build, B = Collection, C = Bot, D = Maintenance),
-      e.g. A1, B3, D1.
-    - Writes a per-run UTC log under logs\run_<UTC>.log (values never logged).
-
+    Resolves the packaged executable or an explicitly built production runtime.
+    Never creates an environment, selects an interpreter, installs dependencies,
+    or invokes a compiler. Paths and arguments are passed as separate values.
 .PARAMETER NoRelaunch
-    Do not relaunch in Windows Terminal / PowerShell 7.
-
+    Accepted for compatibility; the launcher stays attached to this terminal.
 .PARAMETER Check
-    Non-interactive environment "doctor" for CI / scripted use. Never prompts and
-    never installs anything; exits 0 when the environment is usable, else 1.
+    Runs the non-interactive native doctor and preserves its exit status.
 #>
-
 [CmdletBinding()]
 param(
     [switch]$NoRelaunch,
-    [switch]$Check
+    [switch]$Check,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$CommandArguments
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
-
-# --- Logging --------------------------------------------------------------
-# One UTC-named log file per execution, e.g. logs\run_2026-07-03_14-32-08_UTC.log
-$script:LogFile = $null
-
-function Initialize-Log {
-    try {
-        $logDir = Join-Path $ScriptRoot 'logs'
-        if (-not (Test-Path -LiteralPath $logDir)) {
-            New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+$ScriptRoot = $PSScriptRoot
+$suffix = if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) { '.exe' } else { '' }
+$candidates = @(
+    (Join-Path $ScriptRoot "numera-emoji$suffix"),
+    (Join-Path $ScriptRoot "runtime/target/release/numera-emoji$suffix"),
+    (Join-Path $ScriptRoot "runtime/target/debug/numera-emoji$suffix")
+)
+$binary = $null
+foreach ($candidate in $candidates) {
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+        $item = Get-Item -LiteralPath $candidate -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            [Console]::Error.WriteLine('Refusing a linked standalone executable.')
+            exit 1
         }
-        $ts = [DateTime]::UtcNow.ToString('yyyy-MM-dd_HH-mm-ss')
-        $path = Join-Path $logDir "run_${ts}_UTC.log"
-        $n = 1
-        while (Test-Path -LiteralPath $path) {
-            $path = Join-Path $logDir "run_${ts}_UTC_$n.log"; $n++
-        }
-        $script:LogFile = $path
-        Write-Log 'INFO' "launcher started (PowerShell $($PSVersionTable.PSVersion), $([Environment]::OSVersion.VersionString))"
-        Write-Log 'INFO' "project root: $ScriptRoot"
-    } catch {
-        # Logging must never take down the launcher; fall back to console only.
-        $script:LogFile = $null
-        Write-Host "[!] Could not initialize log file: $($_.Exception.Message)" -ForegroundColor Yellow
+        $binary = $candidate
+        break
     }
 }
-
-function Write-Log ($level, $msg) {
-    if (-not $script:LogFile) { return }
-    $ts = [DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm:ss')
-    try { Add-Content -LiteralPath $script:LogFile -Value "[$ts UTC] [$level] $msg" -Encoding utf8 } catch { }
+if (-not $binary) {
+    [Console]::Error.WriteLine('Installed native executable missing. Extract a standalone package, or explicitly build with cargo build --manifest-path runtime/Cargo.toml --locked --release.')
+    exit 1
 }
-
-# --- ANSI 256/truecolor palette (rendered in Windows Terminal / PowerShell 7) -
-$script:E = [char]27
-function Paint ($code, $text) { "$($script:E)[${code}m$text$($script:E)[0m" }
-
-# Palette (exact FFmWiz colors where applicable).
-$script:CTitle   = '1;38;2;255;50;115'   # bold pink-red banner title + rule (WIZARD_TITLE)
-$script:CLogNote = '38;5;227'            # NOTE_YELLOW "Logging to:" line
-$script:CHeading = '38;5;123'            # cyan action/screen titles (like the sample)
-$script:CBuild   = '38;5;222'            # Build section header (amber)
-$script:CColl    = '38;5;123'            # Collection section header (cyan)
-$script:CBot     = '38;5;219'            # Bot section header (pink/magenta)
-$script:CMaint   = '38;5;150'            # Maintenance section header (sage)
-$script:CKeyA    = '38;5;154'            # Build keys (chartreuse)
-$script:CKeyB    = '38;5;87'             # Collection keys (aqua)
-$script:CKeyC    = '38;5;209'            # Bot keys (coral)
-$script:CKeyD    = '38;5;120'            # Maintenance keys (mint)
-$script:CText    = '38;5;252'            # menu item text (near-white)
-$script:CDim     = '38;5;244'            # dim / separators
-$script:CPrompt  = '38;5;117'            # prompt label
-$script:CBack    = '38;5;166'            # BACK_PROMPT (orange)
-$script:CQuit    = '38;5;32'             # EXIT_PROMPT (blue)
-$script:CExample = '38;5;117'            # LIGHT_BLUE example/hint text
-
-# Colored "{back=0, quit=exit}" hint, mirroring FFmWiz back_text().
-function Nav-Hint ([switch]$NoBack) {
-    $parts = @()
-    if (-not $NoBack) { $parts += (Paint $script:CBack 'back=0') }
-    $parts += (Paint $script:CQuit 'quit=exit')
-    '{' + ($parts -join (Paint $script:CDim ', ')) + '}'
-}
-
-# --- Consistent color + log helpers ---------------------------------------
-# Screen/action title: cyan text (no background), matching the preferred sample.
-function Write-Title  ($m) { Write-Host ''; Write-Host (Paint $script:CHeading $m); Write-Log 'INFO' "== $m ==" }
-function Write-Info   ($m) { Write-Host "[*] $m" -ForegroundColor Cyan;    Write-Log 'INFO' $m }
-function Write-Ok     ($m) { Write-Host "[OK] $m" -ForegroundColor Green;  Write-Log 'INFO' "OK: $m" }
-function Write-Warn   ($m) { Write-Host "[!] $m" -ForegroundColor Yellow;  Write-Log 'WARNING' $m }
-function Write-Err    ($m) { Write-Host "[X] $m" -ForegroundColor Red;     Write-Log 'ERROR' $m }
-function Write-Step   ($m) { Write-Host "==> $m" -ForegroundColor Magenta; Write-Log 'INFO' "step: $m" }
-
-# Quiet OK: goes to the log only (keeps the console clean at startup).
-function Log-Ok       ($m) { Write-Log 'INFO' "OK: $m" }
-
-function Show-Banner {
-    $title = 'Numera Emoji Mapper'
-    $width = 100
-    try { if ([Console]::WindowWidth -gt 0) { $width = [Console]::WindowWidth } } catch { }
-    $pad = [Math]::Max(0, [int](($width - $title.Length) / 2))
-    Write-Host ''
-    Write-Host ((' ' * $pad) + (Paint $script:CTitle $title))
-    Write-Host (Paint $script:CTitle ('=' * $width))
-    if ($script:LogFile) { Write-Host (Paint $script:CLogNote "Logging to: $script:LogFile") }
-}
-
-# Run a Python entry point, logging the command (no secrets) and its exit code.
-# The child's output is pushed straight to the host instead of being left on the
-# success stream: otherwise the caller receives "stdout + exit code" as one array
-# and a test like `(Invoke-Py ...) -ne 0` reports failure for every successful
-# command that happened to print something.
-function Invoke-Py ($py, [string[]]$Argv) {
-    Write-Log 'INFO' ("run: python " + ($Argv -join ' '))
-    # Ctrl+C must stop the CHILD and drop back to the menu, not take the
-    # launcher down with it. Stopping a long-running tool -- the panel, the bot
-    # -- is the normal way to finish with it, and losing the whole launcher
-    # every time meant reopening it just to pick the next item.
-    #
-    # The console delivers CTRL_C_EVENT to every process attached to it, so
-    # python still receives it and exits through its own KeyboardInterrupt
-    # handler. Cancel = $true only stops OUR process from being terminated by
-    # that same event.
-    $onCancel = [System.ConsoleCancelEventHandler] { param($sender, $e) $e.Cancel = $true }
-    [Console]::add_CancelKeyPress($onCancel)
-    try {
-        & $py @Argv | Out-Host
-        $code = [int]$LASTEXITCODE
-    } finally {
-        [Console]::remove_CancelKeyPress($onCancel)
-    }
-    Write-Log 'INFO' ("exit $code (" + $Argv[0] + ")")
-    return $code
-}
-
-# Same, plus a user-visible verdict. Menu actions used to pipe Invoke-Py to
-# Out-Null, which threw the real exit code away and always looked successful.
-# Returns nothing on purpose: a stray value would be picked up as extra output
-# by the wizard step that calls it.
-function Invoke-PyReport ($py, [string[]]$Argv, $what) {
-    $code = Invoke-Py $py $Argv
-    if ($code -eq 0) { Write-Ok "$what finished." }
-    else { Write-Err "$what failed (exit $code)." }
-}
-
-# Ask for text with a colored {back=0, quit=exit} hint. Returns the raw answer;
-# the caller (a wizard step) treats '0' as "go back one step". Typing exit/quit
-# ends the launcher from anywhere.
-function Ask ($label) {
-    $ans = Read-Host ("$label " + (Nav-Hint))
-    $t = if ($null -ne $ans) { $ans.Trim() } else { '' }
-    if ($t -match '^(exit|quit)$') { throw 'NAV_QUIT' }
-    return $ans
-}
-
-# Yes/No with the same nav. Returns $true / $false, or the string 'back' for 0.
-function Ask-YesNo ($label) {
-    $ans = Read-Host ("$label [Y/n] " + (Nav-Hint))
-    $t = if ($null -ne $ans) { $ans.Trim() } else { '' }
-    if ($t -match '^(exit|quit)$') { throw 'NAV_QUIT' }
-    if ($t -eq '0') { return 'back' }
-    return ([string]::IsNullOrWhiteSpace($t) -or $t -match '^(y|yes)$')
-}
-
-# Ask-YesNo for a question whose "yes" destroys something: Enter means NO.
-# Same return shape -- $true/$false, or 'back' -- so callers treat it alike.
-function Ask-YesNoDefaultNo ($label) {
-    $ans = Read-Host ("$label [y/N] " + (Nav-Hint))
-    $t = if ($null -ne $ans) { $ans.Trim() } else { '' }
-    if ($t -match '^(exit|quit)$') { throw 'NAV_QUIT' }
-    if ($t -eq '0') { return 'back' }
-    return ($t -match '^(y|yes)$')
-}
-
-# Step engine: run ordered step scriptblocks. Each returns 'ok' (advance),
-# 'back' (previous step), or 'stay' (re-ask this step). 'back' from the first
-# step returns $false (caller aborts to the menu) — i.e. back always moves ONE
-# screen back, and the screen before step 0 is the menu.
-function Run-Wizard ($steps) {
-    $i = 0
-    while ($i -lt $steps.Count) {
-        switch (& $steps[$i]) {
-            'back' { $i--; if ($i -lt 0) { return $false } }
-            'stay' { }
-            default { $i++ }
-        }
-    }
-    return $true
-}
-
-# --- Prefer Windows Terminal + PowerShell 7 (single relaunch, loop-safe) ---
-if (-not $NoRelaunch -and -not $env:NUMERA_EMOJI_MAPPER_RELAUNCHED) {
-    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
-    if ($pwsh -and $PSVersionTable.PSVersion.Major -lt 7) {
-        $env:NUMERA_EMOJI_MAPPER_RELAUNCHED = '1'
-        $self = $MyInvocation.MyCommand.Definition
-        # Forward every switch the caller passed. Passing only -NoRelaunch used to
-        # drop -Check, so a scripted doctor run silently became an interactive menu.
-        $fwd = @('-NoRelaunch')
-        foreach ($e in $PSBoundParameters.GetEnumerator()) {
-            if ($e.Key -eq 'NoRelaunch') { continue }
-            if ($e.Value -is [System.Management.Automation.SwitchParameter] -and $e.Value.IsPresent) {
-                $fwd += "-$($e.Key)"
-            }
-        }
-        try {
-            if ($Check) {
-                # Doctor mode stays attached and non-interactive: a detached window
-                # would hand the caller exit 0 no matter what the check found.
-                & $pwsh.Source -NoProfile -File $self @fwd
-                exit $LASTEXITCODE
-            }
-            $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
-            if ($wt) {
-                & $wt.Source $pwsh.Source -NoExit -File $self @fwd
-            } else {
-                & $pwsh.Source -NoExit -File $self @fwd
-            }
-            return
-        } catch {
-            Write-Host "[!] Could not relaunch in PowerShell 7; continuing here." -ForegroundColor Yellow
-        }
-    }
-}
-
-Set-Location -LiteralPath $ScriptRoot
-
-# --- Locate Python --------------------------------------------------------
-function Get-PythonExe {
-    $venv = Join-Path $ScriptRoot '.venv\Scripts\python.exe'
-    if (Test-Path -LiteralPath $venv) { return $venv }
-    return $null
-}
-
-# The project needs 3.11+ (hashlib.file_digest in the migration code, among
-# others). "Python 3.10.4" and friends answer --version happily, so the version
-# itself is checked rather than just whether the interpreter runs.
-function Test-PythonVersion ([string]$text) {
-    if ($text -match 'Python\s+(\d+)\.(\d+)') {
-        return ([int]$Matches[1] -gt 3) -or ([int]$Matches[1] -eq 3 -and [int]$Matches[2] -ge 11)
-    }
-    return $false
-}
-
-function Find-BasePython {
-    foreach ($c in @(
-        @{ Exe = 'py';     Args = @('-3.11') },
-        @{ Exe = 'py';     Args = @('-3') },
-        @{ Exe = 'python'; Args = @() }
-    )) {
-        $cmd = Get-Command $c.Exe -ErrorAction SilentlyContinue
-        if ($cmd) {
-            try {
-                $ver = (& $cmd.Source @($c.Args + '--version') 2>&1 | Out-String)
-                if ($LASTEXITCODE -eq 0 -and (Test-PythonVersion $ver)) { return $c }
-            } catch { }
-        }
-    }
-    return $null
-}
-
-function Confirm-YesDefault ($prompt) {
-    $ans = Read-Host "$prompt [Y/n]"
-    $yes = ([string]::IsNullOrWhiteSpace($ans) -or $ans -match '^(y|yes)$')
-    Write-Log 'INFO' "prompt '$prompt' -> '$ans' (yes=$yes)"
-    return $yes
-}
-
-function Ensure-Environment {
-    $py = Get-PythonExe
-    if (-not $py) {
-        Write-Warn ".venv not found."
-        $base = Find-BasePython
-        if (-not $base) {
-            Write-Err "No Python found. Prebuilt packages require Python 3.11 (winget install Python.Python.3.11)."
-            return $null
-        }
-        if (-not (Confirm-YesDefault "Create .venv and install dependencies now?")) {
-            Write-Err "Cannot continue without a virtual environment."
-            return $null
-        }
-        if (Test-Path -LiteralPath (Join-Path $ScriptRoot 'package.json') -PathType Leaf) {
-            Write-Step "Installing the bundled binary runtime ..."
-            $code = Invoke-Py (Get-Command $base.Exe).Source ($base.Args + @((Join-Path $ScriptRoot 'scripts/install_prebuilt.py')))
-            if ($code -ne 0) { Write-Err "Package installation failed (exit $code)."; return $null }
-            return (Get-PythonExe)
-        }
-        Write-Step "Creating .venv ..."
-        # Out-Host, or venv's chatter would be returned alongside $py.
-        & (Get-Command $base.Exe).Source @($base.Args + @('-m','venv','.venv')) | Out-Host
-        $py = Get-PythonExe
-        if (-not $py) { Write-Err "Failed to create .venv."; return $null }
-    }
-    return $py
-}
-
-# Returns $true only when the requirements install succeeded; the caller aborts
-# otherwise instead of opening a menu whose every action would fail.
-function Install-Deps ($py) {
-    Write-Err 'Automatic source compilation is not a normal installation step.'
-    Write-Info 'Extract a verified prebuilt package to a new directory and run scripts/install_prebuilt.py.'
-    Write-Info 'Contributors may explicitly build source with scripts/build_native.py; the menu never invokes Cargo.'
-    return $false
-}
-
-# Core manifest only. numpy lives in requirements-coins.txt because exactly one
-# optional tool (coins/remap_ids.py) needs it, so treating it as required here
-# would tell every general-pack user their environment is broken.
-function Test-Deps ($py) {
-    & $py -c "import requests,PIL,resvg_py; from emojikit.similarity import require_native; require_native()" *> $null
-    return ($LASTEXITCODE -eq 0 -and (Test-NativeRuntime $py))
-}
-
-function Test-CoinDeps ($py) {
-    & $py -c "import numpy" *> $null
-    return ($LASTEXITCODE -eq 0)
-}
-
-# KEY -> $true when it has a non-empty value. Only that boolean leaves this
-# function: a value is never stored, printed or logged.
-function Get-EnvKeyState ([string]$path) {
-    $state = @{}
-    foreach ($line in [System.IO.File]::ReadAllLines($path, [System.Text.Encoding]::UTF8)) {
-        $t = $line.Trim()
-        if (-not $t -or $t.StartsWith('#') -or -not $t.Contains('=')) { continue }
-        $k, $v = $t.Split('=', 2)
-        $state[$k.Trim()] = [bool]($v.Trim().Trim('"').Trim("'"))
-    }
-    return $state
-}
-
-function Check-Env ($py, [switch]$Keys) {
-    $envFile = Join-Path $ScriptRoot '.env'
-    if (-not (Test-Path -LiteralPath $envFile)) {
-        Write-Warn ".env not found. Copy .env.example to .env and fill in tokens."
-        return
-    }
-    Log-Ok ".env present."   # quiet: log only, keep the console clean
-    if (-not $Keys) { return }   # the doctor's report, not every launch
-    # Every key the template names, checked at once. Since operator identities
-    # became configuration with no defaults, a new operator otherwise met them
-    # one failing tool at a time. Warnings, not failures: not every workflow
-    # needs every key.
-    $template = Join-Path $ScriptRoot '.env.example'
-    if (-not (Test-Path -LiteralPath $template)) { return }
-    $have = Get-EnvKeyState $envFile
-    $what = @{}
-    try {
-        $json = & $py -c "from emojikit.operator_config import WHAT; import json; print(json.dumps(WHAT))" 2>$null
-        if ($LASTEXITCODE -eq 0 -and $json) {
-            ($json | Out-String | ConvertFrom-Json).PSObject.Properties |
-                ForEach-Object { $what[$_.Name] = $_.Value }
-        }
-    } catch { }
-    foreach ($key in (Get-EnvKeyState $template).Keys | Sort-Object) {
-        if (-not $have[$key]) {
-            $why = if ($what.ContainsKey($key)) { " ($($what[$key]))" } else { '' }
-            Write-Warn "unset: $key$why"
-        }
-    }
-}
-
-function Test-Ffmpeg {
-    return ((Get-Command ffmpeg -ErrorAction SilentlyContinue) -and
-            (Get-Command ffprobe -ErrorAction SilentlyContinue))
-}
-
-# --- Actions --------------------------------------------------------------
-# The menu's actions live in scripts\run-actions.ps1, dot-sourced so they see
-# this script's helpers and $ScriptRoot. Split out to keep this file under the
-# project's size ceiling as the menu grows.
-. (Join-Path $ScriptRoot 'scripts\run-native.ps1')
-. (Join-Path $ScriptRoot 'scripts\run-actions.ps1')
-
-# --- Menu -----------------------------------------------------------------
-# Each row: Key, Text, Action. Grouped by section; per-section numbering with a
-# one-letter section prefix so keys stay unique (A/B/C/D).
-function Menu-Item ($keyColor, $key, $text) {
-    Write-Host ("  " + (Paint $keyColor "$key)") + " " + (Paint $script:CText $text))
-}
-
-function Show-Menu {
-    Write-Host ''
-    Write-Host (Paint $script:CBuild 'Build a single pack')
-    Menu-Item $script:CKeyA 'A1' 'Build a general emoji pack  (new bot)'
-    Menu-Item $script:CKeyA 'A2' 'Convert images to 100x100 PNGs only'
-    Menu-Item $script:CKeyA 'A3' 'Crypto-coin pack rebuild    (coin bot)'
-    Write-Host ''
-    Write-Host (Paint $script:CColl 'Collection (multi-format, duplicate-proof)')
-    Menu-Item $script:CKeyB 'B0' 'Collect specific emoji by id (recommended start)'
-    Menu-Item $script:CKeyB 'B1' 'Collect emoji from existing packs (download)'
-    Menu-Item $script:CKeyB 'B2' 'Add media from a folder (build from scratch)'
-    Menu-Item $script:CKeyB 'B3' 'Publish the collection into new packs'
-    Menu-Item $script:CKeyB 'B4' 'Open web panel to pick & reorder emoji (browser)'
-    Menu-Item $script:CKeyB 'B5' 'Reorder a live pack to match the panel (report, then apply)'
-    Write-Host ''
-    Write-Host (Paint $script:CBot 'Bot')
-    Menu-Item $script:CKeyC 'C1' 'Run the Numera Emoji Mapper bot (premium-emoji ID extractor)'
-    Write-Host ''
-    Write-Host (Paint $script:CMaint 'Maintenance')
-    Menu-Item $script:CKeyD 'D1' 'Run the project checks (byte-compile + unit tests)'
-    Menu-Item $script:CKeyD 'D2' 'Status: is everything current? (offline)'
-    Menu-Item $script:CKeyD 'D3' 'Check / refresh the pack roster (packs/)'
-    Menu-Item $script:CKeyD 'D4' 'Check / sync the pack archive'
-    Write-Host ''
-}
-
-function Invoke-Choice ($choice, $py) {
-    switch ($choice.ToLower().Trim()) {
-        'a1' { Action-BuildGeneral $py }
-        'a2' { Action-ConvertOnly $py }
-        'a3' { Action-CoinRebuild $py }
-        'b0' { Action-CollectIds $py }
-        'b1' { Action-CollectPacks $py }
-        'b2' { Action-AddMedia $py }
-        'b3' { Action-PublishCollection $py }
-        'b4' { Action-Panel $py }
-        'b5' { Action-ReorderPack $py }
-        'c1' { Action-RunBot $py }
-        'd1' { Action-Check $py }
-        'd2' { Action-Status $py }
-        'd3' { Action-Roster $py }
-        'd4' { Action-Archive $py }
-        { $_ -in @('q','quit','exit','0') } { return $false }
-        default { Write-Warn "Unknown option: $choice  (use e.g. A1, B3, C1, D1, or exit)" }
-    }
-    return $true
-}
-
-# --- Bootstrap ------------------------------------------------------------
-Initialize-Log
-Show-Banner
-
-# Non-interactive environment check ("doctor") for CI / scripted use. It runs
-# before Ensure-Environment / the dependency prompt on purpose: those ask
-# questions, and a doctor that blocks on stdin is useless in a script.
 if ($Check) {
-    $py = Get-PythonExe
-    if (-not $py) {
-        Write-Err ".venv not found. Run the launcher once without -Check to create it."
-        Write-Log 'INFO' 'doctor: exit 1'
-        exit 1
+    if ($CommandArguments.Count -gt 0) {
+        [Console]::Error.WriteLine('-Check accepts no command arguments.')
+        exit 2
     }
-    $pyVersion = (& $py --version 2>&1 | Out-String).Trim()
-    if (-not (Test-PythonVersion $pyVersion)) {
-        Write-Err "$pyVersion in .venv; this project needs Python 3.11+. Recreate .venv with 3.11."
-        Write-Log 'INFO' 'doctor: exit 1'
-        exit 1
-    }
-    Check-Env $py -Keys      # names every template key that is unset (never a value)
-    Log-Ok ("Python: " + $pyVersion)
-    if (Test-Ffmpeg) { Log-Ok "ffmpeg present (video emoji enabled)." }
-    else { Write-Warn "ffmpeg not found: video emoji disabled (winget install Gyan.FFmpeg)." }
-    if (-not (Test-Deps $py)) {
-        Write-Err "Codec dependencies or native executable missing. Install a verified prebuilt package in a fresh directory; see README."
-        Write-Log 'INFO' 'doctor: exit 1'
-        exit 1
-    }
-    if (-not (Test-CoinDeps $py)) {
-        Write-Warn "numpy not installed: coins\remap_ids.py is unavailable (pip install -r requirements-coins.txt)."
-    }
-    Write-Ok "All Python dependencies import correctly."
-    Write-Ok "Environment check complete."
-    Write-Log 'INFO' 'doctor: exit 0'
-    exit 0
+    $CommandArguments = @('doctor')
+} elseif (-not $CommandArguments -or $CommandArguments.Count -eq 0) {
+    $CommandArguments = @('menu')
 }
-
-$py = Ensure-Environment
-if (-not $py) { Write-Log 'CRITICAL' 'no Python environment; exiting'; exit 1 }
-if (-not (Test-Deps $py)) {
-    if (Confirm-YesDefault "Install/repair Python dependencies?") {
-        # A broken install must not reach the menu: every action would fail on import.
-        if (-not (Install-Deps $py)) { Write-Log 'CRITICAL' 'dependency install failed; exiting'; exit 1 }
-    } else {
-        Write-Err "Cannot continue without dependencies and the required Rust module."
-        Write-Log 'INFO' 'dependency installation declined; exit 1'
-        exit 1
-    }
+Push-Location -LiteralPath $ScriptRoot
+try {
+    & $binary @CommandArguments
+    $code = [int]$LASTEXITCODE
+} finally {
+    Pop-Location
 }
-Check-Env $py            # logs .env status (warns only if missing)
-Log-Ok ("Python: " + (& $py --version))   # quiet: log only
-if (Test-Ffmpeg) { Log-Ok "ffmpeg present (video emoji enabled)." }  # quiet
-else { Write-Warn "ffmpeg not found: video emoji disabled (winget install Gyan.FFmpeg)." }
-
-# --- Menu loop ------------------------------------------------------------
-$running = $true
-while ($running) {
-    Show-Menu
-    $choice = Read-Host ((Paint $script:CPrompt 'Select') + ' ' + (Nav-Hint -NoBack))
-    Write-Log 'INFO' "menu selection: '$choice'"
-    try {
-        $running = Invoke-Choice $choice $py
-    } catch {
-        $msg = $_.Exception.Message
-        if ($msg -eq 'NAV_QUIT') {
-            $running = $false                              # 'exit' typed inside an action
-            Write-Log 'INFO' 'nav: quit from action'
-        } else {
-            Write-Err "Action failed: $msg"
-            Write-Log 'ERROR' ("exception: " + ($_ | Out-String).Trim())
-        }
-    }
-}
-Write-Info "Bye."
-Write-Log 'INFO' 'launcher shutdown (normal)'
+exit $code

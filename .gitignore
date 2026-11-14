@@ -157,6 +157,7 @@ launch_test.txt
 
 # Cloudflare Worker (worker/): installed deps and wrangler's local state.
 node_modules/
+/runtime/target/
 worker/.wrangler/
 .dev.vars
 

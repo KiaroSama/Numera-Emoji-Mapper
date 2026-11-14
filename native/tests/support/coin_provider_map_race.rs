@@ -61,7 +61,6 @@ pub fn canonical_map_updates_between_download_and_publication_are_preserved(
         .find(|case| case["name"] == "visible-16-alpha-128")
         .unwrap();
     assert_eq!(super::digest(bytes), art["input_sha256"]);
-    let prepared_hash = art["expected"]["png_sha256"].as_str().unwrap();
     let input = root.join("map-race-eof");
     std::fs::write(&input, b"").unwrap();
     let log = RunLog::open(
@@ -129,8 +128,8 @@ pub fn canonical_map_updates_between_download_and_publication_are_preserved(
                 ],
                 json!({"ok":true,"result":true}),
             );
-            add.upload_sha256
-                .insert("file0".into(), prepared_hash.into());
+            add.upload_rgba
+                .insert("file0".into(), art["expected"].clone());
             add.observation = Some((
                 state.clone(),
                 "/provider_in_flight/key".into(),
@@ -295,9 +294,9 @@ pub fn canonical_map_updates_between_download_and_publication_are_preserved(
                 b"the already published oracle"
             );
         } else {
-            assert_eq!(
-                super::digest(&std::fs::read(images.join(format!("{ticker}.png"))).unwrap()),
-                prepared_hash
+            bot_api::assert_rgba(
+                &std::fs::read(images.join(format!("{ticker}.png"))).unwrap(),
+                &art["expected"],
             );
             if batch {
                 assert_eq!(

@@ -5,27 +5,30 @@ The migration branch is `feature/first-party-rust`, reviewed in
 unmerged until the complete migration and required CI checks pass.
 
 The Cloudflare Worker and browser interface intentionally retain TypeScript and
-JavaScript. The requested Rust scope is the local core and contributor tools.
+JavaScript. The Rust scope includes the local core, contributor tools and the production
+media backend. The standalone `runtime/` crate has no interpreter dependency.
 
 ## Coverage retained
 
 - The original Rust tests from the starting migration branch remain, with
-  additional tests for bounded source-constant parsing, demand-driven preview work,
-  source-bound mock assertion accounting and repeatable wheel builds.
+  additional tests for native raster/Lottie/video engines, standalone package
+  installation, bounded source parsing, demand-driven previews and source-bound
+  assertion accounting. Historical wheel cases remain in a separate compatibility job.
 - Original Python regression cases are retained, with an added journal-integrity
   regression; browser and Windows cases retain their separate CI jobs.
 - All 119 Worker tests remain. Dependency updates repair the `undici` advisory
   without changing the Worker's implementation language.
-- Native acceptance uses unfiltered Cargo discovery. Compilation-only jobs are
-  additional checks and never count as executed test coverage.
+- Both production and compatibility acceptance use unfiltered Cargo discovery.
+  Compilation-only jobs are additional checks and never count as executed coverage.
 - Original-case migration mappings remain pending until actual parity evidence
   is verified. A larger Rust suite alone does not authorize deleting old cases.
 
 ## Build and test policy
 
 CI and package workflows run on every push and pull request, with manual dispatch
-available. Release binaries and every Rust test target compile on Linux x64,
-Windows x64, Intel macOS and Apple Silicon macOS. Matrix jobs do not stop their
+available. Production release binaries and every production Rust test target build and
+execute on Linux x64, Windows x64, Intel macOS and Apple Silicon macOS.
+The separate historical compatibility matrix and original acceptance buckets remain. Matrix jobs do not stop their
 siblings when one fails.
 Concurrency groups separate push, pull-request and manual events so simultaneous
 checks of one commit complete without cancelling each other. Superseded runs of
@@ -59,19 +62,24 @@ process-group owner and each lifecycle test's own child owner and cleanup marker
 it does not claim Linux subreaper semantics.
 
 Image output checks preserve independent source generation and input hashes.
-Compressed PNG/WebP bytes come from the historical encoder on the current platform;
-pixel identity and deterministic cache reuse remain checked. Pillow is pinned to
-the fixture encoder version while the codec migration is incomplete.
+Historical codec tests continue to compare their original encoder outputs. The
+production encoder is checked against frozen decoded pixels and durable identity;
+compressed bytes may differ where the new encoder makes an equivalent image.
+Pillow remains pinned only for the historical test oracle. Native Lottie rendering
+uses the exact historical rlottie revision; fixture frames and timing stay independent.
 
-## Remaining work
+## Runtime and verification status
 
-The CLI and panel now use the same executable's Rust media worker. The build
-driver, package builder and fresh offline installer are Rust commands.
-Third-party codecs still require CPython, and compatibility modules plus the
-original regression suite remain for behavioral coverage. This is not a
-Python-free local runtime. Original-case migration rows remain pending until
-reviewed evidence authorizes retiring their historical cases. Packages verify
-manifest hashes; they do not claim cryptographic publisher signatures.
+The CLI and panel use the same executable's native Rust media worker. The
+production dependency graph excludes PyO3 and CPython. Schema2 archives contain
+the executable, assets and manifest; extracted installs are tested with an empty
+PATH and deliberately invalid interpreter settings. FFmpeg/FFprobe remain optional
+external tools until a video operation needs them.
+
+The original compatibility library and `numera-compat` developer toolkit remain
+for behavioral and fault-injection coverage. They are built separately and are
+excluded from production archives. No original CI cohort is removed. Packages
+verify manifest hashes; they do not claim cryptographic publisher signatures.
 
 Latest hosted checks and failures are visible in the PR. Passing builds on some
 platforms are not a substitute for a green final revision and package acceptance

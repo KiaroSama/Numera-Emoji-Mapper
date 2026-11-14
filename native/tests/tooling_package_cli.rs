@@ -181,7 +181,7 @@ fn copied_package_cli_help_verify_and_refusals_preserve_source_payloads() {
     } else {
         "numera-emoji"
     });
-    std::fs::copy(env!("CARGO_BIN_EXE_numera-emoji"), &executable).unwrap();
+    std::fs::copy(env!("CARGO_BIN_EXE_numera-compat"), &executable).unwrap();
     let package_before = fixture["manifest"]["files"]
         .as_object()
         .unwrap()

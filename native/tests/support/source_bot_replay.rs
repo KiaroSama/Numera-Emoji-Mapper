@@ -55,7 +55,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Source]) 
     let report = runtime
         .block_on(oracle::observe_owned(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             source,
             test,
         ))
@@ -211,7 +211,7 @@ fn commands(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Source]) {
     let report = runtime
         .block_on(oracle::observe_owned(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             &sources,
         ))

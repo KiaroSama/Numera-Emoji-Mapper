@@ -461,7 +461,10 @@ fn keyword_and_quarantine_commands(
         for (path, bytes) in originals {
             assert_eq!(std::fs::read(path).unwrap(), bytes);
         }
-        super::empty_codecs(&output);
+        assert!(!output.join(".native-codec").exists());
+        let codec_storage = directory.join("logs/tmp/native-convert");
+        assert!(codec_storage.is_dir());
+        assert_eq!(std::fs::read_dir(&codec_storage).unwrap().count(), 0);
         assert!(!logos.join(".svg_cur").exists());
         assert!(
             std::fs::read_dir(directory.join("logs/tmp/tooling"))
@@ -498,6 +501,10 @@ fn keyword_and_quarantine_commands(
     assert!(!output.join("a.png").exists());
     assert_eq!(std::fs::read(output.join(".svg_skip.txt")).unwrap(), b"a\n");
     assert_eq!(std::fs::read(csv).unwrap(), csv_bytes);
+    assert!(!output.join(".native-codec").exists());
+    let codec_storage = command_root.join("logs/tmp/native-convert");
+    assert!(codec_storage.is_dir());
+    assert_eq!(std::fs::read_dir(&codec_storage).unwrap().count(), 0);
     assert_eq!(
         std::fs::read_dir(command_root.join("logs/tmp/tooling"))
             .unwrap()

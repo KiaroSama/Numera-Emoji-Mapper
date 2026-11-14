@@ -28,6 +28,66 @@ impl Drop for Scratch {
     }
 }
 
+/// Compare historical PNG observations through the pinned independent decoder,
+/// without making the replacement encoder's compressed bytes its own oracle.
+fn assert_observed_media(actual: &[u8], expected: &[u8], case: &str) {
+    const PNG: &[u8] = b"\x89PNG\r\n\x1a\n";
+    if expected.starts_with(PNG) {
+        assert!(
+            actual.starts_with(PNG),
+            "{case}: converted media is not PNG"
+        );
+        assert_eq!(
+            historical_png_signature(actual),
+            historical_png_signature(expected),
+            "{case}: original PNG dimensions, mode and RGBA pixels"
+        );
+    } else {
+        assert_eq!(actual, expected, "{case}: unchanged non-PNG bytes");
+    }
+}
+
+fn historical_png_signature(bytes: &[u8]) -> Value {
+    use pyo3::prelude::*;
+    use pyo3::types::PyBytes;
+    Python::initialize();
+    Python::attach(|py| -> PyResult<Value> {
+        let module = py.import("PIL.Image")?;
+        assert_eq!(
+            module.getattr("__version__")?.extract::<String>()?,
+            "12.3.0"
+        );
+        let buffer = py
+            .import("io")?
+            .call_method1("BytesIO", (PyBytes::new(py, bytes),))?;
+        let image = module.call_method1("open", (&buffer,))?;
+        let result = (|| -> PyResult<Value> {
+            let size = image.getattr("size")?.extract::<(u32, u32)>()?;
+            let mode = image.getattr("mode")?.extract::<String>()?;
+            let rgba = image.call_method1("convert", ("RGBA",))?;
+            let pixels = rgba
+                .call_method0("tobytes")
+                .and_then(|bytes| bytes.cast_into::<PyBytes>().map_err(Into::into))
+                .map(|bytes| bytes.as_bytes().to_vec());
+            let closed = rgba.call_method0("close");
+            let pixels = pixels?;
+            closed?;
+            let digest = Sha256::digest(pixels)
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>();
+            Ok(json!({"size":[size.0,size.1],"mode":mode,"rgba_sha256":digest}))
+        })();
+        let closed_image = image.call_method0("close");
+        let closed_buffer = buffer.call_method0("close");
+        let result = result?;
+        closed_image?;
+        closed_buffer?;
+        Ok(result)
+    })
+    .unwrap()
+}
+
 pub fn check(project: &Path, runtime: &tokio::runtime::Runtime, original: &Value) {
     use _native::{logging::RunLog, tooling_environment, tooling_process};
     use pyo3::prelude::*;
@@ -221,9 +281,10 @@ pub fn check(project: &Path, runtime: &tokio::runtime::Runtime, original: &Value
                     .iter()
                     .map(|byte| u8::try_from(byte.as_u64().unwrap()).unwrap())
                     .collect::<Vec<_>>();
-                assert_eq!(
-                    std::fs::read(row["file_path"].as_str().unwrap()).unwrap(),
-                    expected_bytes
+                assert_observed_media(
+                    &std::fs::read(row["file_path"].as_str().unwrap()).unwrap(),
+                    &expected_bytes,
+                    case,
                 );
             }
         }
@@ -479,7 +540,7 @@ fn real_artwork(
             .filter(|path| path.extension().is_some_and(|ext| ext == "png"))
             .collect::<Vec<_>>();
         assert_eq!(stored.len(), 1, "{case}");
-        assert_eq!(std::fs::read(&stored[0]).unwrap(), bytes, "{case}");
+        assert_observed_media(&std::fs::read(&stored[0]).unwrap(), &bytes, case);
         Python::attach(|py| -> PyResult<()> {
             let image = py
                 .import("PIL.Image")?

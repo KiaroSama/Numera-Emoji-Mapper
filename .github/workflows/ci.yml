@@ -38,9 +38,9 @@ concurrency:
 
 jobs:
   native-build:
-    name: Rust build (${{ matrix.platform }})
+    name: Standalone Rust runtime (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -57,28 +57,78 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.11.9"
       - name: Select Rust compiler
         run: rustup default 1.99.0
-      - name: Build release executables
-        env:
-          PYO3_PYTHON: python
-        run: cargo build --manifest-path native/Cargo.toml --locked --release --bins
-      - name: Compile every Rust test target
-        env:
-          PYO3_PYTHON: python
-        run: cargo test --manifest-path native/Cargo.toml --locked --no-run
-      - name: Upload compiled executables
+      - name: Build Python-free release executable
+        run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+      - name: Production Rust format and lint
+        run: |
+          cargo fmt --manifest-path runtime/Cargo.toml --check
+          cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Install Linux video prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/.cache/apt/archives/partial" "$GITHUB_WORKSPACE/.cache/apt/lists/partial"
+          sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" update
+          sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" -o Dir::Cache::archives="$GITHUB_WORKSPACE/.cache/apt/archives" install -y --no-install-recommends ffmpeg
+      - name: Install Apple Silicon media prerequisite
+        if: matrix.platform == 'macos-arm64'
+        run: brew install ffmpeg
+      # Homebrew no longer provides an Intel bottle, and the signed binary
+      # mirror rate-limits signatures. Build only this CI prerequisite from
+      # checksum-pinned upstream releases; package users never compile it.
+      - name: Build Intel media prerequisite on hosted CI
+        if: matrix.platform == 'macos-x64'
+        shell: bash
+        run: |
+          mkdir -p .cache/ffmpeg
+          cd .cache/ffmpeg
+          curl --fail --location --retry 2 --max-time 120 https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz -o libvpx.tar.gz
+          echo '1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a  libvpx.tar.gz' | shasum -a 256 -c -
+          tar -xzf libvpx.tar.gz
+          cd libvpx-1.17.0
+          ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-examples --disable-tools --disable-unit-tests --disable-docs --target=generic-gnu
+          make -j2
+          make install
+          cd ..
+          curl --fail --location --retry 2 --max-time 120 https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz -o ffmpeg.tar.xz
+          echo '8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e  ffmpeg.tar.xz' | shasum -a 256 -c -
+          tar -xf ffmpeg.tar.xz
+          cd ffmpeg-9.0.2
+          PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/lib/pkgconfig" ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-doc --disable-debug --disable-autodetect --disable-x86asm --enable-libvpx --enable-zlib
+          make -j2
+          make install
+          echo "$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/bin" >> "$GITHUB_PATH"
+      - name: Install Windows media prerequisite
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg --yes --no-progress --cache-location="$env:GITHUB_WORKSPACE\.cache\chocolatey"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $env:PATH = [Environment]::GetEnvironmentVariable('PATH','Machine') + ';' + $env:PATH
+            "PATH=$env:PATH" >> $env:GITHUB_ENV
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) { throw 'FFmpeg and FFprobe are required' }
+      - name: Require actual FFmpeg and FFprobe before native video tests
+        shell: bash
+        run: |
+          command -v ffmpeg
+          command -v ffprobe
+          ffmpeg -version
+          ffprobe -version
+      - name: Permit private runtime test namespaces
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/test-network
+      - name: Native codecs, package integrity and offline installation
+        run: cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked -- --test-threads=1
+      - name: Upload standalone executable
         uses: actions/upload-artifact@v7
         with:
           name: rust-build-${{ matrix.platform }}
           path: |
-            native/target/release/numera-emoji
-            native/target/release/numera-emoji.exe
-            native/target/release/numera-build
-            native/target/release/numera-build.exe
+            runtime/target/release/numera-emoji
+            runtime/target/release/numera-emoji.exe
           if-no-files-found: error
 
   # The Worker is TypeScript with its own vitest suite. Its own job rather than
@@ -173,7 +223,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji --bin numera-compat
 
       # `--with-deps` runs apt-get under sudo to install Chromium's system
       # libraries. It was forbidden on the old self-hosted runner, which had no
@@ -211,7 +261,7 @@ jobs:
       - name: Native panel browser tests
         env:
           PYO3_PYTHON: python
-        run: native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test panel_browser -- --test-threads=1 --nocapture
+        run: native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test panel_browser -- --test-threads=1 --nocapture
 
   build:
     runs-on: ubuntu-24.04
@@ -260,7 +310,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --lib --bin numera-emoji --bin numera-build
+        run: cargo build --manifest-path native/Cargo.toml --locked --lib --bin numera-emoji --bin numera-compat --bin numera-build
 
       # INSTALLED here, not merely checked: a hosted runner is a fresh machine
       # with no ffmpeg, where the old self-hosted box had it in its global
@@ -307,19 +357,19 @@ jobs:
         run: |
           cargo fmt --manifest-path native/Cargo.toml --check
           cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
-          native/target/debug/numera-emoji source-static-images --output-dir logs/checkpoint/static-images
+          native/target/debug/numera-compat source-static-images --output-dir logs/checkpoint/static-images
           export NUMERA_STATIC_CONVERT_ORACLE="$PWD/logs/checkpoint/static-images/static-convert-source.json"
           export NUMERA_PROVIDER_IMAGE_ORACLE="$PWD/logs/checkpoint/static-images/provider-image-source.json"
-          native/target/debug/numera-emoji source-lottie-render --output-dir logs/checkpoint/lottie-render
+          native/target/debug/numera-compat source-lottie-render --output-dir logs/checkpoint/lottie-render
           export NUMERA_LOTTIE_PREVIEW_ORACLE="$PWD/logs/checkpoint/lottie-render/lottie-preview-source.json"
           export NUMERA_GALLERY_CODEC_ORACLE="$PWD/logs/checkpoint/lottie-render/gallery-codec-source.json"
           rustc --edition=2024 native/tests/fixtures/media_worker.rs -o "$PWD/logs/checkpoint/media-worker-fixture"
           export NUMERA_MEDIA_FIXTURE_WORKER="$PWD/logs/checkpoint/media-worker-fixture"
-          native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --no-fail-fast -- --test-threads=1
+          native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --no-fail-fast -- --test-threads=1
 
       - name: Similarity benchmark and parity
         if: matrix.python-version == '3.11'
-        run: native/target/debug/numera-emoji benchmark-similarity
+        run: native/target/debug/numera-compat benchmark-similarity
 
       - name: build_pack dry-run (no network)
         run: |
@@ -383,7 +433,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --lib --bin numera-emoji --bin numera-build
+        run: cargo build --manifest-path native/Cargo.toml --locked --lib --bin numera-emoji --bin numera-compat --bin numera-build
       - name: Require native Windows and FFmpeg
         shell: pwsh
         run: |
@@ -411,7 +461,7 @@ jobs:
         run: |
           $driver = Join-Path $PWD 'logs/checkpoint/test-cargo-driver.exe'
           if (Test-Path -LiteralPath $driver) { throw 'Cargo observation driver already exists' }
-          Copy-Item -LiteralPath native/target/debug/numera-emoji.exe -Destination $driver -ErrorAction Stop
+          Copy-Item -LiteralPath native/target/debug/numera-compat.exe -Destination $driver -ErrorAction Stop
       # Run this command early so filesystem/launcher failures are visible
       # before compiling the complete Windows acceptance cohort.
       - name: Native Windows archive regression

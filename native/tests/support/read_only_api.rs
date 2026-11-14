@@ -138,19 +138,30 @@ pub struct Fixture {
     thread: Option<JoinHandle<Result<Vec<String>, String>>>,
 }
 impl Fixture {
+    #[allow(dead_code)] // Shared fixture: some consumers supply their existing whole-flow deadline.
     pub fn new(script: Vec<Reply>) -> Self {
+        Self::start(script, None)
+    }
+    #[allow(dead_code)] // Shared fixture: ordinary read-only cohorts retain the default30s budget.
+    pub fn with_deadline(script: Vec<Reply>, deadline: Instant) -> Self {
+        Self::start(script, Some(deadline))
+    }
+    fn start(script: Vec<Reply>, deadline: Option<Instant>) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         listener.set_nonblocking(true).unwrap();
         let base = format!("http://{}", listener.local_addr().unwrap());
         let (stop, receiver) = mpsc::channel();
         let thread = std::thread::spawn(move || {
-            let deadline = Instant::now() + Duration::from_secs(30);
+            let deadline = deadline.unwrap_or_else(|| Instant::now() + Duration::from_secs(30));
             let mut observed = Vec::new();
             let count = script.len();
             for (index, reply) in script.into_iter().enumerate() {
                 let mut stream = loop {
                     if Instant::now() >= deadline {
-                        return Err("read-only fixture script exceeded30s".into());
+                        return Err(format!(
+                            "read-only fixture script deadline elapsed after {index}/{count} completed responses; next expected path: {}",
+                            reply.path
+                        ));
                     }
                     match listener.accept() {
                         Ok((stream, _)) => break stream,
@@ -181,7 +192,7 @@ impl Fixture {
                     {
                         Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => Ok(observed),
                         Err(mpsc::RecvTimeoutError::Timeout) => {
-                            Err("held read-only fixture exceeded30s".into())
+                            Err("held read-only fixture deadline elapsed".into())
                         }
                     };
                 }
