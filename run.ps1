@@ -52,10 +52,36 @@ if ($Check) {
     $CommandArguments = @('menu')
 }
 Push-Location -LiteralPath $ScriptRoot
+$originalPathExt = [Environment]::GetEnvironmentVariable('PATHEXT', [EnvironmentVariableTarget]::Process)
+$patchedPathExt = $false
 try {
+    if ($suffix -eq '.exe') {
+        # Windows PowerShell 5.1 can treat an explicit .exe as a document when
+        # PATHEXT omits .EXE, losing synchronous output and its exit status.
+        $hasExe = $false
+        if ($null -ne $originalPathExt) {
+            foreach ($extension in $originalPathExt.Split(';')) {
+                if ([String]::Equals($extension, '.EXE', [StringComparison]::OrdinalIgnoreCase)) {
+                    $hasExe = $true
+                    break
+                }
+            }
+        }
+        if (-not $hasExe) {
+            $nativePathExt = if ([String]::IsNullOrEmpty($originalPathExt)) { '.EXE' } else { $originalPathExt + ';.EXE' }
+            [Environment]::SetEnvironmentVariable('PATHEXT', $nativePathExt, [EnvironmentVariableTarget]::Process)
+            $patchedPathExt = $true
+        }
+    }
     & $binary @CommandArguments
     $code = [int]$LASTEXITCODE
 } finally {
-    Pop-Location
+    try {
+        if ($patchedPathExt) {
+            [Environment]::SetEnvironmentVariable('PATHEXT', $originalPathExt, [EnvironmentVariableTarget]::Process)
+        }
+    } finally {
+        Pop-Location
+    }
 }
 exit $code
