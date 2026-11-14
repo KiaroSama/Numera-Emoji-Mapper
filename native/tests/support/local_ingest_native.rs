@@ -158,10 +158,10 @@ pub fn check(project: &Path, root: &Path, original: &Value, log: &RunLog) {
                 ] {
                     assert_eq!(actual[field], expected[field], "{case}: {field}");
                 }
-                assert_eq!(
-                    std::fs::read(actual["file_path"].as_str().unwrap()).unwrap(),
-                    original_bytes(&expected["media_bytes"]),
-                    "{case}"
+                super::assert_observed_media(
+                    &std::fs::read(actual["file_path"].as_str().unwrap()).unwrap(),
+                    &original_bytes(&expected["media_bytes"]),
+                    case,
                 );
             }
         }
@@ -281,7 +281,7 @@ pub fn check(project: &Path, root: &Path, original: &Value, log: &RunLog) {
             .filter(|path| path.extension().is_some_and(|ext| ext == "png"))
             .collect::<Vec<_>>();
         assert_eq!(stored.len(), 1, "{case}");
-        assert_eq!(std::fs::read(&stored[0]).unwrap(), expected, "{case}");
+        super::assert_observed_media(&std::fs::read(&stored[0]).unwrap(), &expected, case);
         assert_eq!(std::fs::read(&source).unwrap(), before);
     }
     assert_eq!(calls.get(), 8);

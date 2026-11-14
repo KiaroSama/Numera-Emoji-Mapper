@@ -2,7 +2,7 @@
 use _native::source_ci_claims::step_run;
 use std::path::Path;
 
-const FULL_NATIVE: &str = "native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --no-fail-fast -- --test-threads=1";
+const FULL_NATIVE: &str = "native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --no-fail-fast -- --test-threads=1";
 const BUILD_EVENTS: &[&str] = &["pull_request:", "push:", "workflow_dispatch:"];
 const MANUAL_EVENTS: &[&str] = &["workflow_dispatch:"];
 const SECURITY_EVENTS: &[&str] = &["pull_request:", "push:", "schedule:", "workflow_dispatch:"];
@@ -300,12 +300,12 @@ fn full_native_acceptance_automatically_claims_new_suites_and_the_fixture_worker
         "Build native backend executable for command parity",
     )
     .unwrap();
-    assert!(build.contains("--lib --bin numera-emoji --bin numera-build"));
+    assert!(build.contains("--lib --bin numera-emoji --bin numera-compat --bin numera-build"));
     assert!(run.lines().any(|line| {
-        line.starts_with("native/target/debug/numera-emoji source-lottie-render --output-dir ")
+        line.starts_with("native/target/debug/numera-compat source-lottie-render --output-dir ")
     }));
     assert!(run.lines().any(|line| {
-        line.starts_with("native/target/debug/numera-emoji source-static-images --output-dir ")
+        line.starts_with("native/target/debug/numera-compat source-static-images --output-dir ")
     }));
     assert!(!run.contains("python -m tests._lottie_preview_oracle"));
     assert!(!run.contains("python -m tests._static_convert_oracle"));
@@ -374,7 +374,7 @@ fn native_browser_acceptance_runs_once_in_its_browser_bucket() {
     let run = step_run(browser, "Native panel browser tests").unwrap();
     assert_eq!(
         run,
-        "native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test panel_browser -- --test-threads=1 --nocapture"
+        "native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test panel_browser -- --test-threads=1 --nocapture"
     );
     assert_eq!(workflow.matches("--test panel_browser ").count(), 1);
     assert!(root.join("native/tests/panel_browser.rs").is_file());
@@ -481,7 +481,11 @@ fn test_module_wiring(
         owners += lines
             .windows(3)
             .filter(|lines| {
-                lines[0] == "#[cfg(all(test, any(windows, target_os = \"linux\")))]"
+                matches!(
+                    lines[0],
+                    "#[cfg(all(test, any(windows, target_os = \"linux\")))]"
+                        | "#[cfg(all(test, not(numera_native_runtime), any(windows, target_os = \"linux\")))]"
+                )
                     && lines[1] == path
                     && lines[2].starts_with("pub(crate) mod ")
                     && lines[2].ends_with(';')
@@ -697,7 +701,7 @@ fn windows_tooling_and_codec_ownership_cases_have_a_real_platform_bucket() {
         "Build native backend executable for command parity",
     )
     .unwrap();
-    assert!(build.contains("--lib --bin numera-emoji --bin numera-build"));
+    assert!(build.contains("--lib --bin numera-emoji --bin numera-compat --bin numera-build"));
     let archive = step_run(windows, "Native Windows archive regression").unwrap();
     assert_eq!(
         archive,
@@ -710,18 +714,18 @@ fn windows_tooling_and_codec_ownership_cases_have_a_real_platform_bucket() {
     );
     let checkpoint =
         std::fs::read_to_string(root.join(".github/workflows/native-checkpoint.yml")).unwrap();
-    assert!(checkpoint.lines().any(|line| line.trim() == "bounded atomic-preservation native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib atomic_tests:: -- --test-threads=1"));
-    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded collection-persistence native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib publish_cli::tests -- --test-threads=1").count(), 1);
-    assert!(checkpoint.lines().any(|line| line.trim() == "bounded configuration native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib config::tests -- --test-threads=1"));
-    assert!(checkpoint.lines().any(|line| line.trim() == "bounded lock-diagnostics native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib lock_diagnostics::tests -- --test-threads=1"));
-    assert!(checkpoint.lines().any(|line| line.trim() == "bounded logging-panic native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib logging::tests -- --test-threads=1"));
-    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded telegram-flood native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib telegram_tests:: -- --test-threads=1").count(), 1);
-    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded sandbox-copy native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib tooling_sandbox_tests:: -- --test-threads=1").count(), 1);
+    assert!(checkpoint.lines().any(|line| line.trim() == "bounded atomic-preservation native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib atomic_tests:: -- --test-threads=1"));
+    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded collection-persistence native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib publish_cli::tests -- --test-threads=1").count(), 1);
+    assert!(checkpoint.lines().any(|line| line.trim() == "bounded configuration native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib config::tests -- --test-threads=1"));
+    assert!(checkpoint.lines().any(|line| line.trim() == "bounded lock-diagnostics native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib lock_diagnostics::tests -- --test-threads=1"));
+    assert!(checkpoint.lines().any(|line| line.trim() == "bounded logging-panic native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib logging::tests -- --test-threads=1"));
+    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded telegram-flood native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib telegram_tests:: -- --test-threads=1").count(), 1);
+    assert_eq!(checkpoint.lines().filter(|line| line.trim() == "bounded sandbox-copy native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib tooling_sandbox_tests:: -- --test-threads=1").count(), 1);
     assert!(checkpoint.contains("--test source_tooling_recipe "));
     assert!(checkpoint.contains("--test source_assertions "));
     let seams = checkpoint
         .lines()
-        .find(|line| line.trim().starts_with("bounded seams native/target/debug/numera-emoji test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- "))
+        .find(|line| line.trim().starts_with("bounded seams native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- "))
         .unwrap();
     let tokens = seams.split_whitespace().collect::<Vec<_>>();
     for suite in [
@@ -897,10 +901,10 @@ fn cargo_suites_opt_in_to_the_guard_including_fail_closed_posix_admission() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let runner = std::fs::read_to_string(root.join(".cargo/tests.toml")).unwrap();
     assert!(
-        runner.contains("runner = [\"native/target/debug/numera-emoji.exe\", \"test-runner\"]")
+        runner.contains("runner = [\"native/target/debug/numera-compat.exe\", \"test-runner\"]")
     );
     assert!(runner.contains("[target.'cfg(unix)']"));
-    assert!(runner.contains("runner = [\"native/target/debug/numera-emoji\", \"test-runner\"]"));
+    assert!(runner.contains("runner = [\"native/target/debug/numera-compat\", \"test-runner\"]"));
     assert!(
         !root.join(".cargo/config.toml").exists(),
         "test-only runner must not change ordinary cargo run"
@@ -929,6 +933,15 @@ fn cargo_suites_opt_in_to_the_guard_including_fail_closed_posix_admission() {
                 continue; // Compilation is checked separately; it never counts as executed coverage.
             }
             if line.contains("cargo test ") || line.contains(" test-cargo ") {
+                if line.contains("--manifest-path runtime/Cargo.toml") {
+                    assert!(
+                        line.contains("cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked "),
+                        "standalone runtime suites must retain their Python-free bounded runner: {}",
+                        path.display()
+                    );
+                    suites += 1;
+                    continue;
+                }
                 assert!(
                     line.contains("cargo test --config .cargo/tests.toml ")
                         || (line.contains(" test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml ")
@@ -944,6 +957,113 @@ fn cargo_suites_opt_in_to_the_guard_including_fail_closed_posix_admission() {
         suites >= 4,
         "native guard coverage must not silently match nothing"
     );
+}
+
+#[test]
+fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_python() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let workflow = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).unwrap();
+    let production = workflow
+        .split_once("\n  native-build:")
+        .unwrap()
+        .1
+        .split_once("\n  # The Worker")
+        .unwrap()
+        .0;
+    for platform in ["linux-x64", "windows-x64", "macos-x64", "macos-arm64"] {
+        assert!(production.contains(&format!("platform: {platform}")));
+    }
+    assert!(!production.contains("setup-python"));
+    assert!(!production.contains("PYO3_PYTHON"));
+    for prerequisite in [
+        "Install Linux video prerequisites",
+        "Install Windows media prerequisite",
+        "Install Apple Silicon media prerequisite",
+        "Build Intel media prerequisite on hosted CI",
+    ] {
+        assert!(step_run(production, prerequisite).is_ok());
+    }
+    let video = step_run(
+        production,
+        "Require actual FFmpeg and FFprobe before native video tests",
+    )
+    .unwrap();
+    assert!(video.lines().any(|line| line == "ffmpeg -version"));
+    assert!(video.lines().any(|line| line == "ffprobe -version"));
+    let build = step_run(production, "Build Python-free release executable").unwrap();
+    assert_eq!(
+        build,
+        "cargo build --manifest-path runtime/Cargo.toml --locked --release --bins"
+    );
+    let tests = step_run(
+        production,
+        "Native codecs, package integrity and offline installation",
+    )
+    .unwrap();
+    assert_eq!(
+        tests,
+        "cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked -- --test-threads=1"
+    );
+    let runner = std::fs::read_to_string(root.join(".cargo/runtime-tests.toml")).unwrap();
+    assert!(runner.contains("runtime/target/release/numera-runtime-tests.exe"));
+    assert!(runner.contains("runtime/target/release/numera-runtime-tests\""));
+    let helper = std::fs::read_to_string(root.join("runtime/src/test_main.rs")).unwrap();
+    for guard in [
+        "OwnedProcess::spawn_descendants",
+        "network::run",
+        "Duration::from_secs(900)",
+        "Duration::from_secs(180)",
+        ".env_clear()",
+        "8 * 1024 * 1024",
+    ] {
+        assert!(
+            helper.contains(guard),
+            "standalone runtime guard missing: {guard}"
+        );
+    }
+    let release = std::fs::read_to_string(root.join(".github/workflows/release.yml")).unwrap();
+    let package = release
+        .split_once("\n  package:")
+        .unwrap()
+        .1
+        .split_once("\n  publish:")
+        .unwrap()
+        .0;
+    assert!(!package.contains("setup-python"));
+    assert!(!package.contains("maturin"));
+    assert!(!package.contains(".venv"));
+    for platform in ["linux-x64", "windows-x64", "macos-x64", "macos-arm64"] {
+        assert!(package.contains(&format!("platform: {platform}")));
+    }
+    assert!(
+        step_run(
+            package,
+            "Offline package integrity, replacement and native conversion"
+        )
+        .unwrap()
+        .contains("--release --test standalone_package")
+    );
+    let compatibility = release
+        .split_once("\n  compatibility:")
+        .unwrap()
+        .1
+        .split_once("\n  package:")
+        .unwrap()
+        .0;
+    assert!(
+        step_run(
+            compatibility,
+            "Install and exercise extracted package without source/build tree"
+        )
+        .unwrap()
+        .contains("python -m tests._prebuilt_smoke")
+    );
+    assert!(
+        step_run(compatibility, "Compile every historical Rust test target")
+            .unwrap()
+            .contains("--manifest-path native/Cargo.toml --locked --no-run")
+    );
+    assert!(!compatibility.contains("actions/upload-artifact"));
 }
 
 #[test]

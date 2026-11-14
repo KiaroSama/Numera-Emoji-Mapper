@@ -178,7 +178,7 @@ pub fn run_with_codec<M: MediaCodec>(
         &crate::logging::utc(),
         &config.root,
     )?;
-    #[cfg(test)]
+    #[cfg(all(test, not(numera_native_runtime)))]
     crate::migration_crash_tests::barrier("writer-ingest");
     let mut collector = Collector {
         cat: &mut catalog,
@@ -255,7 +255,7 @@ pub fn run_with_codec<M: MediaCodec>(
     ))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(numera_native_runtime)))]
 mod cleanup_tests {
     use super::*;
 

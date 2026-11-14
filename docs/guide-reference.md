@@ -6,8 +6,8 @@
 |---------|-------|-----|
 | `GENERAL_BOT_TOKEN not set` / `getMe failed: Not Found` | Token missing/invalid in `.env`, or a stale shell env var shadowing it. | Put a valid token in `.env`; in PowerShell clear a leftover var: `Remove-Item Env:\GENERAL_BOT_TOKEN`. |
 | `ffmpeg not found` | ffmpeg/ffprobe not on PATH. | `winget install Gyan.FFmpeg` (only needed for video). |
-| `cannot find ft2build.h` / reportlab build fails | An old checkout still pinning `reportlab<4`, which had no cp312 wheel. | Pull latest: the reportlab/svglib stack was replaced by `resvg-py`. |
-| `Python int too large to convert to SQLite INTEGER` | Old catalog code stored an unsigned 64-bit phash. | Fixed in `emojikit/catalog.py` (signed storage); pull latest. |
+| Launcher says the native executable is missing | An archive was not extracted completely, or a source checkout has not been explicitly built. | Extract the standalone package into a fresh directory, or follow the contributor build instructions. Launchers never auto-build. |
+| A legacy catalogue has unsigned-hash import problems | Historical code stored an unsigned 64-bit phash in signed SQLite INTEGER. | Keep a verified backup and use the current native catalogue/identity repair path, which preserves signed storage. |
 | Fetch reports `dedup` on a pack with no real duplicates | Near-dup merging was on. | It's **off by default** now (`--phash-threshold -1`); pull latest or pass `-1`. |
 | Panel images 404 | `/img/<key>` not URL-decoded. | Fixed; pull latest. |
 | Bot replies nothing in a group | Privacy mode on / not admin. | Make the bot admin or disable privacy mode in BotFather. |
@@ -15,17 +15,17 @@
 | `STICKERSET_INVALID` right after deleting a set | Telegram locks a freed set name ~2 min. | The client auto-waits and retries; just let it run. |
 | `flood wait Ns` | Telegram rate limit. | The client honors `retry_after` automatically; let it continue. |
 | Animated card shows ▶ but never plays | Bad/non-standard `.tgs`, or JS blocked. | Other cards still work; that single TGS just won't render. |
-| Wrong logo for a coin | Source logo is a different token with the same ticker. | `python -m coins.verify_logos --fix --only <ticker>` with the correct image. |
-| Scrambled ticker→id map | Position-based mapping (legacy). | Rebuild with `coins\remap_ids.py ... --apply`. |
+| Wrong logo for a coin | Source logo is a different token with the same ticker. | `.\numera-emoji.exe coin-verify-logos --emoji-dir DIR --fix --only <ticker>` with the correct image. |
+| Scrambled ticker→id map | Position-based mapping (legacy). | Rebuild with `numera-emoji coin-remap-ids --emoji-dir DIR ... --apply`. |
 | `canonical_map.lock is held by pid …` | Another coin tool is mid-write of `ticker_to_id.json`. Every writer holds one lock across the whole read-modify-write, so neither can lose the other's ids. | Let the other tool finish, then re-run. The map was **not** modified. |
 | `publish_<base>.lock is held by pid …` **and that process is gone** (you stopped a publish, or it crashed) | The lock outlives the run that made it. It is reclaimed once the holder is provably dead AND the lock is over two minutes old — the delay covers the moment between a lock being created and its owner being written into it. | Wait ~2 minutes and re-run the same command. It resumes where it stopped; nothing is re-uploaded. |
-| `the pending replacement … was recorded against map A, not this run's map B` | A `verify_logos --fix` was interrupted; its intent is bound to the exact `--map`/`--state` it started against. | Re-run with the **original** `--map`/`--state` so it can be resolved, or review the pack and delete `coins\verify_logos_intent.json` deliberately. |
+| `the pending replacement … was recorded against map A, not this run's map B` | A `verify_logos --fix` was interrupted; its intent is bound to the exact `--map`/`--state` it started against. | Re-run with the **original** `--map`/`--state` so it can be resolved, and inspect the retained intent/source evidence if recovery refuses. Do not delete unresolved intent as a shortcut. |
 | `… exists but its first sticker is not <x>.png; refusing to adopt` | A set of that name exists but this run did not create it (leftover family, or someone else's). Existence is not identity. | Rename the family, or delete the stale set, then re-run. |
-| `position N could not be examined …` from `build_collection` | A live sticker could not be downloaded or hashed, so the publisher cannot tell whether it is one of ours. Guessing "not ours" is what publishes a second copy. | Usually transient — re-run. If it repeats on **video or animated** sets, ffmpeg is off PATH: content hashing needs it, and without it every such sticker is unexaminable. Install ffmpeg (see [§3 Setup](#3-setup-one-time)). |
+| `position N could not be examined …` from `build-collection` | A live sticker could not be downloaded or hashed, so the publisher cannot tell whether it is one of ours. Guessing "not ours" is what publishes a second copy. | Usually transient — re-run. If it repeats on **video or animated** sets, ffmpeg is off PATH: content hashing needs it, and without it every such sticker is unexaminable. Install ffmpeg (see [§3 Setup](guide-start.md#3-setup-one-time)). |
 | `Bad Request: wrong file type` on an **animated** item | Telegram's **uploader** refuses a subtract mask (`masksProperties[].mode == "s"`); its **player** renders one happily. So a sticker can be live in a published pack for years and still be refused when you upload the same bytes -- proven by downloading one from a live pack and sending it straight back untouched. Add masks (`"a"`) are fine. Nothing local can see it: the file is valid gzip, valid Lottie, 512x512, in-spec fps and duration. | `validate_tgs` now refuses it at ingest and names the layer, so this should no longer reach a publish. If it does, the publisher records it as a **skip** with the reason rather than retrying it on every future run. The only repair is re-exporting the animation without that mask, which changes the artwork -- an owner decision, never automatic. |
-| CI red on push | A check failed (install/import/checks/dry-run). | `gh run view <id> --log-failed`; reproduce locally with `.\scripts\check.ps1`; the matrix is Python 3.11, 3.12 **and** 3.14, so check which one failed. |
-| `ModuleNotFoundError: No module named 'numpy'` from `coins\remap_ids.py` | numpy is the coin extra, not part of the core manifest. | `pip install -r requirements-coins.txt`. |
-| `SuiteIsHermetic ... the hermetic guard was NOT active` | The suite was started without `-t .`, so `tests/__init__.py` never ran. | Use `.\scripts\check.ps1`, or the exact form the failure message prints. |
+| CI red on push | A native, compatibility, browser, package or Worker check failed. | `gh run view <id> --log-failed`; reproduce the failing job's exact command. For standalone code start with `cargo test --manifest-path runtime/Cargo.toml --locked`. |
+| A Python/NumPy import error appears during ordinary operation | A historical helper or compatibility environment was launched instead of the standalone application. | Use the root `numera-emoji` executable. Native coin remapping needs no NumPy or Python installation. |
+| `SuiteIsHermetic ... the hermetic guard was NOT active` in optional compatibility tests | The historical suite was started without `-t .`, so its credential/network guard never ran. | Use that harness's documented test command or the exact command in the failure. This is a developer-test issue, not a production dependency. |
 
 ---
 
@@ -47,7 +47,7 @@ No. The Bot API only delivers posts received after the bot joined.
 To `PACK_LINKS_CHAT_ID` (a channel id or `@name`; the bot must be an admin
 there), or to the owner's private chat (`PACK_OWNER_USER_ID`) when it is unset —
 from this process, or through the Worker when `WORKER_PUBLISH_URL` is set
-(§12.9). All three publishers use `emojikit.announce.announce_packs`.
+(§12.9). All three publishers use the native announcer.
 
 **Q: Is my data uploaded anywhere?**
 Only to Telegram, via your bots. `collection/`, `logs/`, `.env`, `secrets.md`
@@ -56,7 +56,7 @@ stay local and are gitignored.
 **Q: Can one set hold both static and animated emoji?**
 Yes — since Bot API 7.2 (March 2024) a single custom-emoji set may mix static,
 video and animated stickers (each `InputSticker` carries its own `format`;
-verified live). `build_collection` still splits into `s`/`v`/`a` sets by default
+verified live). `build-collection` still splits into `s`/`v`/`a` sets by default
 for organization, but the static brand logo is added as the first emoji of every
 set regardless of the set's format.
 
@@ -72,7 +72,7 @@ set regardless of the set's format.
 - **TGS** — gzip-compressed Lottie JSON = an animated sticker/emoji.
 - **set / pack** — a Telegram sticker set (≤200 custom emoji).
 - **plan** — the append-only list of items queued for a pack family; they upload in the panel's current order.
-- **included flag** — per-item publish toggle set by the Curate emojikit.panel.
+- **included flag** — per-item publish toggle set by the Curate panel.
 - **drift** — when live sticker order ≠ assumed order, scrambling a position map.
 
 ---
@@ -119,7 +119,7 @@ added, counts as the first of those 200).
 | `coins/keywords.csv` | **yes** | ticker → name/keywords. |
 | `coins/currency-emoji-inventory.md` | no | Inventory source. Names live custom-emoji ids, so it stays local. |
 | `coins/currency-emoji-inventory.filled.md` | no | Generated, id-filled inventory. |
-| `coins/rebuild_dedup_state.json` | no | Live coin pack set names/order. Written by `rebuild_dedup.py` **and** by the providers when they top the family up — they add their own `provider_in_flight` intent and `provider_added` tally beside the rebuild's keys, under the same pack-family lock. |
+| `coins/rebuild_dedup_state.json` | no | Live coin pack set names/order. Written by `coin-rebuild` **and** by the providers when they top the family up — they add their own `provider_in_flight` intent and `provider_added` tally beside the rebuild's keys, under the same pack-family lock. |
 | `coins/rebuild_dedup_plan.json` | no | Frozen coin upload plan. |
 | `coins/remap_live_cache.json` | no | remap signature cache. |
 | `coins/ticker_to_id.<date>.bak.json` | no | Dated snapshot taken before a remap. **This is the revert target.** |
@@ -135,9 +135,8 @@ added, counts as the first of those 200).
 - Tokens and the owner id live only in `.env` (and a local `secrets.md`
   registry). Both are gitignored and must never be committed, printed, logged,
   or pushed.
-- `emojikit.logsetup` raises `urllib3`/`requests` to WARNING so the Telegram API
-  URL (which contains the token in the path) is never written to a log file, and
-  `redact()` masks token-shaped strings in any message it does log.
+- Native run logging registers configured secret values before validation and
+  masks token-shaped strings and Bot API URLs in errors, responses and logs.
 - A leaked bot token must be revoked via @BotFather (`/revoke`) and replaced in
   `.env`.
 - The repository is **public** and licensed **GPL-3.0-or-later** (`LICENSE`).
@@ -245,7 +244,7 @@ When you add or change any command, flag, file, table, or workflow:
 1. Update the matching section here **in full** (0 → 100, with an example).
 2. Update `README.md` if the change is user-facing.
 3. Run the unit tests + a real run; verify UI in a browser when relevant.
-4. Commit and **push to `main`** so GitHub stays in sync.
+4. Commit reviewable changes and follow the repository's branch/review workflow.
 
 *End of guide.*
 ---

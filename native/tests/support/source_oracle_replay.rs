@@ -115,7 +115,7 @@ pub fn check(
             _native::source_sqlite_oracle::check_database,
         ),
     ];
-    let executable = std::path::Path::new(env!("CARGO_BIN_EXE_numera-emoji"));
+    let executable = std::path::Path::new(env!("CARGO_BIN_EXE_numera-compat"));
     let unavailable = root.join("logs/tmp/not-an-oracle-executable");
     for (name, path, text, count, direct) in corpora {
         let source = sources.iter().find(|source| source.path == path).unwrap();

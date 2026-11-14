@@ -188,7 +188,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, sources: &[Source])
     let get = |path: &str| sources.iter().find(|source| source.path == path).unwrap();
     let benchmark = get("scripts/benchmark_similarity.py");
     let reference = get("tests/_similarity_oracle.py");
-    let executable = Path::new(env!("CARGO_BIN_EXE_numera-emoji"));
+    let executable = Path::new(env!("CARGO_BIN_EXE_numera-compat"));
     for selected in 0..2 {
         for mutation in ["revision", "path", "claimed hash", "actual bytes"] {
             let original = [benchmark, reference][selected];

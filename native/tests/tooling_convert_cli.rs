@@ -158,7 +158,7 @@ fn copied_public_cli_help_usage_and_missing_prerequisite_bypass_operator_config(
     } else {
         "numera-emoji"
     });
-    std::fs::copy(env!("CARGO_BIN_EXE_numera-emoji"), &executable).unwrap();
+    std::fs::copy(env!("CARGO_BIN_EXE_numera-compat"), &executable).unwrap();
     let mut environment = BTreeMap::new();
     // An allowlist keeps production credentials out without altering the parent environment.
     for key in [

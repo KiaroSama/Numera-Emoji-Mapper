@@ -135,13 +135,45 @@ fn executable_codec_envelope_is_owned_bounded_and_exclusive() {
                         .find(|case| case["name"] == "alpha-edge")
                         .unwrap();
                     use sha2::{Digest, Sha256};
-                    let bytes = std::fs::read(&converted).unwrap();
+                    assert!(
+                        std::fs::read(&converted)
+                            .unwrap()
+                            .starts_with(b"\x89PNG\r\n\x1a\n")
+                    );
+                    // Encoders may choose different PNG filters/compression. The public
+                    // conversion must retain the independently frozen RGBA pixels and mode.
+                    let (size, mode, rgba) = {
+                        use pyo3::prelude::*;
+                        use pyo3::types::PyBytes;
+                        Python::initialize();
+                        Python::attach(|py| -> PyResult<((u32, u32), String, Vec<u8>)> {
+                            let image = py
+                                .import("PIL.Image")?
+                                .call_method1("open", (&converted,))?;
+                            let decoded = (|| -> PyResult<_> {
+                                Ok((
+                                    image.getattr("size")?.extract()?,
+                                    image.getattr("mode")?.extract()?,
+                                    image
+                                        .call_method0("tobytes")?
+                                        .cast_into::<PyBytes>()?
+                                        .as_bytes()
+                                        .to_vec(),
+                                ))
+                            })();
+                            image.call_method0("close")?;
+                            decoded
+                        })
+                        .unwrap()
+                    };
+                    assert_eq!(json!([size.0, size.1]), golden["expected"]["size"]);
+                    assert_eq!(json!(mode), golden["expected"]["mode"]);
                     assert_eq!(
-                        Sha256::digest(&bytes)
+                        Sha256::digest(&rgba)
                             .iter()
                             .map(|byte| format!("{byte:02x}"))
                             .collect::<String>(),
-                        golden["expected"]["png_sha256"]
+                        golden["expected"]["rgba_sha256"]
                     );
                     assert_eq!(response["result"]["fmt"], "static");
                     assert_eq!(response["result"]["extension"], ".png");

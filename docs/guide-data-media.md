@@ -20,7 +20,7 @@ the scan is done, so an already converted catalog's open writes nothing.
 |--------|------|---------|
 | `content_key` | TEXT PK | Normalized content hash, prefixed by format: `s:` static, `v:` video, `a:` animated, `r:` raw fallback. |
 | `format` | TEXT | `static` / `video` / `animated`. |
-| `file_path` | TEXT | Where the media file is. Inside the data folder it is stored **relative to that folder** (`./media/static/<key>.webp`), so the folder can be renamed or moved; anywhere else (the archive on another drive) it is absolute. Read it through `emojikit.media_paths.resolve(data_dir, stored)`, never with a bare `Path(...)`. |
+| `file_path` | TEXT | Where the media file is. Inside the data folder it is stored **relative to that folder** (`./media/static/<key>.webp`), so the folder can be renamed or moved; anywhere else (the archive on another drive) it is absolute. Resolve it through the native media-path rules, never against an arbitrary current directory. |
 | `emojis` | TEXT (JSON) | Associated standard emoji(s), e.g. `["🪙"]`. |
 | `keywords` | TEXT (JSON) | Search keywords / labels. |
 | `sources` | TEXT (JSON) | Where it came from, e.g. `["RMaccs"]` or `["local:foo.png"]`. |
@@ -70,21 +70,33 @@ values. (Regression test: `tests/test_catalog.py::test_large_phash_64bit`.)
 
 ### 13.5 Inspecting the catalog manually
 
+Use the application's offline status command for ordinary inspection:
+
 ```powershell
-.venv\Scripts\python.exe -c "import sqlite3;d=sqlite3.connect('collection/catalog.db');
-print(d.execute('SELECT format,COUNT(*),SUM(included) FROM items GROUP BY format').fetchall());
-print(d.execute('SELECT base,COUNT(*) FROM publications GROUP BY base').fetchall())"
+.\numera-emoji.exe status
 ```
 
-### 13.6 Identity migration, recovery and rollback (`scripts/identity_repair.py`)
+For SQL inspection, an optional SQLite CLI or database viewer can open the
+catalog read-only. This is not a runtime dependency:
+
+```sql
+SELECT format, COUNT(*), SUM(included) FROM items GROUP BY format;
+SELECT base, COUNT(*) FROM publications GROUP BY base;
+```
+
+Take a WAL-safe snapshot when copying a live catalogue; copying only `catalog.db`
+can omit committed rows that are still in its WAL.
+
+<a id="136-identity-migration-recovery-and-rollback-scriptsidentity_repairpy"></a>
+### 13.6 Identity migration, recovery and rollback (`identity-repair`)
 
 A video decoder correction can change an item's key and perceptual hash. The
 migration updates `items`, `publications`, `seen_files`, publisher state/plans,
 and media names together. It never uploads to Telegram.
 
 ```powershell
-.venv\Scripts\python.exe scripts\identity_repair.py report
-.venv\Scripts\python.exe scripts\identity_repair.py migrate-video-keys --apply
+.\numera-emoji.exe identity-repair report
+.\numera-emoji.exe identity-repair migrate-video-keys --apply
 ```
 
 The canonical data directory owns one native maintenance/writer lock. Catalog
@@ -114,9 +126,9 @@ inspection; deleting it is not a repair.
 than only copying the database back. Use the exact bundle path printed by the run:
 
 ```powershell
-.venv\Scripts\python.exe scripts\identity_repair.py restore `
+.\numera-emoji.exe identity-repair restore `
     --bundle catalog.before-video-identity-<stamp>.rollback.json
-.venv\Scripts\python.exe scripts\identity_repair.py restore --apply `
+.\numera-emoji.exe identity-repair restore --apply `
     --bundle catalog.before-video-identity-<stamp>.rollback.json
 ```
 
@@ -156,158 +168,90 @@ destination bytes and catalog bindings remain intact for deliberate recovery.
 
 ---
 
-## 14. `emojikit` library API
+<a id="14-emojikit-library-api"></a>
+## 14. Native local library API
 
-### 14.1 `emojikit.media`
+The standalone crate exposes the media worker and shared Rust responsibilities.
+The old `emojikit` API remains only in optional developer/reference material.
+Applications use the native command/worker contracts below; operators do not
+need to import a Python package.
 
-Constants: `SIZE=100`, `TGS_MAX_BYTES=65536`, `WEBM_MAX_BYTES=262144`,
-`WEBM_MAX_SECONDS=3.0`, `WEBM_FPS=30`.
+<a id="141-emojikitmedia"></a>
+### 14.1 Native media operations
 
-| Function | Returns | Notes |
-|----------|---------|-------|
-| `detect_format(path)` | `"static"\|"animated"\|"video"\|"unknown"` | By magic bytes, then extension. |
-| `detect_format_bytes(head)` | same | From leading bytes only. |
-| `telegram_sticker_format(sticker)` | format | From `is_animated`/`is_video`. |
-| `ext_for_format(fmt)` | `.png`/`.tgs`/`.webm` | Canonical extension. |
-| `media_extension(path, fmt)` | str | Refines static into `.png` vs `.webp`. |
-| `fit_100(img)` | PIL.Image | Trim transparent borders, center on 100×100 RGBA. |
-| `to_static_png(src, out)` | Path | Any image (SVG via resvg) → 100×100 PNG. |
-| `to_video_webm(src, out)` | Path | ffmpeg → VP9 WEBM, 100×100, ≤3 s, transparent-padded; CRF escalates until ≤256 KB. |
-| `probe_video(path)` | `VideoInfo(width,height,duration,codec)` | via ffprobe. |
-| `validate_video(path)` | raises on violation | dims/duration/codec/size checks. |
-| `to_animated_tgs(src, out)` | Path | Lottie `.json`/`.tgs` → valid 512×512 `.tgs` (gzip). Any other canvas is refused, never rescaled. |
-| `validate_tgs(path)` | raises | ≤64 KB, gzip, required Lottie keys, 512×512 canvas, ≤60 fps, ≤3 s. |
+| Responsibility | Current implementation / contract |
+|---|---|
+| Detection and extension | `codec_format`: header sniffing plus supported hints; target extension preserves the static fallback contract. |
+| Static raster decode/encode | `native_raster`: bounded RGBA decoding, deterministic PNG and native WebP, including animation policies. |
+| Fitting and static conversion | `codec_image`: alpha trim,100×100 transparent canvas and exclusive output publication; SVG uses `native_svg`. |
+| Lottie packaging/identity | `native_lottie` and `codec_lottie_*`: canonical JSON, gzip, validation, tint and native rendering. |
+| Video conversion/validation | `codec_video_*`: owned FFmpeg/FFprobe children and alpha-capable decoder selection. |
+| Identity/comparison | Mode-aware dHash, normalized pixel keys and per-format comparison. Unknown evidence stays undecidable. |
 
-Content keys and hashes live in `emojikit.identity`, not here: `content_key(path,
-fmt)` (the dedup primary key, §16), `perceptual_hash(path, fmt)` (64-bit dHash
-for static/video; `None` for animated), `hamming(a, b)` and `same_image`.
+The worker accepts operations such as `image_info`, `dimensions`, `usable`,
+`fingerprint`, `compare`, `same_image`, `convert`, `prepare`, `preview` and
+`gallery_thumb`. It returns the existing JSON response envelope. Application
+callers use the native adapter rather than constructing an interpreter command.
+See [codec contracts](native-codec-contracts.md) for exact thresholds and schema.
 
-The ffmpeg filter used for video:
-`fps=30,scale=100:100:force_original_aspect_ratio=decrease:flags=lanczos,format=rgba,pad=100:100:(ow-iw)/2:(oh-ih)/2:color=0x00000000,format=yuva420p`,
-encoded with `libvpx-vp9 -pix_fmt yuva420p -auto-alt-ref 0`.
+Video fitting uses
+`fps=30,scale=100:100:force_original_aspect_ratio=decrease:flags=lanczos,format=rgba,pad=100:100:(ow-iw)/2:(oh-ih)/2:color=0x00000000,format=yuva420p`
+and `libvpx-vp9 -pix_fmt yuva420p -auto-alt-ref 0`.
 
-A **video input is decoded with an explicitly named alpha-capable decoder**,
-placed before `-i`: `libvpx-vp9` for VP9, `libvpx` for VP8. Both of those
-formats keep alpha in a separate WebM layer that ffmpeg's *default* `vp9`/`vp8`
-decoders drop without a word, so the filter chain would see no alpha and the
-transparent pad would land on an opaque frame — a re-encoded transparent emoji
-came out a black square. The decoder is chosen from the codec `probe_video`
-reports, never from the file extension: `.webm` is a container and says nothing
-about what is inside it. GIF/PNG inputs get no override. The same choice is
-needed to *inspect* a clip — probing a VP9 emoji with the default decoder
-reports every one of them as opaque, correct ones included — which is why the
-decision lives in one module (§14.2) that both the converter and the identity
-layer call.
+<a id="142-emojikitvideo_decode"></a>
+### 14.2 Alpha-aware video decoding
 
-### 14.2 `emojikit.video_decode`
+`codec_video::VideoDecoder` centralizes decoder admission, bounded capture and
+sample caching. VP9 uses `libvpx-vp9`; VP8 uses `libvpx`, selected from the probed
+codec before `-i`. FFmpeg's default decoders can discard the separate alpha
+layer. GIF/PNG input receives no such override.
 
-One module, because "which decoder reads this file's alpha" was previously
-answered in two places and they disagreed — `fingerprint()` and
-`perceptual_hash()` returned different keys for the same clip.
-
-| Function | Returns | Notes |
-|----------|---------|-------|
-| `decoder_available(name)` | bool | Is this ffmpeg decoder built in? Cached per name. |
-| `decoder_args(path)` | `["-c:v", …]` or `[]` | The decoder for this file's **probed** codec. Raises `UndecodableVideo` when alpha fidelity cannot be ESTABLISHED; `[]` only on positive evidence that no override applies. |
-| `frames_rgba(path, fps=SAMPLE_FPS)` | bytes | 64×64 RGBA frames at `fps`, alpha intact. `SAMPLE_FPS` (10) is the IDENTITY stream and is frozen — every stored content key hashes it. |
-| `first_frame_bytes(path)` | bytes \| None | The first of those frames. |
-
-`frames_rgba` is memoised on `(path, size, mtime_ns)` with a small bounded LRU.
-`same_image` used to decode the same file up to six times per comparison; the
-cache cut the video identity suite from 163 s to 48 s, and shortens real ingest
-by the same mechanism. Keying on mtime and size — not the path alone — is what
-keeps a re-encoded file from answering with its old frames.
+Identity samples remain 10 fps at 64×64 RGBA. The small bounded cache includes path,
+size and modification time so a rewritten file cannot reuse its old samples.
+Unknown codec/decoder fidelity is a refusal, not permission to drop alpha.
 
 ### 14.3 Comparing two videos
 
-`same_image(a, b, "video")` walks the timeline. It used to read frame zero and
-nothing else — both halves of its two-agreement rule went through
-`_first_video_frame` — so two real clips sharing ten opening frames compared
-equal, and reconciliation bound the foreign clip's ids to our catalog item.
+Comparison checks the complete sampled timeline at 30 fps. Every paired frame
+must pass the structure/color checks; only the defined one-frame length slack
+is allowed. It never averages away a changed segment or accepts video key
+equality alone: a change shorter than a 10 fps identity interval may leave the key
+unchanged. Unreadable evidence remains undecidable.
 
-Two rules make it sound:
+<a id="144-emojikitrepaint"></a>
+### 14.4 Native repainting
 
-* **Every sampled frame pair must agree**, under the same structure-and-colour
-  rule a static image gets. There is no averaging across frames: an average is
-  exactly what lets one differing segment hide. A length difference beyond one
-  frame of slack is a different clip, however well the opening matches.
-* **Content-key equality is not proof, for video.** The key hashes the 10 fps
-  identity stream, and a change shorter than one sampling interval falls between
-  its frames — two clips differing in exactly ONE frame (flat blue against flat
-  green, premultiplied mean delta 100.5) hash to the same key. The comparison
-  therefore samples at `VIDEO_COMPARE_FPS` (30, the rate this project's own
-  encoder produces) and never short-circuits on the key.
-
-Failing closed stays the contract: a clip that cannot be read is `None`
-(undecidable), never `False`.
-
-### 14.4 `emojikit.repaint`
-
-Baking Telegram's `--tint` into artwork, rather than publishing a set that asks
-the client to flatten it. Split out of `media.py` (a different job, and that
-file had reached the size ceiling); callers import `emojikit.repaint` directly.
-
-| Function | Returns | Notes |
-|----------|---------|-------|
-| `parse_tint(text)` | `(r, g, b)` | `#rrggbb`, `#rgb`, or `r,g,b`. |
-| `repaint_in_place(path, fmt, rgb)` | bool | Recolour a Lottie or a static in place; video is refused. |
-
-Two shapes it must not skip, both of which used to return `True` having changed
-nothing: an **animated colour** is a list of keyframe objects with `s`/`e`
-rather than a flat `[r,g,b,a]`, and a **gradient** packs its colour stops
-`[offset,r,g,b] × p` followed by its opacity stops `[offset,alpha]` in one flat
-array — so `len // 4` as the stop count overwrites the opacity ramp with colour.
-`g.p` is the stop count and is honoured when present.
+`codec_tint` parses six hexadecimal RGB digits, optionally prefixed by `#`.
+Static tint replaces RGB while retaining alpha. Lottie tint handles flat colors,
+animated `s`/`e` keyframes and declared gradient color stops without changing
+alpha/opacity stops. Video tint is refused.
 
 ### 14.5 Native catalog
 
-Rust owns catalog schema, queries, dedup decisions and durable writes through
-`native/src/catalog.rs`. Commands access it directly. Shared test references keep
-the pre-port Catalog API for parity and rollback verification; there is no
-production `emojikit.catalog` application. Persistent rows, signed hashes,
-inclusion/order and per-family publication contracts remain unchanged (§13).
+Rust owns schema, queries, dedup decisions and durable writes through shared
+`native/src/catalog.rs`. Persistent rows, signed hashes, inclusion/order and
+per-family publications remain unchanged (§13). Independent historical fixtures
+remain available for parity and recovery verification.
 
-### 14.6 `emojikit.logsetup` (advanced logging)
+<a id="146-emojikitlogsetup-advanced-logging"></a>
+### 14.6 Native run logging
 
-`setup_logging(name, *, console_level=INFO, file_level=DEBUG, color=None)`
-configures a console handler plus a fresh UTC file log under `logs/`, named
-`<name>_YYYY-MM-DD_HH-mm-ss_UTC_<run_id>.log`. It is idempotent per process and
-returns the root logger. Capabilities:
+`logging::RunLog` owns redacted UTC run logs, per-run IDs, command outcomes and
+panic/error reporting. Register configured secret values before validation so
+an error containing a supplied value is redacted too. Token-shaped text and
+Bot API URLs are masked; catalogue hashes and numeric emoji IDs remain useful
+for diagnostics. Log retention only considers direct regular log files and
+retains symlink/reparse entries.
 
-- **Per-run id** — an 8-hex id stamped on every file line.
-- **Automatic secret redaction** — known secret *values* (auto-registered from
-  `TELEGRAM_BOT_TOKEN`, `GENERAL_BOT_TOKEN`, `CMC_API_KEY`, …) and token-shaped
-  strings/`/bot<token>/` URLs are masked in **every** record, including
-  exception tracebacks. Content hashes (`s:...`) and numeric ids are **not**
-  redacted. Register extra secrets with `register_secret(value)`.
-- **Rich file format** — `[UTC] [LEVEL] [run_id] [logger] module:line message`;
-  concise (optionally ANSI-colored on TTY) console format.
-- **Uncaught-exception capture** — `sys.excepthook` + threading hook log full
-  tracebacks as CRITICAL, and the traceback printed to stderr is redacted too
-  (delegating to the default hook would have printed the token raw).
-- **Quiet third parties** — `urllib3`/`requests`/`PIL` turned down;
-  `logging.captureWarnings(True)`.
-- **End-of-run summary** (atexit) — `run <id> finished in N.NNs | warnings=… errors=… critical=…`.
+<a id="147-emojikittelegram_apitelegram"></a>
+### 14.7 Native Telegram client
 
-The everyday surface is three names, plus `record_exit_code(code)`, which the
-entry points call so the end-of-run summary states the exit code:
+The shared Rust client owns Bot API requests, multipart uploads, flood waits,
+name-release retry handling and redacted errors. Non-idempotent set mutations
+use live readback to distinguish applied, not-applied and unknown outcomes.
+Unknown mutation state must be reconciled before retrying. Announcements use the
+native announcer directly or the configured Cloudflare publish endpoint.
 
-```python
-from emojikit.logsetup import setup_logging, redact, register_secret
-setup_logging("myscript")
-print(redact(some_text))        # mask before any manual print
-```
-
-Secret handling is covered by `tests/test_logsetup.py`, which also fails the
-build if any value from `.env` appears in a git-tracked file.
-
-### 14.7 `emojikit.telegram_api.Telegram`
-
-Thin Bot API client (used everywhere). Key methods: `get_me`, `send_message`,
-`get_sticker_set`, `download_file`, `create_emoji_set`/`add_emoji` (format-aware,
-for static/animated/video), and the legacy static `create_set`/`add_sticker`.
-`call(method, data=, files=)` (public; `_call` is its old name) handles flood waits (`retry_after`) and the
-~2-minute `STICKERSET_INVALID` name-release delay automatically.
 ---
 
 ## 15. Media formats deep-dive
@@ -315,7 +259,7 @@ for static/animated/video), and the legacy static `create_set`/`add_sticker`.
 ### 15.1 Static (`static`)
 
 - File: PNG or WEBP, **exactly 100×100**, RGBA (transparent background).
-- Built by `emojikit.make_emoji_pngs._fit_100` / `media.to_static_png`: trim fully
+- Built by native `make-emoji-pngs` / static conversion: trim fully
   transparent borders, scale to fit 100×100 with LANCZOS, center on a
   transparent canvas. SVG sources are rasterized by resvg straight to RGBA
   (gradients included).
@@ -327,10 +271,10 @@ for static/animated/video), and the legacy static `create_set`/`add_sticker`.
 - File: `.tgs` = **gzip-compressed Lottie JSON** (vector animation).
 - Hard cap **64 KB**; canvas **512×512**; ≤3 s; at most 60 fps.
 - **Vector only.** You cannot turn a GIF/MP4 into an animated emoji — that path
-  produces a *video* emoji. `media.to_animated_tgs` only packages/validates an
+  produces a *video* emoji. Native animated conversion only packages/validates an
   existing Lottie (`.json` or `.tgs`): load → **refuse** a canvas that is not
   512×512 (rescaling only the top-level layer moves and clips the artwork, so
-  the fix is a re-export) → `json.dumps` minified → gzip with `mtime=0`
+  the fix is a re-export) → canonical minified JSON → gzip with `mtime=0`
   (deterministic) → `validate_tgs` (size, gzip, required keys `v, fr, ip, op,
   layers`, canvas, frame rate, duration).
 - In the panel, `.tgs` is rendered server-side to an animated WebP
@@ -339,7 +283,7 @@ for static/animated/video), and the legacy static `create_set`/`add_sticker`.
 ### 15.3 Video (`video`)
 
 - File: `.webm` with **VP9** codec, 100×100, ≤3 s, 30 fps, **no audio**, **≤256 KB**.
-- Built by `media.to_video_webm` with ffmpeg (see §14.1 for the exact filter).
+- Built by native video conversion with ffmpeg (see §14.1 for the exact filter).
   CRF escalates `32 → 40 → 48 → 56 → 63` until the file fits 256 KB.
 - `validate_video` checks dimensions, duration, codec, and size via ffprobe.
 - Requires `ffmpeg`/`ffprobe` on PATH. The panel previews video with `<video>`.
@@ -361,7 +305,7 @@ From the Bot API, prefer the sticker object's `is_animated` / `is_video` flags.
 
 ### 16.1 The content key
 
-`identity.content_key(path, fmt)` produces the catalog primary key:
+The native identity engine produces the catalog primary key:
 
 - **static** → `"s:" + sha256(image.convert(RGBA).resize(64×64, LANCZOS).tobytes())[:32]`.
   Two byte-different files that look identical after normalization collapse;
@@ -383,7 +327,7 @@ From the Bot API, prefer the sticker object's `is_animated` / `is_video` flags.
 
 ### 16.2 Perceptual near-duplicate (opt-in)
 
-`identity.perceptual_hash` is a 64-bit **dHash** (difference hash): downscale to
+The native perceptual hash is a 64-bit **dHash** (difference hash): downscale to
 9×8 grayscale, compare horizontally adjacent pixels → 64 bits. `hamming(a,b)`
 counts differing bits.
 
@@ -398,7 +342,7 @@ Near-dup merging is controlled by `Catalog.phash_threshold`:
 
 ### 16.3 Empirical guarantee
 
-`coins/check_all_packs.py` downloads **every** live sticker and reports BLANK
+`coin-check-packs` downloads **every** live sticker and reports BLANK
 (≤8 visible pixels) and DUPLICATE (pixel-identical distinct ids) groups. The 29
 coin packs audited **0 blank / 0 duplicate** across 5,791 stickers.
 
@@ -414,34 +358,35 @@ items **failed to upload and were skipped**. The id map was then derived by
 from the first skip onward, `ticker_to_id.json` pointed many tickers at the
 **wrong** sticker (e.g. USDT showed another coin's logo).
 
-### 17.2 The fix: content-based mapping (`coins/remap_ids.py`)
+<a id="172-the-fix-content-based-mapping-coinsremap_idspy"></a>
+### 17.2 The fix: content-based mapping (`coin-remap-ids`)
 
 Ignore positions entirely. Download every live sticker once, compute a small
 16×16 **signature** (RGB on black, plus the alpha channel as a fourth plane —
 see below for why alpha is not optional), and match each local source logo
-(`<ticker>.png`) to the live sticker whose signature is nearest (L2 via a
-chunked Gram matrix). Drop matches above `--max-distance` (coins never
+(`<ticker>.png`) to the live sticker whose signature is nearest using bounded
+native L2 matching. Drop matches above `--max-distance` (coins never
 uploaded). This is the canonical way to (re)build the map; a correct run scores
 100% against the live stickers (`--max-distance 200 --min-margin 0` is the
 calibration that has worked in practice — recheck the distance histogram the
 dry run prints before trusting it on a changed corpus).
 
 ```powershell
-.venv\Scripts\python.exe -m coins.remap_ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
+.\numera-emoji.exe coin-remap-ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
 ```
 
 A resumable cache (`coins/remap_live_cache.json`, gitignored) avoids
 re-downloading.
 
-Things `remap_ids.py` does **not** do for you, each learned the hard way:
+Things `coin-remap-ids` does **not** do for you, each learned the hard way:
 
 * It writes only tickers that have a `<ticker>.png`, so letting it replace the
   map outright **deletes every alias** that has no file of its own (`1inchbsc`,
   `avaxc`, …). Re-derive them before writing, either from a sibling that shares
   the old map's id, or — for an alias that was never in any prior map, such as
   a chain-suffixed ticker added straight to the inventory — via
-  `coins._inventory.base_ticker()`, the same resolver `alias_map.py` and
-  `enhance_map.py` use.
+  the native base-ticker resolver shared by `coin-alias-map` and
+  `coin-enhance-map`.
 * **The signature must carry shape, not just colour.** RGB-on-black alone is
   blind to any logo drawn in black on transparency: it flattens to a uniformly
   black square, so Aptos/Arkham/NEAR/Worldcoin/Bittensor and every other
@@ -459,16 +404,16 @@ it is drifted too, and scores the same as the map it was meant to repair.
 
 ### 17.3 Preventing drift in new builds
 
-Both `coins/rebuild_dedup.py` and `build-collection` now record the **actual
+Both `coin-rebuild` and `build-collection` record the **actual
 upload order** and mark each item uploaded as they go, then assign real
-`custom_emoji_id`s from that recorded order — never from positions. `verify_logos
+`custom_emoji_id`s from that recorded order — never from positions. `coin-verify-logos
 --fix` is the safe tool for individual wrong logos.
 
 ### 17.4 Chain-variant / alias tickers
 
 Many inventory tickers are the same coin on another chain (`etharb`, `bnbbsc`,
-`maticusdce`, `sysevm`, `stzent`, …) and have no own logo file. `enhance_map.py`
-(strip chain suffix → base) and `alias_map.py` (match by coin name) point them at
+`maticusdce`, `sysevm`, `stzent`, …) and have no own logo file. `coin-enhance-map`
+(strip chain suffix → base) and `coin-alias-map` (match by coin name) point them at
 the base coin's id. This filled the NOWPayments inventory to 354/354.
 
 ---
@@ -479,20 +424,20 @@ the base coin's id. This filled the NOWPayments inventory to 354/354.
 
 ```powershell
 # 1) Download the source pack (all distinct stickers kept; near-dup merge off):
-.venv\Scripts\.\native\runtime\numera-emoji.exe fetch-pack https://t.me/addemoji/SomePack_by_bot --token-env GENERAL_BOT_TOKEN
+.\numera-emoji.exe fetch-pack https://t.me/addemoji/SomePack_by_bot --token-env GENERAL_BOT_TOKEN
 #    -> "Pack SomePack (...): 80 stickers -> new=80 dedup=0 failed=0"
 
 # 2) Open the curate panel and untick anything you don't want, then Save:
-.venv\Scripts\.\native\runtime\numera-emoji.exe panel
+.\numera-emoji.exe panel
 #    (browser opens http://127.0.0.1:9450/ ; click cards / Shift+click ranges / Save)
 
 # 3) Preview the publish plan:
-.venv\Scripts\.\native\runtime\numera-emoji.exe build-collection --base mypack --title "My Pack" `
+.\numera-emoji.exe build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN --dry-run
 #    -> "static: 76 emoji -> 1 set(s) named mypacks1_by_<bot> ..."
 
 # 4) Publish (resumable). Each finished pack's addemoji link is announced:
-.venv\Scripts\.\native\runtime\numera-emoji.exe build-collection --base mypack --title "My Pack" `
+.\numera-emoji.exe build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN
 #    -> manifests written to collection/manifests/mypacks1_by_<bot>.md
 ```
@@ -501,25 +446,25 @@ the base coin's id. This filled the NOWPayments inventory to 354/354.
 
 ```powershell
 # An id (bare or premium-id:<id>) resolves to its set and fetches it:
-.venv\Scripts\.\native\runtime\numera-emoji.exe fetch-pack <ID> --token-env GENERAL_BOT_TOKEN
+.\numera-emoji.exe fetch-pack <ID> --token-env GENERAL_BOT_TOKEN
 ```
 
 ### 18.3 Build a video emoji pack from GIFs
 
 ```powershell
 # ffmpeg must be installed. GIFs become VP9 .webm video emoji.
-.venv\Scripts\.\native\runtime\numera-emoji.exe add-media --in input\my-gifs --emoji 🔥
-.venv\Scripts\.\native\runtime\numera-emoji.exe build-collection --base myvid --title "My Animations" `
+.\numera-emoji.exe add-media --in input\my-gifs --emoji 🔥
+.\numera-emoji.exe build-collection --base myvid --title "My Animations" `
     --token-env GENERAL_BOT_TOKEN --formats video
 ```
 
 ### 18.4 Rebuild the coin id map after any pack change
 
 ```powershell
-.venv\Scripts\python.exe -m coins.remap_ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
-.venv\Scripts\python.exe -m coins.enhance_map
-.venv\Scripts\python.exe -m coins.alias_map
-.venv\Scripts\python.exe -m coins.write_manifests --out-dir "<coin archive folder>"
+.\numera-emoji.exe coin-remap-ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
+.\numera-emoji.exe coin-enhance-map
+.\numera-emoji.exe coin-alias-map
+.\numera-emoji.exe coin-write-manifests --out-dir "<coin archive folder>"
 ```
 ---
 

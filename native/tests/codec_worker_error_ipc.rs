@@ -319,6 +319,11 @@ fn typed_source_errors_do_not_become_invented_worker_envelopes() {
         cases.push(json!({"name":name,"request":{"operation":"same_image",
             "source":input,"other":input,"format":format},"expected":null}));
     }
+    assert_eq!(
+        cases.len(),
+        34,
+        "retain every original worker error and success case"
+    );
     let mut observed_logs = BTreeSet::new();
     for (index, case) in cases.iter().enumerate() {
         let name = case["name"].as_str().unwrap();

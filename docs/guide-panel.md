@@ -213,21 +213,21 @@ Front-end:
   becomes the only way to play a video, which is what those handlers are for.
 
 The panel ships no animation library: animated emoji are rasterised to WebP by
-`rlottie-python` on the server, so the page needs nothing from a CDN and works
+the bundled native rlottie renderer on the server, so the page needs nothing from a CDN and works
 offline.
 
 ### The move plan (`<data-dir>/pack_plan.json`)
 
-`.\native\runtime\numera-emoji.exe plan-status [--live]` shows, read-only, what applying the
+`.\numera-emoji.exe plan-status [--live]` shows, read-only, what applying the
 saved plan would change — per pack: target count and logo slot against the cap,
 emoji moving in and out, held emoji still live, never-published candidates — and
 every `custom_emoji_id` a move would retire. Exit 3 when the plan asks for work.
 
-`.\native\runtime\numera-emoji.exe plan-apply` applies it (design: `docs/design/plan-applier.md`):
+`.\numera-emoji.exe plan-apply` applies it (design: `docs/design/plan-applier.md`):
 
 ```powershell
-.\native\runtime\numera-emoji.exe plan-apply                  # dry run: what would change, writes nothing
-.\native\runtime\numera-emoji.exe plan-apply --apply          # change the live packs, 20 changes per run
+.\numera-emoji.exe plan-apply                  # dry run: what would change, writes nothing
+.\numera-emoji.exe plan-apply --apply          # change the live packs, 20 changes per run
 ```
 
 | Option | Default | Meaning |

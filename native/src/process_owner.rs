@@ -782,7 +782,7 @@ mod session_tests {
     }
 }
 
-#[cfg(all(test, any(windows, target_os = "linux")))]
+#[cfg(all(test, not(numera_native_runtime), any(windows, target_os = "linux")))]
 #[path = "process_owner_progress_tests.rs"]
 pub(crate) mod progress_tests;
 

@@ -1,4 +1,10 @@
 //! Rebuild-map admission composes proven content attribution and existing alias replay.
+const REMAP_COMMAND: &str = if cfg!(numera_native_runtime) {
+    "numera-emoji coin-remap-ids"
+} else {
+    "coins/remap_ids.py"
+};
+
 use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
 
@@ -84,7 +90,7 @@ pub fn run<I: MapIo>(
     if order.is_empty() {
         io.save(true, &json!({"error":"no uploads are recorded","live_stickers":live.len(),"plan_entries":plan.len()}))?;
         return Err(format!(
-            "ERROR: no uploads are recorded but {} stickers are live.\n       Refusing to write ticker_to_id.json from positional guesswork -- that is what corrupts the map.\n       Rebuild identities from image content with coins/remap_ids.py. Details: ticker_to_id.candidate.json",
+            "ERROR: no uploads are recorded but {} stickers are live.\n       Refusing to write ticker_to_id.json from positional guesswork -- that is what corrupts the map.\n       Rebuild identities from image content with {REMAP_COMMAND}. Details: ticker_to_id.candidate.json",
             live.len()
         ));
     }
@@ -101,7 +107,7 @@ pub fn run<I: MapIo>(
         Err(error) => {
             io.save(true, &json!({"error":error,"recorded_uploads":order.len(),"live_stickers":live.len(),"plan_entries":plan.len()}))?;
             return Err(format!(
-                "ERROR: {error}.\n       Refusing to write ticker_to_id.json: equal counts are not identity, and mapping by position is what put an unrelated logo on a real ticker.\n       Rebuild identities from image content with coins/remap_ids.py. Details: ticker_to_id.candidate.json"
+                "ERROR: {error}.\n       Refusing to write ticker_to_id.json: equal counts are not identity, and mapping by position is what put an unrelated logo on a real ticker.\n       Rebuild identities from image content with {REMAP_COMMAND}. Details: ticker_to_id.candidate.json"
             ));
         }
     };

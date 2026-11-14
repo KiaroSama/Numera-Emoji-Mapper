@@ -1,24 +1,40 @@
 # Tests
 
-Build the required native module first with the project interpreter:
-`python scripts/build_native.py` (Rust 1.99+ and the platform linker required).
-CI builds a release wheel and installed native executable before every Python job
-that uses the catalog/panel. Native command parity also requires the debug executable;
-CI builds it explicitly. See [native backend status](../docs/native-backend.md).
-`test_native_similarity.py` compares exact indices against source-generated
-fixtures, checks fixture drift, malformed inputs and missing-native failures.
-The Python oracle is test-only, never a production fallback. Regenerate fixtures
-with `python -m tests._similarity_oracle`; changes require reviewing source parity.
-Rust formatting, clippy, unit checks and a repeated benchmark run once in the
-3.11 build job; native parity also runs on Windows and Python 3.12/3.14.
+Production acceptance is the standalone Rust crate in `runtime/`. It uses native
+raster/SVG/Lottie codecs and Rust-owned FFmpeg processes, with no interpreter in
+its dependency graph. Build the guarded test runner and execute every production
+target:
 
-The expanded first-party Rust migration has a separate, manually dispatched
-checkpoint for additive codec, coin, storage, tooling and historical-source seams,
-with pinned [source fixtures](fixtures/native/README.md). Workflow selection is
-not execution evidence: the new historical replay, runner and audit-cancellation
-checks remain uncompiled and unexecuted. The checkpoint does not replace the main
-suite, four-platform acceptance or source-retirement gates. No production codec
-adapter is switched by it.
+```bash
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bin numera-runtime-tests
+cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked -- --test-threads=1
+```
+
+Source builds require Rust1.99+, CMake and a C/C++ compiler. Production tests cover
+independent historical pixels/identities/frame timing, bounded decoder inputs,
+installer races and integrity, source-free extracted packages, and a real installed
+panel with authenticated saves. Installed tests clear PATH and supply invalid
+interpreter settings. CI executes the production suite on Linux, Windows and both
+macOS architectures; every original compatibility cohort remains separate.
+
+The original PyO3 library, Python tests and `numera-compat` executable remain only
+for regression, source observation and fault injection. For that optional harness,
+first run `python scripts/build_native.py` with its pinned developer environment,
+then build `numera-compat` and run unfiltered Cargo discovery through
+`.cargo/tests.toml`. Python3.11/3.12/3.14, browser, Worker and historical offline-wheel
+checks remain in CI. Historical expected images and content keys are independent
+inputs; new encoder bytes are compared by decoded pixels where appropriate.
+
+See [current backend](../docs/native-backend.md) and
+[CI acceptance](../docs/rust-ci-status.md) for the production architecture and
+revision-specific verification. The manually dispatched migration checkpoint
+remains additional coverage.
+
+## Historical migration notes
+
+The following notes describe individual compatibility checkpoints and their limits
+at the time they were authored. Statements about uncompiled or additive work do
+not describe the current standalone production runtime.
 
 The native launcher candidates have scripted workflow tests in `tooling_menu`,
 exit/cancellation and retained-check planning in `tooling_launch`, and actual

@@ -131,7 +131,7 @@ pub fn apply(data: &Path, files: &[Value]) -> Result<Vec<String>, String> {
         let destination = PathBuf::from(file["destination"].as_str().ok_or("invalid destination")?);
         if source != destination && source.exists() {
             crate::archive_move::transfer(&source, &destination, true)?;
-            #[cfg(test)]
+            #[cfg(all(test, not(numera_native_runtime)))]
             if renamed.len() == 1 {
                 crate::migration_crash_tests::barrier("second-move");
             }

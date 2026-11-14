@@ -159,7 +159,7 @@ impl Config {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(numera_native_runtime)))]
 mod tests {
     use super::*;
 

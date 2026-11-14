@@ -69,13 +69,40 @@ fn git_stage_inventory_filters_protected_before_admitting_public_member_roles() 
     );
     assert_eq!(role(".env.example", false).unwrap(), "config");
     assert!(PATHS.contains(&".env.example"));
+    for name in [
+        "runtime/Cargo.toml",
+        "runtime/Cargo.lock",
+        ".cargo/runtime-tests.toml",
+    ] {
+        assert!(PATHS.contains(&name));
+        assert_eq!(role(name, false).unwrap(), "config");
+    }
+    for name in [
+        "runtime/src/lib.rs",
+        "runtime/src/package.rs",
+        "runtime/build.rs",
+        "runtime/vendor/rlottie/src/lottie/lottieanimation.cpp",
+        "runtime/vendor/rlottie/cmake/config.h.in",
+        "runtime/vendor/rlottie/NUMERA-SOURCE.md",
+    ] {
+        assert_eq!(role(name, false).unwrap(), "support");
+    }
+    assert_eq!(role("run.sh", false).unwrap(), "source");
+    for name in [
+        "runtime/target/debug/numera-emoji",
+        "runtime/vendor/rlottie/example/win32Player/rlottiePlayer.exe",
+        "runtime/private/secret.rs",
+    ] {
+        assert!(role(name, false).is_err());
+    }
 }
 fn metadata(root: &Path) -> Value {
     json!({"version":1,"resolve":null,"workspace_root":root.join("native"),"workspace_members":["opaque-package-id"],"packages":[
         {"id":"other","manifest_path":root.join("other/Cargo.toml"),"targets":[]},
         {"id":"opaque-package-id","manifest_path":root.join("native/Cargo.toml"),"targets":[
             {"name":"_native","kind":["cdylib","rlib"],"src_path":root.join("native/src/lib.rs"),"test":true},
-            {"name":"numera-emoji","kind":["bin"],"src_path":root.join("native/src/main.rs"),"test":true},
+            {"name":"numera-emoji","kind":["bin"],"src_path":root.join("native/src/runtime_main.rs"),"test":true},
+            {"name":"numera-compat","kind":["bin"],"src_path":root.join("native/src/main.rs"),"test":true},
             {"name":"cases","kind":["test"],"src_path":root.join("native/tests/cases.rs"),"test":false}]}]})
 }
 #[test]
@@ -86,6 +113,7 @@ fn actual_metadata_package_and_explicit_target_selection_preserve_cargo_identity
         "other/Cargo.toml",
         "native/src/lib.rs",
         "native/src/main.rs",
+        "native/src/runtime_main.rs",
         "native/tests/cases.rs",
     ] {
         let path = root.0.join(name);
@@ -101,8 +129,14 @@ fn actual_metadata_package_and_explicit_target_selection_preserve_cargo_identity
     };
     let (package, targets) = select(&root.0, &metadata(&root.0), &options, &[]).unwrap();
     assert_eq!(package, "opaque-package-id");
-    assert_eq!(targets.len(), 2);
-    assert_eq!(targets[1]["mode"], "noncoverage");
+    assert_eq!(targets.len(), 3);
+    for name in ["numera-emoji", "numera-compat"] {
+        let target = targets
+            .iter()
+            .find(|target| target["name"] == name)
+            .unwrap();
+        assert_eq!(target["mode"], "noncoverage", "{name}");
+    }
     let explicit = Options {
         tests: vec!["cases".into()],
         ..options
@@ -136,7 +170,7 @@ fn actual_metadata_package_and_explicit_target_selection_preserve_cargo_identity
         (
             "tooling_test_cohort",
             "native/tests/tooling_test_cohort.rs",
-            "26019ab49ab33348875191ddfe233e4e2b127e4c4781ad0670e05712682887c7",
+            "4655656ee0468e84b8a182acfc8b3d6156a55990566f7ba3dc931dd479bfaeea",
             cfg!(all(windows, target_arch = "x86_64", target_env = "msvc")),
         ),
     ] {

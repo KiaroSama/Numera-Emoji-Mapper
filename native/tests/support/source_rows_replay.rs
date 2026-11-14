@@ -57,7 +57,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, sources: &[Source])
             );
         }
     }
-    let executable = Path::new(env!("CARGO_BIN_EXE_numera-emoji"));
+    let executable = Path::new(env!("CARGO_BIN_EXE_numera-compat"));
     let report = runtime
         .block_on(_native::source_oracle_worker::generate_rows(
             root, executable, rows, test,

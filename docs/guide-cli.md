@@ -3,10 +3,10 @@
 ## 12. Full CLI reference
 
 Every entry point, every flag, with defaults and examples. Native examples run
-from the project root with `.\native\runtime\numera-emoji.exe` on Windows or
-`./native/runtime/numera-emoji` on macOS/Linux. Retained Python coin commands in
-§12.8 use the project venv; additive migration-branch commands are explicitly
-marked there and are not installed until their acceptance gates pass.
+from the project root with `.\numera-emoji.exe` on Windows or
+`./numera-emoji` on macOS/Linux. Coin commands in
+[§12.8](guide-cli-panel-coin.md#128-coins-commands) use the same standalone
+executable. No Python environment is required.
 
 ### 12.1 `make-emoji-pngs` — image → 100×100 PNG
 
@@ -51,9 +51,9 @@ Behaviour:
 Examples:
 
 ```powershell
-.\native\runtime\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
-.\native\runtime\numera-emoji.exe make-emoji-pngs --in input\myset --limit 50
-.\native\runtime\numera-emoji.exe make-emoji-pngs            # legacy coin mode
+.\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
+.\numera-emoji.exe make-emoji-pngs --in input\myset --limit 50
+.\numera-emoji.exe make-emoji-pngs            # legacy coin mode
 ```
 
 ### 12.2 `build-pack` — upload a folder of PNGs to emoji sets
@@ -76,7 +76,7 @@ Resumable: progress is saved to `state_<base>.json`; an interrupted/flood-limite
 run continues without recreating existing sets. Use `--dry-run` first.
 
 ```powershell
-.\native\runtime\numera-emoji.exe build-pack --base myset --title "My Emojis" `
+.\numera-emoji.exe build-pack --base myset --title "My Emojis" `
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji 😀 --dry-run
 ```
 
@@ -130,12 +130,12 @@ refusal. The branch also routes `--tint` through the existing shared parser:
 `#RRGGBB` and `RRGGBB` are accepted and stored as uppercase `tint:#RRGGBB`.
 These native tests, command diagnostics and tint normalization remain unexecuted
 and are not installed; malformed UTF-8 is deliberately refused, not silently
-replaced as in the original Python file reader.
+replaced according to the historical file-reader contract.
 
 Example — pull only the emoji referenced by four bot inventory files:
 
 ```powershell
-.\native\runtime\numera-emoji.exe fetch-emoji-ids `
+.\numera-emoji.exe fetch-emoji-ids `
   --ids-file "...\GV Swap bot\bot-emoji-inventory-user.md" `
   --ids-file "...\GV Swap bot\bot-emoji-inventory-admin.md" `
   --ids-file "...\YourBrand Payment Bot\bot-emoji-inventory-admin.md" `
@@ -305,8 +305,8 @@ emoji keeps its `file_id` **and** its `custom_emoji_id`: nobody who already
 uses one is affected, and no upload happens.
 
 ```powershell
-$PY -m emojikit.sync_order --base mypack             # what would move
-$PY -m emojikit.sync_order --base mypack --apply
+.\numera-emoji.exe sync-order --base mypack             # what would move
+.\numera-emoji.exe sync-order --base mypack --apply
 ```
 
 It is the one set mutation in this project that is genuinely idempotent —
@@ -400,7 +400,7 @@ pages come out without pictures (the data is unaffected).
 roster no longer matches its inputs — a new download, a replaced or recoloured
 sticker, a reorder, a coin remap. Run it after anything that changes a pack (or
 wire it into your own automation); `--refresh` rebuilds the roster.
-`.\native\runtime\numera-emoji.exe status` (§12.5e) runs this check and the archive's together.
+`.\numera-emoji.exe status` (§12.5e) runs this check and the archive's together.
 
 ### 12.5d `pack-archive` — the finished pack's media leaves the project
 
@@ -435,12 +435,12 @@ never deletes: a file the live pack no longer knows is reported, not removed.
 
 `--check` is cheap and offline and exits 3 when the archive has fallen behind;
 run it after anything that changes a full pack, and `--sync` to catch up.
-`.\native\runtime\numera-emoji.exe status` (§12.5e) runs it together with the roster check.
+`.\numera-emoji.exe status` (§12.5e) runs it together with the roster check.
 
 ### 12.5e `status` — is everything current?
 
 ```powershell
-.\native\runtime\numera-emoji.exe status
+.\numera-emoji.exe status
 ```
 
 Offline and read-only: runs the roster check (`pack_manifest --check`) and the

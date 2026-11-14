@@ -403,7 +403,7 @@ fn actual_runner_scrubs_before_child_and_preserves_failure_without_leaking_scrat
     }
     if !cfg!(any(windows, target_os = "linux", target_os = "macos")) {
         let argv = [
-            OsString::from(env!("CARGO_BIN_EXE_numera-emoji")),
+            OsString::from(env!("CARGO_BIN_EXE_numera-compat")),
             "test-runner".into(),
             std::env::current_exe().unwrap().into_os_string(),
             "--exact".into(),
@@ -453,7 +453,7 @@ fn actual_runner_scrubs_before_child_and_preserves_failure_without_leaking_scrat
         ("test-cargo", vec!["--baseline", "invalid", "--"], 1),
     ] {
         let mut argv = vec![
-            OsString::from(env!("CARGO_BIN_EXE_numera-emoji")),
+            OsString::from(env!("CARGO_BIN_EXE_numera-compat")),
             command.into(),
         ];
         argv.extend(tail.into_iter().map(OsString::from));
@@ -508,7 +508,7 @@ fn actual_runner_scrubs_before_child_and_preserves_failure_without_leaking_scrat
             None
         };
         let mut argv = vec![
-            OsString::from(env!("CARGO_BIN_EXE_numera-emoji")),
+            OsString::from(env!("CARGO_BIN_EXE_numera-compat")),
             "test-runner".into(),
             std::env::current_exe().unwrap().into_os_string(),
             "--exact".into(),
@@ -586,7 +586,7 @@ fn actual_runner_scrubs_before_child_and_preserves_failure_without_leaking_scrat
             vec!["--help".into()],
         ] {
             // Default piped stdout/stderr are deliberately inadmissible bootstrap stdio.
-            let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_numera-emoji"));
+            let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_numera-compat"));
             command
                 .arg("test-net-bootstrap")
                 .args(tail)

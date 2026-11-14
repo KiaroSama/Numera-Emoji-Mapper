@@ -356,7 +356,25 @@ fn original_cli_reference_discovers_native_sections_and_retained_coin_tools() {
     let commands = cli_reference::inventory(&sections).unwrap();
     assert_eq!(commands.len(), 23);
     assert!(!commands.contains("emoji-bot"));
-    assert!(commands.contains("coin-rebuild-map"));
+    for command in [
+        "coin-fetch-logos",
+        "coin-build-keywords",
+        "coin-fetch-paprika",
+        "coin-fetch-cmc",
+        "coin-rebuild",
+        "coin-rebuild-map",
+        "coin-remap-ids",
+        "coin-verify-logos",
+        "coin-check-packs",
+        "coin-write-manifests",
+        "coin-enhance-map",
+        "coin-alias-map",
+    ] {
+        assert!(
+            commands.contains(command),
+            "documented native coin command missing: {command}"
+        );
+    }
 }
 
 #[test]
@@ -384,7 +402,7 @@ fn every_menu_command_and_flag_exists_in_real_native_help() {
     }
     let binary = tooling_install::install_executable(
         &fixture.0,
-        Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+        Path::new(env!("CARGO_BIN_EXE_numera-compat")),
     )
     .unwrap();
     let mut commands = BTreeMap::<String, BTreeSet<String>>::new();

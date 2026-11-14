@@ -13,7 +13,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Source]) 
     ))
     .unwrap();
     let missing = root.join("logs/tmp/not-an-audit-oracle-executable");
-    let executable = Path::new(env!("CARGO_BIN_EXE_numera-emoji"));
+    let executable = Path::new(env!("CARGO_BIN_EXE_numera-compat"));
     assert!(!missing.exists());
     for index in 0..2 {
         for mutation in ["revision", "path", "hash", "bytes"] {
@@ -264,7 +264,7 @@ fn check_original_classes(root: &Path, runtime: &tokio::runtime::Runtime, corpus
     let report = runtime
         .block_on(_native::source_oracle_worker::observe_coin_audit(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             &sources,
         ))

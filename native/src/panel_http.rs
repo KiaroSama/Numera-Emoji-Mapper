@@ -227,7 +227,7 @@ fn post(panel: &Panel, path: &str, payload: Value) -> Result<Response, String> {
     let mut guard = panel.view.lock().map_err(|_| "panel lock poisoned")?;
     if path == "/api/save" {
         let mut cat = Catalog::open(&panel.db, &(panel.utc)(), &panel.root)?;
-        #[cfg(test)]
+        #[cfg(all(test, not(numera_native_runtime)))]
         crate::migration_crash_tests::barrier("writer-panel");
         let out = panel_save::save(
             &mut cat,
