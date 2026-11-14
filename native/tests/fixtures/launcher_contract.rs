@@ -1,4 +1,4 @@
-//! Fast, dependency-free Windows PowerShell contract for the real shipped launcher.
+//! Dependency-free regression for the real launcher in Windows PowerShell 5.1.
 #[cfg(windows)]
 mod windows {
     use std::ffi::OsString;
@@ -8,7 +8,7 @@ mod windows {
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-    fn native_stub(executable: &Path) -> Result<(), String> {
+    fn stub(executable: &Path) -> Result<u8, String> {
         let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
         if arguments != [OsString::from("doctor")] {
             return Err(format!(
@@ -16,23 +16,35 @@ mod windows {
             ));
         }
         let package = executable.parent().ok_or("stub has no package directory")?;
-        let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-        if cwd.canonicalize().map_err(|e| e.to_string())?
+        if std::env::current_dir()
+            .map_err(|e| e.to_string())?
+            .canonicalize()
+            .map_err(|e| e.to_string())?
             != package.canonicalize().map_err(|e| e.to_string())?
         {
             return Err("launcher did not select its package working directory".into());
         }
-        let mut invocation = OpenOptions::new()
+        let extensions = std::env::var("PATHEXT").unwrap_or_default();
+        if !extensions
+            .split(';')
+            .any(|value| value.eq_ignore_ascii_case(".EXE"))
+        {
+            return Err("native child did not receive executable .EXE recognition".into());
+        }
+        let mut record = OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(package.join("invocation.txt"))
             .map_err(|e| e.to_string())?;
-        invocation.write_all(b"doctor").map_err(|e| e.to_string())?;
-        invocation.sync_all().map_err(|e| e.to_string())?;
+        record.write_all(b"doctor").map_err(|e| e.to_string())?;
+        record.sync_all().map_err(|e| e.to_string())?;
         println!("NUMERA_LAUNCHER_FIXTURE_ARGS={arguments:?}");
         println!("[OK] Environment check complete.");
         std::io::stdout().flush().map_err(|e| e.to_string())?;
-        Ok(())
+        std::env::var("NUMERA_LAUNCHER_FIXTURE_EXIT")
+            .unwrap_or_else(|_| "0".into())
+            .parse::<u8>()
+            .map_err(|e| e.to_string())
     }
 
     fn capture(path: &Path) -> Result<Vec<u8>, String> {
@@ -43,50 +55,55 @@ mod windows {
             .read_to_end(&mut bytes)
             .map_err(|e| e.to_string())?;
         if bytes.len() > 1024 * 1024 {
-            return Err("launcher fixture exceeded its output bound".into());
+            return Err("launcher output exceeded 1MiB".into());
         }
         Ok(bytes)
     }
 
-    fn diagnostic(label: &str, bytes: &[u8]) {
-        println!(
-            "{label}_len={} {label}_prefix={:02x?} {label}_text={:?}",
-            bytes.len(),
-            &bytes[..bytes.len().min(128)],
-            String::from_utf8_lossy(&bytes[..bytes.len().min(8192)])
-        );
-    }
-
-    #[derive(Clone, Copy, Debug)]
-    enum Mode {
-        Host,
-        File,
-        Native,
-    }
-
     fn probe(
-        parent: &Path,
+        root: &Path,
         executable: &Path,
-        script: &str,
+        script: &Path,
         label: &str,
-        additional: &[&str],
-        mode: Mode,
+        path_ext: Option<&str>,
+        exit: u8,
     ) -> Result<bool, String> {
-        let root = parent.join(label);
-        std::fs::create_dir(&root).map_err(|e| e.to_string())?;
+        let root = root.join(label);
         let package = root.join("owned package with spaces");
         let cwd = root.join("unrelated working directory");
         let empty_path = root.join("empty PATH");
-        let temporary = root.join("owned Windows temporary files");
-        for path in [&package, &cwd, &empty_path, &temporary] {
-            std::fs::create_dir(path).map_err(|e| e.to_string())?;
+        for directory in [&package, &cwd, &empty_path] {
+            std::fs::create_dir_all(directory).map_err(|e| e.to_string())?;
         }
         std::fs::copy(executable, package.join("numera-emoji.exe")).map_err(|e| e.to_string())?;
-        let launcher = package.join("run.ps1");
-        std::fs::write(&launcher, script).map_err(|e| e.to_string())?;
-        let system_root = std::env::var_os("SystemRoot").ok_or("Windows SystemRoot is missing")?;
+        std::fs::copy(script, package.join("run.ps1")).map_err(|e| e.to_string())?;
+        // Invoke the unchanged shipped script, then observe restored state in
+        // the same PowerShell process. The package test also uses -File directly.
+        let harness = root.join("scope-contract.ps1");
+        std::fs::write(
+            &harness,
+            r#"param([string]$Launcher)
+$before = [Environment]::GetEnvironmentVariable('PATHEXT', [EnvironmentVariableTarget]::Process)
+$location = $ExecutionContext.SessionState.Path.CurrentLocation.Path
+& $Launcher -NoRelaunch -Check
+$forwarded = [int]$LASTEXITCODE
+$after = [Environment]::GetEnvironmentVariable('PATHEXT', [EnvironmentVariableTarget]::Process)
+if (-not [String]::Equals($before, $after, [StringComparison]::Ordinal)) {
+    [Console]::Error.WriteLine('PATHEXT was not restored exactly')
+    exit 98
+}
+if ($location -cne $ExecutionContext.SessionState.Path.CurrentLocation.Path) {
+    [Console]::Error.WriteLine('PowerShell working location was not restored')
+    exit 97
+}
+[Console]::Out.WriteLine('NUMERA_SCOPED_STATE_RESTORED')
+exit $forwarded
+"#,
+        )
+        .map_err(|e| e.to_string())?;
         let powershell =
-            PathBuf::from(system_root).join("System32/WindowsPowerShell/v1.0/powershell.exe");
+            PathBuf::from(std::env::var_os("SystemRoot").ok_or("Windows SystemRoot is missing")?)
+                .join("System32/WindowsPowerShell/v1.0/powershell.exe");
         let stdout_path = root.join("stdout.bin");
         let stderr_path = root.join("stderr.bin");
         let create = |path| {
@@ -96,40 +113,16 @@ mod windows {
                 .open(path)
                 .map_err(|e| e.to_string())
         };
-        let mut command = if matches!(mode, Mode::Native) {
-            Command::new(package.join("numera-emoji.exe"))
-        } else {
-            Command::new(&powershell)
-        };
-        match mode {
-            Mode::Native => {
-                command.arg("doctor");
-            }
-            Mode::File => {
-                command
-                    .args(["-NoLogo", "-NoProfile", "-NonInteractive"])
-                    .arg("-File")
-                    .arg(launcher)
-                    .args(["-NoRelaunch", "-Check"]);
-            }
-            Mode::Host => {
-                command
-                    .args(["-NoLogo", "-NoProfile", "-NonInteractive"])
-                    .args([
-                        "-Command",
-                        "[Console]::Out.WriteLine('NUMERA_POWERSHELL_HOST_READY')",
-                    ]);
-            }
-        }
+        let mut command = Command::new(powershell);
         command
-            .current_dir(if matches!(mode, Mode::Native) {
-                &package
-            } else {
-                &cwd
-            })
+            .args(["-NoLogo", "-NoProfile", "-NonInteractive", "-File"])
+            .arg(harness)
+            .arg(package.join("run.ps1"))
+            .current_dir(cwd)
             .env_clear()
             .env("PATH", &empty_path)
             .env("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1")
+            .env("NUMERA_LAUNCHER_FIXTURE_EXIT", exit.to_string())
             .env("PYO3_PYTHON", empty_path.join("python-must-not-run"))
             .env("PYTHONHOME", empty_path.join("python-home-must-not-exist"))
             .env(
@@ -139,25 +132,18 @@ mod windows {
             .stdin(Stdio::null())
             .stdout(Stdio::from(create(&stdout_path)?))
             .stderr(Stdio::from(create(&stderr_path)?));
-        for key in ["SystemRoot", "WINDIR", "SYSTEMDRIVE"]
-            .into_iter()
-            .chain(additional.iter().copied())
-        {
-            if matches!(key, "TEMP" | "TMP") {
-                command.env(key, &temporary);
-            } else if key == "PATHEXT" {
-                command.env(key, ".EXE");
-            } else if let Some(value) = std::env::var_os(key) {
+        for key in ["SystemRoot", "WINDIR", "SYSTEMDRIVE"] {
+            if let Some(value) = std::env::var_os(key) {
                 command.env(key, value);
             }
         }
-        println!("probe={label} mode={mode:?} additional_OS_keys={additional:?}");
+        if let Some(value) = path_ext {
+            command.env("PATHEXT", value);
+        }
         let started = Instant::now();
         let mut child = command.spawn().map_err(|e| e.to_string())?;
-        // Command retains the parent copies of redirected files after spawn.
-        // Release them now so Windows can delete the settled fixture later.
         drop(command);
-        let mut timed_out = false;
+        let mut exceeded = false;
         let status = loop {
             if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
                 break status;
@@ -166,7 +152,7 @@ mod windows {
                 .iter()
                 .any(|path| std::fs::metadata(path).is_ok_and(|m| m.len() > 1024 * 1024));
             if started.elapsed() >= Duration::from_secs(30) || oversized {
-                timed_out = true;
+                exceeded = true;
                 let _ = child.kill();
                 break child.wait().map_err(|e| e.to_string())?;
             }
@@ -177,104 +163,52 @@ mod windows {
         let stderr = capture(&stderr_path)?;
         let invocation = std::fs::read(package.join("invocation.txt")).unwrap_or_default();
         println!(
-            "probe={label} powershell_exit={:?} elapsed_ms={} invoked_argv={:?}",
+            "case={label} original_PATHEXT={path_ext:?} expected_exit={exit} actual_exit={:?} elapsed_ms={} argv={:?}",
             status.code(),
             started.elapsed().as_millis(),
             String::from_utf8_lossy(&invocation)
         );
-        diagnostic("stdout", &stdout);
-        diagnostic("stderr", &stderr);
-        if timed_out {
-            eprintln!(
-                "probe={label} exceeded 30s/output bound; parent reaped, owned fixture retained at {}",
-                root.display()
+        for (name, bytes) in [("stdout", &stdout), ("stderr", &stderr)] {
+            println!(
+                "{name}_len={} {name}_prefix={:02x?} {name}_text={:?}",
+                bytes.len(),
+                &bytes[..bytes.len().min(128)],
+                String::from_utf8_lossy(&bytes[..bytes.len().min(8192)])
             );
-            return Ok(false);
         }
-        let text = String::from_utf8_lossy(&stdout);
-        let passed = status.success()
-            && match mode {
-                Mode::File => {
-                    invocation == b"doctor"
-                        && text.contains("Environment check complete")
-                        && text.contains("NUMERA_LAUNCHER_SCRIPT_ENTERED")
-                }
-                Mode::Native => {
-                    invocation == b"doctor" && text.contains("Environment check complete")
-                }
-                Mode::Host => text.contains("NUMERA_POWERSHELL_HOST_READY"),
-            };
-        // The real script invokes this finite, non-forking stub synchronously.
-        // Both processes and all parent capture handles are settled before cleanup.
-        if !passed {
+        let output = String::from_utf8_lossy(&stdout);
+        let passed = !exceeded
+            && status.code() == Some(i32::from(exit))
+            && invocation == b"doctor"
+            && output.contains("Environment check complete")
+            && output.contains("NUMERA_SCOPED_STATE_RESTORED")
+            && std::fs::read_dir(&empty_path)
+                .map_err(|e| e.to_string())?
+                .next()
+                .is_none();
+        if passed {
+            if let Err(error) = std::fs::remove_dir_all(&root) {
+                eprintln!(
+                    "Passed fixture retained at {} because cleanup was refused: {error}",
+                    root.display()
+                );
+            }
+        } else {
             eprintln!(
-                "probe={label} did not prove settled native execution; owned fixture retained without deletion at {}",
-                root.display()
-            );
-        } else if let Err(error) = std::fs::remove_dir_all(&root) {
-            eprintln!(
-                "probe={label} output passed but cleanup was refused; owned fixture retained at {}: {error}",
+                "Failed fixture retained without broad deletion at {}",
                 root.display()
             );
         }
         Ok(passed)
     }
 
-    fn controller(executable: &Path) -> Result<(), String> {
-        let path = std::env::args_os()
+    fn controller(executable: &Path) -> Result<u8, String> {
+        let script = std::env::args_os()
             .nth(1)
             .map(PathBuf::from)
             .ok_or("usage: launcher-contract.exe ABSOLUTE_RUN_PS1")?;
-        if !path.is_absolute() || !path.is_file() {
-            return Err("launcher contract requires the real absolute run.ps1 path".into());
-        }
-        let script = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-        let marker = "$ErrorActionPreference = 'Stop'";
-        if script.matches(marker).count() != 1 {
-            return Err(
-                "real launcher startup marker changed; update the diagnostic fixture".into(),
-            );
-        }
-        // Trace only the owned fixture copy. The actual schema2 test runs the
-        // shipped script unchanged and still requires the real native doctor.
-        let mut script = script.replace(
-            marker,
-            &format!("[Console]::Out.WriteLine('NUMERA_LAUNCHER_SCRIPT_ENTERED')\n{marker}"),
-        );
-        for (before, after) in [
-            (
-                "$candidates = @(",
-                "[Console]::Out.WriteLine('NUMERA_TRACE_BEFORE_CANDIDATES')\n$candidates = @(",
-            ),
-            (
-                "$binary = $null",
-                "[Console]::Out.WriteLine('NUMERA_TRACE_AFTER_CANDIDATES')\n$binary = $null",
-            ),
-            (
-                "foreach ($candidate in $candidates) {",
-                "foreach ($candidate in $candidates) {\n[Console]::Out.WriteLine(\"NUMERA_TRACE_BEFORE_TEST_PATH candidate=$candidate\")",
-            ),
-            (
-                "$item = Get-Item -LiteralPath $candidate -Force",
-                "[Console]::Out.WriteLine('NUMERA_TRACE_BEFORE_GET_ITEM')\n$item = Get-Item -LiteralPath $candidate -Force\n[Console]::Out.WriteLine('NUMERA_TRACE_AFTER_GET_ITEM')",
-            ),
-            (
-                "if ($Check) {",
-                "[Console]::Out.WriteLine(\"NUMERA_TRACE_CHECK check=$Check\")\nif ($Check) {",
-            ),
-            (
-                "Push-Location -LiteralPath $ScriptRoot",
-                "[Console]::Out.WriteLine(\"NUMERA_TRACE_BEFORE_PUSH_LOCATION args=$($CommandArguments -join ',')\")\nPush-Location -LiteralPath $ScriptRoot\n[Console]::Out.WriteLine('NUMERA_TRACE_AFTER_PUSH_LOCATION')",
-            ),
-            (
-                "& $binary @CommandArguments",
-                "[Console]::Out.WriteLine(\"NUMERA_TRACE_BEFORE_NATIVE_INVOKE binary=$binary args=$($CommandArguments -join ',')\")\n& $binary @CommandArguments\n[Console]::Out.WriteLine(\"NUMERA_TRACE_AFTER_NATIVE_INVOKE last_exit=$LASTEXITCODE\")",
-            ),
-        ] {
-            if script.matches(before).count() != 1 {
-                return Err(format!("real launcher trace marker changed: {before}"));
-            }
-            script = script.replace(before, after);
+        if !script.is_absolute() || !script.is_file() {
+            return Err("real absolute run.ps1 path required".into());
         }
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -285,96 +219,39 @@ mod windows {
             std::process::id()
         ));
         std::fs::create_dir(&root).map_err(|e| e.to_string())?;
-        let scenarios: &[(&str, &[&str])] = &[
-            (
-                "windows-host",
-                &[
-                    "TEMP",
-                    "TMP",
-                    "USERPROFILE",
-                    "APPDATA",
-                    "LOCALAPPDATA",
-                    "HOMEDRIVE",
-                    "HOMEPATH",
-                    "PATHEXT",
-                    "ComSpec",
-                    "ProgramData",
-                    "ProgramFiles",
-                    "ProgramFiles(x86)",
-                    "ProgramW6432",
-                    "CommonProgramFiles",
-                    "CommonProgramFiles(x86)",
-                    "CommonProgramW6432",
-                    "PSModulePath",
-                    "OS",
-                    "PROCESSOR_ARCHITECTURE",
-                    "NUMBER_OF_PROCESSORS",
-                    "USERNAME",
-                    "USERDOMAIN",
-                    "PUBLIC",
-                    "ALLUSERSPROFILE",
-                ],
-            ),
-            ("pathext-only", &["PATHEXT"]),
-            ("minimal", &[]),
-        ];
-        let mut complete = false;
-        for (name, keys) in scenarios {
-            let native = probe(
-                &root,
-                executable,
-                &script,
-                &format!("{name}-native"),
-                keys,
-                Mode::Native,
-            )?;
-            let host = probe(
-                &root,
-                executable,
-                &script,
-                &format!("{name}-command"),
-                keys,
-                Mode::Host,
-            )?;
-            let file = {
-                probe(
-                    &root,
-                    executable,
-                    &script,
-                    &format!("{name}-file"),
-                    keys,
-                    Mode::File,
-                )?
-            };
-            println!(
-                "scenario={name} direct_native_verified={native} host_ready={host} actual_script_doctor_verified={file}"
-            );
-            if *name == "windows-host" {
-                complete = native && host && file;
-            }
+        let mut passed = true;
+        for (label, extensions, exit) in [
+            ("unset", None, 0),
+            ("missing-exe-nonzero", Some(".CMD;.BAT"), 7),
+            ("existing-exe", Some(".eXe;.COM"), 0),
+        ] {
+            passed &= probe(&root, executable, &script, label, extensions, exit)?;
         }
         if let Err(error) = std::fs::remove_dir(&root) {
             eprintln!(
-                "Diagnostic probes retained at {} (no broad cleanup attempted): {error}",
+                "Owned fixture evidence retained at {}: {error}",
                 root.display()
             );
         }
-        if !complete {
-            return Err("real Windows PowerShell launcher did not forward doctor and its completion output with the Windows host prerequisites".into());
+        if !passed {
+            return Err(
+                "real PowerShell launcher doctor/output/exit or scoped-state contract failed"
+                    .into(),
+            );
         }
         println!(
-            "Windows PowerShell host, launcher argv=doctor and completion output verified; PATH stayed empty and Python overrides invalid in every probe"
+            "Real Windows PowerShell launcher passed unset/missing/existing .EXE, scoped restoration and nonzero exit propagation with empty PATH and invalid Python overrides"
         );
-        Ok(())
+        Ok(0)
     }
 
-    pub fn run() -> Result<(), String> {
+    pub fn run() -> Result<u8, String> {
         let executable = std::env::current_exe().map_err(|e| e.to_string())?;
         if executable
             .file_name()
             .is_some_and(|name| name.eq_ignore_ascii_case("numera-emoji.exe"))
         {
-            native_stub(&executable)
+            stub(&executable)
         } else {
             controller(&executable)
         }
@@ -384,7 +261,7 @@ mod windows {
 fn main() -> std::process::ExitCode {
     #[cfg(windows)]
     match windows::run() {
-        Ok(()) => std::process::ExitCode::SUCCESS,
+        Ok(code) => code.into(),
         Err(error) => {
             eprintln!("ERROR: {error}");
             1.into()
@@ -392,7 +269,7 @@ fn main() -> std::process::ExitCode {
     }
     #[cfg(not(windows))]
     {
-        eprintln!("launcher-contract fixture requires native Windows PowerShell");
+        eprintln!("launcher-contract requires native Windows PowerShell");
         1.into()
     }
 }

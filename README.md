@@ -21,7 +21,7 @@
 [![Top language](https://img.shields.io/github/languages/top/KiaroSama/Numera-Emoji-Mapper)](https://github.com/KiaroSama/Numera-Emoji-Mapper)
 [![Repo size](https://img.shields.io/github/repo-size/KiaroSama/Numera-Emoji-Mapper)](https://github.com/KiaroSama/Numera-Emoji-Mapper)
 [![Native media codecs](https://img.shields.io/badge/media-native%20codecs-007808)](runtime/Cargo.toml)
-[![FFmpeg for video emoji](https://img.shields.io/badge/FFmpeg-video%20emoji-007808?logo=ffmpeg&logoColor=white)](requirements.txt)
+[![FFmpeg for video emoji](https://img.shields.io/badge/FFmpeg-video%20emoji-007808?logo=ffmpeg&logoColor=white)](docs/GUIDE.md)
 [![SQLite catalog](https://img.shields.io/badge/SQLite-catalog-003B57?logo=sqlite&logoColor=white)](docs/GUIDE.md)
 [![Worker in TypeScript](https://img.shields.io/badge/Worker-TypeScript-3178C6?logo=typescript&logoColor=white)](worker/README.md)
 [![Support donations](https://img.shields.io/badge/Support-donations-d04a9a)](#donate)
