@@ -188,7 +188,8 @@ pub fn check(
             real.extend(flags(text));
         }
         real.remove("--help");
-        let documented = flags(&section.body);
+        let mut documented = flags(&section.body);
+        documented.remove("--help");
         let missing = real.difference(&documented).cloned().collect::<Vec<_>>();
         let mentioned: &[&str] = match number.as_str() {
             "12.6" => &["--new-set", "--per-set", "--source"],
@@ -264,6 +265,13 @@ pub fn canaries() {
     let native = sections(&native_guide).unwrap();
     assert_eq!(inventory(&native).unwrap(), inventory(&parsed).unwrap());
     assert!(check(&native, &helps).is_ok());
+    assert!(
+        check(
+            &sections(&format!("{native_guide}\nUse --help for details.\n")).unwrap(),
+            &helps
+        )
+        .is_ok()
+    );
     assert!(
         inventory(&sections(&native_guide.replace("`coin-enhance-map`", "")).unwrap()).is_err()
     );
