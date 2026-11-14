@@ -247,7 +247,7 @@ impl<M: MediaCodec> Collector<'_, M> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(numera_native_runtime)))]
 mod tests {
     #[test]
     fn original_sticker_format_mapping_keeps_video_precedence() {

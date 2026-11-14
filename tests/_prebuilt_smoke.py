@@ -1,4 +1,9 @@
-"""Hosted release acceptance: install and run only an extracted binary package."""
+"""Historical schema1 acceptance: install and run an extracted compatibility payload.
+
+The standalone schema2 suite tests the shipped PowerShell launcher with no Python
+on PATH. This lane retains the wheel/venv doctor through its explicit owned
+compatibility launcher; the current root launcher is a schema2 entry point.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -152,8 +157,11 @@ def main() -> int:
         assert before == {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in preserved}
         assert "numera-emoji" in run([str(launch), "--help"], parent, env).stdout
         if os.name == "nt":
-            run(["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-File",
-                 str(extracted / "run.ps1"), "-NoRelaunch", "-Check"], parent, env, 30)
+            # Preserve the Windows installed-environment doctor case explicitly.
+            # Native schema2 package acceptance owns the real run.ps1 boundary.
+            doctor = run([str(python), str(extracted / "scripts/launch_prebuilt.py"),
+                          "doctor"], parent, env, 30)
+            assert "Environment check complete" in doctor.stdout
         run([str(python), "-c", "from emojikit.similarity import require_native; require_native()"], extracted, env)
         fixture = extracted / "logs" / "fixture.tgs"
         shutil.copyfile(ROOT / "tests/fixtures/lottie/red_circle_512.tgs", fixture)

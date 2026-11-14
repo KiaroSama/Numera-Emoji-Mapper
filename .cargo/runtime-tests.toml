@@ -1,0 +1,7 @@
+# Python-free production test runner; uses the same native process owner and
+# Linux private-network bootstrap as the historical compatibility test runner.
+[target.'cfg(windows)']
+runner = ["runtime/target/release/numera-runtime-tests.exe"]
+
+[target.'cfg(unix)']
+runner = ["runtime/target/release/numera-runtime-tests"]

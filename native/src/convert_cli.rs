@@ -176,6 +176,15 @@ pub fn run_with_codec<M: MediaCodec>(
         }
         std::fs::remove_file(&marker).map_err(|e| e.to_string())?;
     }
+    // Production IPC stays inside the installation even when the explicitly
+    // selected artwork/output folders belong to another directory or volume.
+    #[cfg(numera_native_runtime)]
+    let scratch = crate::tooling_environment::confined_directory(
+        &config.root,
+        "logs/tmp/native-convert",
+        true,
+    )?;
+    #[cfg(not(numera_native_runtime))]
     let scratch = output.join(".native-codec");
     let media = make_media(scratch.clone());
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -261,7 +270,24 @@ pub fn run_with_codec<M: MediaCodec>(
                         return Err("conversion produced an invalid emoji; original output preserved".into());
                     }
                     std::fs::OpenOptions::new().write(true).open(&staged).and_then(|file| file.sync_all()).map_err(|e| e.to_string())?;
+                    #[cfg(not(numera_native_runtime))]
                     std::fs::rename(&staged,&out).map_err(|e|e.to_string())?;
+                    #[cfg(numera_native_runtime)]
+                    {
+                        use std::io::Read;
+                        // A verified 100x100 RGBA PNG is small. Bound the read
+                        // and publish through an output sibling so cross-volume
+                        // conversions retain atomic replacement as well.
+                        const MAX_PNG: u64 = 4 * 1024 * 1024;
+                        let mut bytes = Vec::new();
+                        std::fs::File::open(&staged)
+                            .and_then(|file| file.take(MAX_PNG + 1).read_to_end(&mut bytes))
+                            .map_err(|error| error.to_string())?;
+                        if bytes.len() as u64 > MAX_PNG {
+                            return Err("converted PNG exceeds byte limit; original output preserved".into());
+                        }
+                        crate::atomic::write_bytes(&out, &bytes).map_err(|error| error.to_string())?;
+                    }
                     if source.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("svg")) { svg_ok += 1; } else { raster_ok += 1; }
                     success=true;made+=1;done.insert(name.clone());break
                 }
@@ -311,7 +337,7 @@ pub fn run_with_codec<M: MediaCodec>(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(numera_native_runtime)))]
 mod cleanup_tests {
     use super::*;
 

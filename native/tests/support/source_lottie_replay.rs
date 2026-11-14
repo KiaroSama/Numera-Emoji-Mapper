@@ -124,7 +124,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, sources: &[Source])
     let parent = _native::tooling_environment::confined_directory(root, "logs/tmp", true).unwrap();
     let render_workspace = parent.join(format!("Lottie source renders {}", std::process::id()));
     std::fs::create_dir(&render_workspace).unwrap();
-    let executable = Path::new(env!("CARGO_BIN_EXE_numera-emoji"));
+    let executable = Path::new(env!("CARGO_BIN_EXE_numera-compat"));
     let rendered = runtime
         .block_on(_native::source_oracle_worker::generate_lottie_render(
             root,

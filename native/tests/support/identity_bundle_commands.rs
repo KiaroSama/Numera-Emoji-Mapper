@@ -102,7 +102,7 @@ pub fn check(project: &Path, runtime: &tokio::runtime::Runtime, sources: &[&Sour
         runtime
             .block_on(source_identity_tests::bundle_owned(
                 project,
-                Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+                Path::new(env!("CARGO_BIN_EXE_numera-compat")),
                 &data,
                 manifest,
                 action,

@@ -76,7 +76,7 @@ fn installed_executable_runs_without_build_source_and_preserves_bytes_on_refused
     } else {
         "numera-emoji"
     });
-    std::fs::copy(env!("CARGO_BIN_EXE_numera-emoji"), &source).unwrap();
+    std::fs::copy(env!("CARGO_BIN_EXE_numera-compat"), &source).unwrap();
     let source_digest = digest(&source).unwrap();
     let installed = tooling_install::install_executable(&root.0, &source).unwrap();
     assert_eq!(digest(&installed).unwrap(), source_digest);
@@ -267,9 +267,11 @@ fn prebuilt_cli_refuses_activation_before_creating_an_environment() {
     for name in ["assets/panel.html", "pyproject.toml"] {
         std::fs::copy(project.join(name), root.0.join(name)).unwrap();
     }
-    let binary =
-        tooling_install::install_executable(&root.0, Path::new(env!("CARGO_BIN_EXE_numera-emoji")))
-            .unwrap();
+    let binary = tooling_install::install_executable(
+        &root.0,
+        Path::new(env!("CARGO_BIN_EXE_numera-compat")),
+    )
+    .unwrap();
     let original = std::env::vars().collect();
     let environment = _native::tooling_runtime::environment(&original);
     let runtime = tokio::runtime::Builder::new_current_thread()

@@ -71,7 +71,7 @@ fn native_child_capture_preserves_utf8_and_code_then_removes_owned_workspace() {
         .build()
         .unwrap();
     let command = [
-        OsString::from(env!("CARGO_BIN_EXE_numera-emoji")),
+        OsString::from(env!("CARGO_BIN_EXE_numera-compat")),
         "--help".into(),
     ];
     let actual = runtime

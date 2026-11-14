@@ -526,7 +526,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(numera_native_runtime)))]
 mod cleanup_tests {
     use super::*;
     use std::path::Path;

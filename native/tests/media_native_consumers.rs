@@ -21,6 +21,45 @@ fn hash(bytes: &[u8]) -> String {
         .collect()
 }
 
+// Pillow is an independent decoder in this test harness, never in the public worker.
+fn png_pixels(bytes: &[u8], expected: &Value) {
+    use pyo3::prelude::*;
+    use pyo3::types::PyBytes;
+    assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
+    Python::initialize();
+    let (size, mode, rgba) = Python::attach(|py| -> PyResult<((u32, u32), String, Vec<u8>)> {
+        let buffer = py
+            .import("io")?
+            .call_method1("BytesIO", (PyBytes::new(py, bytes),))?;
+        let image = py.import("PIL.Image")?.call_method1("open", (&buffer,))?;
+        let decoded = (|| -> PyResult<_> {
+            Ok((
+                image.getattr("size")?.extract()?,
+                image.getattr("mode")?.extract()?,
+                image
+                    .call_method0("tobytes")?
+                    .cast_into::<PyBytes>()?
+                    .as_bytes()
+                    .to_vec(),
+            ))
+        })();
+        let closed = image.call_method0("close");
+        buffer.call_method0("close")?;
+        let decoded = decoded?;
+        closed?;
+        Ok(decoded)
+    })
+    .unwrap();
+    assert_eq!(serde_json::json!([size.0, size.1]), expected["size"]);
+    assert_eq!(serde_json::json!(mode), expected["mode"]);
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(&rgba)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    assert_eq!(digest, expected["rgba_sha256"]);
+}
+
 #[path = "support/bounded_media.rs"]
 mod bounded_media;
 
@@ -152,7 +191,7 @@ fn brand_panel_and_store_requests_publish_only_answered_native_outputs() {
                 .unwrap();
             let cached = PathBuf::from(brand["file_path"].as_str().unwrap());
             let converted = std::fs::read(&cached).unwrap();
-            assert_eq!(hash(&converted), conversion["png_sha256"]);
+            png_pixels(&converted, conversion);
             assert_eq!(brand["fmt"], "static");
             assert_eq!(brand["emojis"], json!(["✅"]));
             assert_eq!(brand["keywords"], json!(["fixture", "logo"]));

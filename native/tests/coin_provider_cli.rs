@@ -216,7 +216,7 @@ fn actual_provider_commands_cache_publish_refuse_and_restart_without_a_second_up
         let good = art.clone();
         let bad = blank.clone();
         let fresh = changed_art.clone();
-        let png_hash = image["expected"]["png_sha256"].as_str().unwrap().to_owned();
+        let expected_pixels = image["expected"].clone();
         let sequence: Vec<&str> = match scenario {
             "paprika" => vec![
                 "search",
@@ -365,7 +365,7 @@ fn actual_provider_commands_cache_publish_refuse_and_restart_without_a_second_up
                         assert_eq!(intent["expected_before"], 2);
                         assert_eq!(intent["set_name"], "cryptoemoji1_by_YourEmojiBot");
                         uploaded = std::fs::read(intent["source_path"].as_str().unwrap()).unwrap();
-                        assert_eq!(digest(&uploaded), png_hash);
+                        bot_api::assert_rgba(&uploaded, &expected_pixels);
                         assert!(bytes.windows(uploaded.len()).any(|part| part == uploaded));
                         assert_eq!(
                             document(&server_directory.join("ticker_to_id.json")),
@@ -442,10 +442,7 @@ fn actual_provider_commands_cache_publish_refuse_and_restart_without_a_second_up
                 let intent = document(&state)["provider_in_flight"].clone();
                 let retained = PathBuf::from(intent["source_path"].as_str().unwrap());
                 assert!(retained.is_file());
-                assert_eq!(
-                    digest(&std::fs::read(&retained).unwrap()),
-                    image["expected"]["png_sha256"]
-                );
+                bot_api::assert_rgba(&std::fs::read(&retained).unwrap(), &image["expected"]);
                 assert_eq!(document(&mapping), cases[3]["expected"]["mapping"]);
                 assert!(!directory.join("logos/emoji/aaa.png").exists());
                 let second = invoke(&executable, &directory, &base, provider, &[], 2, &runtime);
@@ -462,9 +459,9 @@ fn actual_provider_commands_cache_publish_refuse_and_restart_without_a_second_up
             assert!(saved["provider_in_flight"].is_null());
             assert_eq!(saved["provider_added"], json!(["aaa"]));
             assert_eq!(saved["sets"], initial["sets"]);
-            assert_eq!(
-                digest(&std::fs::read(directory.join("logos/emoji/aaa.png")).unwrap()),
-                image["expected"]["png_sha256"]
+            bot_api::assert_rgba(
+                &std::fs::read(directory.join("logos/emoji/aaa.png")).unwrap(),
+                &image["expected"],
             );
             assert!(
                 std::fs::read_to_string(directory.join("currency-emoji-inventory.filled.md"))

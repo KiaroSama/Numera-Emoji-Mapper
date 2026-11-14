@@ -66,7 +66,7 @@ fn copied_native_probe_selects_real_venv_without_python_application_or_build_tre
     }
     let binary = _native::tooling_install::install_executable(
         &scratch,
-        Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+        Path::new(env!("CARGO_BIN_EXE_numera-compat")),
     )
     .unwrap();
     let original = std::env::vars().collect::<BTreeMap<_, _>>();

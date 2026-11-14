@@ -177,7 +177,9 @@ pub(crate) fn noncoverage_reason(
     if kind == ["bin"]
         && matches!(
             (name, source),
-            ("numera-emoji", "native/src/main.rs") | ("numera-build", "native/src/build_main.rs")
+            ("numera-emoji", "native/src/runtime_main.rs")
+                | ("numera-compat", "native/src/main.rs")
+                | ("numera-build", "native/src/build_main.rs")
         )
     {
         return Some("Application binary harness is not mapped migration case evidence");
@@ -200,7 +202,7 @@ pub(crate) fn noncoverage_reason(
         ("tooling_test_cohort", "native/tests/tooling_test_cohort.rs")
             if cfg!(all(windows, target_arch = "x86_64", target_env = "msvc")) =>
         {
-            "26019ab49ab33348875191ddfe233e4e2b127e4c4781ad0670e05712682887c7"
+            "4655656ee0468e84b8a182acfc8b3d6156a55990566f7ba3dc931dd479bfaeea"
         }
         _ => return None,
     };
@@ -520,16 +522,27 @@ mod tests {
     }
     #[test]
     fn explicit_known_binary_noncoverage_never_becomes_an_unknown_target_fallback() {
-        let target: Target = serde_json::from_str(r#"{"name":"numera-emoji","kind":["bin"],"src_path":"native/src/main.rs","mode":"noncoverage","reason":"No mapped cases in the application harness"}"#).unwrap();
-        assert!(validate_target(&target, &[]).is_ok());
+        let target: Target = serde_json::from_str(r#"{"name":"numera-emoji","kind":["bin"],"src_path":"native/src/runtime_main.rs","mode":"noncoverage","reason":"No mapped cases in the application harness"}"#).unwrap();
+        for (name, path) in [
+            ("numera-emoji", "native/src/runtime_main.rs"),
+            ("numera-compat", "native/src/main.rs"),
+            ("numera-build", "native/src/build_main.rs"),
+        ] {
+            let mut admitted = target.clone();
+            admitted.name = name.into();
+            admitted.src_path = path.into();
+            assert!(validate_target(&admitted, &[]).is_ok(), "{name} {path}");
+        }
         for (name, path) in [
             ("other", "native/src/main.rs"),
+            ("numera-emoji", "native/src/main.rs"),
+            ("numera-compat", "native/src/runtime_main.rs"),
             ("numera-emoji", "native/src/other.rs"),
         ] {
             let mut bad = target.clone();
             bad.name = name.into();
             bad.src_path = path.into();
-            assert!(validate_target(&bad, &[]).is_err());
+            assert!(validate_target(&bad, &[]).is_err(), "{name} {path}");
         }
         let mut bad = target.clone();
         bad.reason = None;
@@ -559,7 +572,7 @@ mod tests {
             (
                 "tooling_test_cohort",
                 "native/tests/tooling_test_cohort.rs",
-                "26019ab49ab33348875191ddfe233e4e2b127e4c4781ad0670e05712682887c7",
+                "4655656ee0468e84b8a182acfc8b3d6156a55990566f7ba3dc931dd479bfaeea",
                 cfg!(all(windows, target_arch = "x86_64", target_env = "msvc")),
             ),
         ] {
@@ -594,13 +607,14 @@ mod tests {
     #[test]
     fn prepare_produces_real_admitted_manifest_or_explicit_known_noncoverage() {
         const ABC: &str = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
-        for known_bin in [false, true] {
+        for descriptor in [
+            None,
+            Some(("numera-emoji", "native/src/runtime_main.rs")),
+            Some(("numera-compat", "native/src/main.rs")),
+        ] {
+            let known_bin = descriptor.is_some();
             let root = fixture::Root::new("same Cargo prefix café");
-            let source = if known_bin {
-                "native/src/main.rs"
-            } else {
-                "native/tests/cases.rs"
-            };
+            let source = descriptor.map_or("native/tests/cases.rs", |(_, source)| source);
             let files = [
                 ("source", "tests/test_original.py"),
                 ("target", source),
@@ -622,12 +636,12 @@ mod tests {
             artifact["executable"] = json!(binary);
             artifact["filenames"] = json!([binary]);
             artifact["target"]["src_path"] = json!(root.0.join(source));
-            if known_bin {
+            if let Some((name, _)) = descriptor {
                 artifact["target"]["kind"] = json!(["bin"]);
-                artifact["target"]["name"] = json!("numera-emoji");
+                artifact["target"]["name"] = json!(name);
             }
-            let target = if known_bin {
-                json!({"name":"numera-emoji","kind":["bin"],"src_path":source,"mode":"noncoverage","reason":"No mapped source cases"})
+            let target = if let Some((name, _)) = descriptor {
+                json!({"name":name,"kind":["bin"],"src_path":source,"mode":"noncoverage","reason":"No mapped source cases"})
             } else {
                 json!({"name":"cases","kind":["test"],"src_path":source,"mode":"observe"})
             };

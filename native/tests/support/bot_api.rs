@@ -37,6 +37,8 @@ pub struct Reply {
     pub observation: Option<(std::path::PathBuf, String, Value)>,
     pub files: BTreeMap<String, Vec<u8>>,
     pub upload_sha256: BTreeMap<String, String>,
+    /// Native encoders may choose different compression; golden pixels remain independent.
+    pub upload_rgba: BTreeMap<String, Value>,
     pub download: Option<Vec<u8>>,
     pub download_upload: Option<String>,
     pub held: Option<(
@@ -95,12 +97,68 @@ impl Reply {
             observation: None,
             files: BTreeMap::new(),
             upload_sha256: BTreeMap::new(),
+            upload_rgba: BTreeMap::new(),
             download: None,
             download_upload: None,
             held: None,
         }
     }
 }
+/// Decode uploads through the pinned historical decoder while the server owns the request.
+/// This oracle compares dimensions, original mode and the frozen RGBA digest.
+pub fn rgba_signature(bytes: &[u8]) -> Result<Value, String> {
+    use pyo3::prelude::*;
+    use pyo3::types::PyBytes;
+    use sha2::{Digest, Sha256};
+    if !bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        return Err("expected PNG upload".into());
+    }
+    Python::initialize();
+    Python::attach(|py| -> PyResult<Value> {
+        let buffer = py
+            .import("io")?
+            .call_method1("BytesIO", (PyBytes::new(py, bytes),))?;
+        let image = py.import("PIL.Image")?.call_method1("open", (&buffer,))?;
+        let decoded = (|| -> PyResult<Value> {
+            let size = image.getattr("size")?.extract::<(u32, u32)>()?;
+            let mode = image.getattr("mode")?.extract::<String>()?;
+            let converted = image.call_method1("convert", ("RGBA",))?;
+            let pixels = converted
+                .call_method0("tobytes")
+                .and_then(|bytes| bytes.cast_into::<PyBytes>().map_err(Into::into))
+                .map(|bytes| bytes.as_bytes().to_vec());
+            let closed = converted.call_method0("close");
+            let pixels = pixels?;
+            closed?;
+            let digest = Sha256::digest(&pixels)
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>();
+            Ok(serde_json::json!({"size":[size.0,size.1],"mode":mode,"rgba_sha256":digest}))
+        })();
+        let closed = image.call_method0("close");
+        buffer.call_method0("close")?;
+        let decoded = decoded?;
+        closed?;
+        Ok(decoded)
+    })
+    .map_err(|error| error.to_string())
+}
+#[allow(dead_code)] // Shared helper: only native image upload cohorts inspect decoded pixels.
+pub fn assert_rgba(bytes: &[u8], expected: &Value) {
+    let actual = rgba_signature(bytes).unwrap();
+    for field in ["size", "mode", "rgba_sha256"] {
+        assert_eq!(actual[field], expected[field], "{field}");
+    }
+}
+fn rgba_matches(bytes: &[u8], expected: &Value) -> bool {
+    rgba_signature(bytes).is_ok_and(|actual| {
+        ["size", "mode", "rgba_sha256"]
+            .into_iter()
+            .all(|field| actual[field] == expected[field])
+    })
+}
+
 struct Script {
     received: usize,
     replies: VecDeque<Reply>,
@@ -206,7 +264,16 @@ async fn scripted(
             observation: None,
         });
         let payload = if let Some(reply) = next.filter(|reply| {
-            let uploads_match = if reply.upload_sha256.is_empty() {
+            let uploads_match = if !reply.upload_rgba.is_empty() {
+                reply.files.is_empty()
+                    && reply.upload_sha256.is_empty()
+                    && files.len() == reply.upload_rgba.len()
+                    && reply.upload_rgba.iter().all(|(name, expected)| {
+                        files
+                            .get(name)
+                            .is_some_and(|bytes| rgba_matches(bytes, expected))
+                    })
+            } else if reply.upload_sha256.is_empty() {
                 reply.files == files
             } else {
                 use sha2::{Digest, Sha256};

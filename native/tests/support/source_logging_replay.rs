@@ -70,7 +70,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Source]) 
     let report = runtime
         .block_on(_native::source_oracle_worker::generate_logging(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             sources[0],
             sources[1],
         ))
@@ -318,7 +318,7 @@ fn check_secrets(root: &Path, runtime: &tokio::runtime::Runtime, sources: [&Sour
     let report = runtime
         .block_on(_native::source_oracle_worker::generate_logging_secrets(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             sources[0],
             sources[1],
@@ -476,7 +476,7 @@ fn check_retention(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Sou
     let report = runtime
         .block_on(_native::source_oracle_worker::generate_logging_retention(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             &sources,
         ))

@@ -1,5 +1,5 @@
 //! Original two-run mutation cap and logo-first creation through the copied production command.
-use super::bot_api::{Reply, Server};
+use super::bot_api::{Reply, Server, assert_rgba, rgba_signature};
 use super::plan_family::{Family, Fixture, name, read};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -44,6 +44,7 @@ fn download(replies: &mut Vec<Reply>, member: &Value, bytes: &[u8]) {
         observation: None,
         files: BTreeMap::new(),
         upload_sha256: BTreeMap::new(),
+        upload_rgba: BTreeMap::new(),
         download: Some(bytes.to_vec()),
         download_upload: None,
         held: None,
@@ -129,6 +130,20 @@ fn finish_command(
             .collect::<Vec<_>>(),
         [std::ffi::OsString::from("native-codec")]
     );
+    if logo {
+        // Preserve the old implication that the published logo is the exact
+        // generated cache artifact, independently of its historical PNG encoder.
+        let cached = std::fs::read_dir(family.data.join("brand"))
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .collect::<Vec<_>>();
+        assert_eq!(cached.len(), 1);
+        let created = observed
+            .iter()
+            .find(|request| request.method == "createNewStickerSet")
+            .unwrap();
+        assert_eq!(std::fs::read(&cached[0]).unwrap(), created.files["file0"]);
+    }
     observed.into_iter().map(|request| request.method).collect()
 }
 fn writes(methods: &[String]) -> usize {
@@ -346,9 +361,15 @@ fn logo(fixture: &Fixture) {
         ],
         json!({"ok":true,"result":true}),
     );
+    // Fixture::new supplies the independent historical Pillow PNG for this
+    // seed. Verify transmitted dimensions, mode and every decoded RGBA sample
+    // at request time; the replacement PNG encoder need not share its deflate bytes.
+    let expected_logo = rgba_signature(&fixture.logo_bytes).unwrap();
+    assert_eq!(expected_logo["size"], json!([100, 100]));
+    assert_eq!(expected_logo["mode"], "RGBA");
     creation
-        .files
-        .insert("file0".into(), fixture.logo_bytes.clone());
+        .upload_rgba
+        .insert("file0".into(), expected_logo.clone());
     creation.observation = Some((
         family.data.join("publish_cryptoemoji.json"),
         "/in_flight/operation".into(),
@@ -412,7 +433,7 @@ fn logo(fixture: &Fixture) {
         .map(|entry| entry.unwrap().path())
         .collect::<Vec<_>>();
     assert_eq!(cached.len(), 1);
-    assert_eq!(std::fs::read(&cached[0]).unwrap(), fixture.logo_bytes);
+    assert_rgba(&std::fs::read(&cached[0]).unwrap(), &expected_logo);
 }
 
 pub fn run() {

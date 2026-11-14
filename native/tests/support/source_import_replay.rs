@@ -165,7 +165,7 @@ pub fn check(
     let collected = runtime
         .block_on(_native::source_runtime_discovery::observe_owned(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &directory,
             guard,
         ))

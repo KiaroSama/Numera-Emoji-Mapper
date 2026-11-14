@@ -18,3 +18,6 @@
 *.csv text
 *.json text
 *.md text
+
+# Pinned third-party renderer; first-party production code is Rust.
+runtime/vendor/** linguist-vendored -whitespace

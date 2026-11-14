@@ -13,8 +13,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  package:
-    name: Package ${{ matrix.platform }}
+  compatibility:
+    # Retains the schema1 wheel/venv lifecycle as a historical compatibility test.
+    # These payloads are never uploaded as production downloads.
+    name: Historical package compatibility (${{ matrix.platform }})
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -119,6 +121,12 @@ jobs:
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then builder=native/target/debug/numera-build.exe; else builder=native/target/debug/numera-build; fi
           "$builder"
+      - name: Route historical package commands to the compatibility executable
+        shell: bash
+        run: |
+          cargo build --manifest-path native/Cargo.toml --locked --release --bin numera-compat
+          if [[ "$RUNNER_OS" == "Windows" ]]; then suffix=.exe; else suffix=; fi
+          cp "native/target/release/numera-compat$suffix" "native/runtime/numera-emoji$suffix"
       - name: Download binary-only dependencies for offline installation
         run: |
           python -m pip download --only-binary=:all: -r requirements.txt -r requirements-coins.txt --dest native/target/dependency-wheels
@@ -132,10 +140,12 @@ jobs:
       - name: Verify project-local temp/cache confinement
         run: python -m unittest tests.test_prebuilt_environment -v
       - name: Build guarded native test runner
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji --bin numera-compat
       - name: Permit private test namespaces
         if: runner.os == 'Linux'
         uses: ./.github/actions/test-network
+      - name: Compile every historical Rust test target
+        run: cargo test --manifest-path native/Cargo.toml --locked --no-run
       - name: Native lifecycle and storage acceptance
         run: cargo test --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test tooling_test_runner --test process_lifecycle --test darwin_exit --test ownership --test atomic_failure --test media_config --test sandbox_lease --test sandbox_lease_windows -- --test-threads=1
       - name: Sandbox wrapper death and owned clone reclamation
@@ -149,6 +159,47 @@ jobs:
         run: python -m unittest tests.test_native_preview_codec -v
       - name: Install and exercise extracted package without source/build tree
         run: python -m tests._prebuilt_smoke
+
+  package:
+    name: Standalone package ${{ matrix.platform }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            platform: windows-x64
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: macos-15-intel
+            platform: macos-x64
+          - os: macos-15
+            platform: macos-arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      MACOSX_DEPLOYMENT_TARGET: "15.0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select supported Rust toolchain
+        run: rustup default 1.99.0
+      - name: Build standalone production runtime
+        run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+      - name: Permit private runtime test namespaces
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/test-network
+      # The smoke extracts and installs the actual release executable outside
+      # the source fixture, deletes the source, clears PATH and runs PNG conversion.
+      - name: Offline package integrity, replacement and native conversion
+        run: cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --test standalone_package -- --test-threads=1
+      - name: Create standalone archive and SHA256 checksum
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then suffix=.exe; else suffix=; fi
+          "runtime/target/release/numera-emoji$suffix" package-native --executable "runtime/target/release/numera-emoji$suffix" --target "${{ matrix.platform }}" --revision "$GITHUB_SHA" --out dist
       - name: Upload ready downloads and checksums
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -161,7 +212,7 @@ jobs:
 
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: package
+    needs: [package, compatibility]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

@@ -35,7 +35,7 @@ pub fn check(project: &Path, runtime: &tokio::runtime::Runtime, sources: &[Sourc
     let mut files = BTreeMap::new();
     for (input, relative) in [
         (
-            PathBuf::from(env!("CARGO_BIN_EXE_numera-emoji")),
+            PathBuf::from(env!("CARGO_BIN_EXE_numera-compat")),
             format!("native/target/debug/{binary_name}"),
         ),
         (

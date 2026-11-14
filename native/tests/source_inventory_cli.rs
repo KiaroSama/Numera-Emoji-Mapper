@@ -18,7 +18,7 @@ fn source_inventory_public_help_and_refusals_leave_output_untouched() {
     } else {
         "numera-emoji"
     });
-    std::fs::copy(env!("CARGO_BIN_EXE_numera-emoji"), &executable).unwrap();
+    std::fs::copy(env!("CARGO_BIN_EXE_numera-compat"), &executable).unwrap();
     let output = scratch.join("occupied.json");
     std::fs::write(&output, b"preserved").unwrap();
     let runtime = tokio::runtime::Builder::new_current_thread()

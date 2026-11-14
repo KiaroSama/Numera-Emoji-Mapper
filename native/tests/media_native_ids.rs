@@ -137,7 +137,7 @@ fn requested_ids_preserve_gates_tint_identity_dedup_missing_and_batch_order() {
     );
     let log_path = log.path.clone().expect("fixture file log required");
     let mut catalog = Catalog::open(&data.join("catalog.db"), "fixture UTC", &project).unwrap();
-    let mut server = Fixture::new(script);
+    let mut server = Fixture::with_deadline(script, media.deadline);
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let tg = _native::telegram::Telegram::new(read_only_api::TOKEN.into(), server.base.clone())
             .unwrap();
@@ -381,6 +381,9 @@ fn requested_ids_preserve_gates_tint_identity_dedup_missing_and_batch_order() {
         );
     }));
     let requests = server.finish();
+    if let Err(error) = &requests {
+        eprintln!("requested-ID scripted server failed: {error}");
+    }
     result.unwrap();
     assert_eq!(requests.unwrap().len(), 33);
     let rows = catalog.all(None).unwrap();
@@ -487,7 +490,7 @@ fn mixed_requested_ids_preserve_good_formats_when_download_or_resolution_fails()
         .unwrap();
     let log = RunLog::open(&root, "mixed-ids-test", vec![read_only_api::TOKEN.into()]);
     let mut catalog = Catalog::open(&data.join("catalog.db"), "fixture UTC", &project).unwrap();
-    let mut server = Fixture::new(script);
+    let mut server = Fixture::with_deadline(script, media.deadline);
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let tg = _native::telegram::Telegram::new(read_only_api::TOKEN.into(), server.base.clone())
             .unwrap();
@@ -573,6 +576,9 @@ fn mixed_requested_ids_preserve_good_formats_when_download_or_resolution_fails()
         );
     }));
     let requests = server.finish();
+    if let Err(error) = &requests {
+        eprintln!("requested-ID scripted server failed: {error}");
+    }
     result.unwrap();
     assert_eq!(requests.unwrap().len(), 9);
     let rows = catalog.all(None).unwrap();

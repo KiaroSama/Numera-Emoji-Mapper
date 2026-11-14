@@ -139,7 +139,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             return Ok(4);
         }
     };
-    #[cfg(test)]
+    #[cfg(all(test, not(numera_native_runtime)))]
     crate::migration_crash_tests::barrier("writer-publisher");
     let mut state =
         match read(&state_path, json!({})).and_then(|state| resume::collection(state, base)) {
@@ -475,7 +475,7 @@ fn preflight(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(numera_native_runtime)))]
 mod tests {
     use super::read;
     use serde_json::{Value, json};

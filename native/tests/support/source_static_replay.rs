@@ -80,7 +80,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, sources: &[Source])
     let report = runtime
         .block_on(_native::source_oracle_worker::generate_static(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             (media, provider),
             (&observations, &provider_observations),
@@ -177,7 +177,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, sources: &[Source])
         ),
     ] {
         let mut argv = vec![
-            std::ffi::OsString::from(env!("CARGO_BIN_EXE_numera-emoji")),
+            std::ffi::OsString::from(env!("CARGO_BIN_EXE_numera-compat")),
             "source-static-images".into(),
         ];
         argv.extend(args.into_iter().map(std::ffi::OsString::from));
@@ -293,7 +293,7 @@ fn check_fitting(root: &Path, runtime: &tokio::runtime::Runtime, sources: &[Sour
     let report = runtime
         .block_on(_native::source_oracle_worker::observe_fitting(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             media,
             test,
@@ -414,7 +414,7 @@ fn check_brand(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Source]
     let report = runtime
         .block_on(_native::source_oracle_worker::observe_brand(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             &sources,
         ))
@@ -513,7 +513,7 @@ fn check_reencode(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Sour
     let report = runtime
         .block_on(oracle::observe_owned(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             &sources,
         ))

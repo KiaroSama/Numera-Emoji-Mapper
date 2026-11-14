@@ -289,7 +289,7 @@ fn dedicated_runner_reaps_separately_sessioned_orphan_and_preserves_root_status(
     let log = RunLog::open(&scratch, "cohort-test", vec![]);
     let environment = tooling_test_runner::scrubbed_environment(&std::env::vars().collect());
     let argv = [
-        PathBuf::from(env!("CARGO_BIN_EXE_numera-emoji")).into_os_string(),
+        PathBuf::from(env!("CARGO_BIN_EXE_numera-compat")).into_os_string(),
         "test-runner".into(),
         std::env::current_exe().unwrap().into_os_string(),
         "--exact".into(),

@@ -337,6 +337,7 @@ pub fn run() {
                 observation: None,
                 files: BTreeMap::new(),
                 upload_sha256: BTreeMap::new(),
+                upload_rgba: BTreeMap::new(),
                 download: Some(originals[0].clone()),
                 download_upload: None,
                 held: None,

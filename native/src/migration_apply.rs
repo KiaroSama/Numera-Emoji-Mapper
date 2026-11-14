@@ -54,7 +54,7 @@ pub fn stage(data: &Path, doc: &mut Value, name: &str) -> Result<(), String> {
     doc["stage"] = json!(name);
     crate::atomic::write_json(&data.join("identity-migration.journal.json"), doc)
         .map_err(|e| e.to_string())?;
-    #[cfg(test)]
+    #[cfg(all(test, not(numera_native_runtime)))]
     crate::migration_crash_tests::barrier(name);
     Ok(())
 }
@@ -178,10 +178,10 @@ pub fn apply(
             rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE,
         )
         .map_err(|e| e.to_string())?;
-        #[cfg(test)]
+        #[cfg(all(test, not(numera_native_runtime)))]
         crate::migration_crash_tests::barrier("database-before");
         moved = crate::migration_database::rewrite(&mut db, &map, &hashes)?;
-        #[cfg(test)]
+        #[cfg(all(test, not(numera_native_runtime)))]
         crate::migration_crash_tests::barrier("database-after");
     }
     stage(&data, &mut doc, "database")?;
@@ -193,7 +193,7 @@ pub fn apply(
                 .map_err(|e| e.to_string())?;
         if actual != intent["after"] {
             crate::atomic::write_json(&path, &intent["after"]).map_err(|e| e.to_string())?;
-            #[cfg(test)]
+            #[cfg(all(test, not(numera_native_runtime)))]
             crate::migration_crash_tests::barrier(name);
             touched.push(name.clone());
         }
@@ -219,7 +219,7 @@ pub fn apply(
     .map_err(|e| e.to_string())?;
     std::fs::remove_file(data.join("identity-migration.journal.json"))
         .map_err(|e| e.to_string())?;
-    #[cfg(test)]
+    #[cfg(all(test, not(numera_native_runtime)))]
     crate::migration_crash_tests::barrier("retired");
     Ok(
         json!({"backup":doc["backup"],"bundle":doc["bundle"],"moved":moved,"state":touched,"renamed":renamed,"key_map":doc["key_map"]}),

@@ -1,6 +1,6 @@
 //! Original native ticker success/repeat scenarios reuse the existing command and converted artwork.
 use super::super::{Commands, SET, download, listing};
-use crate::bot_api::{Reply, Server};
+use crate::bot_api::{Reply, Server, rgba_signature};
 use _native::atomic;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -44,7 +44,17 @@ fn mutation(path: &Path, logo: bool, create: bool, bytes: &[u8]) -> Reply {
     } else {
         reply.fields.insert("sticker".into(), input.to_string());
     }
-    reply.files.insert("file0".into(), bytes.into());
+    if logo {
+        // The caller's converted logo is the independent historical Pillow
+        // reference. Retain exact request-time pixel/mode/size proof while
+        // permitting the production PNG encoder's different compression bytes.
+        let expected_logo = rgba_signature(bytes).unwrap();
+        assert_eq!(expected_logo["size"], json!([100, 100]));
+        assert_eq!(expected_logo["mode"], "RGBA");
+        reply.upload_rgba.insert("file0".into(), expected_logo);
+    } else {
+        reply.files.insert("file0".into(), bytes.into());
+    }
     reply.observation = Some((
         path.into(),
         "/in_flight/key".into(),

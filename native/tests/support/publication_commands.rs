@@ -1,6 +1,6 @@
 //! Original native publication commands reuse the ticker's copied artifact and descendant owner.
 use super::{Commands, download};
-use crate::bot_api::{Reply, Server};
+use crate::bot_api::{Reply, Server, rgba_signature};
 use _native::{atomic, catalog::Catalog};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -85,7 +85,17 @@ fn mutation(state: &Path, name: &str, key: &str, artwork: (&[u8], bool), create:
     } else {
         reply.fields.insert("sticker".into(), input.to_string());
     }
-    reply.files.insert("file0".into(), bytes.to_vec());
+    if logo {
+        // Logo inputs come from the hash-admitted artwork converted by the
+        // historical Pillow codec above. Only the generated PNG compression may
+        // differ; the actual multipart body must retain its size, mode and RGBA.
+        let expected_logo = rgba_signature(bytes).unwrap();
+        assert_eq!(expected_logo["size"], json!([100, 100]));
+        assert_eq!(expected_logo["mode"], "RGBA");
+        reply.upload_rgba.insert("file0".into(), expected_logo);
+    } else {
+        reply.files.insert("file0".into(), bytes.to_vec());
+    }
     reply.observation = Some((state.into(), "/in_flight/key".into(), json!(key)));
     reply
 }

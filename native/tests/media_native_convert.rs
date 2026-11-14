@@ -72,6 +72,45 @@ fn empty_codecs(output: &Path) {
     );
 }
 
+// Pillow is an independent decoder in this test harness, never in the public worker.
+fn png_pixels(bytes: &[u8], expected: &Value) {
+    use pyo3::prelude::*;
+    use pyo3::types::PyBytes;
+    assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
+    Python::initialize();
+    let (size, mode, rgba) = Python::attach(|py| -> PyResult<((u32, u32), String, Vec<u8>)> {
+        let buffer = py
+            .import("io")?
+            .call_method1("BytesIO", (PyBytes::new(py, bytes),))?;
+        let image = py.import("PIL.Image")?.call_method1("open", (&buffer,))?;
+        let decoded = (|| -> PyResult<_> {
+            Ok((
+                image.getattr("size")?.extract()?,
+                image.getattr("mode")?.extract()?,
+                image
+                    .call_method0("tobytes")?
+                    .cast_into::<PyBytes>()?
+                    .as_bytes()
+                    .to_vec(),
+            ))
+        })();
+        let closed = image.call_method0("close");
+        buffer.call_method0("close")?;
+        let decoded = decoded?;
+        closed?;
+        Ok(decoded)
+    })
+    .unwrap();
+    assert_eq!(serde_json::json!([size.0, size.1]), expected["size"]);
+    assert_eq!(serde_json::json!(mode), expected["mode"]);
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(&rgba)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    assert_eq!(digest, expected["rgba_sha256"]);
+}
+
 #[test]
 fn native_conversion_repairs_reuses_falls_back_and_preserves_refused_outputs() {
     assert_eq!(
@@ -162,11 +201,7 @@ fn native_conversion_repairs_reuses_falls_back_and_preserves_refused_outputs() {
     assert_eq!(pngs(&output), ["art.png"]);
     let target = output.join("art.png");
     let expected = std::fs::read(&target).unwrap();
-    assert_eq!(expected.len() as u64, case["expected"]["bytes"]);
-    assert_eq!(
-        _native::tooling_manifest::digest(&target).unwrap(),
-        case["expected"]["png_sha256"]
-    );
+    png_pixels(&expected, &case["expected"]);
     let metadata = _native::codec_static_identity::metadata(&target, true).unwrap();
     assert_eq!(metadata["size"], serde_json::json!([100, 100]));
     assert_eq!(metadata["mode"], "RGBA");

@@ -64,7 +64,7 @@ fn actual_benchmark_command_replays_read_only_catalog_without_operator_configura
         ];
         for (args, code, expected) in cases {
             let mut argv = vec![
-                OsString::from(env!("CARGO_BIN_EXE_numera-emoji")),
+                OsString::from(env!("CARGO_BIN_EXE_numera-compat")),
                 "benchmark-similarity".into(),
             ];
             argv.extend(args.into_iter().map(OsString::from));

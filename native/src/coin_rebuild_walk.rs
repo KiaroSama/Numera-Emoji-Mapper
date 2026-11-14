@@ -1,4 +1,10 @@
 //! Frozen rebuild cursor walk; source skips and uncertain mutations have distinct durable outcomes.
+const REMAP_COMMAND: &str = if cfg!(numera_native_runtime) {
+    "numera-emoji coin-remap-ids"
+} else {
+    "coins/remap_ids.py"
+};
+
 use crate::coin_rebuild_recovery::RecoveryIo;
 use serde_json::{Value, json};
 pub struct Options {
@@ -108,7 +114,7 @@ pub fn walk<I: BuildIo>(
             String::new()
         };
         return Err(format!(
-            "ERROR: {total} stickers are live but {recorded} uploads are recorded{extra}.\n       Refusing to continue: the recorded order is what maps stickers to tickers, and continuing from a disagreeing state is what corrupts ticker_to_id.json.\n       Reconcile with coins/remap_ids.py, or delete the packs and the state file to rebuild cleanly."
+            "ERROR: {total} stickers are live but {recorded} uploads are recorded{extra}.\n       Refusing to continue: the recorded order is what maps stickers to tickers, and continuing from a disagreeing state is what corrupts ticker_to_id.json.\n       Reconcile with {REMAP_COMMAND}, or delete the packs and the state file to rebuild cleanly."
         ));
     }
     let cursor = state["cursor"]

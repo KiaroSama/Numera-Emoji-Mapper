@@ -94,7 +94,7 @@ pub fn check(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[Source]) 
     let report = runtime
         .block_on(_native::source_oracle_worker::observe_state_compatibility(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             &sources,
         ))
@@ -311,7 +311,7 @@ fn collection_state(root: &Path, runtime: &tokio::runtime::Runtime, corpus: &[So
     let report = runtime
         .block_on(oracle::observe_owned(
             root,
-            Path::new(env!("CARGO_BIN_EXE_numera-emoji")),
+            Path::new(env!("CARGO_BIN_EXE_numera-compat")),
             &workspace,
             &sources,
         ))

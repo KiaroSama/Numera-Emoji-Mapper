@@ -73,7 +73,7 @@ fn actual_sandbox_native_child_holds_clone_lease_and_cancellation_stops_listener
     let runtime_directory = root.0.join("native/runtime");
     std::fs::create_dir_all(&runtime_directory).unwrap();
     std::fs::copy(
-        env!("CARGO_BIN_EXE_numera-emoji"),
+        env!("CARGO_BIN_EXE_numera-compat"),
         runtime_directory.join(if cfg!(windows) {
             "numera-emoji.exe"
         } else {

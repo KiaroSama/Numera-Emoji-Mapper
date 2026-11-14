@@ -39,7 +39,7 @@ pub(crate) fn member_path(role: &str, name: &str) -> Result<(), String> {
                 && name.ends_with(".py"))
                 || matches!(
                     name,
-                    "run.ps1" | "coins/run_convert.ps1" | "coins/run_rebuild_loop.ps1"
+                    "run.ps1" | "run.sh" | "coins/run_convert.ps1" | "coins/run_rebuild_loop.ps1"
                 )
                 || (name.starts_with("scripts/") && name.ends_with(".ps1"))
         }
@@ -55,6 +55,8 @@ pub(crate) fn member_path(role: &str, name: &str) -> Result<(), String> {
         "support" => {
             ([
                 "native/src/",
+                "runtime/src/",
+                "runtime/tests/",
                 "native/tests/support/",
                 "tests/",
                 "emojikit/",
@@ -76,6 +78,7 @@ pub(crate) fn member_path(role: &str, name: &str) -> Result<(), String> {
                         | "README.md"
                         | "CHANGELOG.md"
                         | "LICENSE"
+                        | "THIRD_PARTY_NOTICES.md"
                         | ".github/CONTRIBUTING.md"
                         | "tests/README.md"
                         | "tests/oracles/README.md"
@@ -88,6 +91,26 @@ pub(crate) fn member_path(role: &str, name: &str) -> Result<(), String> {
                 || (name.starts_with(".github/") && name.ends_with(".md"))
                 || (name.starts_with("tests/") && name.ends_with(".md"))
                 || name == "CONTEXT.md"
+                || name == "runtime/build.rs"
+                || ([
+                    "runtime/vendor/rlottie/src/",
+                    "runtime/vendor/rlottie/inc/",
+                    "runtime/vendor/rlottie/cmake/",
+                ]
+                .iter()
+                .any(|prefix| name.starts_with(prefix))
+                    && [".h", ".cpp", ".c", ".S", ".txt", ".in", ".build"]
+                        .iter()
+                        .any(|extension| name.ends_with(extension)))
+                || matches!(
+                    name,
+                    "runtime/vendor/rlottie/CMakeLists.txt"
+                        | "runtime/vendor/rlottie/rlottie.expmap"
+                        | "runtime/vendor/rlottie/rlottie.pc.in"
+                        | "runtime/vendor/rlottie/COPYING"
+                        | "runtime/vendor/rlottie/NUMERA-SOURCE.md"
+                )
+                || name.starts_with("runtime/vendor/rlottie/licenses/COPYING.")
                 || (name.starts_with("worker/")
                     && [".ts", ".json", ".toml", ".sql", ".md", ".ps1"]
                         .iter()
@@ -98,7 +121,10 @@ pub(crate) fn member_path(role: &str, name: &str) -> Result<(), String> {
                 name,
                 "native/Cargo.toml"
                     | "native/Cargo.lock"
+                    | "runtime/Cargo.toml"
+                    | "runtime/Cargo.lock"
                     | ".cargo/tests.toml"
+                    | ".cargo/runtime-tests.toml"
                     | ".env.example"
                     | "pyproject.toml"
                     | "ruff.toml"
