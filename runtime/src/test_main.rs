@@ -1,7 +1,5 @@
 //! Developer-only runner for production tests; never included in release archives.
-#[cfg(target_os = "linux")]
-use numera_runtime::migration_bundle;
-use numera_runtime::{logging, process_owner, tooling_environment};
+use numera_runtime::{logging, migration_bundle, process_owner, tooling_environment};
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::Path;
@@ -13,6 +11,8 @@ use std::time::Duration;
 mod network;
 
 fn execute(root: &Path, args: &[OsString]) -> Result<i32, String> {
+    let physical_root = tooling_environment::physical_root(root)?;
+    let root = physical_root.as_path();
     let executable = args
         .first()
         .ok_or("runtime test runner requires a test executable")?;
@@ -20,7 +20,9 @@ fn execute(root: &Path, args: &[OsString]) -> Result<i32, String> {
         Path::new(executable),
         "test executable cannot follow links",
     )?;
-    let executable = std::fs::canonicalize(executable).map_err(|e| e.to_string())?;
+    // The shared resolver strips Windows' verbatim prefix after link admission;
+    // both sides of the confinement check must use the same physical path form.
+    let executable = migration_bundle::resolved(Path::new(executable))?;
     if !executable.starts_with(root) || !executable.is_file() {
         return Err("test executable must be a regular project-contained file".into());
     }

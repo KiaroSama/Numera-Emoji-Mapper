@@ -58,7 +58,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Select Rust compiler
-        run: rustup default 1.99.0
+        run: |
+          rustup default 1.99.0
+          rustup component add rustfmt clippy --toolchain 1.99.0
       - name: Build Python-free release executable
         run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
       - name: Production Rust format and lint

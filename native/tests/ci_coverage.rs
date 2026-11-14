@@ -8,6 +8,28 @@ const MANUAL_EVENTS: &[&str] = &["workflow_dispatch:"];
 const SECURITY_EVENTS: &[&str] = &["pull_request:", "push:", "schedule:", "workflow_dispatch:"];
 
 #[test]
+fn private_namespace_profiles_follow_both_configured_rust_test_runners() {
+    let action = include_str!("../../.github/actions/test-network/action.yml");
+    for config in [
+        include_str!("../../.cargo/tests.toml"),
+        include_str!("../../.cargo/runtime-tests.toml"),
+    ] {
+        let mut found = 0;
+        for line in config.lines().filter(|line| line.starts_with("runner = [")) {
+            let runner = line.split('"').nth(1).unwrap();
+            let name = runner.rsplit('/').next().unwrap();
+            let name = name.strip_suffix(".exe").unwrap_or(name);
+            assert!(
+                action.contains(&format!("\"$GITHUB_WORKSPACE/**/{name}\"")),
+                "configured runner {runner} lacks a checkout-scoped user namespace profile"
+            );
+            found += 1;
+        }
+        assert!(found > 0, "runner configuration must not match nothing");
+    }
+}
+
+#[test]
 fn secret_scan_triage_cannot_hide_future_matches_or_disclose_values() {
     use pyo3::prelude::*;
     use pyo3::types::PyModule;
@@ -975,6 +997,19 @@ fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_pyt
     }
     assert!(!production.contains("setup-python"));
     assert!(!production.contains("PYO3_PYTHON"));
+    let compiler = step_run(production, "Select Rust compiler").unwrap();
+    assert!(compiler.lines().any(|line| line == "rustup default 1.99.0"));
+    assert!(
+        compiler
+            .lines()
+            .any(|line| line == "rustup component add rustfmt clippy --toolchain 1.99.0")
+    );
+    assert!(
+        production.find("name: Select Rust compiler").unwrap()
+            < production
+                .find("name: Production Rust format and lint")
+                .unwrap()
+    );
     for prerequisite in [
         "Install Linux video prerequisites",
         "Install Windows media prerequisite",
@@ -1015,6 +1050,8 @@ fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_pyt
         "Duration::from_secs(180)",
         ".env_clear()",
         "8 * 1024 * 1024",
+        "tooling_environment::physical_root(root)",
+        "migration_bundle::resolved(Path::new(executable))",
     ] {
         assert!(
             helper.contains(guard),
