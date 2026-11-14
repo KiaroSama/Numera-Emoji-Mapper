@@ -767,6 +767,7 @@ mod platform {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use std::io::Write;
         use std::process::Stdio;
 
         #[test]
@@ -776,6 +777,7 @@ mod platform {
                 .join("System32")
                 .join("cmd.exe");
             let deadline = Instant::now() + Duration::from_secs(60);
+            let mut previous_total = 0;
             for iteration in 0..256 {
                 assert!(Instant::now() < deadline, "child workload did not finish");
                 let mut child = Command::new(&command)
@@ -805,12 +807,77 @@ mod platform {
                     unsafe { WaitForSingleObject(child.as_raw_handle(), 0) },
                     WAIT_OBJECT_0
                 );
+                let root = child.id();
+                let settlement = deadline.min(Instant::now() + CLEANUP);
+                loop {
+                    tree.record_members().unwrap();
+                    let pinned = tree
+                        .1
+                        .lock()
+                        .unwrap()
+                        .iter()
+                        .map(|(&pid, process)| {
+                            let mut member = 0;
+                            // SAFETY: both handles stay owned throughout this inspection.
+                            assert_ne!(
+                                unsafe {
+                                    IsProcessInJob(
+                                        process.as_raw_handle(),
+                                        tree.0.as_raw_handle(),
+                                        &mut member,
+                                    )
+                                },
+                                0
+                            );
+                            let signaled = Tree::signaled(process).unwrap();
+                            assert!(
+                                member != 0 || signaled,
+                                "live pinned process {pid} left its Job"
+                            );
+                            (pid, signaled)
+                        })
+                        .collect::<Vec<_>>();
+                    // Keep the original child handle until after this check: its
+                    // PID cannot be reused to identify another live Job member.
+                    assert!(
+                        pinned.iter().all(|&(pid, _)| pid != root),
+                        "terminated child {iteration} ({root}) was retained: {pinned:?}"
+                    );
+                    let settled = tree.quiescent().unwrap();
+                    let info = tree.accounting().unwrap().BasicInfo;
+                    assert!(
+                        Instant::now() < settlement,
+                        "child {iteration} ({root}) left an unsettled Job: active={}, total={}, pinned(pid, signaled)={pinned:?}",
+                        info.ActiveProcesses,
+                        info.TotalProcesses
+                    );
+                    if settled && pinned.is_empty() {
+                        break;
+                    }
+                    // Root termination does not prove that every helper process
+                    // has signaled. Continue sampling; production retains any
+                    // unsignaled handle until that independent proof arrives.
+                    std::thread::sleep(Duration::from_millis(1));
+                }
                 drop(child);
-                tree.record_members().unwrap();
                 assert!(tree.1.lock().unwrap().is_empty());
                 assert!(tree.quiescent().unwrap());
+                let info = tree.accounting().unwrap().BasicInfo;
+                assert_eq!(info.ActiveProcesses, 0);
+                assert!(info.TotalProcesses > previous_total);
+                previous_total = info.TotalProcesses;
             }
-            assert_eq!(tree.accounting().unwrap().BasicInfo.TotalProcesses, 256);
+            let info = tree.accounting().unwrap().BasicInfo;
+            assert!(info.TotalProcesses >= 256);
+            assert_eq!(info.ActiveProcesses, 0);
+            // Direct stderr keeps the actual helper-inclusive count visible in
+            // successful CI logs, even when libtest captures printing macros.
+            writeln!(
+                std::io::stderr().lock(),
+                "Windows Job stress settled: roots=256, total={}, active=0, pinned=0",
+                info.TotalProcesses
+            )
+            .unwrap();
         }
     }
 }

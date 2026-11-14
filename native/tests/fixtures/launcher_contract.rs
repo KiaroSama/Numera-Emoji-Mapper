@@ -151,7 +151,9 @@ exit $forwarded
             let oversized = [&stdout_path, &stderr_path]
                 .iter()
                 .any(|path| std::fs::metadata(path).is_ok_and(|m| m.len() > 1024 * 1024));
-            if started.elapsed() >= Duration::from_secs(30) || oversized {
+            // Cold PS 5.1 startup reached 29s with this deliberately minimal
+            // environment on hosted CI. Keep a finite bound with startup margin.
+            if started.elapsed() >= Duration::from_secs(45) || oversized {
                 exceeded = true;
                 let _ = child.kill();
                 break child.wait().map_err(|e| e.to_string())?;
