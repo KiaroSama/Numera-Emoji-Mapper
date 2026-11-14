@@ -75,15 +75,14 @@ pub async fn sandbox_parent_ended() {
     if let (Ok(parent), Ok(birth)) = (
         std::env::var("NUMERA_SANDBOX_PARENT_PID"),
         std::env::var("NUMERA_SANDBOX_PARENT_START"),
-    ) {
-        if let (Ok(parent), Ok(birth)) = (parent.parse::<u32>(), birth.parse::<u64>()) {
-            loop {
-                if !matches!(crate::process_owner::process_birth(parent), Ok(Some(current)) if current == birth)
-                {
-                    return;
-                }
-                tokio::time::sleep(Duration::from_millis(100)).await;
+    ) && let (Ok(parent), Ok(birth)) = (parent.parse::<u32>(), birth.parse::<u64>())
+    {
+        loop {
+            if !matches!(crate::process_owner::process_birth(parent), Ok(Some(current)) if current == birth)
+            {
+                return;
             }
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
     }
     #[cfg(target_os = "linux")]

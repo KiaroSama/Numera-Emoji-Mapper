@@ -1,4 +1,5 @@
 """Actual native publish flow against loopback, with real source art and no live Telegram."""
+import io
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,8 @@ from email import policy
 from email.parser import BytesParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
+
+from PIL import Image
 
 from emojikit import identity, media
 from tests.reference.catalog import Catalog
@@ -48,6 +51,10 @@ class NativePublicationFlow(unittest.TestCase):
             logo_source = ROOT / "assets/numera-emoji-mapper-logo-circle.png"
             logo_image = media.to_static_png(logo_source, folder / "logo.png")
             logo_payload = logo_image.read_bytes()
+            with Image.open(logo_image) as reference:
+                self.assertEqual(reference.size, (100, 100))
+                self.assertEqual(reference.mode, "RGBA")
+                logo_rgba = reference.tobytes()
             key, phash = identity.fingerprint(image, "static")
             with Catalog(data / "catalog.db") as catalog:
                 catalog.add(content_key=key, fmt="static", file_path=image,
@@ -130,7 +137,10 @@ class NativePublicationFlow(unittest.TestCase):
                         self.server.test.assertEqual(self.multipart_name(body),
                             "fixture2_by_YourEmojiBot" if target_mode == "new" else "fixture1_by_YourEmojiBot")
                         self.server.test.assertIn(b"custom_emoji", body)
-                        self.server.test.assertIn(logo_payload if branded else payload, body)
+                        if branded:
+                            self.assert_logo_upload(body)
+                        else:
+                            self.server.test.assertIn(payload, body)
                         live.append({"file_id": "new-file", "file_unique_id": "new-unique",
                                      "custom_emoji_id": "222222222" if branded else "111111111"})
                         if lost_response:
@@ -157,6 +167,23 @@ class NativePublicationFlow(unittest.TestCase):
                         self.send_error(400)
                         return
                     self.reply({"ok": True, "result": result})
+                def assert_logo_upload(self, body):
+                    header = f"Content-Type: {self.headers['Content-Type']}\r\n\r\n".encode("utf-8")
+                    message = BytesParser(policy=policy.default).parsebytes(header + body)
+                    uploads = [part.get_payload(decode=True) for part in message.iter_parts()
+                               if part.get_param("name", header="content-disposition") == "file0"]
+                    self.server.test.assertEqual(len(uploads), 1)
+                    cached = list((data / "brand").glob("logo_*.png"))
+                    self.server.test.assertEqual(len(cached), 1)
+                    self.server.test.assertEqual(uploads[0], cached[0].read_bytes())
+                    # The independent Pillow conversion above fixes the expected
+                    # pixels; native PNG compression may differ. Check the real
+                    # upload while the mutation request is still being handled.
+                    with Image.open(io.BytesIO(uploads[0])) as uploaded:
+                        self.server.test.assertEqual(uploaded.format, "PNG")
+                        self.server.test.assertEqual(uploaded.size, (100, 100))
+                        self.server.test.assertEqual(uploaded.mode, "RGBA")
+                        self.server.test.assertEqual(uploaded.tobytes(), logo_rgba)
                 def multipart_name(self, body):
                     header = f"Content-Type: {self.headers['Content-Type']}\r\n\r\n".encode("utf-8")
                     message = BytesParser(policy=policy.default).parsebytes(header + body)

@@ -11,9 +11,17 @@ import unittest
 
 from PIL import Image
 from emojikit import media
-from tests.test_native_local_cli import BINARY, ROOT
+from tests.test_native_local_cli import BINARY, ROOT, assert_same_png_pixels
 
 RUNS_ON_NATIVE_WINDOWS = True
+
+
+def assert_conversion_workspace_clean(test, installation: Path, output: Path):
+    """Production IPC stays in the installation, outside selected output folders."""
+    test.assertEqual(list((installation / "logs/tmp/native-convert").iterdir()), [],
+                     "native conversion staging must be reaped")
+    test.assertFalse((output / ".native-codec").exists(),
+                     "conversion must not create an IPC workspace in user output")
 
 
 class NativeConvertCLI(unittest.TestCase):
@@ -63,7 +71,7 @@ class NativeConvertCLI(unittest.TestCase):
             self.assertEqual((output / "art.png").read_bytes(), prior)
             self.assertEqual(source.read_bytes(), original)
             self.assertEqual((source_dir / "other.png").read_bytes(), original)
-            self.assertEqual(list((output / ".native-codec").iterdir()), [], "failed staging must be reaped")
+            assert_conversion_workspace_clean(self, root, output)
 
     @unittest.skipUnless(os.name == "nt", "Windows denies replacement of an opened file without delete sharing")
     def test_failed_same_file_replacement_keeps_previous_png_and_source(self):
@@ -94,7 +102,7 @@ class NativeConvertCLI(unittest.TestCase):
                     capture_output=True, encoding="utf-8", timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
                 self.assertEqual(result.returncode, 2, result.stderr)
                 self.assertEqual((target.read_bytes(), original.read_bytes()), before)
-                self.assertEqual(list((output / ".native-codec").iterdir()), [])
+                assert_conversion_workspace_clean(self, ROOT, output)
             finally:
                 self.assertTrue(kernel.CloseHandle(handle))
 
@@ -167,7 +175,8 @@ class NativeConvertCLI(unittest.TestCase):
             with Image.open(target) as image:
                 self.assertEqual(image.mode, "RGBA", "an RGB file is not a completed transparent emoji")
                 self.assertEqual(image.size, (100, 100))
-            self.assertEqual(target.read_bytes(), expected.read_bytes())
+            assert_same_png_pixels(self, target, expected)
+            converted_bytes = target.read_bytes()
             from unittest import mock
             from scripts import native_convert_owner
             installed = root / "native/runtime" / executable.name
@@ -177,13 +186,14 @@ class NativeConvertCLI(unittest.TestCase):
                 code = native_convert_owner.run(source_dir, output, root / "owned-output", root / "owned-errors")
             self.assertEqual(code, 0, (root / "owned-errors").read_text(encoding="utf-8"))
             self.assertIn("DONE:", (root / "owned-output").read_text(encoding="utf-8"))
-            self.assertEqual(target.read_bytes(), expected.read_bytes())
+            assert_same_png_pixels(self, target, expected)
+            self.assertEqual(target.read_bytes(), converted_bytes, "owner repeat must reuse the generated PNG")
             before = target.read_bytes(), target.stat().st_mtime_ns
             result = run()
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual((target.read_bytes(), target.stat().st_mtime_ns), before)
             self.assertFalse((output / ".svg_cur").exists())
-            self.assertEqual(list((output / ".native-codec").iterdir()), [])
+            assert_conversion_workspace_clean(self, root, output)
             logos = root / "coins/logos"
             (logos / "svg").mkdir(parents=True)
             (logos / "png").mkdir()
@@ -197,7 +207,9 @@ class NativeConvertCLI(unittest.TestCase):
             result = run("--limit", "0")
             self.assertEqual(result.returncode, 0, result.stderr)
             for name in ("art", "quarantined"):
-                self.assertEqual((logos / f"emoji/{name}.png").read_bytes(), expected.read_bytes())
+                assert_same_png_pixels(self, logos / f"emoji/{name}.png", expected)
+            legacy_bytes = {name: (logos / f"emoji/{name}.png").read_bytes()
+                            for name in ("art", "quarantined")}
             self.assertFalse((logos / ".svg_cur").exists())
             self.assertIn("quarantined", (logos / ".svg_skip.txt").read_text(encoding="utf-8"))
             self.assertFalse((logos / "emoji/.svg_skip.txt").exists())
@@ -205,7 +217,8 @@ class NativeConvertCLI(unittest.TestCase):
             result = run("--limit", "0")
             self.assertEqual(result.returncode, 0, result.stderr)
             for name in ("art", "quarantined"):
-                self.assertEqual((logos / f"emoji/{name}.png").read_bytes(), expected.read_bytes())
+                self.assertEqual((logos / f"emoji/{name}.png").read_bytes(), legacy_bytes[name],
+                                 "fallback repeat must reuse the generated PNG")
             shutil.rmtree(logos)
             result = run("--limit", "0")
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -233,7 +246,7 @@ class NativeConvertCLI(unittest.TestCase):
                     creationflags=subprocess.CREATE_NO_WINDOW)
                 self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
                 self.assertIn("SVG conversion complete", result.stdout)
-                self.assertEqual((logos / "emoji/art.png").read_bytes(), expected.read_bytes())
+                assert_same_png_pixels(self, logos / "emoji/art.png", expected)
                 self.assertTrue((logos / "emoji/vector.png").is_file())
                 self.assertFalse((logos / "emoji/.svg_cur").exists())
-                self.assertEqual(list((logos / "emoji/.native-codec").iterdir()), [])
+                assert_conversion_workspace_clean(self, root, logos / "emoji")

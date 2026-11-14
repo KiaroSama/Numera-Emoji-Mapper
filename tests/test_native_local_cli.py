@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 
+from PIL import Image
 from emojikit import identity, media
 from tests.reference.catalog import Catalog
 
@@ -14,9 +15,23 @@ ROOT = Path(__file__).resolve().parent.parent
 BINARY = ROOT / "native/target/debug" / ("numera-emoji.exe" if os.name == "nt" else "numera-emoji")
 
 
+def assert_same_png_pixels(test, actual: Path, expected: Path):
+    """Compare a generated PNG to its independent historical Pillow reference."""
+    signature = b"\x89PNG\r\n\x1a\n"
+    test.assertTrue(expected.read_bytes().startswith(signature), "source oracle must remain PNG")
+    test.assertTrue(actual.read_bytes().startswith(signature), "generated candidate must remain PNG")
+    with Image.open(expected) as reference, Image.open(actual) as observed:
+        test.assertEqual(reference.format, "PNG")
+        test.assertEqual(reference.mode, "RGBA")
+        test.assertEqual(reference.size, (100, 100))
+        test.assertEqual((observed.format, observed.mode, observed.size),
+                         (reference.format, reference.mode, reference.size))
+        with reference.convert("RGBA") as wanted, observed.convert("RGBA") as got:
+            test.assertEqual(got.tobytes(), wanted.tobytes())
+
+
 class NativeLocalCommand(unittest.TestCase):
     def test_undecodable_catalog_rival_refuses_merge_and_retains_incoming_bytes(self):
-        import hashlib
         self.assertTrue(BINARY.is_file(), "native executable required")
         with tempfile.TemporaryDirectory(dir=ROOT / "logs") as folder:
             folder = Path(folder).resolve()
@@ -42,7 +57,7 @@ class NativeLocalCommand(unittest.TestCase):
             self.assertEqual(rival.read_bytes(), b"undecodable retained catalog media")
             retained = list((data / "media/static").glob("*.png"))
             self.assertEqual(len(retained), 1)
-            self.assertEqual(hashlib.sha256(retained[0].read_bytes()).digest(), hashlib.sha256(expected.read_bytes()).digest())
+            assert_same_png_pixels(self, retained[0], expected)
             self.assertEqual(list((data / "tmp").iterdir()), [])
 
     def test_real_image_ingest_and_repeat_match_source_identity(self):
