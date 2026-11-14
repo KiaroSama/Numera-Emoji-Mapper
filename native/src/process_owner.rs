@@ -21,9 +21,39 @@ fn job_settled(
     Ok(settled)
 }
 
+#[cfg(any(windows, test))]
+fn complete_job_inventory<T>(
+    slots: u32,
+    mut query: impl FnMut() -> Result<(u32, u32, T), String>,
+) -> Result<(usize, T), String> {
+    const ATTEMPTS: usize = 8;
+    let mut last = (0, 0);
+    for attempt in 1..=ATTEMPTS {
+        let (assigned, listed, inventory) = query()?;
+        if assigned > slots || listed > slots {
+            return Err(format!(
+                "codec job member inventory exceeds its bound (assigned={assigned}, listed={listed}, slots={slots}, attempts={attempt})"
+            ));
+        }
+        if assigned == listed {
+            return Ok((listed as usize, inventory));
+        }
+        last = (assigned, listed);
+        if attempt < ATTEMPTS {
+            // A changing Job can return different header/list counts. Give its
+            // updates a chance to settle, without sleeping or adding a deadline.
+            std::thread::yield_now();
+        }
+    }
+    Err(format!(
+        "codec job member inventory remains incomplete (assigned={}, listed={}, slots={slots}, attempts={ATTEMPTS})",
+        last.0, last.1
+    ))
+}
+
 #[cfg(test)]
 mod job_settlement_tests {
-    use super::job_settled;
+    use super::{complete_job_inventory, job_settled};
 
     #[test]
     fn zero_active_count_cannot_certify_a_still_unsignaled_pinned_process() {
@@ -32,6 +62,63 @@ mod job_settlement_tests {
         assert!(job_settled(0, [Ok(true), Ok(true)]).unwrap());
         assert!(job_settled(0, []).unwrap());
         assert!(job_settled(0, [Ok(false), Err("unknown process signal".into())]).is_err());
+    }
+
+    #[test]
+    fn partial_job_inventory_is_retried_and_never_returned() {
+        for assigned in [1, 3] {
+            let mut queries = 0;
+            let complete = complete_job_inventory(8192, || {
+                queries += 1;
+                Ok(if queries == 1 {
+                    (assigned, 2, vec![10, 20])
+                } else {
+                    (2, 2, vec![20, 30])
+                })
+            })
+            .unwrap();
+            assert_eq!(queries, 2);
+            assert_eq!(complete, (2, vec![20, 30]));
+        }
+    }
+
+    #[test]
+    fn persistent_partial_job_inventory_is_bounded_and_reports_counts() {
+        let mut queries = 0;
+        let error = complete_job_inventory(8192, || {
+            queries += 1;
+            Ok((4, 3, ()))
+        })
+        .unwrap_err();
+        assert_eq!(queries, 8);
+        assert!(error.contains("assigned=4, listed=3, slots=8192, attempts=8"));
+    }
+
+    #[test]
+    fn job_inventory_bound_and_unknown_query_still_fail_closed() {
+        for (assigned, listed) in [(8193, 8192), (8192, 8193)] {
+            let mut queries = 0;
+            let error = complete_job_inventory(8192, || {
+                queries += 1;
+                Ok((assigned, listed, ()))
+            })
+            .unwrap_err();
+            assert_eq!(queries, 1);
+            assert!(error.contains("exceeds its bound"));
+            assert!(error.contains("slots=8192, attempts=1"));
+        }
+        let mut queries = 0;
+        let error = complete_job_inventory(8192, || {
+            queries += 1;
+            if queries == 1 {
+                Ok((2, 1, ()))
+            } else {
+                Err("cannot inspect inventory".into())
+            }
+        })
+        .unwrap_err();
+        assert_eq!(queries, 2);
+        assert_eq!(error, "cannot inspect inventory");
     }
 }
 
@@ -484,31 +571,59 @@ mod platform {
             }
         }
 
+        fn prune_finished_members(&self) -> Result<(), String> {
+            let mut pinned = self
+                .1
+                .lock()
+                .map_err(|_| "codec member accounting lock is poisoned")?;
+            // A confirmed terminal process can never become live again. Release
+            // its handle before querying: retaining it can keep the process in
+            // the Job's inventory throughout a long compiler invocation.
+            let mut finished = Vec::new();
+            for (&pid, process) in pinned.iter() {
+                if Self::signaled(process)? {
+                    finished.push(pid);
+                }
+            }
+            for pid in finished {
+                pinned.remove(&pid);
+            }
+            Ok(())
+        }
+
         fn record_members(&self) -> Result<(), String> {
-            const SLOTS: usize = 8192;
-            // usize storage supplies native alignment for the flexible PID array.
-            let mut storage = vec![0usize; SLOTS + 2];
-            let length = std::mem::size_of_val(storage.as_slice());
-            // SAFETY: initialized, aligned writable storage covers the header and
-            // SLOTS PIDs on both 32-bit and 64-bit Windows.
-            if unsafe {
-                QueryInformationJobObject(
-                    self.0.as_raw_handle(),
-                    JobObjectBasicProcessIdList,
-                    storage.as_mut_ptr().cast(),
-                    length as u32,
-                    std::ptr::null_mut(),
-                )
-            } == 0
-            {
-                return Err("cannot inspect complete codec job member inventory".into());
-            }
-            // SAFETY: successful query initialized the SDK header in aligned storage.
-            let header = unsafe { &*storage.as_ptr().cast::<JOBOBJECT_BASIC_PROCESS_ID_LIST>() };
-            let count = header.NumberOfProcessIdsInList as usize;
-            if count > SLOTS || header.NumberOfAssignedProcesses as usize != count {
-                return Err("codec job member inventory is incomplete or exceeds its bound".into());
-            }
+            const SLOTS: u32 = 8192;
+            let (count, storage) = complete_job_inventory(SLOTS, || {
+                self.prune_finished_members()?;
+                // usize storage supplies alignment for the flexible PID array.
+                let mut storage = vec![0usize; SLOTS as usize + 2];
+                let length = std::mem::size_of_val(storage.as_slice());
+                // SAFETY: initialized, aligned writable storage covers the header
+                // and SLOTS PIDs on both 32-bit and 64-bit Windows.
+                if unsafe {
+                    QueryInformationJobObject(
+                        self.0.as_raw_handle(),
+                        JobObjectBasicProcessIdList,
+                        storage.as_mut_ptr().cast(),
+                        length as u32,
+                        std::ptr::null_mut(),
+                    )
+                } == 0
+                {
+                    return Err(format!(
+                        "cannot inspect complete codec job member inventory (slots={SLOTS}, error={})",
+                        unsafe { GetLastError() }
+                    ));
+                }
+                // SAFETY: successful query initialized the SDK header in aligned storage.
+                let header =
+                    unsafe { &*storage.as_ptr().cast::<JOBOBJECT_BASIC_PROCESS_ID_LIST>() };
+                Ok((
+                    header.NumberOfAssignedProcesses,
+                    header.NumberOfProcessIdsInList,
+                    storage,
+                ))
+            })?;
             // SAFETY: derive from the whole allocation, not the SDK's one-element
             // placeholder. The checked count fits the allocated native PID array.
             let members = unsafe {
@@ -528,24 +643,13 @@ mod platform {
                 .1
                 .lock()
                 .map_err(|_| "codec member accounting lock is poisoned")?;
-            // A confirmed terminal process can never become live again. Release
-            // those handles so a long Cargo/build invocation does not retain
-            // every completed compiler or test process until final cleanup.
-            let mut finished = Vec::new();
-            for (&pid, process) in pinned.iter() {
-                if Self::signaled(process)? {
-                    finished.push(pid);
-                }
-            }
-            for pid in finished {
-                pinned.remove(&pid);
-            }
             for &id in members {
                 let pid = u32::try_from(id).map_err(|_| "invalid codec job member identity")?;
-                if let Some(process) = pinned.get(&pid)
-                    && !Self::signaled(process)?
-                {
-                    continue; // A live pinned process cannot have its PID recycled.
+                if let Some(process) = pinned.get(&pid) {
+                    if !Self::signaled(process)? {
+                        continue; // A live pinned process cannot have its PID recycled.
+                    }
+                    pinned.remove(&pid);
                 }
                 // SAFETY: only inspection rights; verify private Job membership
                 // before enrolling a numeric PID that might have exited/recycled.
@@ -572,7 +676,7 @@ mod platform {
                 {
                     return Err("cannot verify pinned codec process Job membership".into());
                 }
-                if member != 0 {
+                if member != 0 && !Self::signaled(&process)? {
                     pinned.insert(pid, process);
                 }
                 // Non-members are never enrolled or signaled: the old member
@@ -658,6 +762,56 @@ mod platform {
             return Err(error);
         }
         Ok((child, tree))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::process::Stdio;
+
+        #[test]
+        fn one_job_samples_many_short_children_without_retaining_terminal_handles() {
+            let tree = Tree::new().unwrap();
+            let command = PathBuf::from(std::env::var_os("SystemRoot").unwrap())
+                .join("System32")
+                .join("cmd.exe");
+            let deadline = Instant::now() + Duration::from_secs(60);
+            for iteration in 0..256 {
+                assert!(Instant::now() < deadline, "child workload did not finish");
+                let mut child = Command::new(&command)
+                    .args(["/D", "/C", "exit 0"])
+                    .stdin(Stdio::null())
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .creation_flags(CREATE_SUSPENDED | CREATE_NO_WINDOW)
+                    .spawn()
+                    .unwrap();
+                tree.attach_and_resume(&child).unwrap();
+                loop {
+                    tree.sample().unwrap();
+                    if let Some(status) = child.try_wait().unwrap() {
+                        assert!(status.success(), "child {iteration} failed");
+                        break;
+                    }
+                    assert!(
+                        Instant::now() < deadline,
+                        "child {iteration} did not finish"
+                    );
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+                // The independently owned child handle proves termination before
+                // the Tree is permitted to discard its handle to that object.
+                assert_eq!(
+                    unsafe { WaitForSingleObject(child.as_raw_handle(), 0) },
+                    WAIT_OBJECT_0
+                );
+                drop(child);
+                tree.record_members().unwrap();
+                assert!(tree.1.lock().unwrap().is_empty());
+                assert!(tree.quiescent().unwrap());
+            }
+            assert_eq!(tree.accounting().unwrap().BasicInfo.TotalProcesses, 256);
+        }
     }
 }
 

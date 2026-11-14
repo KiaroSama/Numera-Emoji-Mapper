@@ -50,5 +50,14 @@ windows-sys = { version = "=0.61.2", features = ["Win32_Storage_FileSystem", "Wi
 lto = "thin"
 codegen-units = 1
 
+# The original integration tests launch the production worker from a debug host.
+# Keep its native pixel loops optimized, as the historical C codecs already were,
+# without changing the tests' existing deadlines or debug overflow checks.
+[profile.dev.package.numera-emoji-runtime]
+opt-level = 2
+
+[profile.test.package.numera-emoji-runtime]
+opt-level = 2
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(numera_native_runtime)"] }

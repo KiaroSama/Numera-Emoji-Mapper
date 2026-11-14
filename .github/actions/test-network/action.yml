@@ -13,6 +13,12 @@ runs:
         profile numera-test-network "$GITHUB_WORKSPACE/**/numera-emoji" flags=(unconfined) {
           userns,
         }
+        profile numera-compat-test-network "$GITHUB_WORKSPACE/**/numera-compat" flags=(unconfined) {
+          userns,
+        }
+        profile numera-runtime-test-network "$GITHUB_WORKSPACE/**/numera-runtime-tests" flags=(unconfined) {
+          userns,
+        }
         EOF
           sudo apparmor_parser -r .cache/numera-test-network.apparmor
         fi
