@@ -230,7 +230,16 @@ fn extracted_installed_runtime_converts_offline_without_python_or_build_sources(
             String::from_utf8_lossy(&checked.stdout),
             String::from_utf8_lossy(&checked.stderr)
         );
-        assert!(String::from_utf8_lossy(&checked.stdout).contains("Environment check complete"));
+        assert!(
+            String::from_utf8_lossy(&checked.stdout).contains("Environment check complete"),
+            "PowerShell doctor omitted its completion message: stdout_len={} stdout_prefix={:02x?} stdout={:?} stderr_len={} stderr_prefix={:02x?} stderr={:?}",
+            checked.stdout.len(),
+            &checked.stdout[..checked.stdout.len().min(128)],
+            String::from_utf8_lossy(&checked.stdout),
+            checked.stderr.len(),
+            &checked.stderr[..checked.stderr.len().min(128)],
+            String::from_utf8_lossy(&checked.stderr)
+        );
         assert!(!destination.join(".venv").exists());
         assert_eq!(std::fs::read_dir(&empty_path).unwrap().count(), 0);
     }

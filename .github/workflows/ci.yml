@@ -418,6 +418,15 @@ jobs:
             if ($e) { "$_"; $e }
           }
           if ($bad) { $bad; exit 1 }
+      - name: Fast real Windows PowerShell launcher contract
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force logs/checkpoint | Out-Null
+          $fixture = Join-Path $PWD 'logs/checkpoint/launcher-contract.exe'
+          rustc --edition=2024 native/tests/fixtures/launcher_contract.rs -o $fixture
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $fixture (Join-Path $PWD 'run.ps1')
+          exit $LASTEXITCODE
       - uses: actions/setup-python@v7
         with:
           # Native/source lock interoperability replays the exact historical runtime.
