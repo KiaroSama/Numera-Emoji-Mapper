@@ -164,7 +164,10 @@ def main() -> int:
     try:
         for command in commands:
             log.info("Running %s", " ".join(command))
-            result = run(command, env, 600 if "maturin" in command else 180)
+            # Match the native contributor driver's bounded cold-build budget.
+            # The standalone renderer now compiles its Rust and C++ codecs here
+            # too; a fresh two-worker Windows build can exceed ten minutes.
+            result = run(command, env, 1800 if "maturin" in command else 180)
             if result.stdout:
                 log.info("%s", result.stdout.strip())
             if result.stderr:
@@ -193,7 +196,7 @@ def main() -> int:
         from emojikit.similarity import require_native
         require_native()
         result = run(["cargo", "build", "--manifest-path", str(ROOT / "native/Cargo.toml"),
-                      "--release", "--locked", "--bin", "numera-emoji"], env, 600)
+                      "--release", "--locked", "--bin", "numera-emoji"], env, 1800)
         log.info("%s", (result.stdout + result.stderr).strip())
         if result.returncode:
             log.error("Native executable build failed (exit %d).", result.returncode)
