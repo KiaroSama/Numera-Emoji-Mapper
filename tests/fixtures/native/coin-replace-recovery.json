@@ -1,0 +1,346 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "86f17862ebe5019e05965fa7aa30380a20226b3632f192f051525290ae7f7031",
+  "cases": [
+    {
+      "intent": {
+        "set_name": "s1",
+        "set_index": 1,
+        "old_cid": "old",
+        "before": [
+          "a",
+          "old"
+        ],
+        "source_dhash": 17,
+        "stage": "stage",
+        "map_target": "map",
+        "state_target": "state"
+      },
+      "initial": {
+        "aaa": "old",
+        "bbb": "old",
+        "other": "preserved"
+      },
+      "after": [
+        "a",
+        "new"
+      ],
+      "read_error": false,
+      "ours": true,
+      "expected": {
+        "result": true,
+        "actions": [
+          "read",
+          "proof",
+          "promote",
+          "repoint",
+          "clear",
+          "cleanup"
+        ],
+        "mapping": {
+          "aaa": "new",
+          "bbb": "new",
+          "other": "preserved"
+        }
+      }
+    },
+    {
+      "intent": {
+        "set_name": "s1",
+        "set_index": 1,
+        "old_cid": "old",
+        "before": [
+          "a",
+          "old"
+        ],
+        "source_dhash": 17,
+        "stage": "stage",
+        "map_target": "map",
+        "state_target": "state"
+      },
+      "initial": {
+        "aaa": "old",
+        "bbb": "old",
+        "other": "preserved"
+      },
+      "after": [
+        "a",
+        "old"
+      ],
+      "read_error": false,
+      "ours": true,
+      "expected": {
+        "result": true,
+        "actions": [
+          "read",
+          "clear",
+          "cleanup"
+        ],
+        "mapping": {
+          "aaa": "old",
+          "bbb": "old",
+          "other": "preserved"
+        }
+      }
+    },
+    {
+      "intent": {
+        "set_name": "s1",
+        "set_index": 1,
+        "old_cid": "old",
+        "before": [
+          "a",
+          "old"
+        ],
+        "source_dhash": 17,
+        "stage": "stage",
+        "map_target": "map",
+        "state_target": "state"
+      },
+      "initial": {
+        "aaa": "old",
+        "bbb": "old",
+        "other": "preserved"
+      },
+      "after": [
+        "a",
+        "new",
+        "extra"
+      ],
+      "read_error": false,
+      "ours": true,
+      "expected": {
+        "result": false,
+        "actions": [
+          "read"
+        ],
+        "mapping": {
+          "aaa": "old",
+          "bbb": "old",
+          "other": "preserved"
+        }
+      }
+    },
+    {
+      "intent": {
+        "set_name": "s1",
+        "set_index": 1,
+        "old_cid": "old",
+        "before": [
+          "a",
+          "old"
+        ],
+        "source_dhash": 17,
+        "stage": "stage",
+        "map_target": "map",
+        "state_target": "state"
+      },
+      "initial": {
+        "aaa": "old",
+        "bbb": "old",
+        "other": "preserved"
+      },
+      "after": [
+        "a",
+        "new"
+      ],
+      "read_error": false,
+      "ours": false,
+      "expected": {
+        "result": false,
+        "actions": [
+          "read",
+          "proof"
+        ],
+        "mapping": {
+          "aaa": "old",
+          "bbb": "old",
+          "other": "preserved"
+        }
+      }
+    },
+    {
+      "intent": {
+        "set_name": "s1",
+        "set_index": 1,
+        "old_cid": "old",
+        "before": [
+          "a",
+          "old"
+        ],
+        "source_dhash": 17,
+        "stage": "stage",
+        "map_target": "map",
+        "state_target": "state"
+      },
+      "initial": {
+        "aaa": "old",
+        "bbb": "old",
+        "other": "preserved"
+      },
+      "after": [
+        "a",
+        "new"
+      ],
+      "read_error": true,
+      "ours": true,
+      "expected": {
+        "result": false,
+        "actions": [
+          "read"
+        ],
+        "mapping": {
+          "aaa": "old",
+          "bbb": "old",
+          "other": "preserved"
+        }
+      }
+    },
+    {
+      "intent": {
+        "set_name": "s1",
+        "set_index": 1,
+        "old_cid": "old",
+        "before": [
+          "a",
+          "old"
+        ],
+        "source_dhash": 17,
+        "stage": "stage",
+        "map_target": "other",
+        "state_target": "state"
+      },
+      "initial": {
+        "aaa": "old",
+        "bbb": "old",
+        "other": "preserved"
+      },
+      "after": [
+        "a",
+        "new"
+      ],
+      "read_error": false,
+      "ours": true,
+      "expected": {
+        "result": false,
+        "actions": [],
+        "mapping": {
+          "aaa": "old",
+          "bbb": "old",
+          "other": "preserved"
+        }
+      }
+    },
+    {
+      "intent": {
+        "set_name": "s1",
+        "set_index": 1,
+        "old_cid": "old",
+        "before": [
+          "a",
+          "old"
+        ],
+        "source_dhash": 17,
+        "stage": "stage",
+        "map_target": "map",
+        "state_target": "other"
+      },
+      "initial": {
+        "aaa": "old",
+        "bbb": "old",
+        "other": "preserved"
+      },
+      "after": [
+        "a",
+        "new"
+      ],
+      "read_error": false,
+      "ours": true,
+      "expected": {
+        "result": false,
+        "actions": [],
+        "mapping": {
+          "aaa": "old",
+          "bbb": "old",
+          "other": "preserved"
+        }
+      }
+    },
+    {
+      "intent": {
+        "set_name": "s1",
+        "set_index": 1,
+        "old_cid": "old",
+        "before": [
+          "a",
+          "old"
+        ],
+        "source_dhash": 17,
+        "stage": "stage",
+        "state_target": "state"
+      },
+      "initial": {
+        "aaa": "old",
+        "bbb": "old",
+        "other": "preserved"
+      },
+      "after": [
+        "a",
+        "new"
+      ],
+      "read_error": false,
+      "ours": true,
+      "expected": {
+        "result": false,
+        "actions": [],
+        "mapping": {
+          "aaa": "old",
+          "bbb": "old",
+          "other": "preserved"
+        }
+      }
+    },
+    {
+      "intent": {
+        "set_name": "s1",
+        "set_index": 1,
+        "old_cid": "old",
+        "before": [
+          "a",
+          "old"
+        ],
+        "source_dhash": 17,
+        "stage": "stage",
+        "map_target": "map",
+        "state_target": "state"
+      },
+      "initial": {
+        "aaa": "new",
+        "bbb": "old",
+        "other": "preserved"
+      },
+      "after": [
+        "a",
+        "new"
+      ],
+      "read_error": false,
+      "ours": true,
+      "expected": {
+        "result": true,
+        "actions": [
+          "read",
+          "proof",
+          "promote",
+          "repoint",
+          "clear",
+          "cleanup"
+        ],
+        "mapping": {
+          "aaa": "new",
+          "bbb": "new",
+          "other": "preserved"
+        }
+      }
+    }
+  ]
+}

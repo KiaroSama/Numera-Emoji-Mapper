@@ -1,164 +1,136 @@
 # Native local backend
 
-The installed Rust backend is now the primary local command path. The Windows
-menu and doctor invoke it; superseded Python application modules have been
-retired from production. Final integrated source-retirement acceptance and all
-four platform package checks have passed; the revision-bound evidence is below.
-See [ADR 0003](adr/0003-rust-local-backend.md) for the decision and rollback boundary.
+The production application is `numera-emoji`, built from
+[`runtime/Cargo.toml`](../runtime/Cargo.toml). The CLI, panel HTTP server, catalog,
+provider tools, image conversion, preview generation and media worker run without
+CPython, a Python ABI, wheels or a virtual environment. The browser interface
+remains JavaScript and the Cloudflare Worker remains TypeScript.
 
-## Ready-package installation
+## Application and media engines
 
-Download a matching archive and checksum from a successful **Prebuilt packages**
-workflow run, or release assets after every platform job succeeds. See
-[README installation](../README.md#install-a-ready-built-package--no-local-rust-build).
-Windows x64, Linux x64 (glibc 2.39+) and macOS 15+ Intel/Apple Silicon are the
-package targets. The bundled offline wheels require Python 3.11. FFmpeg/FFprobe
-on PATH are required for video; Rust/Cargo and C++ build tools are not end-user
-prerequisites. The older v2.0.0 source ZIP is not a prebuilt runtime.
+Rust owns application policy, SQLite persistence, Bot API transport, retries,
+publication proof, intent recovery, filesystem leases and atomic publication.
+Pure application modules are shared with the historical regression crate under
+`native/src`; sharing a Rust source file does not introduce its old interpreter
+binding into the production dependency graph.
 
-The archive includes the executable, matching abi3 wheel, binary dependency
-wheels, retained coin tools and public assets. `scripts/install_prebuilt.py`
-verifies manifest/platform/hashes and installs offline with `--only-binary=:all:`
-into its own virtual environment. It refuses an existing environment before
-changing it. Extract updates into a separate folder; preserve your configuration,
-collection, archives and recovery backups before switching installations.
+The native media stack consists of:
+
+| Media | Engine | Compatibility boundary |
+|---|---|---|
+| Raster images | `image`, bundled mozjpeg and libwebp | Historical resizing, alpha arithmetic, blankness, content keys and perceptual hashes |
+| SVG | `resvg` | Native rasterization before normal image fitting |
+| TGS/Lottie | Rust document handling and statically linked rlottie | Canonical identity, validation, tint, sampled renderer frames and timing |
+| Video | Rust-owned FFmpeg/FFprobe processes | Alpha-aware decoding, full sampled timeline, VP9 conversion and bounded process custody |
+| Logo matching | Rust distance calculations | Exact byte distances, stable first-match ordering and persisted cache identity |
+
+The vendored rlottie source is the renderer revision used by the historical
+`rlottie-python` dependency. Its provenance and licenses are retained in
+[`runtime/vendor/rlottie`](../runtime/vendor/rlottie/NUMERA-SOURCE.md). These native
+libraries compile into the application; end users do not install their language
+runtimes. FFmpeg and FFprobe remain external executables for video operations.
+
+PNG and WebP encoders can produce different compressed bytes from historical
+Pillow output. Decoded pixels, durable content identity and declared frame timing
+are the acceptance boundary. Tests retain independent historical inputs and
+expected identities rather than deriving new expected keys from the new engine.
+
+Logo matching accumulates squared byte distances exactly in `f64`. It preserves
+stable first-match ties and the frozen remapping cases. This removes NumPy's
+architecture-dependent `float32` cancellation for identical or nearly identical
+high-intensity images; arbitrary BLAS rounding artifacts are not a compatibility
+contract.
+
+## Preview ownership and caching
+
+The panel dispatches codec requests to the same executable. Requests and replies
+use distinct, bounded JSON files in one physical project-owned directory. New
+outputs must not already exist or alias the request, response or cleanup marker.
+A failed or uncertain owner retains its evidence instead of deleting possibly
+active scratch.
+
+Opening a catalog primes still previews for the first eight cards. Animated
+previews are generated on demand and cached; repeated requests reuse completed
+files. The browser keeps its default **24 simultaneous animations**, along with
+its visibility, scrolling and background-tab controls. Native backend conversion
+does not replace the browser's own animation decoder.
+
+FFmpeg children retain the established process owner, wall/idle deadlines,
+bounded captures and cleanup checks. On Windows the owner waits for verified
+process handles to signal termination as well as the Job's active-process count.
+Linux test execution retains private network namespaces and descendant custody.
+
+## Install a package
+
+Download a matching artifact from **Prebuilt packages**, or a published release,
+and extract it into a new folder. Packages support Linux x64, Windows x64 and
+Intel/Apple Silicon macOS. They contain the application, public assets, native
+manifest, launchers, license and sample configuration. Schema2 packages contain
+no Python wheels, interpreter or virtual environment.
+
+```bash
+./numera-emoji --help
+./numera-emoji doctor
+./run.sh panel
+```
 
 ```powershell
-py -3.11 scripts\install_prebuilt.py
-.venv\Scripts\python.exe scripts\launch_prebuilt.py --help
+.\numera-emoji.exe --help
 .\run.ps1 -Check
 .\run.ps1
 ```
 
+The extracted executable can also verify and copy an installation offline:
+
 ```bash
-python3.11 scripts/install_prebuilt.py
-.venv/bin/python scripts/launch_prebuilt.py --help
-.venv/bin/python scripts/launch_prebuilt.py panel
+./numera-emoji package-verify
+./numera-emoji install-prebuilt --destination /absolute/path/to/new-installation
 ```
 
-Copy `.env.example` to `.env` and supply your own configuration before Telegram
-commands. `scripts/launch_prebuilt.py` selects the package interpreter and root;
-Windows retains a private Job until its child exits. Temp/cache paths stay under
-`logs/tmp/` and `.cache/`; linked/reparse escapes refuse. Neither the menu nor
-doctor invokes Cargo or falls back to retired Python application modules.
+The installer verifies manifest/platform/hashes and refuses links, traversal,
+unlisted package payloads and an unsafe replacement. Configuration, logs and
+operator data belong to the installation; preserve them before switching an
+existing installation. A manifest hash is an integrity check, not a publisher
+signature.
 
-## Native command surface
+Copy `.env.example` to `.env` and configure Telegram/provider credentials before
+using commands that access those services. `--help` and local conversion do not
+require credentials. FFmpeg and FFprobe must be on PATH for video commands.
 
-Pass these commands to `scripts/launch_prebuilt.py` with the package interpreter,
-or invoke the installed `native/runtime/numera-emoji` executable (`.exe` on
-Windows) with the appropriate package Python environment:
+## Build from source
 
-| Responsibility | Commands |
-|---|---|
-| Convert and build prepared images | `make-emoji-pngs`, `build-pack` |
-| Collect and publish a catalog | `add-media`, `fetch-pack`, `fetch-emoji-ids`, `build-collection` |
-| Curate and apply saved intent | `panel`, `plan-status`, `plan-apply`, `sync-order` |
-| Reports, archives and recovery | `status`, `pack-manifest`, `pack-archive`, `identity-repair` |
-| Premium emoji ID bot | `emoji-bot` |
+Source builds require the pinned Rust toolchain, a C/C++ compiler and CMake for
+bundled native libraries. They do not require Python:
 
-Individual commands expose `--help`; `emoji-bot` uses environment configuration
-instead of command options. `plan-apply` and `sync-order` require `--apply` for
-live changes; `identity-repair` supports `report`, `migrate-video-keys` and
-`restore --bundle PATH`, with `--apply` required for migration/restore writes.
-`pack-archive --export PACK --zip PATH` produces a copy-only ZIP. Existing JSON
-schemas, content keys, published IDs, saved intent and configured logo policy
-remain compatibility contracts. Commands are not permission to mutate live packs.
-
-Rust owns SQLite, catalog/dedup decisions, transport and mutation proof, application
-orchestration, HTTP/view/save/cache policy, state/filesystem operations and reports.
-The JavaScript panel and Cloudflare Worker retain their existing stacks.
-
-## Retained Python responsibilities
-
-Three categories remain explicit; they are not all media-only:
-
-1. **Exact media/identity:** `media_bridge`, `media`, `media_lottie`, `identity`,
-   `video_decode` and `repaint` preserve Pillow/SVG/Lottie/FFmpeg bytes, pixels and
-   durable identity. The bridge never runs a collector, catalog, publisher, bot,
-   panel server or report application. Rust owns preview cache/admission/warm-up;
-   Python renders only the supplied codec request. Codec children receive validated
-   non-secret settings such as `EMOJI_FFMPEG_TIMEOUT`; dotenv and credentials are
-   disabled in those children.
-2. **Thin/shared coin bindings:** `telegram_api`, `announce`, `packstate` and
-   `pack_rows` call Rust for transport/retries/upload proof, announcements,
-   leases/atomic replacement and Markdown tables. Shared configuration, logging,
-   error types and similarity exports remain for the unchanged coin-domain tools.
-   Requests serves those provider tools; NumPy is only needed by coin remapping.
-3. **Development/reference support:** sandbox cloning, bounded SQLite snapshots,
-   path/state enumeration and build/install/process-owner harnesses remain Python.
-   Pinned source oracles and relocated references stay under `tests/`, excluded
-   from runtime packages. They are regression/rollback evidence, never production
-   fallback or a second application dispatcher.
-
-Retained coin-provider tools continue as `python -m coins.<tool>`. Public exception
-classes and `add_sticker` results remain source-compatible: an integer after
-verified recovery, otherwise `None`. An unanswered mutation without sufficient
-proof refuses rather than blindly retrying. Worker announcements are not retried
-or silently sent directly after an unknown outcome.
-
-## Developer installation and isolated consumers
-
-Only contributors changing Rust need Rust 1.99+, the platform linker and an
-explicit source build:
-
-```powershell
-.venv\Scripts\python.exe scripts\build_native.py
+```bash
+cargo build --manifest-path runtime/Cargo.toml --locked --release
+runtime/target/release/numera-emoji --help
 ```
 
-The locked build installs the extension and executable under `native/runtime/`,
-separate from disposable `native/target/`. Repaired wheel shared libraries remain
-beside the extension. Staged hash-verified replacement preserves a working binary
-on failure. Executable, matching extension/libraries, codec dependencies and assets
-are all required; this is not a standalone-binary distribution.
+Use the standalone test runner for production tests:
 
-`scripts/panel_sandbox.py` owns a copied catalog and runs the installed native
-panel with scrubbed credentials, a strict argument allowlist and a lifetime lease.
-Windows uses a private kill-on-close Job; Linux/macOS inherit the same locked file
-description and monitor wrapper PID/birth identity. An unrelated listener is never
-adopted. `coins/run_convert.ps1` invokes native `make-emoji-pngs` for SVG and PNG;
-its owner stops the process tree after 120 seconds without marker progress or a
-3,600-second wall ceiling. Ordinary failures are not silently retried.
+```bash
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bin numera-runtime-tests
+cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked -- --test-threads=1
+```
 
-## Verification status and limitations
+The launchers select an existing executable. They do not build an application or
+install dependencies during normal operation.
 
-Final integrated core [run 38174075123](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/runs/38174075123)
-at `0811e9b` passed all six jobs after production retirement: Python 3.11/3.12/3.14,
-Windows native safety, the native-backed browser suite and Worker checks.
-Four-platform [package run 38173007469](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/runs/38173007469)
-at `c010464` passed actual extracted installation, CLI, exact media, retained coin
-manifest and lifecycle checks. The later `0811e9b` changes only the lock-test source
-inventory; production/package inputs are unchanged. Tag publication was skipped.
+## Historical regression and contributor tools
 
-Copied real catalog readback and private-copy native migration/restore/source rollback
-have separate local evidence. After removing disposable build and verification
-extractions, the retained Windows installation passed its actual doctor, native CLI,
-real 100×100 PNG conversion and coin entry-point checks. Protected input and runtime
-hashes were unchanged; no Cargo build or live Telegram mutation was used. Recovery
-copies, source history and required test fixtures were preserved.
+`native/Cargo.toml` retains the original PyO3 library and a `numera-compat`
+developer executable. They run historical source observations, fault-injection
+cases and original regression suites. `tests/` and retained reference modules are
+acceptance evidence; they are excluded from production packages. The ordinary
+application never falls back to them.
 
-Persistent acceptance includes source-generated fixtures, actual CLI/loopback
-cases, native-server-backed browser suites, exact PNG/TGS/VP9 codecs, cross-language
-locks, seven persisted migration process-death/restart boundaries and save-time
-competing ownership. Synthetic browser thumbnails alone do not prove codec parity.
-Optional private fixtures remain separate from public CI coverage.
+The compatibility crate's public `numera-emoji` binary is a small shim calling
+the standalone Rust library, so public CLI, collection and browser integration
+tests exercise the production implementation. Source-observation and legacy
+tooling cases explicitly invoke `numera-compat`. Building that optional developer
+toolkit still requires its pinned CPython/codec environment.
 
-Version2 rollback uses WAL-safe snapshots, complete media/state intents, signatures
-and journal replay. Changed media, later catalog edits or a different active bundle
-refuse rather than overwrite. SQL REAL values refuse before writes: the original
-catalog schema uses TEXT/INTEGER and no supported producer requiring REAL was
-established. Arbitrary extension-table/producer Unicode-version compatibility is
-not certified. This limitation is not evidence that normal catalog rollback failed.
-
-Native logs are new UTF-8 UTC files under `logs/`, with secret/token redaction.
-Preserve real operational logs and unresolved diagnostic/recovery evidence. A
-separate historical verification-receipt association remains unresolved; current
-CI cannot retroactively identify it. Final closure is not claimed here.
-
-For rollback, preserve a verified pre-retirement application version from Git
-history and your data/configuration backup. Test restoration on an independent
-copy with that version's required dependencies before changing a live installation.
-A native-produced rollback bundle is checked by retained source references; those
-references are not a supported end-user application. Never restore over unrelated
-later data changes or reintroduce a silent Python production fallback. Cleanup
-waits for integrated acceptance and preserves data/media/archives, required
-fixtures, recovery evidence, Git history and one verified current installation.
+CI retains all original test cohorts, adds standalone engine/package/operator
+checks, and builds the production executable on every supported platform. See
+[CI acceptance](rust-ci-status.md) for the current verification status.

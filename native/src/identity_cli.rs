@@ -1,5 +1,5 @@
 //! Identity repair is read-only unless explicit apply reaches a verified migration/restore engine.
-use crate::{config::Config, logging::RunLog, media_adapter::MediaAdapter};
+use crate::{config::Config, logging::RunLog, media_native_adapter::NativeMediaAdapter};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String> {
@@ -81,21 +81,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             data.join(path)
         }
     });
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    let media = MediaAdapter {
-        python,
-        root: config.root.clone(),
-        scratch: data.join("tmp/identity-codec"),
-    };
+    let media = NativeMediaAdapter::for_project(&config.root, data.join("tmp/identity-codec"))?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -143,6 +129,24 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             return Ok(4);
         }
     };
+    if command == "report"
+        && let Some(journal) = &journal
+    {
+        println!(
+            "\nAN INTERRUPTED MIGRATION IS RECORDED (stage: {}, started {}).",
+            crate::logging::redact(
+                journal["stage"].as_str().unwrap_or("unknown"),
+                &config.secret_values()
+            ),
+            crate::logging::redact(
+                journal["started_utc"].as_str().unwrap_or("unknown"),
+                &config.secret_values()
+            )
+        );
+        println!(
+            "  Re-run `migrate-video-keys --apply` to complete it; every stage is idempotent."
+        );
+    }
     let inspected = (|| -> Result<u8, String> {
         let recovered = if command == "migrate-video-keys" {
             if let Some(backup) = recovery_backup.as_deref() {

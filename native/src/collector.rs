@@ -1,10 +1,30 @@
 //! Native collection orchestration; the only Python calls are codec/identity operations.
-use crate::{catalog::Catalog, logging, media_adapter::MediaAdapter, telegram::Telegram};
+use crate::{
+    catalog::Catalog,
+    logging,
+    media_adapter::{MediaAdapter, MediaCodec},
+    telegram::Telegram,
+};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
+
+pub const EXIT_OK: u8 = 0;
+pub const EXIT_USAGE: u8 = 2;
+pub const EXIT_PARTIAL: u8 = 3;
+pub const EXIT_FAILED: u8 = 4;
+
+pub fn ingest_exit_code(succeeded: u64, failed: u64) -> u8 {
+    if failed == 0 {
+        EXIT_OK
+    } else if succeeded > 0 {
+        EXIT_PARTIAL
+    } else {
+        EXIT_FAILED
+    }
+}
 
 struct Download(PathBuf);
 impl Drop for Download {
@@ -45,13 +65,13 @@ pub fn report_stats(catalog: &Catalog) -> Result<(), String> {
     Ok(())
 }
 
-pub struct Collector<'a> {
+pub struct Collector<'a, M = MediaAdapter> {
     pub cat: &'a mut Catalog,
-    pub media: &'a MediaAdapter,
+    pub media: &'a M,
     pub data: PathBuf,
     pub threshold: i32,
 }
-impl Collector<'_> {
+impl<M: MediaCodec> Collector<'_, M> {
     pub async fn ingest(
         &mut self,
         source: &Path,
@@ -123,35 +143,18 @@ impl Collector<'_> {
             .get("stickers")
             .and_then(Value::as_array)
             .ok_or("pack has no stickers")?;
-        if !["ask", "keep", "skip"].contains(&repaintable) {
-            return Err("invalid repaintable choice".into());
-        }
         let repainted = stickers
             .iter()
-            .filter(|s| s.get("needs_repainting") == Some(&Value::Bool(true)))
-            .count();
-        let mut keep = repaintable == "keep";
-        if repainted > 0 {
-            eprintln!(
-                "WARNING: {repainted} emoji are repainted by Telegram; inspect stored art before ingesting"
-            );
-            if repaintable == "ask" {
-                use std::io::{IsTerminal, Write};
-                if std::io::stdin().is_terminal() {
-                    eprint!("Ingest them anyway? [y/N] ");
-                    std::io::stderr().flush().map_err(|e| e.to_string())?;
-                    let mut answer = String::new();
-                    keep = std::io::stdin().read_line(&mut answer).is_ok()
-                        && ["y", "yes"].contains(&answer.trim().to_lowercase().as_str());
-                }
-            }
-        }
-        let mut counts = json!({"new":0,"dedup":0,"skipped":0,"failed":0,"repaintable":if keep{0}else{repainted}});
+            .filter(|sticker| crate::repaint_gate::is_repaintable(sticker))
+            .map(|sticker| sticker["file_unique_id"].as_str().unwrap_or("?").to_owned())
+            .collect::<Vec<_>>();
+        let keep = crate::repaint_gate::run(&repainted, repaintable, tg.log())?;
+        let mut counts = json!({"new":0,"dedup":0,"skipped":0,"failed":0,"repaintable":if keep{0}else{repainted.len()}});
         for sticker in stickers {
             if limit != 0 && counts["new"].as_u64().unwrap_or(0) >= limit {
                 break;
             }
-            if sticker.get("needs_repainting") == Some(&Value::Bool(true)) && !keep {
+            if crate::repaint_gate::is_repaintable(sticker) && !keep {
                 continue;
             }
             let fuid = sticker
@@ -241,5 +244,21 @@ impl Collector<'_> {
                 runtime.block_on(self.ingest(&scratch.0, labels, true))
             }
         })()
+    }
+}
+
+#[cfg(all(test, not(numera_native_runtime)))]
+mod tests {
+    #[test]
+    fn original_sticker_format_mapping_keeps_video_precedence() {
+        use serde_json::json;
+        for (sticker, expected) in [
+            (json!({"is_video":true}), "video"),
+            (json!({"is_animated":true}), "animated"),
+            (json!({}), "static"),
+            (json!({"is_video":true,"is_animated":true}), "video"),
+        ] {
+            assert_eq!(super::fmt(&sticker), expected);
+        }
     }
 }

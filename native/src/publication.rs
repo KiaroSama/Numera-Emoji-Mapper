@@ -2,14 +2,12 @@
 use crate::{
     catalog::Catalog,
     logging,
-    media_adapter::MediaAdapter,
+    media_adapter::{MediaAdapter, MediaCodec},
     telegram::{ApiError, SetState, Telegram},
 };
 use serde_json::{Value, json};
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-static NEXT: AtomicU64 = AtomicU64::new(0);
 fn text<'a>(v: &'a Value, k: &str) -> Result<&'a str, String> {
     v.get(k)
         .and_then(Value::as_str)
@@ -28,16 +26,51 @@ fn list(v: &Value, k: &str) -> Result<Vec<String>, String> {
         .collect()
 }
 
-pub struct Publisher<'a> {
+pub(crate) struct Failure {
+    pub code: u8,
+    pub message: String,
+}
+impl Failure {
+    pub(crate) fn unknown(message: impl Into<String>) -> Self {
+        Self {
+            code: 3,
+            message: message.into(),
+        }
+    }
+}
+impl From<String> for Failure {
+    fn from(message: String) -> Self {
+        Self { code: 4, message }
+    }
+}
+impl From<&str> for Failure {
+    fn from(message: &str) -> Self {
+        message.to_owned().into()
+    }
+}
+impl From<ApiError> for Failure {
+    fn from(error: ApiError) -> Self {
+        let code = match &error {
+            ApiError::Transport(_) | ApiError::Ambiguous(_) | ApiError::FloodWait { .. } => 3,
+            ApiError::Rejected(_) | ApiError::Unproven(_) | ApiError::Invalid(_) => 4,
+        };
+        Self {
+            code,
+            message: error.command_error(),
+        }
+    }
+}
+
+pub struct Publisher<'a, M = MediaAdapter> {
     pub tg: &'a Telegram,
     pub cat: &'a mut Catalog,
-    pub media: &'a MediaAdapter,
+    pub media: &'a M,
     pub data: PathBuf,
     pub runtime: &'a tokio::runtime::Runtime,
     pub config: Option<&'a crate::config::Config>,
 }
-impl Publisher<'_> {
-    fn live(&self, name: &str) -> Result<Vec<Value>, String> {
+impl<M: MediaCodec> Publisher<'_, M> {
+    fn live(&self, name: &str) -> Result<Vec<Value>, Failure> {
         match self.tg.probe(name) {
             (SetState::Exists, Some(value)) => value
                 .get("stickers")
@@ -45,15 +78,15 @@ impl Publisher<'_> {
                 .cloned()
                 .ok_or("live set has no stickers".into()),
             (SetState::Missing, _) => {
-                Err("recorded set is missing; refusing to recreate it".into())
+                Err("recorded set no longer exists; refusing to recreate it".into())
             }
-            _ => Err("live state unknown; refusing mutation".into()),
+            _ => Err(Failure::unknown("live state unknown; refusing mutation")),
         }
     }
     pub fn same(&self, sticker: &Value, source: &Path, fmt: &str) -> Result<Option<bool>, String> {
         self.effects().same(sticker, source, fmt)
     }
-    fn effects(&self) -> crate::upload_effect::UploadEffect<'_> {
+    fn effects(&self) -> crate::upload_effect::UploadEffect<'_, M> {
         crate::upload_effect::UploadEffect {
             tg: self.tg,
             media: self.media,
@@ -89,36 +122,14 @@ impl Publisher<'_> {
             .tg
             .download_bytes(text(sticker, "file_id")?, 5)
             .map_err(|e| e.to_string())?;
-        let directory = self.data.join("tmp");
-        std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-        let (mut file, path) = loop {
-            let path = directory.join(format!(
-                "resolve-{}-{}.dl",
-                std::process::id(),
-                NEXT.fetch_add(1, Ordering::Relaxed)
-            ));
-            match std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&path)
-            {
-                Ok(file) => break (file, path),
-                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(e) => return Err(e.to_string()),
-            }
-        };
-        let scratch = Scratch(path);
-        use std::io::Write;
-        file.write_all(&bytes)
-            .and_then(|_| file.sync_all())
-            .map_err(|e| e.to_string())?;
-        drop(file);
-        let fingerprint = self.runtime.block_on(self.media.call(json!({
-            "operation":"fingerprint", "source":scratch.0, "format":fmt
-        })))?;
-        let key = text(&fingerprint, "content_key")?.to_owned();
-        let key =
-            if fmt != "video" && self.cat.get(&key)?.is_some() {
+        let scratch = crate::publication_download::Download::new(&self.data, "resolve", &bytes)?;
+        let media = self.media.with_scratch(scratch.codec());
+        let resolved = (|| {
+            let fingerprint = self.runtime.block_on(media.call(json!({
+                "operation":"fingerprint", "source":scratch.path, "format":fmt
+            })))?;
+            let key = text(&fingerprint, "content_key")?.to_owned();
+            let key = if fmt != "video" && self.cat.get(&key)?.is_some() {
                 key
             } else {
                 let items = self.cat.all(Some(fmt))?;
@@ -132,10 +143,9 @@ impl Publisher<'_> {
                         if !source.is_file() {
                             return Ok(None);
                         }
-                        let result = self
-                            .media
+                        let result = media
                             .call(json!({"operation":"same_image", "source":source,
-                        "other":scratch.0, "format":fmt}))
+                        "other":scratch.path, "format":fmt}))
                             .await;
                         Ok(result.ok().and_then(|v| v.as_bool()))
                     },
@@ -155,12 +165,21 @@ impl Publisher<'_> {
                     }
                 }
             };
-        if !fuid.is_empty() {
-            self.cat.record_seen(fuid, &key)?;
+            Ok(Some(key))
+        })();
+        let key = scratch.finish(resolved)?;
+        if let Some(key) = &key
+            && !fuid.is_empty()
+        {
+            self.cat.record_seen(fuid, key)?;
         }
-        Ok(Some(key))
+        Ok(key)
     }
     pub fn reconcile(&mut self, set: &mut Value, base: &str) -> Result<(), String> {
+        self.reconcile_checked(set, base)
+            .map_err(|failure| failure.message)
+    }
+    pub(crate) fn reconcile_checked(&mut self, set: &mut Value, base: &str) -> Result<(), Failure> {
         let name = text(set, "name")?.to_owned();
         let live = self.live(&name)?;
         let mut keys = list(set, "keys")?;
@@ -174,20 +193,33 @@ impl Publisher<'_> {
             let known = self
                 .cat
                 .dispatch(json!({"operation":"custom_id","base":base,"content_key":key}))?;
-            if (cid.is_empty() || known.as_str() != Some(cid))
-                && self.resolve(sticker)?.as_deref() != Some(key)
-            {
-                return Err(format!(
-                    "recorded key {key} no longer holds its live position"
-                ));
+            if cid.is_empty() || known.as_str() != Some(cid) {
+                let position = i + offset;
+                let resolved = self.resolve(sticker).map_err(|error| {
+                    format!("live position {position} could not be examined ({error}); recorded key {key} remains unproven")
+                })?;
+                if resolved.as_deref() != Some(key) {
+                    return Err(format!(
+                        "recorded key {key} no longer holds its live position {position}"
+                    )
+                    .into());
+                }
             }
         }
         let start = offset + keys.len();
         for (i, sticker) in live.iter().enumerate().skip(start) {
-            let Some(key) = self.resolve(sticker)? else {
-                for other in &live[i + 1..] {
-                    if self.resolve(other)?.is_some() {
-                        return Err("foreign sticker precedes an unrecorded catalog item".into());
+            let resolved = self.resolve(sticker).map_err(|error| {
+                format!("live position {i} could not be examined ({error}); refusing attribution")
+            })?;
+            let Some(key) = resolved else {
+                for (position, other) in live.iter().enumerate().skip(i + 1) {
+                    let resolved = self.resolve(other).map_err(|error| {
+                        format!("live position {i} is unrecognized and position {position} behind it could not be examined ({error})")
+                    })?;
+                    if let Some(key) = resolved {
+                        return Err(format!(
+                            "foreign sticker at position {i} precedes unrecorded catalog item {key} at position {position}; refusing positional attribution"
+                        ).into());
                     }
                 }
                 break;
@@ -230,11 +262,5 @@ impl Publisher<'_> {
         repaint: bool,
     ) -> Result<Value, ApiError> {
         self.effects().mutate(item, name, title, user_id, repaint)
-    }
-}
-struct Scratch(PathBuf);
-impl Drop for Scratch {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
     }
 }

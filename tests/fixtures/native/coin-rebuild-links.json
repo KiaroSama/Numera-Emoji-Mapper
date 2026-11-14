@@ -1,0 +1,684 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "coins/_dedup_map.py": "5fc72119e143b9d20af1f9280921d2503327f6c574e7b34e9d93a7ba1e27310e",
+    "coins/rebuild_dedup.py": "17771c6245dedf36d6c66deba99bb6405a624505962f74251f7f5a7f7e4eb54f"
+  },
+  "cases": [
+    {
+      "input": {
+        "name": "empty final",
+        "operation": "final",
+        "state": {
+          "sets": [],
+          "sent": []
+        }
+      },
+      "expected": {
+        "state": {
+          "sets": [],
+          "sent": []
+        },
+        "events": [
+          [
+            "lock"
+          ],
+          [
+            "unlock"
+          ]
+        ],
+        "output": "no sets to send.\n",
+        "error": null
+      }
+    },
+    {
+      "input": {
+        "name": "sorted final",
+        "operation": "final",
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": []
+        }
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "final_sent": true
+        },
+        "events": [
+          [
+            "lock"
+          ],
+          [
+            "announce",
+            [
+              {
+                "name": "cryptoemoji1_by_YourEmojiBot",
+                "title": "1"
+              },
+              {
+                "name": "cryptoemoji2_by_YourEmojiBot",
+                "title": "2"
+              }
+            ],
+            "\ud83d\udce6 Fixture \u2014 all packs:",
+            "list"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 2,
+                  "name": "cryptoemoji2_by_YourEmojiBot",
+                  "title": "Fixture 2"
+                },
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "final_sent": true
+            }
+          ],
+          [
+            "unlock"
+          ]
+        ],
+        "output": "sent final links for 2 packs to [set] (preview off).\n",
+        "error": null
+      }
+    },
+    {
+      "input": {
+        "name": "final deliberately resends",
+        "operation": "final",
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "final_sent": true
+        }
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "final_sent": true
+        },
+        "events": [
+          [
+            "lock"
+          ],
+          [
+            "announce",
+            [
+              {
+                "name": "cryptoemoji1_by_YourEmojiBot",
+                "title": "1"
+              },
+              {
+                "name": "cryptoemoji2_by_YourEmojiBot",
+                "title": "2"
+              }
+            ],
+            "\ud83d\udce6 Fixture \u2014 all packs:",
+            "list"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 2,
+                  "name": "cryptoemoji2_by_YourEmojiBot",
+                  "title": "Fixture 2"
+                },
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "final_sent": true
+            }
+          ],
+          [
+            "unlock"
+          ]
+        ],
+        "output": "sent final links for 2 packs to [set] (preview off).\n",
+        "error": null
+      }
+    },
+    {
+      "input": {
+        "name": "final send fails",
+        "operation": "final",
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": []
+        },
+        "fail": "send"
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": []
+        },
+        "events": [
+          [
+            "lock"
+          ],
+          [
+            "announce",
+            [
+              {
+                "name": "cryptoemoji1_by_YourEmojiBot",
+                "title": "1"
+              },
+              {
+                "name": "cryptoemoji2_by_YourEmojiBot",
+                "title": "2"
+              }
+            ],
+            "\ud83d\udce6 Fixture \u2014 all packs:",
+            "list"
+          ],
+          [
+            "unlock"
+          ]
+        ],
+        "output": "",
+        "error": "controlled announce refusal"
+      }
+    },
+    {
+      "input": {
+        "name": "final save fails",
+        "operation": "final",
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": []
+        },
+        "fail": "save"
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "final_sent": true
+        },
+        "events": [
+          [
+            "lock"
+          ],
+          [
+            "announce",
+            [
+              {
+                "name": "cryptoemoji1_by_YourEmojiBot",
+                "title": "1"
+              },
+              {
+                "name": "cryptoemoji2_by_YourEmojiBot",
+                "title": "2"
+              }
+            ],
+            "\ud83d\udce6 Fixture \u2014 all packs:",
+            "list"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 2,
+                  "name": "cryptoemoji2_by_YourEmojiBot",
+                  "title": "Fixture 2"
+                },
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "final_sent": true
+            }
+          ],
+          [
+            "unlock"
+          ]
+        ],
+        "output": "",
+        "error": "controlled state refusal"
+      }
+    },
+    {
+      "input": {
+        "name": "notify answered",
+        "operation": "notify",
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": []
+        }
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [
+            "cryptoemoji2_by_YourEmojiBot"
+          ]
+        },
+        "events": [
+          [
+            "announce",
+            [
+              {
+                "name": "cryptoemoji2_by_YourEmojiBot",
+                "title": "Fixture 2"
+              }
+            ],
+            "",
+            "cards"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 2,
+                  "name": "cryptoemoji2_by_YourEmojiBot",
+                  "title": "Fixture 2"
+                },
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [
+                "cryptoemoji2_by_YourEmojiBot"
+              ]
+            }
+          ]
+        ],
+        "output": "  sent link for cryptoemoji2_by_YourEmojiBot to [set]\n",
+        "error": null
+      }
+    },
+    {
+      "input": {
+        "name": "notify already sent",
+        "operation": "notify",
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [
+            "cryptoemoji2_by_YourEmojiBot"
+          ]
+        }
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [
+            "cryptoemoji2_by_YourEmojiBot"
+          ]
+        },
+        "events": [],
+        "output": "",
+        "error": null
+      }
+    },
+    {
+      "input": {
+        "name": "notify send fails",
+        "operation": "notify",
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": []
+        },
+        "fail": "send"
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": []
+        },
+        "events": [
+          [
+            "announce",
+            [
+              {
+                "name": "cryptoemoji2_by_YourEmojiBot",
+                "title": "Fixture 2"
+              }
+            ],
+            "",
+            "cards"
+          ]
+        ],
+        "output": "  notify failed cryptoemoji2_by_YourEmojiBot: controlled announce refusal\n",
+        "error": null
+      }
+    },
+    {
+      "input": {
+        "name": "notify save fails",
+        "operation": "notify",
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": []
+        },
+        "fail": "save"
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [
+            "cryptoemoji2_by_YourEmojiBot"
+          ]
+        },
+        "events": [
+          [
+            "announce",
+            [
+              {
+                "name": "cryptoemoji2_by_YourEmojiBot",
+                "title": "Fixture 2"
+              }
+            ],
+            "",
+            "cards"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 2,
+                  "name": "cryptoemoji2_by_YourEmojiBot",
+                  "title": "Fixture 2"
+                },
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [
+                "cryptoemoji2_by_YourEmojiBot"
+              ]
+            }
+          ]
+        ],
+        "output": "  notify failed cryptoemoji2_by_YourEmojiBot: controlled state refusal\n",
+        "error": null
+      }
+    },
+    {
+      "input": {
+        "name": "worker final",
+        "operation": "final",
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": []
+        },
+        "destination": "the worker"
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            },
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "final_sent": true
+        },
+        "events": [
+          [
+            "lock"
+          ],
+          [
+            "announce",
+            [
+              {
+                "name": "cryptoemoji1_by_YourEmojiBot",
+                "title": "1"
+              },
+              {
+                "name": "cryptoemoji2_by_YourEmojiBot",
+                "title": "2"
+              }
+            ],
+            "\ud83d\udce6 Fixture \u2014 all packs:",
+            "list"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 2,
+                  "name": "cryptoemoji2_by_YourEmojiBot",
+                  "title": "Fixture 2"
+                },
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "final_sent": true
+            }
+          ],
+          [
+            "unlock"
+          ]
+        ],
+        "output": "sent final links for 2 packs to the worker (preview off).\n",
+        "error": null
+      }
+    }
+  ]
+}

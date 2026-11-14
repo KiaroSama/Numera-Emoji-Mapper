@@ -1,0 +1,7 @@
+# Explicit test-only opt-in; normal cargo run is unchanged.
+[target.'cfg(windows)']
+runner = ["native/target/debug/numera-compat.exe", "test-runner"]
+
+# Linux uses a subreaper scope; macOS uses the owned process group fallback.
+[target.'cfg(unix)']
+runner = ["native/target/debug/numera-compat", "test-runner"]

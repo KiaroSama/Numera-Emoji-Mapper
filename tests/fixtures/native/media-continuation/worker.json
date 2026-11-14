@@ -1,0 +1,661 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media_bridge.py": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7",
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89"
+  },
+  "input_sha256": {
+    "$source": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+    "$corrupt": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d"
+  },
+  "Pillow": "12.3.0",
+  "source": "emojikit.media_bridge.execute",
+  "inputs": {
+    "$source": "tests/fixtures/native/static-codec/alpha-edge.png",
+    "$corrupt": "tests/fixtures/native/static-compare/corrupt.png"
+  },
+  "cases": [
+    {
+      "name": "image_info",
+      "request": {
+        "operation": "image_info",
+        "source": "$source"
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "dimensions",
+      "request": {
+        "operation": "dimensions",
+        "source": "$source"
+      },
+      "expected": [
+        13,
+        9
+      ],
+      "output": null
+    },
+    {
+      "name": "fingerprint",
+      "request": {
+        "operation": "fingerprint",
+        "source": "$source"
+      },
+      "expected": {
+        "content_key": "s:cbad7c910324d8fecf9af7333768b1d6",
+        "phash": 2269426494736384,
+        "fmt": "static",
+        "extension": ".png"
+      },
+      "output": null
+    },
+    {
+      "name": "usable",
+      "request": {
+        "operation": "usable",
+        "source": "$source"
+      },
+      "expected": true,
+      "output": null
+    },
+    {
+      "name": "animation_info",
+      "request": {
+        "operation": "animation_info",
+        "source": "$source"
+      },
+      "expected": false,
+      "output": null
+    },
+    {
+      "name": "prepare",
+      "request": {
+        "operation": "prepare",
+        "source": "$source"
+      },
+      "expected": {
+        "content_key": "s:cbad7c910324d8fecf9af7333768b1d6",
+        "phash": 2269426494736384,
+        "fmt": "static",
+        "extension": ".png"
+      },
+      "output": null
+    },
+    {
+      "name": "compare",
+      "request": {
+        "operation": "compare",
+        "source": "$source",
+        "other": "$source"
+      },
+      "expected": true,
+      "output": null
+    },
+    {
+      "name": "same_image",
+      "request": {
+        "operation": "same_image",
+        "source": "$source",
+        "other": "$source"
+      },
+      "expected": true,
+      "output": null
+    },
+    {
+      "name": "collision",
+      "request": {
+        "operation": "collision",
+        "source": "$source",
+        "key": "s:lookup"
+      },
+      "expected": "s:d359d28b44f1871b588f04dc95ca56f8:lookup",
+      "output": null
+    },
+    {
+      "name": "metadata-format-null",
+      "request": {
+        "operation": "image_info",
+        "source": "$source",
+        "format": null
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "metadata-format-false",
+      "request": {
+        "operation": "image_info",
+        "source": "$source",
+        "format": false
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "metadata-format-zero",
+      "request": {
+        "operation": "image_info",
+        "source": "$source",
+        "format": 0
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "metadata-format-floatzero",
+      "request": {
+        "operation": "image_info",
+        "source": "$source",
+        "format": 0.0
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "metadata-format-emptystring",
+      "request": {
+        "operation": "image_info",
+        "source": "$source",
+        "format": ""
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "metadata-format-emptylist",
+      "request": {
+        "operation": "image_info",
+        "source": "$source",
+        "format": []
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "metadata-format-emptydict",
+      "request": {
+        "operation": "image_info",
+        "source": "$source",
+        "format": {}
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "metadata-format-video",
+      "request": {
+        "operation": "image_info",
+        "source": "$source",
+        "format": "video"
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "metadata-format-animated",
+      "request": {
+        "operation": "image_info",
+        "source": "$source",
+        "format": "animated"
+      },
+      "expected": {
+        "size": [
+          13,
+          9
+        ],
+        "mode": "RGBA",
+        "blank": false
+      },
+      "output": null
+    },
+    {
+      "name": "preview-defaults",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$output",
+        "key": ""
+      },
+      "expected": {
+        "bytes": 56
+      },
+      "output": {
+        "bytes": 56,
+        "sha256": "e405f97b1678f990d1acd8de73564e2de947636a085dafd5ea18e8db9bd28f8e"
+      }
+    },
+    {
+      "name": "preview-float-size",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$output",
+        "key": "",
+        "size": 52.0
+      },
+      "expected": {
+        "bytes": 56
+      },
+      "output": {
+        "bytes": 56,
+        "sha256": "e405f97b1678f990d1acd8de73564e2de947636a085dafd5ea18e8db9bd28f8e"
+      }
+    },
+    {
+      "name": "preview-float-fps",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$output",
+        "key": "",
+        "fps": 15.0
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "invalid preview parameters"
+      },
+      "output": null
+    },
+    {
+      "name": "preview-bool-size",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$output",
+        "key": "",
+        "size": true
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "invalid preview parameters"
+      },
+      "output": null
+    },
+    {
+      "name": "preview-bool-fps",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$output",
+        "key": "",
+        "fps": true
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "invalid preview parameters"
+      },
+      "output": null
+    },
+    {
+      "name": "preview-null-size",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$output",
+        "key": "",
+        "size": null
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "invalid preview parameters"
+      },
+      "output": null
+    },
+    {
+      "name": "preview-list-size",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$output",
+        "key": "",
+        "size": []
+      },
+      "error": {
+        "kind": "TypeError",
+        "message": "unhashable type: 'list'"
+      },
+      "output": null
+    },
+    {
+      "name": "preview-bad-key",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$output",
+        "key": "../escape"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "invalid preview parameters"
+      },
+      "output": null
+    },
+    {
+      "name": "preview-int-still",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$output",
+        "key": "",
+        "still": 0
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "invalid preview parameters"
+      },
+      "output": null
+    },
+    {
+      "name": "convert-static",
+      "request": {
+        "operation": "convert",
+        "source": "$source",
+        "output": "$output",
+        "target_format": "static"
+      },
+      "expected": {
+        "content_key": "s:cb3c895e7e095bc3e1894ebf7db85d4f",
+        "phash": 2269443741714432,
+        "fmt": "static",
+        "extension": ".png"
+      },
+      "output": {
+        "bytes": 2090,
+        "sha256": "2d7a9bd610575c62cf74ca343e92eaa45fc5b58dc870a629dba7b67fe8d1849b"
+      }
+    },
+    {
+      "name": "convert-invalid",
+      "request": {
+        "operation": "convert",
+        "source": "$source",
+        "output": "$output",
+        "target_format": "bad"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "invalid target format"
+      },
+      "output": null
+    },
+    {
+      "name": "prepare-invalid-reencode",
+      "request": {
+        "operation": "prepare",
+        "source": "$source",
+        "reencode": 0
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "reencode must be boolean"
+      },
+      "output": null
+    },
+    {
+      "name": "unsupported-operation",
+      "request": {
+        "operation": "bad"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "unsupported media operation"
+      },
+      "output": null
+    },
+    {
+      "name": "list-operation",
+      "request": {
+        "operation": []
+      },
+      "error": {
+        "kind": "TypeError",
+        "message": "unhashable type: 'list'"
+      },
+      "output": null
+    },
+    {
+      "name": "list-body",
+      "request": [],
+      "error": {
+        "kind": "ValueError",
+        "message": "expected a media request object"
+      },
+      "output": null
+    },
+    {
+      "name": "null-body",
+      "request": null,
+      "error": {
+        "kind": "ValueError",
+        "message": "expected a media request object"
+      },
+      "output": null
+    },
+    {
+      "name": "source-relative",
+      "request": {
+        "operation": "dimensions",
+        "source": "relative.png"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "source must be absolute"
+      },
+      "output": null
+    },
+    {
+      "name": "source-directory",
+      "request": {
+        "operation": "dimensions",
+        "source": "$directory"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "source must be a regular non-symlink file"
+      },
+      "output": null
+    },
+    {
+      "name": "source-missing",
+      "request": {
+        "operation": "dimensions",
+        "source": "$missing"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "source must be a regular non-symlink file"
+      },
+      "output": null
+    },
+    {
+      "name": "corrupt-metadata",
+      "request": {
+        "operation": "dimensions",
+        "source": "$corrupt",
+        "format": "static"
+      },
+      "error": {
+        "kind": "UnidentifiedImageError",
+        "message": "cannot identify image file 'G:\\\\Program Files\\\\Portable\\\\Scripts\\\\Numera Emoji Mapper\\\\tests\\\\fixtures\\\\native\\\\static-compare\\\\corrupt.png'"
+      },
+      "output": null
+    },
+    {
+      "name": "corrupt-same",
+      "request": {
+        "operation": "same_image",
+        "source": "$corrupt",
+        "other": "$corrupt",
+        "format": "static"
+      },
+      "expected": null,
+      "output": null
+    },
+    {
+      "name": "corrupt-compare",
+      "request": {
+        "operation": "compare",
+        "source": "$corrupt",
+        "other": "$corrupt",
+        "format": "static"
+      },
+      "expected": true,
+      "output": null
+    },
+    {
+      "name": "convert-existing-output",
+      "request": {
+        "operation": "convert",
+        "source": "$source",
+        "output": "$existing",
+        "target_format": "static",
+        "key": "ok"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "conversion output already exists"
+      },
+      "output": null
+    },
+    {
+      "name": "convert-relative-output",
+      "request": {
+        "operation": "convert",
+        "source": "$source",
+        "output": "relative.webp",
+        "target_format": "static",
+        "key": "ok"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "output must be absolute"
+      },
+      "output": null
+    },
+    {
+      "name": "preview-existing-output",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "$existing",
+        "target_format": "static",
+        "key": "ok"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "preview output already exists"
+      },
+      "output": null
+    },
+    {
+      "name": "preview-relative-output",
+      "request": {
+        "operation": "preview",
+        "source": "$source",
+        "output": "relative.webp",
+        "target_format": "static",
+        "key": "ok"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "output must be absolute"
+      },
+      "output": null
+    },
+    {
+      "name": "gallery_thumb-existing-output",
+      "request": {
+        "operation": "gallery_thumb",
+        "source": "$source",
+        "output": "$existing",
+        "target_format": "static",
+        "key": "ok"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "gallery output already exists"
+      },
+      "output": null
+    },
+    {
+      "name": "gallery_thumb-relative-output",
+      "request": {
+        "operation": "gallery_thumb",
+        "source": "$source",
+        "output": "relative.webp",
+        "target_format": "static",
+        "key": "ok"
+      },
+      "error": {
+        "kind": "ValueError",
+        "message": "output must be absolute"
+      },
+      "output": null
+    }
+  ]
+}

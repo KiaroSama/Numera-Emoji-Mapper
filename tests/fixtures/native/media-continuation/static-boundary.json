@@ -1,0 +1,306 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media_bridge.py": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7",
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89"
+  },
+  "original_test_sha256": {
+    "tests/test_media_reencode.py": "fa25c5717d7048d1eb2863f26d58c504314f0e6b6d6f73a8fb00376831c1fb5a",
+    "tests/test_native_preview_codec.py": "8f8d5d1cdf52be2f2e65359eb11bc1f8e4878ccebfff4fa64090e24050420ead"
+  },
+  "source_runtime": "CPython3.11.9",
+  "Pillow": "12.3.0",
+  "scope": "Direct static _render_preview bytes and reencode_in_place; injected external API faults, not worker persistence",
+  "cases": [
+    {
+      "name": "preview-success-actual",
+      "operation": "preview",
+      "fault": null,
+      "injected_kind": null,
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "bytes": 56,
+        "sha256": "e405f97b1678f990d1acd8de73564e2de947636a085dafd5ea18e8db9bd28f8e"
+      },
+      "injected_calls": 0,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "preview-open-OSError",
+      "operation": "preview",
+      "fault": "open",
+      "injected_kind": "OSError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "error": {
+        "kind": "OSError",
+        "message": "controlled open OSError"
+      },
+      "injected_calls": 1,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "preview-convert-ValueError",
+      "operation": "preview",
+      "fault": "convert",
+      "injected_kind": "ValueError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "error": {
+        "kind": "ValueError",
+        "message": "controlled convert ValueError"
+      },
+      "injected_calls": 1,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "preview-thumbnail-TypeError",
+      "operation": "preview",
+      "fault": "thumbnail",
+      "injected_kind": "TypeError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "error": {
+        "kind": "TypeError",
+        "message": "controlled thumbnail TypeError"
+      },
+      "injected_calls": 1,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "preview-save-OSError",
+      "operation": "preview",
+      "fault": "save",
+      "injected_kind": "OSError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "error": {
+        "kind": "OSError",
+        "message": "controlled save OSError"
+      },
+      "injected_calls": 1,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "preview-save-TypeError",
+      "operation": "preview",
+      "fault": "save",
+      "injected_kind": "TypeError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "error": {
+        "kind": "TypeError",
+        "message": "controlled save TypeError"
+      },
+      "injected_calls": 1,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "preview-save-KeyboardInterrupt",
+      "operation": "preview",
+      "fault": "save",
+      "injected_kind": "KeyboardInterrupt",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "error": {
+        "kind": "KeyboardInterrupt",
+        "message": "controlled save KeyboardInterrupt"
+      },
+      "injected_calls": 1,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "preview-getvalue-ValueError",
+      "operation": "preview",
+      "fault": "getvalue",
+      "injected_kind": "ValueError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "error": {
+        "kind": "ValueError",
+        "message": "controlled getvalue ValueError"
+      },
+      "injected_calls": 1,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "preview-close-OSError",
+      "operation": "preview",
+      "fault": "close",
+      "injected_kind": "OSError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "error": {
+        "kind": "OSError",
+        "message": "controlled close OSError"
+      },
+      "injected_calls": 1,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "preview-corrupt-actual",
+      "operation": "preview",
+      "fault": "corrupt",
+      "injected_kind": null,
+      "input": "tests/fixtures/native/static-compare/corrupt.png",
+      "input_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "error": {
+        "kind": "UnidentifiedImageError",
+        "message": "cannot identify image file '$source'"
+      },
+      "injected_calls": 0,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "reencode-success-actual",
+      "operation": "reencode",
+      "fault": null,
+      "injected_kind": null,
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "rewritten": true,
+        "bytes": 46,
+        "sha256": "3059184a2424fbee0ba7d49cc601cdfc96c6c07a393ec310e8fd439f9c66f683"
+      },
+      "injected_calls": 0,
+      "warnings": [],
+      "input_unchanged": false
+    },
+    {
+      "name": "reencode-open-OSError",
+      "operation": "reencode",
+      "fault": "open",
+      "injected_kind": "OSError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "rewritten": false,
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71"
+      },
+      "injected_calls": 1,
+      "warnings": [
+        "re-encode skipped for alpha-edge.png (static): controlled open OSError"
+      ],
+      "input_unchanged": true
+    },
+    {
+      "name": "reencode-convert-ValueError",
+      "operation": "reencode",
+      "fault": "convert",
+      "injected_kind": "ValueError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "rewritten": false,
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71"
+      },
+      "injected_calls": 1,
+      "warnings": [
+        "re-encode skipped for alpha-edge.png (static): controlled convert ValueError"
+      ],
+      "input_unchanged": true
+    },
+    {
+      "name": "reencode-save-OSError",
+      "operation": "reencode",
+      "fault": "save",
+      "injected_kind": "OSError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "rewritten": false,
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71"
+      },
+      "injected_calls": 1,
+      "warnings": [
+        "re-encode skipped for alpha-edge.png (static): controlled save OSError"
+      ],
+      "input_unchanged": true
+    },
+    {
+      "name": "reencode-save-TypeError",
+      "operation": "reencode",
+      "fault": "save",
+      "injected_kind": "TypeError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "rewritten": false,
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71"
+      },
+      "injected_calls": 1,
+      "warnings": [
+        "re-encode skipped for alpha-edge.png (static): controlled save TypeError"
+      ],
+      "input_unchanged": true
+    },
+    {
+      "name": "reencode-save-KeyboardInterrupt",
+      "operation": "reencode",
+      "fault": "save",
+      "injected_kind": "KeyboardInterrupt",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "error": {
+        "kind": "KeyboardInterrupt",
+        "message": "controlled save KeyboardInterrupt"
+      },
+      "injected_calls": 1,
+      "warnings": [],
+      "input_unchanged": true
+    },
+    {
+      "name": "reencode-getvalue-ValueError",
+      "operation": "reencode",
+      "fault": "getvalue",
+      "injected_kind": "ValueError",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "rewritten": false,
+        "bytes": 96,
+        "sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71"
+      },
+      "injected_calls": 1,
+      "warnings": [
+        "re-encode skipped for alpha-edge.png (static): controlled getvalue ValueError"
+      ],
+      "input_unchanged": true
+    },
+    {
+      "name": "reencode-corrupt-actual",
+      "operation": "reencode",
+      "fault": "corrupt",
+      "injected_kind": null,
+      "input": "tests/fixtures/native/static-compare/corrupt.png",
+      "input_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "expected": {
+        "rewritten": false,
+        "bytes": 12,
+        "sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d"
+      },
+      "injected_calls": 0,
+      "warnings": [
+        "re-encode skipped for corrupt.png (static): cannot identify image file $buffer"
+      ],
+      "input_unchanged": true
+    }
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "86f17862ebe5019e05965fa7aa30380a20226b3632f192f051525290ae7f7031",
+  "cases": [
+    {
+      "input": {
+        "top": 3,
+        "threshold": 20,
+        "coins": [
+          {
+            "symbol": "AAA",
+            "name": "A",
+            "image": "u1"
+          },
+          {
+            "symbol": "bbb",
+            "name": "B",
+            "image": "u2"
+          },
+          {
+            "symbol": "ccc",
+            "name": "C",
+            "image": "u3"
+          }
+        ],
+        "local": [
+          "aaa",
+          "bbb",
+          "ccc"
+        ],
+        "distances": {
+          "aaa": 21,
+          "bbb": 20,
+          "ccc": 50
+        }
+      },
+      "expected": {
+        "calls": [
+          "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false"
+        ],
+        "images": [
+          "u1",
+          "u2",
+          "u3"
+        ],
+        "waits": [
+          3,
+          0.05,
+          0.05,
+          0.05
+        ],
+        "flagged": [
+          [
+            50,
+            "ccc",
+            "C",
+            "u3"
+          ],
+          [
+            21,
+            "aaa",
+            "A",
+            "u1"
+          ]
+        ]
+      }
+    },
+    {
+      "input": {
+        "top": 5,
+        "threshold": 20,
+        "coins": [
+          {
+            "symbol": "missing",
+            "image": "u0"
+          },
+          {
+            "symbol": "bad",
+            "image": "u1"
+          },
+          {
+            "symbol": "aaa",
+            "name": "A",
+            "image": "u2"
+          }
+        ],
+        "local": [
+          "bad",
+          "aaa"
+        ],
+        "distances": {
+          "bad": "decode refused",
+          "aaa": 30
+        }
+      },
+      "expected": {
+        "calls": [
+          "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false"
+        ],
+        "images": [
+          "u1",
+          "u2"
+        ],
+        "waits": [
+          3,
+          0.05
+        ],
+        "flagged": [
+          [
+            30,
+            "aaa",
+            "A",
+            "u2"
+          ]
+        ]
+      }
+    },
+    {
+      "input": {
+        "top": 0,
+        "threshold": 20,
+        "coins": [],
+        "local": [],
+        "distances": {}
+      },
+      "expected": {
+        "calls": [],
+        "images": [],
+        "waits": [],
+        "flagged": []
+      }
+    },
+    {
+      "input": {
+        "top": 2,
+        "threshold": 10,
+        "coins": [
+          {
+            "symbol": "bbb",
+            "name": "Z",
+            "image": "u1"
+          },
+          {
+            "symbol": "aaa",
+            "name": "A",
+            "image": "u2"
+          }
+        ],
+        "local": [
+          "aaa",
+          "bbb"
+        ],
+        "distances": {
+          "aaa": 20,
+          "bbb": 20
+        }
+      },
+      "expected": {
+        "calls": [
+          "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false"
+        ],
+        "images": [
+          "u1",
+          "u2"
+        ],
+        "waits": [
+          3,
+          0.05,
+          0.05
+        ],
+        "flagged": [
+          [
+            20,
+            "bbb",
+            "Z",
+            "u1"
+          ],
+          [
+            20,
+            "aaa",
+            "A",
+            "u2"
+          ]
+        ]
+      }
+    }
+  ]
+}

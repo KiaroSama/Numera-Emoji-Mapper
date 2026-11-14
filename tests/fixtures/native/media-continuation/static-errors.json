@@ -1,0 +1,84 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media_bridge.py": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7",
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89",
+    "emojikit/errors.py": "6c29243e2ec976606174605f1deaa3d23ef8d94fea47e886465c27f4f21f2026"
+  },
+  "source_runtime": "CPython3.11.9",
+  "Pillow": "12.3.0",
+  "cases": [
+    {
+      "name": "fingerprint-visible",
+      "operation": "fingerprint",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "content_key": "s:cbad7c910324d8fecf9af7333768b1d6",
+        "phash": 2269426494736384,
+        "fmt": "static",
+        "extension": ".png"
+      },
+      "output_exists": false
+    },
+    {
+      "name": "fingerprint-blank",
+      "operation": "fingerprint",
+      "input": "tests/fixtures/native/static-codec/transparent-rgb.png",
+      "input_sha256": "07618aaae1edc16ce6a01933b9f5148ea14b0b6638b58e0c75a26a33559956c0",
+      "expected": {
+        "content_key": "s:4fe7b59af6de3b665b67788cc2f99892",
+        "phash": 0,
+        "fmt": "static",
+        "extension": ".png"
+      },
+      "output_exists": false
+    },
+    {
+      "name": "fingerprint-corrupt",
+      "operation": "fingerprint",
+      "input": "tests/fixtures/native/static-compare/corrupt.png",
+      "input_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "error": {
+        "kind": "UnidentifiedImageError",
+        "message": "cannot identify image file '$source'"
+      },
+      "output_exists": false
+    },
+    {
+      "name": "convert-visible",
+      "operation": "convert",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "bytes": 2090,
+        "sha256": "2d7a9bd610575c62cf74ca343e92eaa45fc5b58dc870a629dba7b67fe8d1849b",
+        "rgba_sha256": "e1c83b771e7affc6e4284a64e599f6d48750e8337915a8dbd3c0a093c91cf37f"
+      },
+      "output_exists": true
+    },
+    {
+      "name": "convert-blank",
+      "operation": "convert",
+      "input": "tests/fixtures/native/static-codec/transparent-rgb.png",
+      "input_sha256": "07618aaae1edc16ce6a01933b9f5148ea14b0b6638b58e0c75a26a33559956c0",
+      "error": {
+        "kind": "MediaError",
+        "message": "transparent-rgb.png: image is blank (no visible pixels)"
+      },
+      "output_exists": false
+    },
+    {
+      "name": "convert-corrupt",
+      "operation": "convert",
+      "input": "tests/fixtures/native/static-compare/corrupt.png",
+      "input_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "error": {
+        "kind": "UnidentifiedImageError",
+        "message": "cannot identify image file '$source'"
+      },
+      "output_exists": false
+    }
+  ]
+}

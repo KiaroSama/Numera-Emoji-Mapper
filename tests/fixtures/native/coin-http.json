@@ -1,0 +1,171 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "c3ca151103971504e4eefdf5c44b7bb50858e0936fa6cd806982c8bede3540db",
+  "cases": [
+    {
+      "statuses": [
+        200
+      ],
+      "retry_after": "",
+      "stop_on": [],
+      "expected": {
+        "status": 200,
+        "waits": [],
+        "calls": [
+          200
+        ]
+      }
+    },
+    {
+      "statuses": [
+        429,
+        200
+      ],
+      "retry_after": "3",
+      "stop_on": [],
+      "expected": {
+        "status": 200,
+        "waits": [
+          3.0
+        ],
+        "calls": [
+          429,
+          200
+        ]
+      }
+    },
+    {
+      "statuses": [
+        500,
+        500,
+        200
+      ],
+      "retry_after": "",
+      "stop_on": [],
+      "expected": {
+        "status": 200,
+        "waits": [
+          4.0,
+          8.0
+        ],
+        "calls": [
+          500,
+          500,
+          200
+        ]
+      }
+    },
+    {
+      "statuses": [
+        402
+      ],
+      "retry_after": "",
+      "stop_on": [
+        402
+      ],
+      "expected": {
+        "status": 402,
+        "waits": [],
+        "calls": [
+          402
+        ]
+      }
+    },
+    {
+      "statuses": [
+        null,
+        200
+      ],
+      "retry_after": "",
+      "stop_on": [],
+      "expected": {
+        "status": 200,
+        "waits": [
+          4.0
+        ],
+        "calls": [
+          null,
+          200
+        ]
+      }
+    },
+    {
+      "statuses": [
+        500,
+        500,
+        500,
+        500
+      ],
+      "retry_after": "",
+      "stop_on": [],
+      "expected": {
+        "status": null,
+        "waits": [
+          4.0,
+          8.0,
+          12.0
+        ],
+        "calls": [
+          500,
+          500,
+          500,
+          500
+        ]
+      }
+    },
+    {
+      "statuses": [
+        429,
+        200
+      ],
+      "retry_after": "120",
+      "stop_on": [],
+      "expected": {
+        "status": 200,
+        "waits": [
+          60.0
+        ],
+        "calls": [
+          429,
+          200
+        ]
+      }
+    },
+    {
+      "statuses": [
+        429,
+        200
+      ],
+      "retry_after": "0",
+      "stop_on": [],
+      "expected": {
+        "status": 200,
+        "waits": [
+          4.0
+        ],
+        "calls": [
+          429,
+          200
+        ]
+      }
+    },
+    {
+      "statuses": [
+        429,
+        200
+      ],
+      "retry_after": "not-a-number",
+      "stop_on": [],
+      "expected": {
+        "status": 200,
+        "waits": [
+          4.0
+        ],
+        "calls": [
+          429,
+          200
+        ]
+      }
+    }
+  ]
+}

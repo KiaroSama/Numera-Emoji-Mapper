@@ -433,3 +433,54 @@ impl Catalog {
         }
     }
 }
+
+#[cfg(all(test, not(numera_native_runtime)))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn original_wal_normal_and_empty_order_preserve_exact_connection_change_count() {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let parent =
+            crate::tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
+        let root = parent.join(format!("catalog connection {}", std::process::id()));
+        std::fs::create_dir(&root).unwrap();
+        let mut catalog =
+            Catalog::open(&root.join("data/catalog.db"), "fixture UTC", project).unwrap();
+        let mode: String = catalog
+            .db
+            .pragma_query_value(None, "journal_mode", |row| row.get(0))
+            .unwrap();
+        let synchronous: i64 = catalog
+            .db
+            .pragma_query_value(None, "synchronous", |row| row.get(0))
+            .unwrap();
+        assert_eq!(mode, "wal");
+        assert_eq!(synchronous, 1);
+        for index in 0..3 {
+            assert!(
+                catalog
+                    .insert(
+                        &json!({"content_key":format!("s:k{index}"),"fmt":"static",
+                "file_path":root.join(format!("m{index}.png"))}),
+                        "fixture UTC"
+                    )
+                    .unwrap()
+            );
+        }
+        let before = catalog.db.total_changes();
+        assert_eq!(catalog.order(&[]).unwrap(), 0);
+        assert_eq!(
+            catalog.db.total_changes(),
+            before,
+            "empty order must not touch any row"
+        );
+        assert_eq!(catalog.order(&["s:k2".into()]).unwrap(), 1);
+        assert!(
+            catalog.db.total_changes() > before,
+            "change-count observer must detect a real write"
+        );
+        drop(catalog);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}

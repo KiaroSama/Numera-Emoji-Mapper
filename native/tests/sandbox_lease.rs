@@ -138,6 +138,12 @@ mod posix {
             std::thread::sleep(Duration::from_millis(5));
         }
         drop(wrong);
+        // Arm non-reclaimable recovery before the actual child's descriptor handoff.
+        std::fs::rename(
+            clone.join(".sandbox-owner.json"),
+            clone.join(".sandbox-recovery.json"),
+        )
+        .unwrap();
         assert_eq!(unsafe { fcntl(file.as_raw_fd(), 2, 0) }, 0); // Fixture-only handoff.
         let child = Command::new(std::env::current_exe().unwrap())
             .args(["--exact", "posix::inherited_lease_child", "--nocapture"])

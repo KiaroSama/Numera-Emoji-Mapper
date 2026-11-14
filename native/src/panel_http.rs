@@ -53,6 +53,14 @@ fn response(code: u16, body: impl Into<Body>, mime: &str, cache: &str) -> Respon
 fn answer(code: u16, value: Value) -> Response {
     response(code, value.to_string(), "application/json", "no-store")
 }
+fn unread_body(code: u16, message: &str) -> Response {
+    let mut response = answer(code, json!({"error":message}));
+    // An unread request body cannot become the next kept-alive request.
+    response
+        .headers_mut()
+        .insert("connection", "close".parse().unwrap());
+    response
+}
 fn loopback(raw: &str) -> bool {
     let host = raw.rsplit("://").next().unwrap_or(raw);
     let host = if host.starts_with('[') {
@@ -219,6 +227,8 @@ fn post(panel: &Panel, path: &str, payload: Value) -> Result<Response, String> {
     let mut guard = panel.view.lock().map_err(|_| "panel lock poisoned")?;
     if path == "/api/save" {
         let mut cat = Catalog::open(&panel.db, &(panel.utc)(), &panel.root)?;
+        #[cfg(all(test, not(numera_native_runtime)))]
+        crate::migration_crash_tests::barrier("writer-panel");
         let out = panel_save::save(
             &mut cat,
             &payload,
@@ -394,17 +404,17 @@ async fn route(State(panel): State<Arc<Panel>>, request: Request) -> Response {
     }
     let length = match header(&parts.headers, "content-length").parse::<usize>() {
         Ok(n) => n,
-        Err(_) => return answer(411, json!({"error":"Content-Length required"})),
+        Err(_) => return unread_body(411, "Content-Length required"),
     };
     if length > 4 * 1024 * 1024 {
-        return answer(413, json!({"error":"body too large"}));
+        return unread_body(413, "body too large");
     }
     let bytes = match tokio::time::timeout(Duration::from_secs(30), to_bytes(body, 4 * 1024 * 1024))
         .await
     {
         Ok(Ok(b)) => b,
-        Ok(Err(_)) => return answer(413, json!({"error":"body too large"})),
-        Err(_) => return answer(408, json!({"error":"request body timeout"})),
+        Ok(Err(_)) => return unread_body(413, "body too large"),
+        Err(_) => return unread_body(408, "request body timeout"),
     };
     if !same_token(header(&parts.headers, "x-panel-token"), &panel.token) {
         return answer(403, json!({"error":"bad or missing panel token"}));
@@ -499,7 +509,7 @@ pub async fn serve_listener(
             Ok(Ok(view)) => {
                 let started = std::time::Instant::now();
                 let fps = warm_panel.options["preview_fps"].as_u64().unwrap_or(15);
-                let counts = warm_panel.previews.warm(&view, fps).await;
+                let counts = warm_panel.previews.warm_initial(&view, fps).await;
                 warm_panel.log.event(
                     "INFO",
                     "preview",

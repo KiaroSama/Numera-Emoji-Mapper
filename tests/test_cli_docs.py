@@ -5,8 +5,9 @@ About 900 hand-written lines whose only guard was a checklist: remap_ids'
 section that names its tool, every flag the tool accepts must be documented
 there, and every flag documented there must exist.
 
-Only tools with an argparse parser are run: a tool without one does its real
-work when handed `--help` (emoji_bot starts polling, alias_map rewrites the map).
+Native commands expose their own safe `--help`. Retained Python references
+are run only when they have an argparse parser: other historical entry points
+can start polling or rewrite the map when handed `--help`.
 """
 
 from __future__ import annotations
@@ -26,6 +27,11 @@ NATIVE = {
     "make-emoji-pngs", "build-pack", "fetch-pack", "fetch-emoji-ids", "add-media",
     "build-collection", "sync-order", "pack-manifest", "pack-archive", "status", "panel",
 }
+COIN_COMMANDS = {
+    "coin-fetch-logos", "coin-build-keywords", "coin-fetch-paprika", "coin-fetch-cmc",
+    "coin-rebuild", "coin-rebuild-map", "coin-remap-ids", "coin-verify-logos",
+    "coin-check-packs", "coin-write-manifests", "coin-enhance-map", "coin-alias-map",
+}
 from tests.test_native_local_cli import BINARY  # noqa: E402
 
 RUNS_ON_NATIVE_WINDOWS = True
@@ -43,7 +49,7 @@ MENTIONED_NOT_OWNED = {
 }
 
 
-def sections() -> dict[str, tuple[list[Path], str]]:
+def sections() -> dict[str, tuple[list[Path | str], str]]:
     """§12 subsection number -> (the tool files it documents, its text)."""
     part = "\n".join(path.read_text(encoding="utf-8") for path in GUIDES)
     pieces = re.split(r"(?m)^### (12\.\w+) ", part)[1:]
@@ -51,9 +57,14 @@ def sections() -> dict[str, tuple[list[Path], str]]:
     for num, body in zip(pieces[::2], pieces[1::2], strict=True):
         title = body.splitlines()[0]
         files = [name for name in re.findall(r"`([a-z][a-z-]+)`", title) if name in NATIVE]
-        if "`coins/`" in title:
+        if num == "12.8" or "`coins/`" in title:
             files = [ROOT / "coins" / f"{m}.py"
                      for m in sorted(set(re.findall(r"coins[\\/](\w+)\.py", body)))]
+            commands = set(re.findall(r"(?<![\w-])coin-[a-z][a-z0-9-]*", body))
+            unknown = commands - COIN_COMMANDS
+            if unknown:
+                raise ValueError(f"Unmapped documented coin commands: {sorted(unknown)}")
+            files += sorted(commands)
         out[num] = (files, body)
     return out
 
@@ -77,6 +88,7 @@ class TheCliReferenceMatchesTheTools(unittest.TestCase):
         self.assertIn("12.2", self.sections)
         self.assertEqual(self.sections["12.2"][0], ["build-pack"])
         self.assertGreaterEqual(len(self.sections["12.8"][0]), 5, "the coin tools")
+        self.assertEqual(set(self.sections["12.8"][0]), COIN_COMMANDS)
 
     def test_every_flag_is_documented_and_every_documented_flag_exists(self):
         for num, (files, body) in sorted(self.sections.items()):
@@ -97,6 +109,7 @@ class TheCliReferenceMatchesTheTools(unittest.TestCase):
                     real |= set(_FLAG.findall(help_text))
                 real.discard("--help")
                 documented = set(_FLAG.findall(body))
+                documented.discard("--help")
                 self.assertEqual(sorted(real - documented), [],
                                  f"§{num}: flags the tool accepts but the GUIDE never names")
                 stale = documented - real - MENTIONED_NOT_OWNED.get(num, set())

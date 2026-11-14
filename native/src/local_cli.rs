@@ -1,7 +1,7 @@
 //! Local files are converted by codecs; Rust owns catalog, traversal and ingest decisions.
 use crate::{
     catalog::Catalog, collector::Collector, config::Config, logging::RunLog,
-    media_adapter::MediaAdapter,
+    media_adapter::MediaCodec, media_native_adapter::NativeMediaAdapter,
 };
 use serde_json::json;
 use std::io::Read;
@@ -12,15 +12,12 @@ static NEXT: AtomicU64 = AtomicU64::new(0);
 struct Scratch(PathBuf);
 impl Drop for Scratch {
     fn drop(&mut self) {
-        let stopped = std::fs::read_dir(self.0.join("codecs"))
-            .map(|mut entries| {
-                entries.all(|entry| {
-                    entry.is_ok_and(|entry| {
-                        !entry.path().join("codec-cleanup-pending.json").exists()
-                    })
-                })
-            })
-            .unwrap_or_else(|e| e.kind() == std::io::ErrorKind::NotFound);
+        let codecs = self.0.join("codecs");
+        let stopped = !crate::process_owner::cleanup_pending(&codecs)
+            // Quiescence alone does not make retained request/response evidence disposable.
+            && std::fs::read_dir(&codecs)
+                .map(|mut entries| entries.next().is_none())
+                .unwrap_or_else(|e| e.kind() == std::io::ErrorKind::NotFound);
         if stopped {
             let _ = std::fs::remove_dir_all(&self.0);
         } else {
@@ -37,7 +34,7 @@ fn option(args: &[String], i: &mut usize) -> Result<String, String> {
 }
 
 pub async fn choose_format(
-    media: &MediaAdapter,
+    media: &impl MediaCodec,
     path: &Path,
     requested: &str,
 ) -> Result<String, String> {
@@ -86,6 +83,17 @@ pub async fn choose_format(
 }
 
 pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String> {
+    run_with_codec(config, args, log, |scratch| {
+        NativeMediaAdapter::for_project(&config.root, scratch)
+    })
+}
+
+pub fn run_with_codec<M: MediaCodec>(
+    config: &Config,
+    args: &[String],
+    log: &RunLog,
+    make_media: impl FnOnce(PathBuf) -> Result<M, String>,
+) -> Result<u8, String> {
     if args.iter().any(|s| s == "--help" || s == "-h") {
         println!(
             "Usage: numera-emoji add-media [FILES...] [--in DIR] [--as auto|static|video|animated] [--emoji EMOJI] [--keywords LIST] [--data-dir DIR] [--phash-threshold -1|0..16]"
@@ -122,7 +130,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         i += 1;
     }
     if threshold != -1 && !(0..=16).contains(&threshold) {
-        return Err("phash threshold must be -1 or 0..16".into());
+        return Err(format!(
+            "phash threshold {threshold} is out of range: use -1 to disable near-duplicate merging, or 0..16"
+        ));
     }
     if !["auto", "static", "video", "animated"].contains(&format.as_str()) {
         return Err("unsupported target format".into());
@@ -158,26 +168,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             Err(e) => return Err(e.to_string()),
         }
     };
-    let python = if std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1") {
-        std::env::var_os("PYO3_PYTHON").map(PathBuf::from)
-    } else {
-        None
-    }
-    .unwrap_or_else(|| {
-        config.root.join(if cfg!(windows) {
-            ".venv/Scripts/python.exe"
-        } else {
-            ".venv/bin/python"
-        })
-    });
-    if python.is_absolute() && !python.is_file() {
-        return Err("required exact-media Python environment is missing".into());
-    }
-    let adapter = MediaAdapter {
-        python,
-        root: config.root.clone(),
-        scratch: workspace.0.join("codecs"),
-    };
+    let adapter = make_media(workspace.0.join("codecs"))?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -187,6 +178,8 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         &crate::logging::utc(),
         &config.root,
     )?;
+    #[cfg(all(test, not(numera_native_runtime)))]
+    crate::migration_crash_tests::barrier("writer-ingest");
     let mut collector = Collector {
         cat: &mut catalog,
         media: &adapter,
@@ -256,11 +249,93 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     }
     println!("Done. new={new} dedup={dedup} failed={failed}");
     crate::collector::report_stats(collector.cat)?;
-    Ok(if failed == 0 {
-        0
-    } else if new + dedup > 0 {
-        3
-    } else {
-        4
-    })
+    Ok(crate::collector::ingest_exit_code(
+        u64::from(new > 0 || dedup > 0),
+        failed,
+    ))
+}
+
+#[cfg(all(test, not(numera_native_runtime)))]
+mod cleanup_tests {
+    use super::*;
+
+    struct Fixture(PathBuf);
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.0).expect("clean owned synthetic cleanup fixtures");
+        }
+    }
+
+    #[test]
+    fn cleanup_pending_guard_retains_uncertain_codec_bytes() {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let parent =
+            crate::tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
+        let root = parent.join(format!("local cleanup guard {}", std::process::id()));
+        std::fs::create_dir(&root).unwrap();
+        let fixture = Fixture(root);
+        for (case, relative, shape) in [
+            ("legacy", "codecs/run/codec-cleanup-pending.json", "file"),
+            (
+                "native",
+                "codecs/run/owner/codec-cleanup-pending.json",
+                "file",
+            ),
+            (
+                "marker-directory",
+                "codecs/run/codec-cleanup-pending.json",
+                "directory",
+            ),
+            ("owner-file", "codecs/run/owner", "file"),
+            ("container-file", "codecs", "file"),
+            ("entry-file", "codecs/run", "file"),
+            ("settled-request", "codecs/run/request.json", "file"),
+            ("settled-response", "codecs/run/response.json", "file"),
+            ("empty-envelope", "codecs/run/owner", "directory"),
+            ("quiet", "codecs", "directory"),
+            ("absent", "", "none"),
+            #[cfg(unix)]
+            (
+                "marker-link",
+                "codecs/run/codec-cleanup-pending.json",
+                "link",
+            ),
+            #[cfg(unix)]
+            ("owner-link", "codecs/run/owner", "link"),
+            #[cfg(unix)]
+            ("container-link", "codecs", "link"),
+        ] {
+            let workspace = fixture.0.join(case);
+            std::fs::create_dir(&workspace).unwrap();
+            let sentinel = workspace.join("keep.bin");
+            let bytes = b"not JSON; unresolved synthetic bytes";
+            std::fs::write(&sentinel, bytes).unwrap();
+            let target = workspace.join(relative);
+            if shape != "none" {
+                std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+                match shape {
+                    "file" => std::fs::write(&target, bytes).unwrap(),
+                    "directory" => std::fs::create_dir(&target).unwrap(),
+                    #[cfg(unix)]
+                    "link" => std::os::unix::fs::symlink("missing", &target).unwrap(),
+                    _ => unreachable!(),
+                }
+            }
+            drop(Scratch(workspace.clone()));
+            if matches!(case, "quiet" | "absent") {
+                assert!(!workspace.exists(), "ordinary cleanup did not run: {case}");
+            } else {
+                assert_eq!(std::fs::read(&sentinel).unwrap(), bytes, "{case}");
+                match shape {
+                    "file" => assert_eq!(std::fs::read(&target).unwrap(), bytes, "{case}"),
+                    "directory" => assert!(std::fs::symlink_metadata(&target).unwrap().is_dir()),
+                    #[cfg(unix)]
+                    "link" => {
+                        assert_eq!(std::fs::read_link(&target).unwrap(), Path::new("missing"))
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
 }

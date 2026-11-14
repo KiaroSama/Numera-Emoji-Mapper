@@ -1,0 +1,42 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "d5fe1edbd9ecf37cc59eada51b2108a756d49edece5b1fd47db4a1b325ec5bd3",
+  "input": "tests/fixtures/native/provider-image/visible-9-alpha-255.png",
+  "input_sha256": "ff7301a08899225a5f0b24218e725b87697e56e98e0e00db7658e38972953d7f",
+  "plan": [
+    {
+      "rep": "aaabsc",
+      "tickers": [
+        "aaabsc",
+        "aaa"
+      ],
+      "kw": "BSC, Alpha",
+      "hash": "b732aca865ca0100db4ef898"
+    }
+  ],
+  "writes": [
+    [
+      "plan",
+      [
+        {
+          "rep": "aaabsc",
+          "tickers": [
+            "aaabsc",
+            "aaa"
+          ],
+          "kw": "BSC, Alpha",
+          "hash": "b732aca865ca0100db4ef898"
+        }
+      ]
+    ],
+    [
+      "groups",
+      {
+        "aaabsc": [
+          "aaabsc",
+          "aaa"
+        ]
+      }
+    ]
+  ]
+}

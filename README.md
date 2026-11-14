@@ -8,8 +8,9 @@
 
 [![CI](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml)
 [![License: GPL-3.0](https://img.shields.io/github/license/KiaroSama/Numera-Emoji-Mapper)](LICENSE)
-[![Python 3.11 | 3.12 | 3.14](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.14-3776AB?logo=python&logoColor=white)](.github/workflows/ci.yml)
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6)](docs/GUIDE.md)
+[![Runtime: Rust](https://img.shields.io/badge/runtime-Rust-DEA584?logo=rust)](runtime/Cargo.toml)
+[![Rust 1.99+](https://img.shields.io/badge/Rust-1.99%2B-DEA584?logo=rust)](runtime/Cargo.toml)
+[![Builds: Linux, macOS, Windows](https://img.shields.io/badge/builds-Linux%20%7C%20macOS%20%7C%20Windows-0078D6)](.github/workflows/ci.yml)
 <br>
 [![Backend: Cloudflare Workers](https://img.shields.io/badge/backend-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](worker/README.md)
 [![Telegram Bot API](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
@@ -19,8 +20,8 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/KiaroSama/Numera-Emoji-Mapper)](https://github.com/KiaroSama/Numera-Emoji-Mapper/commits/main)
 [![Top language](https://img.shields.io/github/languages/top/KiaroSama/Numera-Emoji-Mapper)](https://github.com/KiaroSama/Numera-Emoji-Mapper)
 [![Repo size](https://img.shields.io/github/repo-size/KiaroSama/Numera-Emoji-Mapper)](https://github.com/KiaroSama/Numera-Emoji-Mapper)
-[![Built with Pillow](https://img.shields.io/badge/built%20with-Pillow-3776AB)](requirements.txt)
-[![FFmpeg for video emoji](https://img.shields.io/badge/FFmpeg-video%20emoji-007808?logo=ffmpeg&logoColor=white)](requirements.txt)
+[![Native media codecs](https://img.shields.io/badge/media-native%20codecs-007808)](runtime/Cargo.toml)
+[![FFmpeg for video emoji](https://img.shields.io/badge/FFmpeg-video%20emoji-007808?logo=ffmpeg&logoColor=white)](docs/GUIDE.md)
 [![SQLite catalog](https://img.shields.io/badge/SQLite-catalog-003B57?logo=sqlite&logoColor=white)](docs/GUIDE.md)
 [![Worker in TypeScript](https://img.shields.io/badge/Worker-TypeScript-3178C6?logo=typescript&logoColor=white)](worker/README.md)
 [![Support donations](https://img.shields.io/badge/Support-donations-d04a9a)](#donate)
@@ -40,8 +41,27 @@ It ships with two independent workflows that share the same engine:
 | <img src="assets/numera-emoji-mapper-logo.png" alt="" width="42"> | **General** | `GENERAL_BOT_TOKEN` (`@YourEmojiBot`) | any folder of images you provide | any non-coin emoji pack |
 
 The installed Rust commands `make-emoji-pngs` and `build-pack` power both;
-only the source folder and selected bot token differ. Python retains exact media
-codecs and native-backed bindings for the unchanged coin-provider tools.
+only the source folder and selected bot token differ. The Rust CLI, panel and
+bounded media worker use native raster, SVG, Lottie and video implementations.
+The production dependency graph and ready-built archives require no Python,
+Python packages, virtual environment or Rust compiler. FFmpeg/FFprobe remain
+external tools for video.
+
+The first-party Rust migration lives on
+[`feature/first-party-rust`](https://github.com/KiaroSama/Numera-Emoji-Mapper/pull/70).
+The production crate is `runtime/`; `native/` retains the PyO3 compatibility and
+historical source-oracle harness under the explicit `numera-compat` developer
+command. Compatibility wheels and Python regression dependencies stay outside
+production downloads. The Cloudflare Worker and browser interface retain their
+TypeScript and JavaScript implementations.
+
+CI builds the standalone runtime and runs its native codec and offline package
+checks on Linux, Windows, Intel macOS and Apple Silicon macOS. It also retains
+the original Python regression matrix, browser suites, Worker checks, native
+Windows checks and historical wheel/venv package lifecycle. The guarded test
+runners schedule cases serially; concurrency and process-death scenarios remain
+inside their existing tests. [Migration and CI status](docs/rust-ci-status.md)
+records verification results and remaining platform gates.
 
 > 📘 **[Full Guide (0 → 100) — docs/GUIDE.md](docs/GUIDE.md)** — complete
 > reference for every workflow and command, written for humans and AI agents.
@@ -56,83 +76,87 @@ codecs and native-backed bindings for the unchanged coin-provider tools.
 
 ## Requirements
 
-- **Prebuilt packages:** Python **3.11** for the bundled offline dependency wheels.
-  Rust, Cargo and C++ build tools are **not end-user prerequisites**.
-- **Supported package targets:** Windows x64, Linux x64 (Ubuntu 24.04+ / glibc 2.39+),
-  macOS 15+ Intel and Apple Silicon. Each target must pass its native CI package
-  installation and media checks before its download is advertised as working.
-  Alpine/musl and other CPU targets are not covered by these packages.
-- The native executable and matching extension are mandatory; there is no Python
-  application fallback. The Windows menu and doctor use the installed backend;
-  integrated retirement and all four platform package checks have passed. See
-  [native backend evidence and limitations](docs/native-backend.md#verification-status-and-limitations).
-- A Telegram bot (create one with [@BotFather](https://t.me/BotFather))
-- Your numeric Telegram user id (the pack owner) — press **Start** on the bot once
-- Ready packages install the core dependencies offline: Pillow, resvg-py and
-  rlottie-python for exact media; requests for retained coin-provider tools.
-  `coins/remap_ids.py` additionally uses NumPy (`requirements-coins.txt`),
-  unnecessary for ordinary packs. Source developers install these manifests.
-- **ffmpeg + ffprobe** on `PATH` — only required for **video** emoji (`.webm`).
-  Install on Windows with `winget install Gyan.FFmpeg`. Static and animated
-  workflows do not need it.
+- **Prebuilt packages:** the standalone executable and its bundled assets. No
+  Python, virtual environment, Cargo or C++ toolchain is needed to run it.
+- **Package targets:** Windows x64, Linux x64 (Ubuntu 24.04+ / glibc 2.39+),
+  macOS 15+ Intel and Apple Silicon. Each download must pass its hosted native
+  package and media checks. Alpine/musl and other CPU targets are not covered.
+- A Telegram bot from [@BotFather](https://t.me/BotFather), and your numeric
+  Telegram user id. Press **Start** on the bot once before publishing.
+- **ffmpeg + ffprobe** on `PATH` for video emoji (`.webm`). On Windows:
+  `winget install Gyan.FFmpeg`. Static images and Lottie do not require them.
 
-## Install a ready-built package — no local Rust build
+## Install a ready-built package
 
-1. Open [Releases](https://github.com/KiaroSama/Numera-Emoji-Mapper/releases)
-   and download the matching `numera-emoji-mapper-<version>-<platform>.zip`
-   plus its `.zip.sha256` file. During backend development, tested archives are
-   available under **Artifacts** on a successful
-   [Prebuilt packages run](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml).
-   CI artifacts require a GitHub sign-in. The older `v2.0.0` release currently
-   has no binary assets; do not mistake its source ZIP for a ready-built package.
-2. Verify the ZIP against the accompanying SHA256, then extract it to its own
-   folder. Install Python 3.11 and, for video, FFmpeg/FFprobe. Packages include
-   the matching executable, native wheel and binary dependency wheels; setup
-   does not invoke Cargo or compile anything.
-3. Open a terminal in the extracted folder and run the installer for your OS.
+1. Open [Releases](https://github.com/KiaroSama/Numera-Emoji-Mapper/releases), or
+   the artifacts on a successful [Prebuilt packages run](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml),
+   and download the matching `numera-emoji-mapper-<version>-<platform>.zip` plus
+   its `.zip.sha256`. GitHub CI artifacts require sign-in. A source ZIP is not
+   a ready-built application.
+2. Verify the archive checksum and extract it into its own directory. SHA256
+   checks detect changed bytes; they do not authenticate the publisher.
+3. Run the executable directly. The extracted directory is already runnable;
+   there is no dependency installation step.
 
 **Windows:**
 
 ```powershell
-py -3.11 scripts\install_prebuilt.py
-```
-
-```powershell
-.venv\Scripts\python.exe scripts\launch_prebuilt.py --help
+.\numera-emoji.exe package-verify
+.\numera-emoji.exe doctor
+.\run.ps1
 ```
 
 **Linux / macOS:**
 
 ```bash
-python3.11 scripts/install_prebuilt.py
+chmod +x numera-emoji run.sh
+./numera-emoji package-verify
+./numera-emoji doctor
+./run.sh
 ```
+
+`run.ps1 -Check` and `run.sh --check` run the native doctor. Both launchers pass
+commands directly to the executable and never install or build prerequisites.
+Use `numera-emoji panel` to open the browser panel, or `--help` for commands.
+Copy `.env.example` to `.env` and fill in your configuration before contacting
+Telegram. Runtime temp/cache files stay in `logs/tmp/` and `.cache/` beside the
+application.
+
+Each archive includes [third-party notices](THIRD_PARTY_NOTICES.md) and the
+bundled renderer's original license and provenance files under `licenses/rlottie/`.
+These files are covered by the package's SHA256 inventory.
+
+An optional `install-prebuilt --destination /absolute/path/to/new-directory`
+command copies and verifies the whole package. It uses an exclusive installation
+lock and preserves the previous directory if replacement fails. Successful
+replacements retain the previous directory for recovery as well: a running
+application can still hold file handles into it. An existing
+installation containing local data or configuration is refused: extract updates
+separately and keep your `.env` and collections backed up. Hash checks and
+linked/path traversal refusals apply before installation.
+
+### Developer source build
+
+Production contributors need Rust 1.99+, CMake and a platform C/C++ linker (MSVC
+build tools on Windows). Python is unnecessary for this build:
 
 ```bash
-.venv/bin/python scripts/launch_prebuilt.py --help
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+runtime/target/release/numera-emoji --help
 ```
 
-Run `scripts/launch_prebuilt.py panel` with that same `.venv` interpreter to
-open the curation panel, or pass another native command shown by `--help`.
-On Windows, `./run.ps1` opens the menu and `./run.ps1 -Check` runs the doctor;
-neither compiles Rust or silently falls back to old Python applications.
-Copy `.env.example` to `.env` and fill in your own configuration before using
-Telegram commands. Never overwrite an existing `.env` or collection during an
-update: extract the new package separately and retain your data/config backup.
-The installer refuses an existing `.venv` before changing it, preserving the old
-installation. If a first installation fails, use a fresh extracted folder rather
-than overwriting an environment whose state is uncertain.
+On Windows, use `runtime\target\release\numera-emoji.exe`. The source launchers
+also find this production build automatically. To package it:
 
-**All application temp and cache files stay inside this folder:** `logs/tmp/`
-and `.cache/`; the environment lives in `.venv/`. Installation and launching
-bind child-process temp/pip/bytecode caches to these paths and reject linked
-cache directories. Ready packages contain no Cargo build tree. Existing local
-build caches are removed only after the current installation/rollback gates pass.
+```bash
+runtime/target/release/numera-emoji package-native --out dist --revision YOUR_COMMIT
+```
 
-### Developer source build (not required for package users)
-
-Only contributors building modified Rust source need Rust 1.99+, a platform
-linker (MSVC C++ tools on Windows), and `scripts/build_native.py`. Public ready
-packages are built and tested on hosted CI, not on the user's workstation.
+The optional compatibility toolkit is a separate development build:
+`cargo build --manifest-path native/Cargo.toml --locked --bins`. It needs Python
+3.11 and the historical requirements for source-oracle and wheel tests; invoke
+its developer commands through `native/target/debug/numera-compat`. It is not
+part of the production archive or runtime dependency graph.
 
 `.env` keys (see `.env.example`):
 
@@ -152,20 +176,20 @@ a tool that needs one stops and names it. Keep your logo in the git-ignored
 
 ## Quick start — general emoji pack (new bot)
 
-Run from the extracted package or installed checkout. `scripts/launch_prebuilt.py`
-selects its own environment/root; on Windows, `run.ps1` provides the same native
-commands through the menu and `run.ps1 -Check` verifies the installed runtime.
+Run from the extracted package. `./numera-emoji` locates its assets beside the
+executable. `run.ps1` and `run.sh` open the native menu; their check options run
+the native doctor.
 
 ```powershell
 # Put your source images in a folder, e.g. input/myset/
-.venv\Scripts\python.exe scripts\launch_prebuilt.py make-emoji-pngs --in input\myset --out build\myset
+.\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
 
 # Validate without calling Telegram
-.venv\Scripts\python.exe scripts\launch_prebuilt.py build-pack --base myset --title "My Emojis" `
+.\numera-emoji.exe build-pack --base myset --title "My Emojis" `
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji "😀" --dry-run
 
 # Build for real
-.venv\Scripts\python.exe scripts\launch_prebuilt.py build-pack --base myset --title "My Emojis" `
+.\numera-emoji.exe build-pack --base myset --title "My Emojis" `
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji "😀"
 ```
 
@@ -174,7 +198,7 @@ to attach searchable keywords to each emoji. Without it, the file name is used.
 
 ## `build-pack` options
 
-Use `scripts/launch_prebuilt.py build-pack --help` with the package interpreter;
+Use `./numera-emoji build-pack --help`;
 the [GUIDE CLI reference](docs/guide-cli.md) explains the options
 and defaults. The ones you need first:
 `--base` and `--title` (required), `--source-dir`, `--token-env` (`TELEGRAM_BOT_TOKEN` announces as the coin bot, any other as the general bot) and `--dry-run`.
@@ -230,16 +254,16 @@ deduplicates at **ingest** time, not after publishing:
 
 ```powershell
 # 1. Download from one or more existing packs into the catalog
-.venv\Scripts\python.exe scripts\launch_prebuilt.py fetch-pack https://t.me/addemoji/somepack_by_bot `
+.\numera-emoji.exe fetch-pack https://t.me/addemoji/somepack_by_bot `
     --token-env GENERAL_BOT_TOKEN
 
 # 2. (optional) Build extra emoji from your own files (auto static/video/animated)
-.venv\Scripts\python.exe scripts\launch_prebuilt.py add-media --in input\myset --emoji 😀
+.\numera-emoji.exe add-media --in input\myset --emoji 😀
 
 # 3. Preview, then publish into new per-format packs (resumable)
-.venv\Scripts\python.exe scripts\launch_prebuilt.py build-collection --base mypack --title "My Pack" `
+.\numera-emoji.exe build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN --dry-run
-.venv\Scripts\python.exe scripts\launch_prebuilt.py build-collection --base mypack --title "My Pack" `
+.\numera-emoji.exe build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN
 ```
 
@@ -262,7 +286,7 @@ premium custom-emoji IDs with tap-to-copy buttons (Telegram `copy_text`):
   from new posts. (Bots cannot read past channel history, only new posts.)
 
 ```powershell
-.venv\Scripts\python.exe scripts\launch_prebuilt.py emoji-bot     # or run.ps1 -> C1
+.\numera-emoji.exe emoji-bot     # or run.ps1 -> C1
 ```
 
 ## Cloudflare Worker (both bots, hosted)
@@ -273,7 +297,7 @@ its own webhook secret, answering only the ids in `ADMIN_USER_IDS`. It also
 exposes `POST /publish`, so a finished pack is announced **by the bot** in your
 channel rather than by this machine: set `WORKER_PUBLISH_URL` and
 `WORKER_PUBLISH_SECRET` in `.env` and **all three publishers** — `build-pack`,
-`build-collection` and `coins/rebuild_dedup.py` — route their links through
+`build-collection` and `coin-rebuild` — route their links through
 it. Leave either unset and the existing direct path is used, unchanged.
 
 It keeps its own log: a D1 table of warnings, errors and publishes, capped at the
@@ -356,10 +380,10 @@ tokens, labels, media IDs and arbitrary error text are excluded. Log delivery
 is bounded and does not block saving.
 
 ```powershell
-.venv\Scripts\python.exe scripts\launch_prebuilt.py panel        # or run.ps1 -> B4
-.venv\Scripts\python.exe scripts\launch_prebuilt.py panel --preview-fps 12
+.\numera-emoji.exe panel        # or run.ps1 -> B4
+.\numera-emoji.exe panel --preview-fps 12
 # Branding without a Telegram username lookup:
-.venv\Scripts\python.exe scripts\launch_prebuilt.py panel --bot-username YourEmojiBot
+.\numera-emoji.exe panel --bot-username YourEmojiBot
 ```
 
 B4 reopens an existing panel on the requested port instead of starting a second
@@ -368,41 +392,61 @@ on that port is refused; use another port for a separate panel session.
 
 ## Crypto-coin workflow (one component: `coins/`)
 
-The crypto-coin tool is a self-contained component under `coins/`. Provider and
-coin-domain workflows remain Python; shared Telegram transport, upload proofs,
-locks, atomic state, announcements and table rendering use native-backed bindings.
+The Rust CLI owns provider and coin-domain workflows, including Telegram
+transport, upload proofs, locks, atomic state, announcements and table rendering.
 The generic `build-pack` command also supports the coin bot (`TELEGRAM_BOT_TOKEN`).
-Coin data, scripts and images all live under `coins/`.
-Run every tool as a module from the repository root, e.g.
-`python -m coins.rebuild_dedup build` (never `python coins\rebuild_dedup.py`):
+Coin data, images and retained compatibility modules live under `coins/`.
+The executable includes `coin-alias-map`, `coin-enhance-map` and
+`coin-build-keywords`, `coin-fetch-logos [pages]`, `coin-fetch-paprika` and
+`coin-fetch-cmc`, with `--coin-dir DIR` for isolated coin data work. Provider
+commands retain exact `--dry`; Paprika also accepts `--retry-unmatched`.
+`coin-write-manifests` writes read-only live coin reports with
+`--out-dir`, `--state`, `--map` and `--token-env`. `coin-check-packs
+[--coin-dir DIR]` resumes a live read-only blank/duplicate audit; failed images
+remain retryable and incomplete listings never replace the report.
+`coin-remap-ids --emoji-dir DIR` rebuilds mappings by content, dry by default;
+calibrated `--apply` preserves a backup and refuses ambiguous/incomplete results.
+It makes no Telegram mutations.
+`coin-verify-logos --emoji-dir DIR` is review-only unless explicit
+`--fix --only` selects repairs; fixing mutates Telegram and requires separate
+operator authorization.
+`coin-rebuild-map [--coin-dir DIR] [--emoji-dir DIR] [--token-env KEY]`
+uses the frozen rebuild plan and recorded sources to prove every live sticker by
+image content. It preserves current aliases, refuses lost aliases/unreviewed
+shared crowds and writes review candidates rather than overwrite an unproven map.
+It reads Telegram only.
+`coin-rebuild [all|build|map|links]` accepts the same options.
+**Default `all` and explicit `build` may delete old packs and upload**; `links`
+resends messages, and `map` only reads Telegram. These Rust commands are exercised against synthetic providers and Telegram
+fixtures in CI. Platform/package results are tracked in
+[CI acceptance](docs/rust-ci-status.md); tests do not publish to real accounts.
+The historical source-retirement ledger remains a separate review gate in
+[migration status](docs/native-backend.md).
+Run the installed executable from your package root, for example
+`./numera-emoji coin-rebuild map` (`.exe` on Windows):
 
-- `coins/fetch_logos.py` — download coin logos from CoinGecko + write `coins/keywords.csv`
-- `coins/fetch_paprika.py` / `coins/fetch_cmc.py` — fill remaining coins from CoinPaprika / CoinMarketCap.
-  A lookup the provider never answers is *unknown*, not "no match": it is not
-  cached and the run exits 3 so it is retried. `coins.fetch_paprika --retry-unmatched`
-  searches again for coins an older run cached as unmatched. A rejected
-  `CMC_API_KEY` stops `coins.fetch_cmc` with a message naming it.
-- `coins/build_keywords.py` — (re)build `coins/keywords.csv` from logos on disk
-  (it and `fetch_logos.py` share one writer; either exits 3 when a lookup or
-  page was incomplete, keeping names an earlier run found)
-- `coins/rebuild_dedup.py` — duplicate-proof full rebuild + inventory fill
-- `coins/remap_ids.py` — rebuild `ticker_to_id.json` from image content, never positions
-- `coins/enhance_map.py` / `coins/alias_map.py` — point chain-variant tickers at the base coin's id
-- `coins/verify_logos.py` — review logos against official art; fix only the tickers you name
-- `coins/write_manifests.py` — write a per-pack manifest (ticker + emoji id)
-- `coins/check_all_packs.py` — audit every pack for blank/duplicate stickers
-- `coins/run_convert.ps1` / `coins/run_rebuild_loop.ps1` — watchdog drivers for long runs
+- `coin-fetch-logos` — download CoinGecko logos and write `coins/keywords.csv`.
+- `coin-fetch-paprika` / `coin-fetch-cmc` — fill missing logos from the other providers.
+  Unanswered lookups remain unknown and uncached; partial runs exit 3.
+  `coin-fetch-paprika --retry-unmatched` retries older unmatched searches.
+- `coin-build-keywords` — rebuild the CSV while preserving earlier resolved names.
+- `coin-rebuild [all|build|map|links]` — rebuild packs, identifiers and link messages.
+- `coin-remap-ids` — reconstruct `ticker_to_id.json` from image content.
+- `coin-enhance-map` / `coin-alias-map` — preserve chain-variant aliases.
+- `coin-verify-logos` — review official art and repair only explicitly selected tickers.
+- `coin-write-manifests` — write each pack's ticker/emoji-ID manifest.
+- `coin-check-packs` — audit packs for blank and duplicate stickers.
 
-Extra dependency: `coins/remap_ids.py` imports numpy —
-`pip install -r requirements-coins.txt`. Every other coin script runs on the core
-manifest alone.
+Coin compatibility/similarity dependencies are installed from
+`requirements-coins.txt`. The retained Python modules support the original
+regression suite; public coin commands use Rust.
 
 Convert coin logos to 100×100 PNGs (images live in `coins/logos/{svg,png}` →
 `coins/logos/emoji`):
 
 ```powershell
-.venv\Scripts\python.exe scripts\launch_prebuilt.py make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
-.venv\Scripts\python.exe scripts\launch_prebuilt.py make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
+.\numera-emoji.exe make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
+.\numera-emoji.exe make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
 ```
 
 Then build/rebuild with the coin bot:
@@ -410,19 +454,22 @@ Then build/rebuild with the coin bot:
 ```powershell
 # build + rebuild the id map + send the links (DESTRUCTIVE: deletes the old packs
 # first). Subcommands: build = upload only, map = rebuild the id map, links = resend.
-.venv\Scripts\python.exe -m coins.rebuild_dedup
+.\numera-emoji.exe coin-rebuild
 ```
 
 ## Project layout
 
 ```
 Numera Emoji Mapper/                  # the whole project
-  native/                      # Rust-owned local backend
-    src/                       # SQLite, state, Telegram, CLI, panel, reports, recovery
-    runtime/                   # installed numera-emoji executable, not a build cache
-    tests/                     # native contract and platform acceptance
+  runtime/                     # standalone Rust application and native media codecs
+    src/                       # production library, CLI, media worker and packaging
+    vendor/rlottie/             # pinned statically linked Lottie renderer
+    tests/                     # Python-free native and extracted-package acceptance
+  native/                      # optional PyO3 compatibility/oracle development harness
+    src/                       # shared pure Rust modules and historical adapters
+    tests/                     # retained contract and platform acceptance
   emojikit/                    # bounded Python compatibility, not CLI applications
-    media_bridge.py            # exact codec/identity IPC boundary
+    media_bridge.py            # retained compatibility IPC for original regressions
     media.py media_lottie.py    # static/video/Lottie decode, convert, validate, preview
     video_decode.py            # decoder selection and frame caching
     identity.py repaint.py     # stable content identity and exact tint operations
@@ -440,10 +487,10 @@ Numera Emoji Mapper/                  # the whole project
   assets/                      # the project's own images + the panel page and its scripts:
                                # panel-grid, -motion, -save, -drag, -actions, -holding, -draft
                                # (.js, in load order) + jsconfig.json/panel-globals.d.ts (tsc)
-  run.ps1                      # launcher (single-pack + collection workflows)
-  scripts/run-actions.ps1      # the launcher's menu actions (dot-sourced by run.ps1)
+  run.ps1 / run.sh              # direct standalone menu/doctor launchers
+  scripts/run-actions.ps1      # historical PowerShell action compatibility fixture
   scripts/check.ps1            # byte-compile + full unit suite (also used by CI)
-  scripts/launch_prebuilt.py   # own environment -> installed native command
+  numera-emoji                  # packaged standalone executable (.exe on Windows)
   scripts/run-native.ps1       # menu/doctor native boundary (no Cargo)
   docs/native-backend.md       # runtime boundaries, acceptance and rollback
   scripts/panel_sandbox.py     # the panel against a throwaway copy of the catalog
@@ -469,20 +516,33 @@ Generated/local-only (gitignored): `logos/` (and `coins/logos/`), `build/`,
 `coins/shared_logo_groups.json`, `coins/unresolved_logos.json`) are local-only
 too: this repository ships the tool that builds emoji packs, not anybody's
 published packs, and those files name live custom-emoji ids. They are rebuilt
-from Telegram by `python -m coins.rebuild_dedup map`.
+from Telegram by `./numera-emoji coin-rebuild map`.
 
 ## Checks
 
-One command byte-compiles every source file, lints it, and runs the whole unit
-suite — the same one CI runs, so local and CI results cannot drift:
+CI runs on every push and pull request, and supports manual dispatch.
+The full native acceptance step uses Cargo's automatic suite discovery; a new
+integration test does not need adding to a hand-maintained target list. The
+migration checkpoint is a limited diagnostic workflow, not full acceptance.
+
+Production checks use the dedicated bounded native runner (on Linux, its private
+network namespace requires a host permitting unprivileged user namespaces):
+
+```bash
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked
+```
+
+The retained compatibility check command byte-compiles and lints the historical
+Python files and runs their full regression suite:
 
 ```powershell
 # once: core, coins, ruff and playwright, then the panel suite's Chromium
 .venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt; .venv\Scripts\python.exe -m playwright install chromium
 .\scripts\check.ps1
 .\scripts\check.ps1 -Tests test_catalog -SkipCompile -SkipLint   # chosen suites only
-.\run.ps1 -Check      # separate: environment doctor (venv, Python 3.11+, deps, ffmpeg, unset .env keys)
-.venv\Scripts\python.exe scripts\launch_prebuilt.py status   # is the roster/archive current? offline, exit 3 if stale
+.\run.ps1 -Check      # native codec/configuration doctor; no Python environment needed
+.\numera-emoji.exe status   # is the roster/archive current? offline, exit 3 if stale
 ```
 
 If anything the gate needs is missing, `check.ps1` prints that one install line

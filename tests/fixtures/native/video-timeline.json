@@ -1,0 +1,189 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/video_decode.py": "bab9579240a23bb8ee59c1a66e496586ca881398bb4d82e956e2fb6c2b3ff13a",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89"
+  },
+  "cases": [
+    {
+      "name": "blue",
+      "input": "tests/fixtures/native/video-timeline/blue.webm",
+      "input_sha256": "fb922b8dfc7d84555af6176b04c30e65ffe85d626db7555ec35634a260827932",
+      "expected": {
+        "frame_bytes": 491520,
+        "rgba_sha256": "a4a0fe1ed09278743147b7e69611005544bec87baa7be253940ea7a0f6903b22",
+        "times": [
+          0.0,
+          0.033,
+          0.067,
+          0.1,
+          0.133,
+          0.167,
+          0.2,
+          0.233,
+          0.267,
+          0.3,
+          0.333,
+          0.367,
+          0.4,
+          0.433,
+          0.467,
+          0.5,
+          0.533,
+          0.567,
+          0.6,
+          0.633,
+          0.667,
+          0.7,
+          0.733,
+          0.767,
+          0.8,
+          0.833,
+          0.867,
+          0.9,
+          0.933,
+          0.967
+        ],
+        "duration": 1.0,
+        "content_key": "v:550d5576a862b24ffc01f478ee1f629a"
+      }
+    },
+    {
+      "name": "green",
+      "input": "tests/fixtures/native/video-timeline/green.webm",
+      "input_sha256": "7014a3243337df172b68d8aecf04cc4c09aee84fad1b7da87682adbddac414cf",
+      "expected": {
+        "frame_bytes": 491520,
+        "rgba_sha256": "448ff29b64e402527460785f0a0f522020aeb38ad476c6042e455d2b41a2c4a5",
+        "times": [
+          0.0,
+          0.033,
+          0.067,
+          0.1,
+          0.133,
+          0.167,
+          0.2,
+          0.233,
+          0.267,
+          0.3,
+          0.333,
+          0.367,
+          0.4,
+          0.433,
+          0.467,
+          0.5,
+          0.533,
+          0.567,
+          0.6,
+          0.633,
+          0.667,
+          0.7,
+          0.733,
+          0.767,
+          0.8,
+          0.833,
+          0.867,
+          0.9,
+          0.933,
+          0.967
+        ],
+        "duration": 1.0,
+        "content_key": "v:24720d0ea2985abad06209184e505a6e"
+      }
+    },
+    {
+      "name": "short",
+      "input": "tests/fixtures/native/video-timeline/short.webm",
+      "input_sha256": "15dc7cfb0f681f882caa3515f55e7114d029e1f86dccb131e856af77d4b53b2c",
+      "expected": {
+        "frame_bytes": 245760,
+        "rgba_sha256": "5ee225cbf205627ec98dde4d82f8f27149ff8257d2ffbcfaef1b0c6b16cb8184",
+        "times": [
+          0.0,
+          0.033,
+          0.067,
+          0.1,
+          0.133,
+          0.167,
+          0.2,
+          0.233,
+          0.267,
+          0.3,
+          0.333,
+          0.367,
+          0.4,
+          0.433,
+          0.467
+        ],
+        "duration": 0.5,
+        "content_key": "v:47616043c497b8762e3757b45a8630f2"
+      }
+    },
+    {
+      "name": "spiked",
+      "input": "tests/fixtures/native/video-timeline/spiked.webm",
+      "input_sha256": "681a9fd5cb4dc5e8d097ed810efd845a678c87b7b9042e9138b9daede9874a72",
+      "expected": {
+        "frame_bytes": 491520,
+        "rgba_sha256": "f59ccb95ef6d62a377a24eb8bc3731738d1e6b276f09f9734dd7de11c5c67d3e",
+        "times": [
+          0.0,
+          0.033,
+          0.067,
+          0.1,
+          0.133,
+          0.167,
+          0.2,
+          0.233,
+          0.267,
+          0.3,
+          0.333,
+          0.367,
+          0.4,
+          0.433,
+          0.467,
+          0.5,
+          0.533,
+          0.567,
+          0.6,
+          0.633,
+          0.667,
+          0.7,
+          0.733,
+          0.767,
+          0.8,
+          0.833,
+          0.867,
+          0.9,
+          0.933,
+          0.967
+        ],
+        "duration": 1.0,
+        "content_key": "v:550d5576a862b24ffc01f478ee1f629a"
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "left": "blue",
+      "right": "blue",
+      "expected": true
+    },
+    {
+      "left": "blue",
+      "right": "green",
+      "expected": false
+    },
+    {
+      "left": "blue",
+      "right": "short",
+      "expected": false
+    },
+    {
+      "left": "blue",
+      "right": "spiked",
+      "expected": false
+    }
+  ]
+}

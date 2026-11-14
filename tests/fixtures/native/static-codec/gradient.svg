@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="48" viewBox="0 0 64 48">
+  <defs><linearGradient id="paint"><stop stop-color="#ef3054"/><stop offset="1" stop-color="#2080df" stop-opacity="0.35"/></linearGradient></defs>
+  <path fill="url(#paint)" d="M8 8h48v32H8z"/>
+  <circle cx="32" cy="24" r="9" fill="#ffffff" fill-opacity="0.5"/>
+</svg>

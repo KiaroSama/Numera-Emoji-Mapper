@@ -1,0 +1,73 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "845d1443956499a93413316342f06d819e9ef89a9a8bb789dcaa53638cdbfc59",
+  "Pillow": "12.3.0",
+  "cases": [
+    {
+      "name": "opaque",
+      "input": "tests/fixtures/native/static-codec/opaque.png",
+      "input_sha256": "186ee151bdd1301c0e6c82e4e18550d248d4be36b8a0ae4c37ec6b91d44622f4",
+      "tint": "#1A80FF",
+      "expected": {
+        "changed": true,
+        "bytes": 32,
+        "sha256": "339aa3af27ce2ad9554802197348f3aa742461a9c6e847221f9de96af008cb81",
+        "repeat": true,
+        "size": [
+          13,
+          9
+        ],
+        "rgba_sha256": "c15754a3521b1ae68c279a9601c8414f37200ba37e2b9d9d9deaa27a3ae9686c",
+        "alpha_sha256": "d2f1e907b974d6a5a490c9055e64bf7f2c726f9aeb751e69a111f9eecdb2417d"
+      }
+    },
+    {
+      "name": "alpha-edge",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "tint": "#1A80FF",
+      "expected": {
+        "changed": true,
+        "bytes": 40,
+        "sha256": "e6b041053ac8bcc87710645648ef8942ff09ef1ddc03314bdd18fd53da73f768",
+        "repeat": true,
+        "size": [
+          13,
+          9
+        ],
+        "rgba_sha256": "8d68e956dc43c4240c53bd2a6061b38ed7f51b056853cbe69ad3a550d63cba2e",
+        "alpha_sha256": "aecf78508107f707863452c93a3261567d87af57dba4700eebc25a0c0c4b7a4d"
+      }
+    },
+    {
+      "name": "hidden-rgb",
+      "input": "tests/fixtures/native/static-codec/transparent-rgb.png",
+      "input_sha256": "07618aaae1edc16ce6a01933b9f5148ea14b0b6638b58e0c75a26a33559956c0",
+      "tint": "#1A80FF",
+      "expected": {
+        "changed": true,
+        "bytes": 32,
+        "sha256": "d7b0e5048dbe8298d65f7b5a54b045d394f0a75ec84004127782f2a3c4004f74",
+        "repeat": true,
+        "size": [
+          13,
+          9
+        ],
+        "rgba_sha256": "fb0e99626cfe83b283084171fedf0624bab2b4e9bc13280e140e3d0c18417974",
+        "alpha_sha256": "fee3d3a17121f0dd0962d02ae385a9076d6e1ccc7b82085992ff41eca3c2811a"
+      }
+    },
+    {
+      "name": "corrupt",
+      "input": "tests/fixtures/native/static-compare/corrupt.png",
+      "input_sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+      "tint": "#1A80FF",
+      "expected": {
+        "changed": false,
+        "bytes": 12,
+        "sha256": "5464533c9647b67eb320c40ccc5959537c09102ae75388f6a7675b433e745c9d",
+        "repeat": false
+      }
+    }
+  ]
+}

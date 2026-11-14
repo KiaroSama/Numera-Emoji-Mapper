@@ -1,5 +1,10 @@
 //! Collection publication state machine: progress is committed by content identity.
-use crate::{atomic, logging, publication::Publisher, reconcile, resume, telegram::ApiError};
+use crate::{
+    atomic, logging,
+    publication::{Failure, Publisher},
+    reconcile, resume,
+    telegram::ApiError,
+};
 use serde_json::{Value, json};
 use std::path::PathBuf;
 
@@ -33,8 +38,8 @@ fn keys(set: &Value) -> Result<Vec<String>, String> {
         .collect()
 }
 
-pub fn publish(
-    publisher: &mut Publisher<'_>,
+pub fn publish<M: crate::media_adapter::MediaCodec>(
+    publisher: &mut Publisher<'_, M>,
     options: &Options,
     plan: &[String],
     state: &mut Value,
@@ -70,12 +75,21 @@ pub fn publish(
     publish_locked(publisher, options, plan, state)
 }
 
-pub fn publish_locked(
-    publisher: &mut Publisher<'_>,
+pub fn publish_locked<M: crate::media_adapter::MediaCodec>(
+    publisher: &mut Publisher<'_, M>,
     options: &Options,
     plan: &[String],
     state: &mut Value,
 ) -> Result<Value, String> {
+    publish_checked(publisher, options, plan, state).map_err(|failure| failure.message)
+}
+
+pub(crate) fn publish_checked<M: crate::media_adapter::MediaCodec>(
+    publisher: &mut Publisher<'_, M>,
+    options: &Options,
+    plan: &[String],
+    state: &mut Value,
+) -> Result<Value, Failure> {
     let path = publisher
         .data
         .join(format!("publish_{}.json", options.base));
@@ -87,7 +101,7 @@ pub fn publish_locked(
             .map_err(|e| format!("cannot read publish state: {e}"))?;
     }
     *state = resume::collection(state.clone(), &options.base)?;
-    crate::publication_recovery::recover(publisher, options, state, &path)?;
+    crate::publication_recovery::recover_checked(publisher, options, state, &path)?;
     let indices = state["sets"]
         .as_array()
         .ok_or("invalid sets")?
@@ -107,7 +121,7 @@ pub fn publish_locked(
         indices.last().copied()
     };
     if let Some(i) = active {
-        publisher.reconcile(&mut state["sets"][i], &options.base)?;
+        publisher.reconcile_checked(&mut state["sets"][i], &options.base)?;
         save(&path, state)?;
         if !reconcile::open(&state["sets"][i]) {
             if options.into_pack.is_some() {
@@ -157,8 +171,9 @@ pub fn publish_locked(
         }
     }
     let pending = reconcile::pending(&publisher.cat.all(None)?, plan, &already, &skipped)?;
-    let (mut count, failed) = (0u64, 0u64);
-    for key in pending {
+    let pending_count = pending.len();
+    let (mut count, mut failed) = (0u64, 0u64);
+    'items: for key in pending {
         if publisher
             .cat
             .dispatch(json!({"operation":"published","base":options.base,"content_key":key}))?
@@ -179,9 +194,9 @@ pub fn publish_locked(
         let usable = publisher.runtime.block_on(
             publisher
                 .media
-                .call(json!({"operation":"usable","source":source,"format":item["fmt"]})),
+                .publication_usable(&source, text(&item, "fmt")?),
         )?;
-        if usable != true {
+        if !usable {
             skipped.insert(key);
             state["skipped"] = json!(skipped);
             save(&path, state)?;
@@ -199,135 +214,177 @@ pub fn publish_locked(
             }
             active = None;
         }
-        let creating = active.is_none();
-        let name = if let Some(i) = active {
-            text(&state["sets"][i], "name")?.to_owned()
-        } else {
-            index += 1;
-            let tag = match options.fmt.as_str() {
-                "static" => "s",
-                "video" => "v",
-                "animated" => "a",
-                "mixed" => "",
-                _ => return Err("invalid family format".into()),
+        // A definite full-set refusal permits one transition to a fresh create,
+        // never a resend to the refused set or a retry of an uncertain mutation.
+        loop {
+            let creating = active.is_none();
+            let name = if let Some(i) = active {
+                text(&state["sets"][i], "name")?.to_owned()
+            } else {
+                index += 1;
+                let tag = match options.fmt.as_str() {
+                    "static" => "s",
+                    "video" => "v",
+                    "animated" => "a",
+                    "mixed" => "",
+                    _ => return Err("invalid family format".into()),
+                };
+                format!("{}{tag}{index}_by_{}", options.base, options.bot)
             };
-            format!("{}{tag}{index}_by_{}", options.base, options.bot)
-        };
-        let title = format!(
-            "{} {}",
-            options.title,
-            state["sets"].as_array().ok_or("invalid sets")?.len() + 1
-        );
-        let target_index = active
-            .and_then(|i| state["sets"][i]["index"].as_u64())
-            .unwrap_or(index);
-        let intent = json!({"key":key,"operation":if creating{"create"}else{"add"},"set_name":name,"set_index":target_index,
+            let title = format!(
+                "{} {}",
+                options.title,
+                state["sets"].as_array().ok_or("invalid sets")?.len() + 1
+            );
+            let target_index = active
+                .and_then(|i| state["sets"][i]["index"].as_u64())
+                .unwrap_or(index);
+            let intent = json!({"key":key,"operation":if creating{"create"}else{"add"},"set_name":name,"set_index":target_index,
             "expected_before":active.map(|i|state["sets"][i]["live"].clone()),"title":title,"format":item["fmt"],"started_utc":logging::utc()});
-        state["in_flight"] = intent;
-        save(&path, state)?;
-        let first = if creating {
-            options.logo.as_ref().unwrap_or(&item)
-        } else {
-            &item
-        };
-        let result = publisher.mutate(
-            first,
-            &name,
-            creating.then_some(title.as_str()),
-            options.user_id,
-            options.repaint,
-        );
-        let result = match result {
-            Ok(out) => out,
-            Err(ApiError::FloodWait { method, seconds }) => {
-                save(&path, state)?;
-                return Err(format!("FLOOD_WAIT {method} {seconds}"));
-            }
-            Err(ApiError::Rejected(error))
-                if creating && error.to_lowercase().contains("occupied") =>
-            {
-                crate::publication_recovery::recover(publisher, options, state, &path)?;
-                let i = state["sets"]
-                    .as_array()
-                    .ok_or("invalid sets")?
-                    .iter()
-                    .position(|set| set["name"] == name)
-                    .ok_or("occupied set could not be adopted")?;
-                active = Some(i);
-                if publisher.cat.dispatch(
-                    json!({"operation":"published","base":options.base,"content_key":key}),
-                )? == true
-                {
-                    continue;
+            state["in_flight"] = intent;
+            save(&path, state)?;
+            let first = if creating {
+                options.logo.as_ref().unwrap_or(&item)
+            } else {
+                &item
+            };
+            let mut result = publisher.mutate(
+                first,
+                &name,
+                creating.then_some(title.as_str()),
+                options.user_id,
+                options.repaint,
+            );
+            let occupied = creating
+                && matches!(&result,
+            Err(ApiError::Rejected(error)) if error.to_lowercase().contains("occupied"));
+            let mut registered = false;
+            if occupied || (creating && options.logo.is_some() && result.is_ok()) {
+                if occupied {
+                    match publisher.tg.probe(&name) {
+                        (crate::telegram::SetState::Exists, Some(_)) => {}
+                        (crate::telegram::SetState::Missing, _) => {
+                            return Err(result.err().ok_or("missing occupied refusal")?.into());
+                        }
+                        _ => {
+                            return Err(Failure::unknown(
+                                "occupied set cannot be read; intent retained",
+                            ));
+                        }
+                    }
                 }
-                if !reconcile::open(&state["sets"][i]) {
-                    return Err("adopted set contains unattributed stickers".into());
+                // Existence records a container, not content. A confirmed logo create
+                // also survives a later artwork refusal without reusing its index.
+                state["sets"].as_array_mut().ok_or("invalid sets")?.push(json!({
+                "fmt":options.fmt,"index":index,"name":name,"title":title,
+                "live":u64::from(options.logo.is_some()),"logo":options.logo.is_some(),"keys":[]
+            }));
+                let i = state["sets"].as_array().ok_or("invalid sets")?.len() - 1;
+                active = Some(i);
+                registered = true;
+                save(&path, state)?;
+                if occupied {
+                    publisher.reconcile_checked(&mut state["sets"][i], &options.base)?;
+                    state["in_flight"] = Value::Null;
+                    save(&path, state)?;
+                    if publisher.cat.dispatch(
+                        json!({"operation":"published","base":options.base,"content_key":key}),
+                    )? == true
+                    {
+                        continue 'items;
+                    }
+                    if !reconcile::open(&state["sets"][i]) {
+                        return Err("adopted set contains unattributed stickers".into());
+                    }
                 }
                 state["in_flight"] = json!({"key":key,"operation":"add","set_name":name,"set_index":index,
-                    "expected_before":state["sets"][i]["live"],"format":item["fmt"],"started_utc":logging::utc()});
+                "expected_before":state["sets"][i]["live"],"format":item["fmt"],"started_utc":logging::utc()});
                 save(&path, state)?;
-                let out = publisher
-                    .mutate(&item, &name, None, options.user_id, options.repaint)
-                    .map_err(crate::telegram::ApiError::command_error)?;
-                record(publisher, state, i, &item, &out, &options.base)?;
-                state["in_flight"] = Value::Null;
-                count += 1;
-                save(&path, state)?;
-                continue;
+                result = publisher.mutate(&item, &name, None, options.user_id, options.repaint);
             }
-            Err(ApiError::Ambiguous(_)) => {
-                if let Some(i) = active {
-                    publisher.reconcile(&mut state["sets"][i], &options.base)?;
+            let result = match result {
+                Ok(out) => out,
+                Err(ApiError::FloodWait { method, seconds }) => {
                     save(&path, state)?;
+                    return Err(Failure::unknown(format!("FLOOD_WAIT {method} {seconds}")));
                 }
-                return Err(
-                    "ambiguous mutation retained in state; reconcile before another mutation"
-                        .into(),
-                );
-            }
-            Err(ApiError::Rejected(e)) if e.to_lowercase().contains("wrong file type") => {
-                skipped.insert(key);
-                state["skipped"] = json!(skipped);
-                state["in_flight"] = Value::Null;
+                Err(ApiError::Rejected(error))
+                    if !creating && error.contains("STICKERS_TOO_MUCH") =>
+                {
+                    state["in_flight"] = Value::Null;
+                    save(&path, state)?;
+                    if options.into_pack.is_some() {
+                        return Err(
+                            "requested pack is full; refusing to select another pack".into()
+                        );
+                    }
+                    active = None;
+                    continue;
+                }
+                Err(ApiError::Ambiguous(_)) => {
+                    if let Some(i) = active {
+                        publisher.reconcile_checked(&mut state["sets"][i], &options.base)?;
+                        if publisher.cat.dispatch(
+                            json!({"operation":"published","base":options.base,"content_key":key}),
+                        )? != true
+                        {
+                            failed += 1;
+                        }
+                        state["in_flight"] = Value::Null;
+                        save(&path, state)?;
+                        if !reconcile::open(&state["sets"][i]) {
+                            active = None;
+                        }
+                        continue 'items;
+                    }
+                    return Err(Failure::unknown(
+                        "ambiguous mutation retained in state; reconcile before another mutation",
+                    ));
+                }
+                Err(ApiError::Rejected(error)) => {
+                    // Only an answered refusal proves that this attempt did not land.
+                    // Unknown transport/confirmation keeps its intent and stops below.
+                    if creating && !registered {
+                        index -= 1;
+                    }
+                    if error.to_lowercase().contains("wrong file type") {
+                        skipped.insert(key.clone());
+                        state["skipped"] = json!(skipped);
+                    } else {
+                        failed += 1;
+                    }
+                    state["in_flight"] = Value::Null;
+                    save(&path, state)?;
+                    if let Some(log) = publisher.tg.log() {
+                        log.event(
+                            "WARNING",
+                            "publisher",
+                            &format!("[{}] upload refused for {key}: {error}", options.fmt),
+                        );
+                    }
+                    continue 'items;
+                }
+                Err(error) => {
+                    save(&path, state)?;
+                    let mut failure = Failure::from(error);
+                    failure.message = format!(
+                        "publication failed with retained intent: {}",
+                        failure.message
+                    );
+                    return Err(failure);
+                }
+            };
+            if creating && !registered {
+                state["sets"]
+                    .as_array_mut()
+                    .ok_or("invalid sets")?
+                    .push(json!({
+                        "fmt":options.fmt,"index":index,"name":name,"title":title,
+                        "live":0,"logo":false,"keys":[]
+                    }));
+                active = Some(state["sets"].as_array().ok_or("invalid sets")?.len() - 1);
                 save(&path, state)?;
-                continue;
             }
-            Err(error) => {
-                save(&path, state)?;
-                return Err(format!("publication failed with retained intent: {error}"));
-            }
-        };
-        if creating {
-            let logo = options.logo.is_some();
-            state["sets"].as_array_mut().ok_or("invalid sets")?.push(json!({"fmt":options.fmt,"index":index,"name":name,"title":title,"live":if logo{1}else{0},"logo":logo,"keys":[]}));
-            active = Some(state["sets"].as_array().ok_or("invalid sets")?.len() - 1);
-            save(&path, state)?;
-            if logo {
-                state["in_flight"] = json!({"key":key,"operation":"add","set_name":name,
-                    "set_index":index,"expected_before":1,"format":item["fmt"],"started_utc":logging::utc()});
-                save(&path, state)?;
-                let out = publisher
-                    .mutate(&item, &name, None, options.user_id, options.repaint)
-                    .map_err(crate::telegram::ApiError::command_error)?;
-                record(
-                    publisher,
-                    state,
-                    active.ok_or("missing active set")?,
-                    &item,
-                    &out,
-                    &options.base,
-                )?;
-            } else {
-                record(
-                    publisher,
-                    state,
-                    active.ok_or("missing active set")?,
-                    &item,
-                    &result,
-                    &options.base,
-                )?;
-            }
-        } else {
             record(
                 publisher,
                 state,
@@ -336,17 +393,35 @@ pub fn publish_locked(
                 &result,
                 &options.base,
             )?;
-        }
-        state["in_flight"] = Value::Null;
-        count += 1;
-        save(&path, state)?;
-        if let Some(i) = active
-            && state["sets"][i]["live"]
-                .as_u64()
-                .is_some_and(|n| n >= options.per_set)
-        {
-            let set = state["sets"][i].clone();
-            crate::collection_notify::notify(publisher, options.user_id, state, &path, &set, true)?;
+            state["in_flight"] = Value::Null;
+            count += 1;
+            save(&path, state)?;
+            if let Some(i) = active {
+                progress(
+                    publisher,
+                    options,
+                    &item,
+                    &state["sets"][i],
+                    count,
+                    pending_count,
+                );
+            }
+            if let Some(i) = active
+                && state["sets"][i]["live"]
+                    .as_u64()
+                    .is_some_and(|n| n >= options.per_set)
+            {
+                let set = state["sets"][i].clone();
+                crate::collection_notify::notify(
+                    publisher,
+                    options.user_id,
+                    state,
+                    &path,
+                    &set,
+                    true,
+                )?;
+            }
+            break;
         }
     }
     for set in state["sets"]
@@ -356,7 +431,7 @@ pub fn publish_locked(
         .filter(|set| set["fmt"] == options.fmt)
     {
         if set["keys"].as_array().is_some_and(|keys| !keys.is_empty()) {
-            publisher.reconcile(set, &options.base)?;
+            publisher.reconcile_checked(set, &options.base)?;
             crate::collection_manifest::write(&publisher.data, publisher.cat, set, &options.base)?;
         }
     }
@@ -370,8 +445,31 @@ pub fn publish_locked(
     }
     Ok(json!({"uploaded":count,"failed":failed}))
 }
-fn record(
-    publisher: &mut Publisher<'_>,
+fn progress<M: crate::media_adapter::MediaCodec>(
+    publisher: &Publisher<'_, M>,
+    options: &Options,
+    item: &Value,
+    set: &Value,
+    count: u64,
+    total: usize,
+) {
+    if let Some(log) = publisher.tg.log() {
+        log.event(
+            "INFO",
+            "publisher",
+            &format!(
+                "[{}] uploaded {} -> {} #{} ({count}/{total} this run)",
+                options.fmt,
+                item["content_key"].as_str().unwrap_or("?"),
+                set["name"].as_str().unwrap_or("?"),
+                set["live"].as_u64().unwrap_or(0),
+            ),
+        );
+    }
+}
+
+fn record<M: crate::media_adapter::MediaCodec>(
+    publisher: &mut Publisher<'_, M>,
     state: &mut Value,
     i: usize,
     item: &Value,

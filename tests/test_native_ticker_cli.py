@@ -1,4 +1,5 @@
 """Native prepared-PNG builder owns upload intents and repeats without another mutation."""
+import io
 import json
 import os
 from pathlib import Path
@@ -8,7 +9,12 @@ import sys
 import tempfile
 import threading
 import unittest
+from email import policy
+from email.parser import BytesParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+from PIL import Image
+
 from tests.test_native_local_cli import BINARY, ROOT
 
 RUNS_ON_NATIVE_WINDOWS = True
@@ -75,6 +81,10 @@ class NativeTickerCLI(unittest.TestCase):
             logo_source = ROOT / "assets/numera-emoji-mapper-logo-circle.png"
             media.to_static_png(logo_source, root / "logo.png")
             logo_payload = (root / "logo.png").read_bytes()
+            with Image.open(root / "logo.png") as reference:
+                self.assertEqual(reference.size, (100, 100))
+                self.assertEqual(reference.mode, "RGBA")
+                logo_rgba = reference.tobytes()
             observed = []
             live = []
             if recovery:
@@ -105,7 +115,10 @@ class NativeTickerCLI(unittest.TestCase):
                             return
                         result = {"stickers": live}
                     elif method == "createNewStickerSet":
-                        self.server.test.assertIn(logo_payload if branded else payload, body)
+                        if branded:
+                            self.assert_logo_upload(body)
+                        else:
+                            self.server.test.assertIn(payload, body)
                         self.server.test.assertIn(b"custom_emoji", body)
                         intent = json.loads((root / "state_fixture.json").read_text(encoding="utf-8"))["in_flight"]
                         self.server.test.assertEqual(intent["operation"], "create")
@@ -128,6 +141,23 @@ class NativeTickerCLI(unittest.TestCase):
                         self.send_error(400)
                         return
                     self.reply({"ok": True, "result": result})
+                def assert_logo_upload(self, body):
+                    header = f"Content-Type: {self.headers['Content-Type']}\r\n\r\n".encode("utf-8")
+                    message = BytesParser(policy=policy.default).parsebytes(header + body)
+                    uploads = [part.get_payload(decode=True) for part in message.iter_parts()
+                               if part.get_param("name", header="content-disposition") == "file0"]
+                    self.server.test.assertEqual(len(uploads), 1)
+                    cached = list((root / "logs").glob("ticker-codec-*/brand/logo_*.png"))
+                    self.server.test.assertEqual(len(cached), 1)
+                    self.server.test.assertEqual(uploads[0], cached[0].read_bytes())
+                    # The independent Pillow conversion above fixes the expected
+                    # pixels; native PNG compression may differ. Check the real
+                    # upload while the mutation request is still being handled.
+                    with Image.open(io.BytesIO(uploads[0])) as uploaded:
+                        self.server.test.assertEqual(uploaded.format, "PNG")
+                        self.server.test.assertEqual(uploaded.size, (100, 100))
+                        self.server.test.assertEqual(uploaded.mode, "RGBA")
+                        self.server.test.assertEqual(uploaded.tobytes(), logo_rgba)
                 def do_GET(self):
                     self.reply(logo_payload if self.path.endswith("logo.png") else payload)
                 def reply(self, value):

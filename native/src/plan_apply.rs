@@ -1,11 +1,12 @@
 //! Saved intent execution is a separate native command, dry-run unless explicitly applied.
 use crate::{
-    atomic, catalog::Catalog, config::Config, logging::RunLog, media_adapter::MediaAdapter,
-    publication::Publisher, publish_collection::Options, telegram::Telegram,
+    atomic, catalog::Catalog, config::Config, logging::RunLog,
+    media_native_adapter::NativeMediaAdapter, publication::Publisher, publish_collection::Options,
+    telegram::Telegram,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 fn load(path: &Path, default: Value) -> Result<Value, String> {
     match std::fs::read(path) {
         Ok(bytes) => serde_json::from_slice(&bytes)
@@ -101,15 +102,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         return Err("--apply needs a valid user ID".into());
     }
     let token = config.require(&token_key)?;
-    let logo_bots = config.logo_bots(true)?;
-    let logo_path = if logo_bots.is_empty() {
-        None
-    } else {
-        config.logo_path(true)?
-    };
-    if !logo_bots.is_empty() && logo_path.as_ref().is_none_or(|p| !p.is_file()) {
-        return Err("required brand logo is missing".into());
-    }
+    let (logo_bots, logo_path) = config.brand_logo(false, None)?;
     let mut cat = Catalog::open(&db, &crate::logging::utc(), &config.root)?;
     let _family = crate::locks::Lease::acquire(
         &data.join(format!("publish_{base}.lock")),
@@ -145,7 +138,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         } else {
             "https://api.telegram.org".into()
         };
-        let mut tg = Telegram::new(token.into(), api).map_err(|e| e.to_string())?;
+        let mut tg = Telegram::new(token.into(), api)
+            .map_err(|e| e.to_string())?
+            .with_log(log);
         tg.max_flood_wait = Some(max_wait);
         let bot = tg
             .read_call("getMe", &BTreeMap::new())
@@ -181,21 +176,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             )?;
             budget -= 1;
         }
-        let python = std::env::var_os("PYO3_PYTHON")
-            .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-            .map(PathBuf::from)
-            .unwrap_or_else(|| {
-                config.root.join(if cfg!(windows) {
-                    ".venv/Scripts/python.exe"
-                } else {
-                    ".venv/bin/python"
-                })
-            });
-        let media = MediaAdapter {
-            python,
-            root: config.root.clone(),
-            scratch: data.join("tmp/native-codec"),
-        };
+        let media = NativeMediaAdapter::for_project(&config.root, data.join("tmp/native-codec"))?;
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()

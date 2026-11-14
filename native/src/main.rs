@@ -1,23 +1,15 @@
 #![deny(unsafe_code)]
 
 use _native::{
-    config::Config, logging::RunLog, media_adapter::MediaAdapter, panel_http,
+    config::Config, logging::RunLog, media_native_adapter::NativeMediaAdapter, panel_http,
     panel_preview::Previews, panel_session,
 };
 use serde_json::{Value, json};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 fn root() -> Result<PathBuf, String> {
-    let executable = std::env::current_exe().map_err(|e| e.to_string())?;
-    for directory in executable.ancestors().skip(1) {
-        if directory.join("assets/panel.html").is_file()
-            && directory.join("pyproject.toml").is_file()
-        {
-            return Ok(directory.into());
-        }
-    }
-    Err("cannot locate project assets beside native executable".into())
+    _native::tooling_environment::project_root()
 }
 fn value(args: &[String], i: &mut usize) -> Result<String, String> {
     *i += 1;
@@ -26,7 +18,7 @@ fn value(args: &[String], i: &mut usize) -> Result<String, String> {
         .ok_or("option requires a value".into())
 }
 fn panel_options(args: &[String]) -> Result<Value, String> {
-    let mut out = json!({"data_dir":"collection","port":9450,"preview_fps":15,"show_published":false,"bot":"","packs":[],"no_open":false});
+    let mut out = json!({"data_dir":"collection","port":panel_session::DEFAULT_PORT,"preview_fps":15,"show_published":false,"bot":"","packs":[],"no_open":false});
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
@@ -68,41 +60,6 @@ fn panel_options(args: &[String]) -> Result<Value, String> {
     }
     Ok(out)
 }
-fn pack_names(data: &Path, wanted: &[u64]) -> Result<Value, String> {
-    let mut paths = std::fs::read_dir(data)
-        .map_err(|e| e.to_string())?
-        .filter_map(Result::ok)
-        .map(|e| e.path())
-        .filter(|p| {
-            p.file_name()
-                .and_then(|s| s.to_str())
-                .is_some_and(|s| s.starts_with("publish_") && s.ends_with(".json"))
-        })
-        .collect::<Vec<_>>();
-    paths.sort();
-    let mut out = serde_json::Map::new();
-    for path in paths {
-        let Ok(bytes) = std::fs::read(path) else {
-            continue;
-        };
-        let Ok(doc) = serde_json::from_slice::<Value>(&bytes) else {
-            continue;
-        };
-        if let Some(sets) = doc.get("sets").and_then(Value::as_array) {
-            for set in sets {
-                if let (Some(n), Some(name)) = (
-                    set.get("index").and_then(Value::as_u64),
-                    set.get("name").and_then(Value::as_str),
-                ) && wanted.contains(&n)
-                    && !name.is_empty()
-                {
-                    out.insert(name.into(), json!(n));
-                }
-            }
-        }
-    }
-    Ok(json!(out))
-}
 const COMMANDS: &[&str] = &[
     "add-media",
     "fetch-pack",
@@ -118,9 +75,205 @@ const COMMANDS: &[&str] = &[
     "status",
     "pack-archive",
     "identity-repair",
+    "coin-alias-map",
+    "coin-enhance-map",
+    "coin-build-keywords",
+    "coin-fetch-logos",
+    "coin-fetch-paprika",
+    "coin-fetch-cmc",
+    "coin-write-manifests",
+    "coin-check-packs",
+    "coin-remap-ids",
+    "coin-verify-logos",
+    "coin-rebuild-map",
+    "coin-rebuild",
+    "source-inventory",
+    "package-native",
+    "package-verify",
+    "benchmark-similarity",
+    "source-lottie-render",
+    "source-static-images",
+    "test-runner",
+    "test-plan",
+    "test-cargo",
+    "runtime-check",
+    "native-convert-owner",
+    "doctor",
+    "menu",
+    "check",
+    "install-prebuilt",
 ];
 fn main() -> std::process::ExitCode {
+    #[cfg(target_os = "linux")]
+    {
+        let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
+        if arguments
+            .first()
+            .is_some_and(|command| command == "test-net-bootstrap")
+        {
+            return match root() {
+                Ok(root) => {
+                    // SAFETY: first dispatch in a fresh process, before Python, runtimes or threads.
+                    #[allow(unsafe_code)]
+                    let code =
+                        unsafe { _native::tooling_test_network_linux::run(&root, &arguments[1..]) };
+                    std::process::ExitCode::from(code as u8)
+                }
+                Err(error) => {
+                    eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                    2.into()
+                }
+            };
+        }
+    }
     let args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args
+        .first()
+        .is_some_and(|command| matches!(command.as_str(), "runtime-check" | "runtime-probe"))
+    {
+        return match root() {
+            Ok(root) => {
+                let code = if args[0] == "runtime-probe" {
+                    // SAFETY: first dispatch in a fresh binary; no runtime, thread or Python attachment yet.
+                    #[allow(unsafe_code)]
+                    unsafe {
+                        _native::tooling_runtime::probe(&root, &args[1..])
+                    }
+                } else {
+                    _native::tooling_runtime::run(&root, &args[1..])
+                };
+                std::process::ExitCode::from(code as u8)
+            }
+            Err(error) => {
+                eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                std::process::ExitCode::from(1)
+            }
+        };
+    }
+    if args.first().is_some_and(|command| {
+        matches!(
+            command.as_str(),
+            "doctor" | "menu" | "check" | "install-prebuilt"
+        )
+    }) {
+        return match root() {
+            Ok(root) => {
+                let code = match args[0].as_str() {
+                    "doctor" => _native::tooling_doctor::run(&root, &args[1..]),
+                    "check" => _native::tooling_check::entry(&root, &args[1..]),
+                    "install-prebuilt" => _native::tooling_prebuilt::run(&root, &args[1..]),
+                    _ => _native::tooling_menu_cli::run(&root, &args[1..]),
+                };
+                std::process::ExitCode::from(code as u8)
+            }
+            Err(error) => {
+                eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                1.into()
+            }
+        };
+    }
+    if args.first().is_some_and(|command| {
+        matches!(command.as_str(), "test-runner" | "test-plan" | "test-cargo")
+    }) {
+        let code = match root() {
+            Ok(root) => match args[0].as_str() {
+                "test-plan" => _native::tooling_test_runner::plan(&root, &args[1..]),
+                "test-cargo" => _native::tooling_test_command::run(&root, &args[1..]),
+                _ => _native::tooling_test_runner::run(&root, &args[1..]),
+            },
+            Err(error) => {
+                eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                1
+            }
+        };
+        #[cfg(windows)]
+        std::process::exit(code);
+        #[cfg(not(windows))]
+        return std::process::ExitCode::from(code as u8);
+    }
+    if args
+        .first()
+        .is_some_and(|command| command == "native-convert-owner")
+    {
+        let code = match root() {
+            Ok(root) => {
+                let log = Arc::new(RunLog::open(&root, "native_convert_owner", vec![]));
+                log.install_panic_hook();
+                let code = _native::tooling_convert_cli::run(&root, &args[1..], &log);
+                log.finish(code);
+                code
+            }
+            Err(error) => {
+                eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                1
+            }
+        };
+        // Stable ExitCode only accepts u8. All owners/logs are already dropped here;
+        // Windows must preserve the converter's full status rather than truncate it.
+        #[cfg(windows)]
+        std::process::exit(code);
+        #[cfg(not(windows))]
+        return std::process::ExitCode::from(code as u8);
+    }
+    if args
+        .first()
+        .is_some_and(|command| command == "benchmark-similarity")
+    {
+        return match root() {
+            Ok(root) => _native::tooling_similarity_cli::run(&root, &args[1..]).into(),
+            Err(error) => {
+                eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                1.into()
+            }
+        };
+    }
+    if args.first().is_some_and(|command| {
+        matches!(
+            command.as_str(),
+            "source-lottie-render" | "source-static-images"
+        )
+    }) {
+        return match root() {
+            Ok(root) => _native::source_media_oracle_cli::run(&root, &args[0], &args[1..]).into(),
+            Err(error) => {
+                eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                1.into()
+            }
+        };
+    }
+    if args
+        .first()
+        .is_some_and(|command| command == "source-oracle-worker")
+    {
+        return match root() {
+            Ok(root) => _native::source_oracle_worker::run(&root, &args[1..]).into(),
+            Err(error) => {
+                eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                std::process::ExitCode::from(2)
+            }
+        };
+    }
+    if args
+        .first()
+        .is_some_and(|command| command == "codec-worker")
+    {
+        return match root() {
+            Ok(root) => {
+                // SAFETY: private worker dispatch precedes Python initialization
+                // and creation of any application thread or async runtime.
+                #[allow(unsafe_code)]
+                if let Err(error) = unsafe { _native::tooling_runtime::initialize_codec(&root) } {
+                    eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                    return 2.into();
+                }
+                std::process::ExitCode::from(_native::codec_worker::run(&root, &args[1..]) as u8)
+            }
+            Err(error) => {
+                eprintln!("ERROR: {}", _native::logging::redact(&error, &[]));
+                std::process::ExitCode::from(2)
+            }
+        };
+    }
     if args.is_empty() || args == ["--help"] || args == ["-h"] {
         println!(
             "Numera Emoji Mapper native backend\nUsage: numera-emoji COMMAND [OPTIONS]\nCommands: panel {}\nUse COMMAND --help for options (emoji-bot uses environment configuration).",
@@ -132,8 +285,47 @@ fn main() -> std::process::ExitCode {
         let result = (|| {
             let root = root()?;
             let config = Config::load(root.clone())?;
-            let log = RunLog::open(&root, &args[0], config.secret_values());
-            let result = if args[0] == "add-media" {
+            let mut secrets = config.secret_values();
+            // Register before argument validation: even an error may contain the selected value.
+            for option in args[1..].windows(2).filter(|pair| pair[0] == "--token-env") {
+                let token = config.value(&option[1]);
+                if !token.is_empty() {
+                    secrets.push(token.into());
+                }
+            }
+            let log = Arc::new(RunLog::open(&root, &args[0], secrets));
+            log.install_panic_hook();
+            log.apply_retention(&root, config.value("EMOJI_LOG_RETENTION_DAYS"));
+            let result = if matches!(args[0].as_str(), "coin-alias-map" | "coin-enhance-map") {
+                _native::coin_map_cli::run(&config, &args[0], &args[1..], &log)
+            } else if matches!(args[0].as_str(), "coin-fetch-paprika" | "coin-fetch-cmc") {
+                _native::coin_provider_cli::run(
+                    &config,
+                    args[0].trim_start_matches("coin-fetch-"),
+                    &args[1..],
+                    &log,
+                )
+            } else if matches!(args[0].as_str(), "package-native" | "package-verify") {
+                _native::tooling_package_cli::run(&config, &args[0], &args[1..], &log)
+            } else if args[0] == "source-inventory" {
+                _native::source_inventory_cli::run(&config, &args[1..], &log)
+            } else if args[0] == "coin-rebuild" {
+                _native::coin_rebuild_cli::run(&config, &args[1..], &log)
+            } else if args[0] == "coin-rebuild-map" {
+                _native::coin_rebuild_map_cli::run(&config, &args[1..], &log)
+            } else if args[0] == "coin-verify-logos" {
+                _native::coin_verify_cli::run(&config, &args[1..], &log)
+            } else if args[0] == "coin-remap-ids" {
+                _native::coin_remap_cli::run(&config, &args[1..], &log)
+            } else if args[0] == "coin-check-packs" {
+                _native::coin_audit_cli::run(&config, &args[1..], &log)
+            } else if args[0] == "coin-write-manifests" {
+                _native::coin_manifest_cli::run(&config, &args[1..], &log)
+            } else if args[0] == "coin-fetch-logos" {
+                _native::coin_gecko_cli::run(&config, &args[1..], &log)
+            } else if args[0] == "coin-build-keywords" {
+                _native::coin_keywords_cli::run(&config, &args[1..], &log)
+            } else if args[0] == "add-media" {
                 _native::local_cli::run(&config, &args[1..], &log)
             } else if args[0] == "fetch-pack" {
                 _native::fetch_cli::run(&config, &args[1..], &log)
@@ -199,6 +391,8 @@ fn main() -> std::process::ExitCode {
         let config = Config::load(root.clone())?;
         let options = panel_options(&args[1..])?;
         let log = Arc::new(RunLog::open(&root, "numera-emoji", config.secret_values()));
+        log.install_panic_hook();
+        log.apply_retention(&root, config.value("EMOJI_LOG_RETENTION_DAYS"));
         let code = match start_panel(&config, options, log.clone()) {
             Ok(()) => 0,
             Err(e) => {
@@ -240,7 +434,13 @@ fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), 
     let port = options["port"].as_u64().ok_or("invalid port")? as u16;
     let session = panel_session::identity(&db, show, &packs)?;
     if let Some(existing) = panel_session::probe(port) {
-        if existing != session {
+        if existing.get("legacy") == Some(&Value::Bool(true)) {
+            log.event(
+                "WARNING",
+                "panel",
+                "Reusing an older panel; its existing collection and view remain active.",
+            );
+        } else if existing != session {
             return Err(
                 "a panel for another collection or view is already running; choose another --port"
                     .into(),
@@ -259,7 +459,7 @@ fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), 
         }
         return Ok(());
     }
-    let keep = pack_names(&data, &packs)?;
+    let keep = _native::panel_view::packs_named(&data, &packs)?;
     if !packs.is_empty() && keep.as_object().is_none_or(|v| v.is_empty()) {
         return Err("no published pack matches requested indices".into());
     }
@@ -275,22 +475,9 @@ fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), 
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect::<String>();
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| config.value("NUMERA_EMOJI_MAPPER_NO_DOTENV") == "1")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    if !python.is_file() {
-        return Err("required exact-media Python environment is missing".into());
-    }
     let previews = Previews::new(
-        MediaAdapter {
-            python,
+        NativeMediaAdapter {
+            executable: std::env::current_exe().map_err(|e| e.to_string())?,
             root: config.root.clone(),
             scratch: data.join("tmp/native-codec"),
         },
@@ -336,7 +523,20 @@ fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), 
         &format!("listening on numeric loopback port={port}"),
     );
     println!("Emoji curate panel: http://127.0.0.1:{port}/");
-    runtime
-        .block_on(panel_http::serve(panel, port))
-        .map_err(|e| format!("cannot listen: {e}"))
+    match runtime.block_on(panel_http::serve(panel, port)) {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            let holder = match runtime.block_on(panel_session::port_holder(&config.root, port)) {
+                Ok(Some(pid)) => format!(" (pid {pid})"),
+                Ok(None) => String::new(),
+                Err(diagnostic) => {
+                    log.event("WARNING", "panel", &diagnostic);
+                    String::new()
+                }
+            };
+            Err(format!(
+                "Port {port}{holder} is unavailable; no reusable panel was identified. Choose another port with --port. [{error}]"
+            ))
+        }
+    }
 }

@@ -1,0 +1,145 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "86f17862ebe5019e05965fa7aa30380a20226b3632f192f051525290ae7f7031",
+  "source_test": "tests.test_verify_logos.VerifyLogosFix.test_verified_new_cid_rules",
+  "cases": [
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "a",
+        "new"
+      ],
+      "position": 1,
+      "expected": "new"
+    },
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "new",
+        "b"
+      ],
+      "position": 0,
+      "expected": "new"
+    },
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "a",
+        "b"
+      ],
+      "position": 1,
+      "expected": null
+    },
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "a",
+        "a"
+      ],
+      "position": 1,
+      "expected": null
+    },
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "other",
+        "new"
+      ],
+      "position": 1,
+      "expected": null
+    },
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "a",
+        "new",
+        "extra"
+      ],
+      "position": 1,
+      "expected": null
+    },
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "new"
+      ],
+      "position": 1,
+      "expected": null
+    },
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "a",
+        ""
+      ],
+      "position": 1,
+      "expected": null
+    },
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "a",
+        "None"
+      ],
+      "position": 1,
+      "expected": null
+    },
+    {
+      "before": [
+        "a",
+        "b"
+      ],
+      "after": [
+        "a",
+        "new"
+      ],
+      "position": -1,
+      "expected": null
+    },
+    {
+      "before": [],
+      "after": [],
+      "position": 0,
+      "expected": null
+    },
+    {
+      "before": [
+        "a",
+        "a"
+      ],
+      "after": [
+        "a",
+        "new"
+      ],
+      "position": 1,
+      "expected": "new"
+    }
+  ]
+}

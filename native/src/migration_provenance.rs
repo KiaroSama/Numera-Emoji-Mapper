@@ -1,5 +1,5 @@
 //! Legacy recovery requires shared unambiguous immutable identifiers, never paths or archive slots.
-use crate::media_adapter::MediaAdapter;
+use crate::media_adapter::MediaCodec;
 use rusqlite::{Connection, OpenFlags, types::Value as SqlValue};
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
@@ -70,7 +70,7 @@ pub fn recover(
     data: &Path,
     root: &Path,
     backup: &Path,
-    media: &MediaAdapter,
+    media: &impl MediaCodec,
     runtime: &tokio::runtime::Runtime,
 ) -> Result<BTreeMap<String, String>, String> {
     let (previous, old_ids) = snapshot(backup, data, root)?;

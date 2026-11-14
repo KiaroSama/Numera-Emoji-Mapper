@@ -1,0 +1,24 @@
+name: Private test namespaces
+description: Permit the checkout's Rust test bootstrap to create its isolated loopback network.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        if [[ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]]; then
+          mkdir -p .cache
+          cat > .cache/numera-test-network.apparmor <<EOF
+        abi <abi/4.0>,
+        include <tunables/global>
+        profile numera-test-network "$GITHUB_WORKSPACE/**/numera-emoji" flags=(unconfined) {
+          userns,
+        }
+        profile numera-compat-test-network "$GITHUB_WORKSPACE/**/numera-compat" flags=(unconfined) {
+          userns,
+        }
+        profile numera-runtime-test-network "$GITHUB_WORKSPACE/**/numera-runtime-tests" flags=(unconfined) {
+          userns,
+        }
+        EOF
+          sudo apparmor_parser -r .cache/numera-test-network.apparmor
+        fi

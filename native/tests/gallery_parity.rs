@@ -5,6 +5,43 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 #[test]
+fn historical_gallery_recipe_pins_documents_and_codec_inputs_but_replays_html() {
+    let original: Value =
+        serde_json::from_str(include_str!("../../tests/fixtures/backend/gallery.json")).unwrap();
+    _native::source_gallery_oracle::fixture_identity(&original).unwrap();
+    for mutation in ["title", "thumbnail", "real-source", "order", "extra"] {
+        let mut changed = original.clone();
+        match mutation {
+            "title" => changed["cases"][0]["document"]["title"] = serde_json::json!("changed"),
+            "thumbnail" => {
+                changed["cases"][0]["thumbnails"]["111111111"][1] = serde_json::json!("changed")
+            }
+            "real-source" => changed["real_static"]["source"] = serde_json::json!("outside.png"),
+            "order" => changed["cases"].as_array_mut().unwrap().swap(0, 1),
+            "extra" => changed["unused"] = serde_json::json!(true),
+            _ => unreachable!(),
+        }
+        assert!(
+            _native::source_gallery_oracle::fixture_identity(&changed)
+                .unwrap_err()
+                .contains("recipe drift"),
+            "{mutation}"
+        );
+    }
+    for malformed in [
+        Value::Null,
+        serde_json::json!({"source":"invalid"}),
+        serde_json::json!([]),
+    ] {
+        assert!(_native::source_gallery_oracle::fixture_identity(&malformed).is_err());
+    }
+    let mut outputs = original;
+    outputs["cases"][0]["expected"] = serde_json::json!("changed HTML");
+    outputs["real_static"]["expected"] = serde_json::json!("changed real HTML");
+    _native::source_gallery_oracle::fixture_identity(&outputs).unwrap();
+}
+
+#[test]
 fn incumbent_markup_controls_and_safe_roster_json_match_source() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()

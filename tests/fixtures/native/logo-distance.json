@@ -1,0 +1,34 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_hashes": {
+    "coins/verify_logos.py": "86f17862ebe5019e05965fa7aa30380a20226b3632f192f051525290ae7f7031",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89",
+    "tests/_cli_fixtures.py": "25fccc28b1662f1b37e1505d9c359b598e642b5254184afc4daf751b5ef390cd"
+  },
+  "cases": [
+    {
+      "ours": "tests/fixtures/native/logo-distance/inverted.png",
+      "theirs": "tests/fixtures/native/logo-distance/some-coin.png",
+      "ours_sha256": "bd8b7ef536df94a5125c1b6077e623550a4bf5fc6c4736807714f41a176a0c1f",
+      "theirs_sha256": "4030b0d8a569639393c02876da1bd9bf852b3cfae3d3517558b3281ee8637d76",
+      "expected": 0,
+      "plain": 62
+    },
+    {
+      "ours": "tests/fixtures/native/logo-distance/solana.png",
+      "theirs": "tests/fixtures/native/logo-distance/solama-the-llama.png",
+      "ours_sha256": "aabc5662408bba70c016d39bd43daab1cccca39e656fd2fb2348b20b8df75cca",
+      "theirs_sha256": "40e935a1feacd5a70f234ecabdda6c685c3d71ed701b87476aae5a6f55e10fe7",
+      "expected": 28,
+      "plain": 28
+    },
+    {
+      "ours": "tests/fixtures/native/logo-distance/some-coin.png",
+      "theirs": "tests/fixtures/native/logo-distance/some-coin.png",
+      "ours_sha256": "4030b0d8a569639393c02876da1bd9bf852b3cfae3d3517558b3281ee8637d76",
+      "theirs_sha256": "4030b0d8a569639393c02876da1bd9bf852b3cfae3d3517558b3281ee8637d76",
+      "expected": 0,
+      "plain": 0
+    }
+  ]
+}

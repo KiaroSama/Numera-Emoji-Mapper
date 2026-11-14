@@ -1,0 +1,304 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "360809a22b57c19808b146016fe388769046f7337986684fd4d9c4db6f268b30",
+  "cases": [
+    {
+      "missing": [
+        [
+          "Alpha",
+          "a"
+        ],
+        [
+          "Beta",
+          "b"
+        ],
+        [
+          "Gamma",
+          "c"
+        ]
+      ],
+      "initial": {},
+      "retry_unmatched": false,
+      "responses": [
+        [
+          "a-id",
+          "name-exact"
+        ],
+        [
+          null,
+          "no-results"
+        ],
+        [
+          "c-id",
+          "symbol"
+        ]
+      ],
+      "expected": {
+        "cache": {
+          "a": {
+            "id": "a-id",
+            "conf": "name-exact",
+            "name": "Alpha"
+          },
+          "b": {
+            "id": null,
+            "conf": "no-results",
+            "name": "Beta"
+          },
+          "c": {
+            "id": "c-id",
+            "conf": "symbol",
+            "name": "Gamma"
+          }
+        },
+        "calls": [
+          "a",
+          "b",
+          "c"
+        ],
+        "saved": [
+          {
+            "a": {
+              "id": "a-id",
+              "conf": "name-exact",
+              "name": "Alpha"
+            }
+          },
+          {
+            "a": {
+              "id": "a-id",
+              "conf": "name-exact",
+              "name": "Alpha"
+            },
+            "b": {
+              "id": null,
+              "conf": "no-results",
+              "name": "Beta"
+            }
+          },
+          {
+            "a": {
+              "id": "a-id",
+              "conf": "name-exact",
+              "name": "Alpha"
+            },
+            "b": {
+              "id": null,
+              "conf": "no-results",
+              "name": "Beta"
+            },
+            "c": {
+              "id": "c-id",
+              "conf": "symbol",
+              "name": "Gamma"
+            }
+          }
+        ],
+        "quota": false,
+        "unknown": 0
+      }
+    },
+    {
+      "missing": [
+        [
+          "Alpha",
+          "a"
+        ],
+        [
+          "Beta",
+          "b"
+        ],
+        [
+          "Gamma",
+          "c"
+        ]
+      ],
+      "initial": {
+        "a": {
+          "id": null,
+          "conf": "no-results",
+          "name": "Alpha"
+        }
+      },
+      "retry_unmatched": false,
+      "responses": [
+        "transient",
+        "quota"
+      ],
+      "expected": {
+        "cache": {
+          "a": {
+            "id": null,
+            "conf": "no-results",
+            "name": "Alpha"
+          }
+        },
+        "calls": [
+          "b",
+          "c"
+        ],
+        "saved": [],
+        "quota": true,
+        "unknown": 1
+      }
+    },
+    {
+      "missing": [
+        [
+          "Alpha",
+          "a"
+        ],
+        [
+          "Beta",
+          "b"
+        ],
+        [
+          "Gamma",
+          "c"
+        ]
+      ],
+      "initial": {
+        "a": {
+          "id": null,
+          "conf": "no-results",
+          "name": "Alpha"
+        }
+      },
+      "retry_unmatched": true,
+      "responses": [
+        [
+          "a-id",
+          "symbol"
+        ],
+        "transient",
+        "quota"
+      ],
+      "expected": {
+        "cache": {
+          "a": {
+            "id": "a-id",
+            "conf": "symbol",
+            "name": "Alpha"
+          }
+        },
+        "calls": [
+          "a",
+          "b",
+          "c"
+        ],
+        "saved": [
+          {
+            "a": {
+              "id": "a-id",
+              "conf": "symbol",
+              "name": "Alpha"
+            }
+          }
+        ],
+        "quota": true,
+        "unknown": 1
+      }
+    },
+    {
+      "missing": [
+        [
+          "Alpha",
+          "a"
+        ],
+        [
+          "Beta",
+          "b"
+        ],
+        [
+          "Gamma",
+          "c"
+        ]
+      ],
+      "initial": {},
+      "retry_unmatched": false,
+      "responses": [
+        [
+          null,
+          "partial:a-id"
+        ],
+        "transient",
+        [
+          null,
+          "no-confident-match(top=c-id)"
+        ]
+      ],
+      "expected": {
+        "cache": {
+          "a": {
+            "id": null,
+            "conf": "partial:a-id",
+            "name": "Alpha"
+          },
+          "c": {
+            "id": null,
+            "conf": "no-confident-match(top=c-id)",
+            "name": "Gamma"
+          }
+        },
+        "calls": [
+          "a",
+          "b",
+          "c"
+        ],
+        "saved": [
+          {
+            "a": {
+              "id": null,
+              "conf": "partial:a-id",
+              "name": "Alpha"
+            }
+          },
+          {
+            "a": {
+              "id": null,
+              "conf": "partial:a-id",
+              "name": "Alpha"
+            },
+            "c": {
+              "id": null,
+              "conf": "no-confident-match(top=c-id)",
+              "name": "Gamma"
+            }
+          }
+        ],
+        "quota": false,
+        "unknown": 1
+      }
+    },
+    {
+      "missing": [
+        [
+          "Alpha",
+          "a"
+        ],
+        [
+          "Beta",
+          "b"
+        ],
+        [
+          "Gamma",
+          "c"
+        ]
+      ],
+      "initial": {},
+      "retry_unmatched": false,
+      "responses": [
+        "quota"
+      ],
+      "expected": {
+        "cache": {},
+        "calls": [
+          "a"
+        ],
+        "saved": [],
+        "quota": true,
+        "unknown": 0
+      }
+    }
+  ]
+}

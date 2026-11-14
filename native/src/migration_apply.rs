@@ -1,5 +1,5 @@
 //! Canonical maintenance owns re-survey through version2 journal retirement; every stage replays.
-use crate::{config::Config, identity_survey, media_adapter::MediaAdapter, migration_bundle};
+use crate::{config::Config, identity_survey, media_adapter::MediaCodec, migration_bundle};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -54,7 +54,7 @@ pub fn stage(data: &Path, doc: &mut Value, name: &str) -> Result<(), String> {
     doc["stage"] = json!(name);
     crate::atomic::write_json(&data.join("identity-migration.journal.json"), doc)
         .map_err(|e| e.to_string())?;
-    #[cfg(test)]
+    #[cfg(all(test, not(numera_native_runtime)))]
     crate::migration_crash_tests::barrier(name);
     Ok(())
 }
@@ -79,7 +79,7 @@ fn backup(data: &Path) -> Result<PathBuf, String> {
 pub fn apply(
     config: &Config,
     data: &Path,
-    media: &MediaAdapter,
+    media: &impl MediaCodec,
     runtime: &tokio::runtime::Runtime,
     recovery_backup: Option<&Path>,
 ) -> Result<Value, String> {
@@ -178,7 +178,11 @@ pub fn apply(
             rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE,
         )
         .map_err(|e| e.to_string())?;
+        #[cfg(all(test, not(numera_native_runtime)))]
+        crate::migration_crash_tests::barrier("database-before");
         moved = crate::migration_database::rewrite(&mut db, &map, &hashes)?;
+        #[cfg(all(test, not(numera_native_runtime)))]
+        crate::migration_crash_tests::barrier("database-after");
     }
     stage(&data, &mut doc, "database")?;
     let mut touched = Vec::new();
@@ -189,6 +193,8 @@ pub fn apply(
                 .map_err(|e| e.to_string())?;
         if actual != intent["after"] {
             crate::atomic::write_json(&path, &intent["after"]).map_err(|e| e.to_string())?;
+            #[cfg(all(test, not(numera_native_runtime)))]
+            crate::migration_crash_tests::barrier(name);
             touched.push(name.clone());
         }
     }
@@ -213,6 +219,8 @@ pub fn apply(
     .map_err(|e| e.to_string())?;
     std::fs::remove_file(data.join("identity-migration.journal.json"))
         .map_err(|e| e.to_string())?;
+    #[cfg(all(test, not(numera_native_runtime)))]
+    crate::migration_crash_tests::barrier("retired");
     Ok(
         json!({"backup":doc["backup"],"bundle":doc["bundle"],"moved":moved,"state":touched,"renamed":renamed,"key_map":doc["key_map"]}),
     )

@@ -19,81 +19,73 @@ Supported custom-emoji formats: **static** (PNG/WEBP, 100×100), **animated**
 
 ## 2. Repository map
 
-```
+```text
 Numera Emoji Mapper/
-  run.ps1                  Windows launcher (menu). Prefer this.
-  native/src/              Rust application/data/HTTP/network/report responsibilities
-  native/runtime/          installed numera-emoji executable (outside Cargo targets)
-  emojikit/                exact codecs and native-backed shared coin exports
-    media_bridge.py        narrow exact codec/identity IPC boundary
-    media.py, media_lottie.py, identity.py, video_decode.py, repaint.py
-    telegram_api.py, announce.py, packstate.py, pack_rows.py  native bindings
-    cli_env.py, operator_config.py, logsetup.py, similarity.py  shared support
-    sandbox_clone.py, maintenance.py, media_paths.py, sqlite_snapshot.py,
-    state_artifacts.py     declared development/reference helpers
-  tests/reference/         preserved pre-port application behavior (not production)
-  assets/                  the panel page (panel.html) and its scripts, loaded in this order:
-    panel-grid.js            the model, the virtual grid and zoom
-    panel-motion.js          which cards animate, and when (the animation budget)
-    panel-save.js            the save queues and the server heartbeat
-    panel-drag.js            drag & drop and edge auto-scroll
-    panel-actions.js         selection gestures, toolbar, toasts, the boot block
-    panel-holding.js         history, holding tray and Save checkpoints
-    panel-draft.js           export a draft to a file and import it back
-    jsconfig.json + panel-globals.d.ts   the type-check the CI worker job runs (tsc checkJs)
-  coins/                   the crypto-coin component (see §7)
-    _paprika_api.py        CoinPaprika HTTP + candidate search + logo decode
-  scripts/check.ps1        byte-compile + full unit suite (CI runs this too)
-  native identity-repair     report/migrate/restore catalog keys
-  scripts/panel_sandbox.py    the panel against a throwaway copy of the catalog
-  scripts/run-actions.ps1     the launcher's menu actions (dot-sourced by run.ps1)
-  tests/                   unit tests + fixtures (see tests/README.md and §10)
-  docs/GUIDE.md            this file
-  .env.example             config template
-  requirements-dev.txt     test-only deps (playwright, for the browser suite)
-  collection/              (gitignored) catalog.db + media/ + manifests/ + state
-  logs/  build/  input/  logos/   (gitignored) generated/working data
+  numera-emoji.exe           packaged Windows executable (numera-emoji on Linux/macOS)
+  run.ps1 / run.sh           thin launchers for an existing executable
+  runtime/                  standalone production Rust crate, codecs and package tooling
+  native/src/               shared Rust catalog, transport, workflow and persistence modules
+  native/Cargo.toml         optional numera-compat developer/oracle harness
+  assets/                   panel HTML and browser JavaScript
+  lib/                      packaged native libraries when required by the platform
+  worker/                   Cloudflare Worker TypeScript and its tests
+  tests/                    independent fixtures and compatibility tests
+  runtime/tests/            standalone Rust integration tests
+  docs/                     operator and contributor references
+  .env.example              configuration template
+  collection/               local catalog.db + media/ + manifests/ + state
+  logs/ build/ input/ logos/ local generated or working data
 ```
 
-Generated/local-only (gitignored): `collection/`, `logs/`, `build/`, `input/`,
-`logos/`, `*_state.json`, `*.filled.md`, `.env`, `secrets.md`,
-`coins/remap_live_cache.json`, `coins/ticker_to_id.prebroken.json`.
+The package executable, assets and native libraries stay together. Generated
+operator data, `.env`, `secrets.md`, caches, recovery journals and working folders
+are not source files to commit. Historical `emojikit/`, `coins/*.py` and oracle
+helpers are compatibility/developer material, not application launch paths.
 
 ---
 
 ## 3. Setup (one time)
 
-Download the matching prebuilt package from a successful **Prebuilt packages**
-workflow. Normal installation requires Python 3.11 and FFmpeg/FFprobe, not
-Rust/Cargo or a local source build. See [installation](../README.md#install-a-ready-built-package--no-local-rust-build).
+Download the matching standalone package from a trusted release or successful
+**Prebuilt packages** workflow and extract it into a fresh directory. Normal
+use needs no Python, pip, NumPy, virtual environment or Rust installation.
+Keep the packaged assets and libraries beside the root executable.
 
 ```powershell
-py -3.11 scripts/install_prebuilt.py
-.\run.ps1 -Check
+Copy-Item .env.example .env       # then edit tokens, owner and data paths
+.\numera-emoji.exe package-verify
+.\numera-emoji.exe doctor
 .\run.ps1
 ```
 
-The installer uses bundled binary wheels offline, verifies hashes/platform and
-refuses to overwrite an existing installation. Updates use a fresh directory;
-retain configuration/data and verify the new runtime before removing the old one.
-All owned temp/cache paths stay physically under the package root. Native command
-paths below use the installed executable; Linux/macOS use
-`.venv/bin/python scripts/launch_prebuilt.py COMMAND` instead.
+On Linux/macOS use `./numera-emoji package-verify`, `./numera-emoji doctor` and
+`./run.sh`. A source checkout without `package.json` can run the native doctor;
+package verification requires a generated standalone package.
+
+An explicit offline copy is available with
+`numera-emoji install-prebuilt --destination DIR`. It verifies the source
+package and refuses an occupied or linked destination. Updates use a fresh
+directory: retain configuration/data and verify the new application before
+removing the old one. See [launcher and packaging](native-launcher.md).
 
 ### Native ownership and rollback
 
-Rust owns the catalog, transport/retries, state/locks, collectors/publishers, bot,
-HTTP panel, migration and reports. Python remains for exact Pillow/Lottie/FFmpeg
-codecs, thin native-backed shared coin exports and declared development support;
-it is not a second application backend. See [native backend](native-backend.md)
-and [the migration decision](adr/0003-rust-local-backend.md).
+Rust owns the catalog, transport/retries, state/locks, collectors/publishers,
+bot, HTTP panel, media worker, raster/SVG/Lottie codecs and coin matching.
+The browser UI remains JavaScript and the Cloudflare Worker remains TypeScript.
+FFmpeg/FFprobe are external tools for video. Neither launchers nor the local
+media/backend runtime start a Python interpreter.
 
-Only Rust contributors need Rust 1.99+ and a platform linker and explicitly run
-`python scripts/build_native.py`. The menu never compiles. The doctor checks the
-codec imports and installed native executable without prompts or installation.
-Persisted schemas/keys/identifiers are unchanged. For rollback, restore the
-pre-cutover application in a separate checkout and use verified recovery bundles;
-never discard current operator data or unresolved migration journals.
+Contributors explicitly build with
+`cargo build --manifest-path runtime/Cargo.toml --locked --release`; see
+[contributor requirements](native-launcher.md#transitional-source-check-orchestration).
+The menu never compiles or installs dependencies. The optional `numera-compat`
+harness has separate historical oracle dependencies and is not needed to run
+an operator package.
+
+Persisted schemas, keys and identifiers retain their compatibility contracts.
+For rollback, keep the prior application separately and use verified recovery
+bundles; never discard operator data or unresolved migration journals.
 
 `.env` keys:
 
@@ -101,14 +93,14 @@ never discard current operator data or unresolved migration journals.
 PACK_OWNER_USER_ID=<your numeric Telegram id>   # owns every created set; press Start on each bot once
 TELEGRAM_BOT_TOKEN=<coin bot token>
 GENERAL_BOT_TOKEN=<general bot token>
-BOT_ALLOWED_USER_IDS=<optional: extra ids allowed to use emojikit/emoji_bot.py>
+BOT_ALLOWED_USER_IDS=<optional: extra ids allowed to use emoji-bot>
 BOT_ALLOWED_CHANNEL_IDS=<optional: channel ids (-100...) whose posts the bots answer; empty = none>
 PACK_LINKS_CHAT_ID=<optional: channel that receives finished-pack links>
 WORKER_PUBLISH_URL=<optional: https://<worker>.workers.dev/publish — see §12.9>
 WORKER_PUBLISH_SECRET=<optional: bearer for that endpoint; both or neither>
 EMOJI_LOG_RETENTION_DAYS=30    # optional: prune logs/ older than N days (0 = keep all)
 EMOJI_FFMPEG_TIMEOUT=300       # optional: seconds per ffmpeg/ffprobe child
-CMC_API_KEY=<optional CoinMarketCap key, only for coins/fetch_cmc.py>
+CMC_API_KEY=<optional CoinMarketCap key, for coin-fetch-cmc>
 COIN_PAGE_DELAY=2              # optional: seconds between coin provider pages
 
 # Your identities -- required where used, NO default (the repo names no operator)
@@ -122,11 +114,11 @@ EMOJI_ARCHIVE_DIR=<where full packs are archived>
 COIN_EMOJI_DIR=<where the coin logo PNGs live>
 ```
 
-That is the complete set of variables any code reads, plus two environment-only
-switches used for testing: `TELEGRAM_API_BASE` (Bot API endpoint override,
-default `https://api.telegram.org`) and `NUMERA_EMOJI_MAPPER_NO_DOTENV=1` (makes
-`emojikit.build_pack.load_env()` a no-op; it is read *before* `.env`, so it only works
-from the real environment — the test suite sets it there). There is no
+Native commands and the panel resolve log retention after loading configuration.
+Only direct regular log files are eligible; symlink/reparse entries are retained.
+Test harnesses can set `NUMERA_EMOJI_MAPPER_NO_DOTENV=1` before startup to suppress
+`.env` loading and use isolated endpoint configuration. These are developer
+controls, not normal installation requirements. There is no
 `GENERAL_BOT_USERNAME` / `GENERAL_BOT_NAME`: every tool takes the bot's username
 from `getMe` at runtime, so a stale copy can never name the wrong bot in a set
 name.
@@ -134,85 +126,49 @@ name.
 External tool: **ffmpeg + ffprobe** on `PATH` are required **only** for video
 emoji. Install on Windows: `winget install Gyan.FFmpeg`.
 
-SVG note: SVG rasterizing uses `resvg-py`, a self-contained Rust renderer
-shipped as a prebuilt wheel — no system cairo and no build toolchain. It renders
-straight to RGBA (gradients included). 3.11 remains the reference runtime; CI
-also exercises 3.12 and 3.14.
+SVG rasterization uses the bundled Rust resvg renderer, including gradients and
+alpha. There is no system Cairo or Python extension to install.
 
 ---
 
 ## 4. The launcher (`run.ps1`)
 
-Right-click → *Run with PowerShell*, or `.\run.ps1`. It shows a centered banner
-(pink title + full-width rule + yellow `Logging to: ...`), quietly prepares
-`.venv` (env/Python/ffmpeg OK lines go to the **log only**, keeping the console
-clean), then shows a **colored, sectioned** menu. Sections are lettered in order
-(**A** = Build, **B** = Collection, **C** = Bot, **D** = Maintenance) and each
-has its own numbering, so keys stay unique — type e.g. `A1`, `B3`, `D1`:
+Run `.\run.ps1` on Windows or `./run.sh` on Linux/macOS to open the native menu.
+Both launch an existing executable and preserve its exit code. With no packaged
+root executable, source-checkout launchers can use an explicitly built
+`runtime/target/release` or `runtime/target/debug` executable. A missing executable
+is an error; there is no automatic environment setup, dependency installation or
+Cargo build.
 
-```
-                              Numera Emoji Mapper
-====================================================================
-Logging to: logs\run_2026-07-03_12-29-45_UTC.log
+The menu groups the existing workflows:
 
-Build a single pack
-  A1) Build a general emoji pack  (new bot)
-  A2) Convert images to 100x100 PNGs only
-  A3) Crypto-coin pack rebuild    (coin bot)
+| Group | Actions |
+|---|---|
+| Build | General pack, image conversion, coin pack rebuild |
+| Collection | Collect IDs/packs, add media, publish, curate panel, report/apply live order |
+| Bot | Run the custom-emoji ID extractor |
+| Maintenance | Native environment check, offline status, roster and archive checks |
 
-Collection (multi-format, duplicate-proof)
-  B0) Collect specific emoji by id (recommended start)
-  B1) Collect emoji from existing packs (download)
-  B2) Add media from a folder (build from scratch)
-  B3) Publish the collection into new packs
-  B4) Open web panel to pick & reorder emoji (browser)
-  B5) Reorder a live pack to match the panel (report, then apply)
+The usual path is collect → panel → Save → publish dry run → preflight → publish.
+Publishing keeps an existing family's mixed/split mode. Report/apply actions retain
+their own confirmation and validation; opening the menu does not publish anything.
 
-Bot
-  C1) Run the Numera Emoji Mapper bot (premium-emoji ID extractor)
+Prompts support `0` to return one step and `exit`/`quit` to leave. Foreground
+commands remain attached to the terminal so cancellation reaches their owned
+processes. Native commands create redacted UTC logs beneath `logs/`.
 
-Maintenance
-  D1) Run the project checks (byte-compile + unit tests)
-  D2) Status: is everything current? (offline)
-  D3) Check / refresh the pack roster (packs/)
-  D4) Check / sync the pack archive
+For non-interactive diagnostics use `.\run.ps1 -Check`, `./run.sh --check` or
+`numera-emoji doctor`. The doctor checks native codec roundtrips, assets and
+package integrity and reports missing video tools or unset configuration keys.
+It never imports Python packages or contacts Telegram. The maintenance `check`
+command is the same doctor, not the compatibility test suite.
 
-Select {quit=exit}:
-```
-
-The menu follows the recommended path (Appendix D): **B0** collects by id
-(`fetch_emoji_ids`), **B4** curates, **B3** publishes, **B5** reorders a live
-pack (`sync_order`: a report first, then `--apply` only on a `[y/N]` yes).
-**B3** keeps an existing family's mode — it reads `collection\publish_<base>.json`
-— and for a new base asks "Publish as ONE mixed family (recommended)?", passing
-`--mixed` on yes; a family cannot switch mode once started. **D3**/**D4** run
-the roster/archive `--check` and offer `--refresh`/`--sync` only when stale;
-**D2** is `.\native\runtime\numera-emoji.exe status`. The actions live in
-`scripts\run-actions.ps1`, which `run.ps1` dot-sources.
-
-Navigation follows the FFmWiz style: every input prompt shows a colored
-`{back=0, quit=exit}` hint. Typing **0** steps back **one** prompt (e.g. from the
-token prompt back to the title prompt); from the first prompt it returns to the
-menu. Typing **exit** (or **quit**) leaves the launcher from anywhere. Multi-step
-actions are wizards (`Run-Wizard`): each step can go back, re-ask on bad input,
-or advance. Screen titles are cyan text (ANSI 256-colour; renders in Windows
-Terminal / PowerShell 7). Each native or retained coin command and its exit code are
-recorded in the launcher log.
-
-Every run writes a UTC log to `logs\run_<YYYY-MM-DD_HH-mm-ss>_UTC.log` (startup,
-prereq checks, menu selections, actions, warnings/errors, shutdown — no secret
-values). Non-interactive health check (CI / scripts): `.\run.ps1 -Check`. It
-fails (exit 1) on a missing `.venv`, a Python below 3.11 or a missing core
-codec dependency or installed native executable, and warns -- by key NAME, never a value -- for every key in
-`.env.example` that `.env` leaves unset or empty, with what the key is for.
-Unset keys are warnings: not every workflow needs every key. When the launcher
-has to create `.venv`, it only picks an interpreter that reports 3.11 or newer.
 ---
 
 ## 5. The collector model (how dedup, mapping & curation work)
 
 The collector stores everything in a **content-addressed catalog**
-(`collection/catalog.db`, SQLite, managed by `emojikit/catalog.py`). Each emoji
+(`collection/catalog.db`, SQLite, managed by the native catalog). Each emoji
 is one row keyed by a normalized **content hash**.
 
 Guarantees (root-cause fixes — do not regress these):
@@ -231,9 +187,9 @@ Guarantees (root-cause fixes — do not regress these):
   never re-upload or scramble IDs.
 - **No double-upload on network failures**: `addStickerToSet` /
   `createNewStickerSet` are NOT idempotent, so a timeout after Telegram already
-  applied the call is never blindly re-sent. `Telegram._call` verifies the live
+  applied the call is never blindly re-sent. The native Telegram client verifies the live
   set first (applied → success; not applied → safe retry; unknown →
-  `AmbiguousUploadError`), and `build_collection` reconciles every unrecorded
+  `AmbiguousUploadError`), and `build-collection` reconciles every unrecorded
   live sticker back to its catalog item (by `file_unique_id`, else by
   downloaded content) before computing what is still pending. Upload payloads
   are sent as bytes so a retried request re-sends the full file.
@@ -242,21 +198,16 @@ Guarantees (root-cause fixes — do not regress these):
   packs (or ids inside them) never downloads anything again.
 - **Idempotent / resumable**: re-running fetch or publish is safe and cheap.
 - **Curation**: each row has an `included` flag (default 1). The Curate panel
-  toggles it; `build_collection` only publishes `included` rows.
+  toggles it; `build-collection` only publishes `included` rows.
 
-`emojikit/media.py` cheat-sheet: `detect_format`, `to_static_png`,
-`to_video_webm` (ffmpeg, VP9, ≤256 KB), `to_animated_tgs` (Lottie→gzip),
-`validate_video`, `validate_tgs`, `reencode_in_place`. The Lottie/.tgs half
-lives in `emojikit/media_lottie.py` and is re-exported from `media`.
+The native media worker owns detection, fitting, conversion, validation,
+reencoding and comparison. Static images use normalized RGBA identity; video
+uses the frozen alpha-aware sample stream; animated identity uses canonical
+Lottie JSON. See [codec contracts](native-codec-contracts.md).
 
-`perceptual_hash` premultiplies by alpha before reducing to grey, because
-`convert("L")` on RGBA discards alpha and the RGB under a transparent pixel
-is whatever the last encoder left there.
-
-`emojikit/identity.py` cheat-sheet: `content_key` (the catalog's primary
-key), `perceptual_hash`, `fingerprint` (both in one pass), `same_image`
-(did OUR file produce THAT sticker? `None` when undecidable), `hamming`.
-It imports `media`; `media` never imports it.
+For RGBA dHash, color is premultiplied by alpha before conversion to luminance,
+so invisible RGB cannot become visual evidence. Fingerprints retain the original
+source-mode distinction; provider identity explicitly converts to RGBA.
 
 ---
 
@@ -266,20 +217,20 @@ It imports `media`; `media` never imports it.
 
 ```powershell
 # By pack short-name or t.me/addemoji/<name> link. Use the bot that can read it.
-.venv\Scripts\.\native\runtime\numera-emoji.exe fetch-pack <pack_or_link> [<pack2> ...] `
+.\numera-emoji.exe fetch-pack <pack_or_link> [<pack2> ...] `
     --token-env GENERAL_BOT_TOKEN [--data-dir collection] [--limit N] [--phash-threshold -1]
 ```
 
 Or name the pack by one of its emoji — an id fetches the whole pack it belongs to.
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe fetch-pack 5283254221590787816 --token-env GENERAL_BOT_TOKEN
+.\numera-emoji.exe fetch-pack 5283254221590787816 --token-env GENERAL_BOT_TOKEN
 ```
 
 ### 6.2 Build emoji from your own files
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe add-media --in input\myset --emoji 😀 [--as auto|static|video|animated]
+.\numera-emoji.exe add-media --in input\myset --emoji 😀 [--as auto|static|video|animated]
 # auto: still image -> static; animated GIF/MP4/WEBM -> video; Lottie .json/.tgs -> animated
 # (animated emoji are VECTOR only; a GIF/video becomes a VIDEO emoji, not animated)
 ```
@@ -287,7 +238,7 @@ Or name the pack by one of its emoji — an id fetches the whole pack it belongs
 ### 6.3 Curate — pick what to publish (web panel)
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe panel [--data-dir collection] [--port 9450] [--preview-fps 15] [--no-open]
+.\numera-emoji.exe panel [--data-dir collection] [--port 9450] [--preview-fps 15] [--no-open]
                                    [--with-pack N ...] [--all]
 ```
 
@@ -334,10 +285,10 @@ whatever candidates follow it, same as unticking one in place always has.
 
 ```powershell
 # Preview (no upload):
-.venv\Scripts\.\native\runtime\numera-emoji.exe build-collection --base mypack --title "My Pack" `
+.\numera-emoji.exe build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN --dry-run
 # Publish for real (resumable, duplicate-proof, per-format sets):
-.venv\Scripts\.\native\runtime\numera-emoji.exe build-collection --base mypack --title "My Pack" `
+.\numera-emoji.exe build-collection --base mypack --title "My Pack" `
     --token-env GENERAL_BOT_TOKEN [--formats static,video,animated] [--per-set 200]
 ```
 
@@ -351,7 +302,7 @@ counts the **pack**, not the catalog rows: when a brand logo leads the set it is
 row 1 and the catalog items follow from 2, because the logo is a sticker in the
 pack even though it is not a catalog item. This table, the archive's
 `_manifest.md`, the coin manifests and the `packs/` roster are all rendered by
-`emojikit/pack_rows.py`: every keyword is listed, and a `|` or a line break in a
+the native pack-row renderer: every keyword is listed, and a `|` or a line break in a
 label is escaped rather than breaking the table.
 
 ---
@@ -362,20 +313,20 @@ Self-contained tool that reuses `build-pack` and the coin bot.
 
 ```powershell
 # Logos (data): fetch + keywords
-.venv\Scripts\python.exe -m coins.fetch_logos          # CoinGecko logos + keywords.csv
-.venv\Scripts\python.exe -m coins.fetch_paprika --dry  # resolve + report only, nothing published
-.venv\Scripts\python.exe -m coins.fetch_paprika        # fill from CoinPaprika
-.venv\Scripts\python.exe -m coins.fetch_cmc            # fill from CoinMarketCap (needs CMC_API_KEY)
-.venv\Scripts\python.exe -m coins.build_keywords       # (re)build keywords.csv from logos
+.\numera-emoji.exe coin-fetch-logos          # CoinGecko logos + keywords.csv
+.\numera-emoji.exe coin-fetch-paprika --dry  # resolve + report only, nothing published
+.\numera-emoji.exe coin-fetch-paprika        # fill from CoinPaprika
+.\numera-emoji.exe coin-fetch-cmc            # fill from CoinMarketCap (needs CMC_API_KEY)
+.\numera-emoji.exe coin-build-keywords       # (re)build keywords.csv from logos
 
 # Convert logos to 100x100 emoji PNGs
-.venv\Scripts\.\native\runtime\numera-emoji.exe make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
-.venv\Scripts\.\native\runtime\numera-emoji.exe make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
+.\numera-emoji.exe make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
+.\numera-emoji.exe make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
 
 # Build / rebuild the packs (duplicate-proof, records upload order)
-.venv\Scripts\python.exe -m coins.rebuild_dedup        # all: DELETES the packs in rebuild_state.json, then build + map + links
-.venv\Scripts\python.exe -m coins.rebuild_dedup map    # only rebuild the id map + inventory
-.venv\Scripts\python.exe -m coins.rebuild_dedup links  # resend the combined links message
+.\numera-emoji.exe coin-rebuild        # all: DELETES the packs in rebuild_state.json, then build + map + links
+.\numera-emoji.exe coin-rebuild map    # only rebuild the id map + inventory
+.\numera-emoji.exe coin-rebuild links  # resend the combined links message
 ```
 
 ### 7.1 The ticker → custom_emoji_id map (`coins/ticker_to_id.json`)
@@ -385,35 +336,35 @@ not from positions** (a historical position-based bug scrambled it):
 
 ```powershell
 # 1) Calibrate: run WITHOUT --apply and pick a cutoff from the reported distances.
-.venv\Scripts\python.exe -m coins.remap_ids --emoji-dir "PATH\to\emoji"
+.\numera-emoji.exe coin-remap-ids --emoji-dir "PATH\to\emoji"
 # 2) Apply. --max-distance is REQUIRED with --apply (must be > 0): an uncalibrated
 #    run would accept a nearest-but-wrong match and overwrite the map with it.
 #    --min-margin (default: --max-distance) additionally rejects a match whose
 #    runner-up is nearly as close. A refused --apply writes ticker_to_id.candidate.json
 #    instead, for review.
-.venv\Scripts\python.exe -m coins.remap_ids --emoji-dir "PATH\to\emoji" --max-distance 200 --apply
+.\numera-emoji.exe coin-remap-ids --emoji-dir "PATH\to\emoji" --max-distance 200 --apply
 
 # Fill chain-variant / alias tickers (etharb->eth, bnbbsc->bnb, usdc.e, ...):
-.venv\Scripts\python.exe -m coins.enhance_map          # strip chain suffixes -> base id
-.venv\Scripts\python.exe -m coins.alias_map            # match by coin NAME -> base id
+.\numera-emoji.exe coin-enhance-map          # strip chain suffixes -> base id
+.\numera-emoji.exe coin-alias-map            # match by coin NAME -> base id
 ```
 
 ### 7.2 Audit, fix logos, manifests
 
 ```powershell
 # Audit ALL packs for blank/duplicate stickers (downloads every sticker):
-.venv\Scripts\python.exe -m coins.check_all_packs
+.\numera-emoji.exe coin-check-packs
 
 # Review logos vs official CoinGecko art; fix ONLY confirmed-wrong tickers:
-.venv\Scripts\python.exe -m coins.verify_logos --emoji-dir "PATH\to\emoji"            # report
-.venv\Scripts\python.exe -m coins.verify_logos --emoji-dir "PATH\to\emoji" --fix --only sol,xrp
+.\numera-emoji.exe coin-verify-logos --emoji-dir "PATH\to\emoji"            # report
+.\numera-emoji.exe coin-verify-logos --emoji-dir "PATH\to\emoji" --fix --only sol,xrp
 
 # Write a per-pack manifest (.md: ticker(s) + emoji id) for every pack:
-.venv\Scripts\python.exe -m coins.write_manifests --out-dir "PATH\to\pack-folder"
+.\numera-emoji.exe coin-write-manifests --out-dir "PATH\to\pack-folder"
 ```
 
 > Logo similarity vs official art is **not** proof a logo is wrong (different
-> icon sets differ). `verify_logos --fix` therefore only touches the tickers you
+> icon sets differ). `coin-verify-logos --fix` therefore only touches the tickers you
 > explicitly list with `--only`.
 
 ---
@@ -423,7 +374,7 @@ not from positions** (a historical position-based bug scrambled it):
 Long-polling bot (run it and leave it running; only one instance at a time):
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe emoji-bot    # uses GENERAL_BOT_TOKEN; or run.ps1 -> C1
+.\numera-emoji.exe emoji-bot    # uses GENERAL_BOT_TOKEN; or run.ps1 -> C1
 ```
 
 - Send it **one or more premium emoji in a row** (spaces/newlines between them
@@ -450,7 +401,7 @@ split across multiple messages (each under 4096 chars).
 ## 9. Telegram limits to remember
 
 - Custom-emoji **set cap: 200**. Since Bot API 7.2 one set may mix formats
-  (`build_collection --mixed`); one set per format is the default.
+  (`build-collection --mixed`); one set per format is the default.
 - **Animated = vector (Lottie/TGS) only**, on a 512×512 canvas. Raster
   animation → **video** emoji.
 - Video: VP9, 100×100, ≤3 s, 30 fps, no audio, ≤256 KB.
@@ -464,116 +415,60 @@ split across multiple messages (each under 4096 chars).
 
 ## 10. Testing, CI, and Git
 
+Operator diagnostics and contributor tests are separate:
+
 ```powershell
-.venv\Scripts\python.exe -m pip install -r requirements-dev.txt    # once: ruff + playwright, not runtime deps
-.venv\Scripts\python.exe -m playwright install chromium            # once: the panel's browser suite
-.\scripts\check.ps1                                                # compile + lint + full suite
-.venv\Scripts\python.exe -m unittest discover -s tests -t . -p "test_*.py"   # the suite alone
-.\run.ps1 -Check                                                   # env doctor (venv/deps/ffmpeg/.env)
+.\numera-emoji.exe doctor
+cargo test --manifest-path runtime/Cargo.toml --locked
 ```
 
-**The panel's browser suite needs a browser.** `tests/test_panel_browser.py`
-drives the real page in headless Chromium, because that is the only level at
-which the client-side behaviour exists — a save pipeline that drops the newest
-edit is perfectly well-formed JavaScript, and a source-text assertion cannot
-tell it from a correct one. A missing playwright or Chromium is a **hard error,
-never a skip**: a browser test that reports green on a machine with no browser
-is worse than no browser test at all. Set `NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS=1` to
-opt out deliberately, and know that you did.
+The first command needs only the installed application. The second is for a
+source checkout with the contributor toolchain. It tests the standalone backend,
+codec fixtures, package behavior and native workflow contracts. See
+[native test migration](native-test-migration.md) and the current CI workflows
+for platform-specific checks and recorded evidence.
 
-`scripts\check.ps1` is the single command CI and a developer both run, so the two
-cannot drift into different invocations. Three stages, in order: `compileall`,
-`ruff check .`, then the suite — the cheap gates first, so a syntax or lint
-error fails in seconds instead of after ~75 s of tests. It resolves the repo
-root from its own location (any cwd, spaces in the path are fine), prefers the
-repo `.venv` for both Python and ruff, bounds each step with a wall-clock
-ceiling (`-TimeoutSeconds`, default 1800; a step that exceeds it is killed and
-reported as exit 124), and returns a real exit code. `-Python <path>` overrides
-the interpreter. It is also `run.ps1` menu entry **D1**.
+Historical Python tests, reference implementations and API fault-injection tests
+remain in the optional `numera-compat` developer harness. Their Python, Ruff,
+Playwright and oracle dependencies do not become production prerequisites.
+When running that retained suite, use its documented command and preserve
+credential scrubbing and loopback-only test isolation. For Python discovery,
+`-t .` remains essential so `tests/__init__.py` runs.
 
-**Lint.** `ruff check .` takes no arguments on purpose: `ruff.toml` at the repo
-root owns the rule set and the exclusions, so a `--select` on one command line
-is all it takes for CI and a local run to start linting different things. The
-set is deliberately narrow — ruff's default rules plus `E402`, `BLE001`, `B` and
-`RUF100`. The reason is historical: the source already carried ~120
-`# noqa: E402` / `# noqa: BLE001` comments written against a linter that was
-never configured, so they suppressed nothing and were never checked. Enabling
-exactly the codes they name is what makes them meaningful, and `RUF100` (unused
-`noqa`) is what stops them rotting back into decoration. Never make the stage
-green with `--exit-zero` or `continue-on-error`.
+Browser behavior needs a real browser: source-text checks cannot establish save,
+drag, keyboard or animation behavior. The panel's browser suite and the
+Cloudflare Worker's TypeScript tests remain separate from application runtime
+requirements. A missing browser must be reported rather than counted as a
+successful browser run.
 
-**`-t .` is required, not cosmetic.** Without it the tests directory becomes the
-top level, modules load as `test_x` instead of `tests.test_x`, and
-`tests/__init__.py` — which scrubs every credential-shaped variable out of the
-environment and refuses non-loopback sockets — never runs.
-`tests.test_entry_points.SuiteIsHermetic` fails loudly when the suite is started
-without it. Details in [`tests/README.md`](../tests/README.md).
-
-**The Worker suite runs in CI, in its own job.** `worker/` is TypeScript with
-its own vitest suite. It is a separate `worker:` job rather than a step in
-`build:` because it shares nothing with the Python matrix — it needs Node, not
-Python and ffmpeg — and running it once per Python version would be pure waste.
-A separate job also makes a Worker failure legible as a Worker failure.
-
-**So does the panel's browser suite**, in `panel-browser:`, for the same reason:
-it exercises JavaScript, so running it in the matrix would download Chromium
-once per Python version to prove the same thing. The matrix sets
-`NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS=1` explicitly — an opt-out that is written down
-is the only kind this module accepts.
-
-`check.ps1` stays Python-only: it is the command a developer runs constantly,
-and requiring a Node toolchain for it would tax everyone who never touches
-`worker/`. Run the Worker's own checks after changing it:
+Worker contributor checks:
 
 ```bash
-cd worker && npm ci && npm run typecheck && npx vitest run
+cd worker
+npm ci
+npm run typecheck
+npx vitest run
 ```
 
-CI uses `npm ci`, never `npm install`: it installs exactly the committed
-lockfile and fails if `package.json` and the lock disagree, so CI cannot quietly
-test a different dependency tree than the one committed. `dependabot.yml` has an
-`npm` entry for `/worker` so that tree gets updates like every other one.
-
-CI (`.github/workflows/ci.yml`) has four jobs. `build` (Python 3.11, 3.12
-**and** 3.14) installs both dependency manifests, the pinned ruff and ffmpeg,
-runs `scripts/check.ps1` (compile + lint + suite, `shell: pwsh`), then an
-offline `build_pack` dry-run. `panel-browser` runs the browser suites in
-headless Chromium, `worker` type-checks and tests the Worker and type-checks the
-panel scripts, and `windows-safety` parses every PowerShell script and runs the
-native-Windows lock, migration and persistence suites. Run `scripts\check.ps1`
-locally before pushing.
-
-Git: work is committed in small logical commits and pushed to `main` on
-`KiaroSama/Numera-Emoji-Mapper`. Never commit `.env`, `secrets.md`, `collection/`,
-`logs/`, or any token.
+Use the committed lockfile. Keep work in reviewable commits and follow the
+repository's branch/review workflow. Never commit `.env`, `secrets.md`,
+`collection/`, `logs/` or credentials. A local test run is evidence for that run,
+not a claim that all package platforms or live Telegram workflows passed.
 
 ---
 
 ## 11. Next steps / how to extend (for a developer or AI agent)
 
-1. **Read this guide + `README.md` first**, then the file you intend to change.
-2. **Reuse the catalog + emojikit** for any new media handling. Do not add a
-   parallel dedup/mapping mechanism — the catalog is the single source of truth.
-3. **Preserve the guarantees in §5** (no duplicates, no blanks, no mapping
-   drift, idempotent). If you add a format or ingest path, route it through
-   `catalog.add(...)` with a proper `content_key` and a blank check.
-4. **Publishing**: keep the per-item committed `uploaded` flag + recorded upload
-   order; never reintroduce position-offset resume logic. Never blind-retry a
-   non-idempotent Bot API call: go through `Telegram.add_emoji`/`add_sticker`
-   with `expected_before=<live count>` (verified retry) and let
-   `emojikit.build_collection.reconcile_set` attribute anything ambiguous from the live
-   set before uploading more.
-5. **Curation**: respect the `included` flag in any new publish path.
-6. **UI changes** (panel): keep the dark neon-blue style, Inter font, visible
-   focus, `prefers-reduced-motion`, lazy media (IntersectionObserver) so large
-   catalogs stay fast. Verify in a real browser before claiming done.
-7. **External libs/APIs**: check current docs before coding (the Telegram Bot
-   API and any JS player evolve).
-8. **Always**: add/maintain tests, run `.\scripts\check.ps1` (never a hand-rolled
-   `unittest` invocation — see §10) plus a real run, then commit and **push to
-   keep GitHub in sync**, and **update this guide** with any new command 0 → 100.
-
----
+1. Read this guide, `README.md` and the implementation you intend to change.
+2. Reuse the Rust catalog and media worker; do not add another dedup or mapping
+   backend. Route new ingest paths through content identity and blank admission.
+3. Preserve per-item committed upload state and actual recorded order. Reconcile
+   ambiguous live outcomes before retrying a non-idempotent Telegram mutation.
+4. Respect inclusion, ordering, pack-family locks and recovery journals.
+5. Keep browser behavior accessible and bounded, including the default 24-card
+   animation budget. Verify UI changes in a real browser.
+6. Run the relevant native, compatibility, browser or Worker checks and report
+   which were executed. Update the command/reference documentation with changes.
 
 *Keep this document synchronized with the code. When you add or change a
 command, add it here in full.*

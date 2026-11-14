@@ -78,6 +78,54 @@ jobs:
           LEVELS = {"INFO", "WARNING", "ERROR", "DEBUG"}
 
 
+          # Four reviewed historical false positives. Immutable commit/file/line/rule
+          # identities exclude only these observations, never future file contents.
+          # The JSON values are SHA-256 digests of the baseline provider source;
+          # the Rust values are the original redaction test's synthetic image ID.
+          REVIEWED_NON_SECRETS = {
+              ("generic-api-key", "native/src/source_logging_oracle.rs", 227, "fd9ce1dbc42e35a14879b9c3c2b56fa5b70d933d"),
+              ("generic-api-key", "native/tests/logging_parity.rs", 26, "fd9ce1dbc42e35a14879b9c3c2b56fa5b70d933d"),
+              ("generic-api-key", "tests/fixtures/native/provider-image.json", 5, "7cd8ebecb282361891f9d6aae8303da771c50b80"),
+              ("generic-api-key", "tests/fixtures/native/provider-policy.json", 4, "e3cdd76b5830c1b30cfbc790b5d7e133b319114f"),
+          }
+
+
+          def reviewed_merge_origin(finding, git_directory):
+              rule, path, line, commit = (finding.get(field) for field in ("RuleID", "File", "StartLine", "Commit"))
+              if (rule != "generic-api-key" or not isinstance(path, str)
+                      or path not in {identity[1] for identity in REVIEWED_NON_SECRETS}
+                      or type(line) is not int or line < 1 or finding.get("EndLine") != line
+                      or not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit)):
+                  return None
+              command = ["git", "-C", str(git_directory)]
+              try:
+                  parents = subprocess.run(command + ["rev-list", "--parents", "-n", "1", commit], capture_output=True, text=True, timeout=15)
+                  if parents.returncode != 0 or len(parents.stdout.split()) < 3:
+                      return None
+                  # Merge diffs can repeat old matches under the merge SHA. Resolve
+                  # only an unchanged single line back to its reviewed introduction.
+                  origin = subprocess.run(command + ["blame", "--line-porcelain", "-L", f"{line},{line}", commit, "--", path], capture_output=True, text=True, timeout=15)
+                  if origin.returncode != 0:
+                      return None
+                  header = origin.stdout.splitlines()[0].split()
+                  return rule, path, int(header[1]), header[0]
+              except (OSError, subprocess.SubprocessError, UnicodeError, IndexError, ValueError):
+                  return None  # No provenance proof means the finding stays reportable.
+
+
+          def partition_findings(findings, git_directory=None):
+              remaining = []
+              reviewed = 0
+              for finding in findings:
+                  identity = tuple(finding.get(field) for field in ("RuleID", "File", "StartLine", "Commit"))
+                  origin = reviewed_merge_origin(finding, git_directory) if git_directory is not None else None
+                  if identity in REVIEWED_NON_SECRETS or origin in REVIEWED_NON_SECRETS:
+                      reviewed += 1
+                  else:
+                      remaining.append(finding)
+              return remaining, reviewed
+
+
           class ScanFailure(Exception):
               pass
 
@@ -98,14 +146,16 @@ jobs:
               return html.escape(str(value), quote=True).replace("|", "&#124;").replace("\n", " ").replace("\r", " ")
 
 
-          def write_summary(findings, scope):
+          def write_summary(findings, scope, reviewed=0):
               summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
               if not summary_path:
                   return
               lines = ["## Gitleaks", "", f"Scanner: **{VERSION}**", "", f"Scope: **{scope}**", ""]
               lines.extend(["Rules: Pinned built-in Gitleaks rules with standard exclusions. Full history describes revision coverage, not universal byte or credential coverage.", ""])
+              if reviewed:
+                  lines.extend([f"Excluded **{reviewed}** reviewed historical non-secret matches (source SHA-256 digests and synthetic test identifiers), pinned to exact introduction commit/file/line/rule identities, including Git-proven unchanged merge repetitions. New matches remain reportable.", ""])
               if not findings:
-                  lines.append("No matching secrets were found in the scanned Git history.")
+                  lines.append("No unreviewed secret matches remain in the scanned Git history.")
               else:
                   lines.extend([
                       f"**{len(findings)} potential secrets detected.** Review the locations below; rotate any real exposed credentials.",
@@ -218,11 +268,12 @@ jobs:
                   findings = json.loads(report_path.read_text(encoding="utf-8"))
                   require(isinstance(findings, list) and all(isinstance(item, dict) for item in findings), "The scanner report format is invalid.")
                   require((result.returncode == 2) == bool(findings), "The scanner result and report disagree.")
-                  write_summary(findings, scope)
+                  findings, reviewed = partition_findings(findings, git_directory)
+                  write_summary(findings, scope, reviewed)
                   if findings:
                       log("WARNING", f"Detected {len(findings)} potential secrets. Review the redacted locations in the job summary.")
                       return 1
-                  log("INFO", "The scan completed successfully; no matching secrets were detected.")
+                  log("INFO", "The scan completed successfully; no unreviewed secret matches remain.")
                   return 0
 
 

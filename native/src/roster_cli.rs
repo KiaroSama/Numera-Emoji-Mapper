@@ -1,4 +1,5 @@
 //! Live roster refresh joins provenance/history and preserves unrequested families.
+use crate::media_native_adapter::NativeMediaAdapter;
 use crate::{atomic, config::Config, logging::RunLog, telegram::Telegram};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -183,8 +184,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     let mut fetched = Vec::new();
     let mut live_ids = BTreeSet::new();
     for (family, set, key) in jobs {
-        let tg =
-            Telegram::new(config.require(key)?.into(), api.clone()).map_err(|e| e.to_string())?;
+        let tg = Telegram::new(config.require(key)?.into(), api.clone())
+            .map_err(|e| e.to_string())?
+            .with_log(log);
         let name = set["name"].as_str().ok_or("recorded pack has no name")?;
         if name.is_empty() || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
             return Err("unsafe recorded pack name".into());
@@ -240,21 +242,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     );
     std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
     let general_art = crate::roster_provenance::art(&data.join("catalog.db"), &data, &config.root)?;
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    let media = crate::media_adapter::MediaAdapter {
-        python,
-        root: config.root.clone(),
-        scratch: out.join(".codec"),
-    };
+    let media = NativeMediaAdapter::for_project(&config.root, out.join(".codec"))?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

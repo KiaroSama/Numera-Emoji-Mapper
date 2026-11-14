@@ -27,7 +27,8 @@ fn cancellation_stops_descendant_before_workspace_removal() {
         .join("logs")
         .join(format!("owner-test-{}", std::process::id()));
     std::fs::create_dir(&directory).unwrap();
-    let script = "import pathlib,subprocess,sys,threading\np=subprocess.Popen([sys.executable,'-c','import threading;threading.Event().wait()'])\npathlib.Path(sys.argv[1]).write_text(str(p.pid),encoding='utf-8')\nthreading.Event().wait()\n";
+    // Publish the complete PID atomically before the parent can observe readiness.
+    let script = "import pathlib,subprocess,sys,threading\np=subprocess.Popen([sys.executable,'-c','import threading;threading.Event().wait()'])\nready=pathlib.Path(sys.argv[1])\nstaged=ready.with_suffix('.pending')\nstaged.write_text(str(p.pid),encoding='utf-8')\nstaged.replace(ready)\nthreading.Event().wait()\n";
     let ready = directory.join("ready.txt");
     let mut command = Command::new(python);
     command

@@ -1,7 +1,7 @@
 //! Native legacy PNG builder; ticker resume and announcement contracts stay distinct from catalog plans.
 use crate::{
-    atomic, config::Config, logging::RunLog, media_adapter::MediaAdapter, telegram::Telegram,
-    ticker_state, upload_effect::UploadEffect,
+    atomic, config::Config, logging::RunLog, media_native_adapter::NativeMediaAdapter,
+    telegram::Telegram, ticker_state, upload_effect::UploadEffect,
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -9,12 +9,12 @@ use std::path::PathBuf;
 struct Scratch(PathBuf);
 impl Drop for Scratch {
     fn drop(&mut self) {
-        let quiet = std::fs::read_dir(self.0.join("codecs"))
-            .map(|mut paths| {
-                paths
-                    .all(|p| p.is_ok_and(|p| !p.path().join("codec-cleanup-pending.json").exists()))
-            })
-            .unwrap_or_else(|e| e.kind() == std::io::ErrorKind::NotFound);
+        let codecs = self.0.join("codecs");
+        let quiet = !crate::process_owner::cleanup_pending(&codecs)
+            // Quiescence alone does not make retained request/response evidence disposable.
+            && std::fs::read_dir(&codecs)
+                .map(|mut entries| entries.next().is_none())
+                .unwrap_or_else(|e| e.kind() == std::io::ErrorKind::NotFound);
         if quiet {
             let _ = std::fs::remove_dir_all(&self.0);
         }
@@ -26,8 +26,8 @@ fn take(args: &[String], i: &mut usize) -> Result<String, String> {
         .cloned()
         .ok_or("option requires a value".into())
 }
-fn notify(
-    publisher: &UploadEffect<'_>,
+fn notify<M: crate::media_adapter::MediaCodec>(
+    publisher: &UploadEffect<'_, M>,
     config: &Config,
     state: &mut Value,
     path: &std::path::Path,
@@ -215,7 +215,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         "https://api.telegram.org".into()
     };
-    let tg = Telegram::new(config.require(&token_key)?.into(), api).map_err(|e| e.to_string())?;
+    let tg = Telegram::new(config.require(&token_key)?.into(), api)
+        .map_err(|e| e.to_string())?
+        .with_log(log);
     let bot = tg
         .read_call("getMe", &BTreeMap::new())
         .map_err(|e| e.to_string())?["username"]
@@ -243,45 +245,41 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         &crate::logging::utc(),
     )
     .map_err(|e| e.to_string())?;
-    let mut state = match std::fs::read(&path) {
-        Ok(bytes) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => ticker_state::initial(&base, cap),
-        Err(e) => return Err(e.to_string()),
-    };
-    if !state.is_object() {
-        return Err("state is not an object; nothing was published".into());
-    }
-    if !state["per_set"].is_null() && state["per_set"] != cap {
-        return Err("resume cap differs from this run".into());
-    }
-    state["per_set"] = json!(cap);
-    for field in ["done", "sets", "sent"] {
-        if state.get(field).is_none() {
-            state[field] = json!([]);
+    let loaded = (|| -> Result<Value, String> {
+        let mut state = match std::fs::read(&path) {
+            Ok(bytes) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => ticker_state::initial(&base, cap),
+            Err(e) => return Err(e.to_string()),
+        };
+        if !state.is_object() {
+            return Err("state is not an object; nothing was published".into());
         }
-    }
-    ticker_state::validate(&state, &base, cap)?;
+        if !state["per_set"].is_null() && state["per_set"] != cap {
+            return Err("resume cap differs from this run".into());
+        }
+        state["per_set"] = json!(cap);
+        for field in ["done", "sets", "sent"] {
+            if state.get(field).is_none() {
+                state[field] = json!([]);
+            }
+        }
+        ticker_state::validate(&state, &base, cap)?;
+        Ok(state)
+    })();
+    let mut state = match loaded {
+        Ok(state) => state,
+        Err(error) => {
+            log.event("ERROR", "build-pack", &error);
+            return Ok(4);
+        }
+    };
     let scratch = config
         .root
         .join("logs")
         .join(format!("ticker-codec-{}", std::process::id()));
     std::fs::create_dir(&scratch).map_err(|e| e.to_string())?;
     let _workspace = Scratch(scratch.clone());
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    let media = MediaAdapter {
-        python,
-        root: config.root.clone(),
-        scratch: scratch.join("codecs"),
-    };
+    let media = NativeMediaAdapter::for_project(&config.root, scratch.join("codecs"))?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -297,7 +295,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         data: &scratch,
         runtime: &runtime,
     };
-    crate::ticker_recovery::recover(
+    let recovery = crate::ticker_recovery::recover_checked(
         &publisher,
         &mut state,
         &files,
@@ -305,8 +303,12 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         &title,
         &base,
         logo.as_ref(),
-    )?;
-    crate::ticker_recovery::verify_counts(&publisher, &state)?;
+    )
+    .and_then(|()| crate::ticker_recovery::verify_counts_checked(&publisher, &state));
+    if let Err(failure) = recovery {
+        log.event("ERROR", "build-pack", &failure.message);
+        return Ok(failure.code);
+    }
     notify(
         &publisher, config, &mut state, &path, owner, &token_key, false,
     )?;
@@ -412,14 +414,56 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             labels
         };
         let item = json!({"file_path":source,"fmt":"static","emojis":[emoji],"keywords":labels});
-        let result = match publisher.mutate(
-            &item,
-            &name,
-            creating.then_some(set_title.as_str()),
-            owner,
-            false,
-        ) {
+        // A retried ticker add may follow a foreign arrival. The legacy proof
+        // measures the live size; collection publication requires a unique tail.
+        let mutation = if creating {
+            publisher
+                .mutate(&item, &name, Some(&set_title), owner, false)
+                .map(|result| result["live"].clone())
+        } else {
+            crate::telegram_mutation::mutate(
+                &tg,
+                &json!({"name":name,"source":source,"format":"static","create":false,
+                    "user_id":owner,"emojis":[emoji],"keywords":labels,"expected_before":before}),
+                |_, sticker, source, fmt| {
+                    publisher
+                        .same(sticker, std::path::Path::new(source), fmt)
+                        .map_err(crate::telegram::ApiError::Ambiguous)
+                },
+            )
+            .map(|live| {
+                if live.is_null() {
+                    json!(before + 1)
+                } else {
+                    live
+                }
+            })
+        };
+        let result = match mutation {
             Ok(result) => result,
+            Err(crate::telegram::ApiError::Ambiguous(error)) if creating => {
+                // Only an unanswered create gets this last settle. A name and
+                // one sticker alone never prove that this run owns the pack.
+                let (known, pack) = tg.probe(&name);
+                let stickers = pack.as_ref().and_then(|pack| pack["stickers"].as_array());
+                if known == crate::telegram::SetState::Exists
+                    && stickers.is_some_and(|stickers| {
+                        stickers.len() == 1
+                            && publisher.same(&stickers[0], &source, "static").ok()
+                                == Some(Some(true))
+                    })
+                {
+                    log.event(
+                        "WARNING",
+                        "build-pack",
+                        "adopted content-proven ambiguous create",
+                    );
+                    json!(1)
+                } else {
+                    log.event("ERROR", "build-pack", &error);
+                    return Ok(3);
+                }
+            }
             Err(crate::telegram::ApiError::Rejected(error)) => {
                 log.event("WARNING", "build-pack", &error);
                 state["in_flight"] = Value::Null;
@@ -437,14 +481,14 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             state["sets"]
                 .as_array_mut()
                 .ok_or("invalid sets")?
-                .push(json!({"name":name,"title":set_title,"index":index,"count":result["live"]}));
+                .push(json!({"name":name,"title":set_title,"index":index,"count":result}));
         } else {
             let last = state["sets"]
                 .as_array_mut()
                 .ok_or("invalid sets")?
                 .last_mut()
                 .ok_or("missing active set")?;
-            last["count"] = result["live"].clone();
+            last["count"] = result.clone();
         }
         done.insert(key);
         state["done"] = json!(done);
@@ -480,4 +524,90 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         4
     })
+}
+
+#[cfg(all(test, not(numera_native_runtime)))]
+mod cleanup_tests {
+    use super::*;
+    use std::path::Path;
+
+    struct Fixture(PathBuf);
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            std::fs::remove_dir_all(&self.0).expect("clean owned synthetic cleanup fixtures");
+        }
+    }
+
+    #[test]
+    fn cleanup_pending_guard_retains_uncertain_codec_bytes() {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let parent =
+            crate::tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
+        let root = parent.join(format!("ticker cleanup guard {}", std::process::id()));
+        std::fs::create_dir(&root).unwrap();
+        let fixture = Fixture(root);
+        for (case, relative, shape) in [
+            ("legacy", "codecs/run/codec-cleanup-pending.json", "file"),
+            (
+                "native",
+                "codecs/run/owner/codec-cleanup-pending.json",
+                "file",
+            ),
+            (
+                "marker-directory",
+                "codecs/run/codec-cleanup-pending.json",
+                "directory",
+            ),
+            ("owner-file", "codecs/run/owner", "file"),
+            ("container-file", "codecs", "file"),
+            ("entry-file", "codecs/run", "file"),
+            ("settled-request", "codecs/run/request.json", "file"),
+            ("settled-response", "codecs/run/response.json", "file"),
+            ("empty-envelope", "codecs/run/owner", "directory"),
+            ("quiet", "codecs", "directory"),
+            ("absent", "", "none"),
+            #[cfg(unix)]
+            (
+                "marker-link",
+                "codecs/run/codec-cleanup-pending.json",
+                "link",
+            ),
+            #[cfg(unix)]
+            ("owner-link", "codecs/run/owner", "link"),
+            #[cfg(unix)]
+            ("container-link", "codecs", "link"),
+        ] {
+            let workspace = fixture.0.join(case);
+            std::fs::create_dir(&workspace).unwrap();
+            let sentinel = workspace.join("keep.bin");
+            let bytes = b"not JSON; unresolved synthetic bytes";
+            std::fs::write(&sentinel, bytes).unwrap();
+            let target = workspace.join(relative);
+            if shape != "none" {
+                std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+                match shape {
+                    "file" => std::fs::write(&target, bytes).unwrap(),
+                    "directory" => std::fs::create_dir(&target).unwrap(),
+                    #[cfg(unix)]
+                    "link" => std::os::unix::fs::symlink("missing", &target).unwrap(),
+                    _ => unreachable!(),
+                }
+            }
+            drop(Scratch(workspace.clone()));
+            if matches!(case, "quiet" | "absent") {
+                assert!(!workspace.exists(), "ordinary cleanup did not run: {case}");
+            } else {
+                assert_eq!(std::fs::read(&sentinel).unwrap(), bytes, "{case}");
+                match shape {
+                    "file" => assert_eq!(std::fs::read(&target).unwrap(), bytes, "{case}"),
+                    "directory" => assert!(std::fs::symlink_metadata(&target).unwrap().is_dir()),
+                    #[cfg(unix)]
+                    "link" => {
+                        assert_eq!(std::fs::read_link(&target).unwrap(), Path::new("missing"))
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
 }

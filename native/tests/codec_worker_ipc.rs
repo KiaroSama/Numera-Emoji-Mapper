@@ -1,0 +1,210 @@
+//! The real internal executable publishes exclusively before its owner removes scratch.
+use _native::process_owner::OwnedProcess;
+use serde_json::{Value, json};
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::time::Duration;
+
+#[test]
+fn executable_codec_envelope_is_owned_bounded_and_exclusive() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    let directory = root
+        .join("logs")
+        .join(format!("native codec ipc {}", std::process::id()));
+    std::fs::create_dir_all(root.join("logs")).unwrap();
+    std::fs::create_dir(&directory).unwrap();
+    let source = root.join("tests/fixtures/native/static-codec/alpha-edge.png");
+    let fixture: Value = serde_json::from_str(include_str!(
+        "../../tests/fixtures/native/static-codec.json"
+    ))
+    .unwrap();
+    let expected = fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["name"] == "alpha-edge")
+        .unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    for (index, mut request, existing, expected_code) in [
+        (
+            0,
+            json!({"operation":"fingerprint","source":source,"format":"static"}),
+            false,
+            0,
+        ),
+        (
+            1,
+            json!({"operation":"image_info","source":"relative.png","format":"static"}),
+            false,
+            1,
+        ),
+        (
+            2,
+            json!({"operation":"fingerprint","source":source,"format":"static"}),
+            true,
+            2,
+        ),
+        (
+            3,
+            json!({"operation":"convert","source":source,"format":"static","target_format":"static"}),
+            false,
+            0,
+        ),
+        (
+            4,
+            json!({"operation":"fingerprint","source":root.join("tests/fixtures/native/video-fingerprint/fast30.webm"),"format":"video"}),
+            false,
+            0,
+        ),
+        (
+            5,
+            json!({"operation":"same_image","source":root.join("tests/fixtures/native/video-timeline/blue.webm"),"other":root.join("tests/fixtures/native/video-timeline/spiked.webm"),"format":"video"}),
+            false,
+            0,
+        ),
+    ] {
+        let workspace = directory.join(index.to_string());
+        std::fs::create_dir(&workspace).unwrap();
+        let input = workspace.join("request.json");
+        let output = workspace.join("response.json");
+        let converted = workspace.join("converted.png");
+        if index == 3 {
+            request["output"] = json!(converted);
+        }
+        _native::atomic::write_json(&input, &request).unwrap();
+        if existing {
+            std::fs::write(&output, b"preserve").unwrap();
+        }
+        let mut command = Command::new(env!("CARGO_BIN_EXE_numera-emoji"));
+        command
+            .arg("codec-worker")
+            .arg(&input)
+            .arg(&output)
+            .current_dir(&workspace)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .env("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1")
+            .env("PYTHONUTF8", "1")
+            .env("TEMP", &workspace)
+            .env("TMP", &workspace)
+            .env("TMPDIR", &workspace);
+        for (name, _) in std::env::vars_os() {
+            let upper = name.to_string_lossy().to_uppercase();
+            if ["TOKEN", "SECRET", "PASSWORD", "API_KEY"]
+                .iter()
+                .any(|key| upper.contains(key))
+            {
+                command.env_remove(name);
+            }
+        }
+        let mut owner = OwnedProcess::spawn(&mut command, workspace.clone()).unwrap();
+        {
+            let status = runtime
+                .block_on(owner.wait(Duration::from_secs(20), Duration::from_secs(10)))
+                .unwrap();
+            assert_eq!(status.code(), Some(expected_code));
+            let bytes = std::fs::read(&output).unwrap();
+            if existing {
+                assert_eq!(bytes, b"preserve");
+            } else {
+                let response: Value = serde_json::from_slice(&bytes).unwrap();
+                assert_eq!(response["ok"], expected_code == 0);
+                if index == 3 {
+                    let conversion: Value = serde_json::from_slice(
+                        &std::fs::read(
+                            std::env::var_os("NUMERA_STATIC_CONVERT_ORACLE")
+                                .map(PathBuf::from)
+                                .unwrap_or_else(|| {
+                                    root.join("tests/fixtures/native/static-convert.json")
+                                }),
+                        )
+                        .unwrap(),
+                    )
+                    .unwrap();
+                    let golden = conversion["cases"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .find(|case| case["name"] == "alpha-edge")
+                        .unwrap();
+                    use sha2::{Digest, Sha256};
+                    assert!(
+                        std::fs::read(&converted)
+                            .unwrap()
+                            .starts_with(b"\x89PNG\r\n\x1a\n")
+                    );
+                    // Encoders may choose different PNG filters/compression. The public
+                    // conversion must retain the independently frozen RGBA pixels and mode.
+                    let (size, mode, rgba) = {
+                        use pyo3::prelude::*;
+                        use pyo3::types::PyBytes;
+                        Python::initialize();
+                        Python::attach(|py| -> PyResult<((u32, u32), String, Vec<u8>)> {
+                            let image = py
+                                .import("PIL.Image")?
+                                .call_method1("open", (&converted,))?;
+                            let decoded = (|| -> PyResult<_> {
+                                Ok((
+                                    image.getattr("size")?.extract()?,
+                                    image.getattr("mode")?.extract()?,
+                                    image
+                                        .call_method0("tobytes")?
+                                        .cast_into::<PyBytes>()?
+                                        .as_bytes()
+                                        .to_vec(),
+                                ))
+                            })();
+                            image.call_method0("close")?;
+                            decoded
+                        })
+                        .unwrap()
+                    };
+                    assert_eq!(json!([size.0, size.1]), golden["expected"]["size"]);
+                    assert_eq!(json!(mode), golden["expected"]["mode"]);
+                    assert_eq!(
+                        Sha256::digest(&rgba)
+                            .iter()
+                            .map(|byte| format!("{byte:02x}"))
+                            .collect::<String>(),
+                        golden["expected"]["rgba_sha256"]
+                    );
+                    assert_eq!(response["result"]["fmt"], "static");
+                    assert_eq!(response["result"]["extension"], ".png");
+                } else if index == 4 {
+                    let video: Value = serde_json::from_str(include_str!(
+                        "../../tests/fixtures/native/video-fingerprint.json"
+                    ))
+                    .unwrap();
+                    assert_eq!(
+                        response["result"]["content_key"],
+                        video["cases"][0]["expected"]["content_key"]
+                    );
+                    assert_eq!(
+                        response["result"]["phash"],
+                        video["cases"][0]["expected"]["phash"]
+                    );
+                    assert_eq!(response["result"]["fmt"], "video");
+                } else if index == 5 {
+                    assert_eq!(response["result"], false);
+                } else if expected_code == 0 {
+                    assert_eq!(
+                        response["result"],
+                        json!({"content_key":expected["expected"]["content_key"],"phash":expected["expected"]["phash"],"fmt":"static","extension":".png"})
+                    );
+                } else {
+                    assert_eq!(response["error"], "source must be absolute");
+                }
+            }
+        }
+        owner.finish().unwrap();
+        assert!(!workspace.exists());
+    }
+    std::fs::remove_dir(&directory).unwrap();
+}

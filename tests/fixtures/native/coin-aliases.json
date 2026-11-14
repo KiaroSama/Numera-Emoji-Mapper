@@ -1,0 +1,526 @@
+{
+  "baseline_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "e9361cc868a2dd13f5f9e450f55a95399d1cea24438223fa9e84533cb19f20ff",
+  "oracle": "pinned AST DROP/norm/main with injected in-memory CSV/map/missing boundary; no production imports or network; malformed row and numeric ID variants inject source DictReader results directly",
+  "python_version": "3.11.9",
+  "unicode_version": "14.0.0",
+  "normalization": [
+    {
+      "input": "Foo (BSC) Protocol",
+      "expected": "foo"
+    },
+    {
+      "input": "The USD Coin",
+      "expected": ""
+    },
+    {
+      "input": "A(B(C)D) Token",
+      "expected": "ad"
+    },
+    {
+      "input": "A (x\ny) B",
+      "expected": "axyb"
+    },
+    {
+      "input": "A (x\r y) B",
+      "expected": "ab"
+    },
+    {
+      "input": "İstanbul Koin",
+      "expected": "istanbulkoin"
+    },
+    {
+      "input": "Straße ÉCOIN Token",
+      "expected": "strae"
+    },
+    {
+      "input": "ＦＯＯ Network",
+      "expected": ""
+    },
+    {
+      "input": "newcoin/new coin",
+      "expected": "newcoin"
+    },
+    {
+      "input": "(unclosed Token",
+      "expected": "unclosed"
+    },
+    {
+      "input": "Foo)Bar( Token",
+      "expected": "foobar"
+    },
+    {
+      "input": "foo bar",
+      "expected": "foobar"
+    }
+  ],
+  "groups": [
+    {
+      "request": {
+        "mapping": {
+          "bbb": "222",
+          "aaa": "111",
+          "ddd": "333"
+        },
+        "rows": [
+          {
+            "ticker": "aaa",
+            "name": "Foo Network"
+          },
+          {
+            "ticker": "bbb",
+            "name": "Foo Token"
+          },
+          {
+            "ticker": "ddd",
+            "name": "Bar Labs"
+          },
+          {
+            "ticker": "absent",
+            "name": "Foo"
+          }
+        ],
+        "missing": [
+          [
+            "Foo Protocol",
+            "ccc"
+          ],
+          [
+            "Bar Coin",
+            "eee"
+          ],
+          [
+            "Unknown",
+            "zzz"
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {
+          "bbb": "222",
+          "aaa": "111",
+          "ddd": "333",
+          "eee": "333"
+        },
+        "added": 1,
+        "ambiguous": 1,
+        "messages": [
+          "  AMBIGUOUS ccc (Foo Protocol): 'foo' matches aaa, bbb -> left unmapped, resolve by hand",
+          "  alias eee -> ddd (Bar Coin)"
+        ]
+      },
+      "mapping_keys": [
+        "bbb",
+        "aaa",
+        "ddd",
+        "eee"
+      ]
+    },
+    {
+      "request": {
+        "mapping": {
+          "bbb": "111",
+          "aaa": "111",
+          "ccc": "999"
+        },
+        "rows": [
+          {
+            "ticker": "BBB",
+            "name": "The Foo"
+          },
+          {
+            "ticker": "AAA",
+            "name": "Foo Coin"
+          },
+          {
+            "ticker": "ccc",
+            "name": "Bar"
+          },
+          {
+            "ticker": "aaa",
+            "name": "Foo"
+          }
+        ],
+        "missing": [
+          [
+            "Foo Token",
+            "new"
+          ],
+          [
+            "Foo",
+            "new"
+          ],
+          [
+            "Bar",
+            "ccc"
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {
+          "bbb": "111",
+          "aaa": "111",
+          "ccc": "999",
+          "new": "111"
+        },
+        "added": 3,
+        "ambiguous": 0,
+        "messages": [
+          "  alias new -> aaa (Foo Token)",
+          "  alias new -> aaa (Foo)",
+          "  alias ccc -> ccc (Bar)"
+        ]
+      },
+      "mapping_keys": [
+        "bbb",
+        "aaa",
+        "ccc",
+        "new"
+      ]
+    },
+    {
+      "request": {
+        "mapping": {
+          "abc": "10",
+          "uppercase": "20"
+        },
+        "rows": [
+          {
+            "ticker": "abc",
+            "name": "İstanbul Koin"
+          },
+          {
+            "ticker": "uppercase",
+            "name": "token usd"
+          }
+        ],
+        "missing": [
+          [
+            "istanbul koin",
+            "join"
+          ],
+          [
+            "USD token",
+            "empty"
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {
+          "abc": "10",
+          "uppercase": "20",
+          "join": "10"
+        },
+        "added": 1,
+        "ambiguous": 0,
+        "messages": [
+          "  alias join -> abc (istanbul koin)"
+        ]
+      },
+      "mapping_keys": [
+        "abc",
+        "uppercase",
+        "join"
+      ]
+    },
+    {
+      "request": {
+        "mapping": {},
+        "rows": [
+          {
+            "ticker": "abc",
+            "name": "Foo"
+          }
+        ],
+        "missing": [
+          [
+            "Foo",
+            "x"
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {},
+        "added": 0,
+        "ambiguous": 0,
+        "messages": []
+      },
+      "mapping_keys": []
+    },
+    {
+      "request": {
+        "mapping": {
+          "a": true,
+          "b": 1,
+          "c": 1.0
+        },
+        "rows": [
+          {
+            "ticker": "a",
+            "name": "Foo"
+          },
+          {
+            "ticker": "b",
+            "name": "Foo Token"
+          },
+          {
+            "ticker": "c",
+            "name": "Foo Labs"
+          }
+        ],
+        "missing": [
+          [
+            "Foo",
+            "joined"
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {
+          "a": true,
+          "b": 1,
+          "c": 1.0,
+          "joined": true
+        },
+        "added": 1,
+        "ambiguous": 0,
+        "messages": [
+          "  alias joined -> a (Foo)"
+        ]
+      },
+      "mapping_keys": [
+        "a",
+        "b",
+        "c",
+        "joined"
+      ]
+    },
+    {
+      "request": {
+        "mapping": {
+          "a": 9007199254740993,
+          "b": 9007199254740992.0
+        },
+        "rows": [
+          {
+            "ticker": "a",
+            "name": "Foo"
+          },
+          {
+            "ticker": "b",
+            "name": "Foo"
+          }
+        ],
+        "missing": [
+          [
+            "Foo",
+            "ambiguous"
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {
+          "a": 9007199254740993,
+          "b": 9007199254740992.0
+        },
+        "added": 0,
+        "ambiguous": 1,
+        "messages": [
+          "  AMBIGUOUS ambiguous (Foo): 'foo' matches a, b -> left unmapped, resolve by hand"
+        ]
+      },
+      "mapping_keys": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "request": {
+        "mapping": {
+          "a": null,
+          "b": null
+        },
+        "rows": [
+          {
+            "ticker": "a",
+            "name": "Foo"
+          },
+          {
+            "ticker": "b",
+            "name": "Foo"
+          }
+        ],
+        "missing": [
+          [
+            "Foo",
+            "nil"
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {
+          "a": null,
+          "b": null,
+          "nil": null
+        },
+        "added": 1,
+        "ambiguous": 0,
+        "messages": [
+          "  alias nil -> a (Foo)"
+        ]
+      },
+      "mapping_keys": [
+        "a",
+        "b",
+        "nil"
+      ]
+    },
+    {
+      "request": {
+        "mapping": {
+          "a": -0.0,
+          "b": false
+        },
+        "rows": [
+          {
+            "ticker": "a",
+            "name": "Foo"
+          },
+          {
+            "ticker": "b",
+            "name": "Foo"
+          }
+        ],
+        "missing": [
+          [
+            "Foo",
+            "zero"
+          ]
+        ]
+      },
+      "expected": {
+        "mapping": {
+          "a": -0.0,
+          "b": false,
+          "zero": -0.0
+        },
+        "added": 1,
+        "ambiguous": 0,
+        "messages": [
+          "  alias zero -> a (Foo)"
+        ]
+      },
+      "mapping_keys": [
+        "a",
+        "b",
+        "zero"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "request": {
+        "mapping": {
+          "abc": []
+        },
+        "rows": [
+          {
+            "ticker": "abc",
+            "name": "Foo"
+          }
+        ],
+        "missing": [
+          [
+            "Foo",
+            "x"
+          ]
+        ]
+      },
+      "kind": "TypeError",
+      "message": "unhashable type: 'list'"
+    },
+    {
+      "request": {
+        "mapping": {
+          "abc": {}
+        },
+        "rows": [
+          {
+            "ticker": "abc",
+            "name": "Foo"
+          }
+        ],
+        "missing": [
+          [
+            "Foo",
+            "x"
+          ]
+        ]
+      },
+      "kind": "TypeError",
+      "message": "unhashable type: 'dict'"
+    },
+    {
+      "request": {
+        "mapping": {
+          "a": "1"
+        },
+        "rows": [
+          {}
+        ],
+        "missing": []
+      },
+      "kind": "KeyError",
+      "message": "'ticker'"
+    },
+    {
+      "request": {
+        "mapping": {
+          "a": "1"
+        },
+        "rows": [
+          {
+            "ticker": null
+          }
+        ],
+        "missing": []
+      },
+      "kind": "AttributeError",
+      "message": "'NoneType' object has no attribute 'lower'"
+    },
+    {
+      "request": {
+        "mapping": {
+          "a": "1"
+        },
+        "rows": [
+          {
+            "ticker": "a",
+            "name": 7
+          }
+        ],
+        "missing": []
+      },
+      "kind": "AttributeError",
+      "message": "'int' object has no attribute 'lower'"
+    },
+    {
+      "request": {
+        "mapping": {
+          "a": "1"
+        },
+        "rows": [
+          {
+            "ticker": "a",
+            "name": [
+              "x"
+            ]
+          }
+        ],
+        "missing": []
+      },
+      "kind": "AttributeError",
+      "message": "'list' object has no attribute 'lower'"
+    }
+  ]
+}

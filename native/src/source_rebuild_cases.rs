@@ -1,0 +1,268 @@
+//! Fixed historical rebuild cohort; method identities are checked against original collection.
+pub(super) const BASELINE: &str = "1a36a968b006236bd0665a1da65c541938c06061";
+pub(super) const IDENTITIES: [(&str, &str); 16] = [
+    (
+        "coins/rebuild_dedup.py",
+        "17771c6245dedf36d6c66deba99bb6405a624505962f74251f7f5a7f7e4eb54f",
+    ),
+    (
+        "coins/_dedup_plan.py",
+        "d5fe1edbd9ecf37cc59eada51b2108a756d49edece5b1fd47db4a1b325ec5bd3",
+    ),
+    (
+        "tests/reference/packstate.py",
+        "d6539619a473dd86d7706bb929a8cad759d29639cd8006a1e083a0504693f9e0",
+    ),
+    (
+        "emojikit/media.py",
+        "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    ),
+    (
+        "emojikit/identity.py",
+        "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89",
+    ),
+    (
+        "tests/oracles/telegram_api.py",
+        "59f5c958a2f7a2f7ed32b93669861066bf3a3f6a6a859623f7456405b5c56aa3",
+    ),
+    (
+        "tests/reference/announce.py",
+        "a10d73deec77e1de3a7b1e64b8c78dbde43bb5e5af031aee38d26fe7a85db4c8",
+    ),
+    (
+        "tests/_rebuild_fixtures.py",
+        "2fbd14088a6de0e06306fcd2d37dfd689bfb256de5f6edd614dacdebb250be3a",
+    ),
+    (
+        "tests/test_rebuild_dedup_state.py",
+        "a8f6a912a87abd55d3cdc90acd6308c701d7f52e31d208eae36c5ad665b9cfc8",
+    ),
+    (
+        "tests/test_rebuild_dedup_locks.py",
+        "4f0123a1c480028e46d9253246dc9c1f27617a7c7e4c2c1efdcb0377d2c46628",
+    ),
+    (
+        "tests/test_rebuild_dedup_plan.py",
+        "6944d3bc39718e07a09ba181dfd4206e000f5c8492f6213050406a499adc8768",
+    ),
+    (
+        "tests/test_rebuild_dedup_resume.py",
+        "4bae70527962fc13deeddc81b0b1d59d52779ff243ddc9c0aa8bc7e2007c41c3",
+    ),
+    (
+        "coins/_dedup_map.py",
+        "5fc72119e143b9d20af1f9280921d2503327f6c574e7b34e9d93a7ba1e27310e",
+    ),
+    (
+        "coins/_inventory.py",
+        "46985e570f4d9e7ee8c9ae0d326f0517033a3a3822f3b9d594ca07a30a079f47",
+    ),
+    (
+        "tests/test_rebuild_dedup_map.py",
+        "371d5d96deec33bbdf2c04545b90fa3482b7cb07e18236b2822396807799ecc7",
+    ),
+    (
+        "emojikit/cli_env.py",
+        "9e4c0a045f031bffd23fe5ff9e51a132363e9952a1cdde47d071bfc81234e887",
+    ),
+];
+pub(super) const CLASSES: [(usize, &str, &[&str]); 16] = [
+    (
+        8,
+        "LinkMessagesAreBounded",
+        &["test_the_link_message_retries_at_most_twice"],
+    ),
+    (8, "OwnerIdIsParsedSafely", OWNER),
+    (
+        8,
+        "OldPackDeletionMustBeConfirmed",
+        &[
+            "test_a_confirmed_deletion_completes_the_phase",
+            "test_a_surviving_pack_leaves_the_phase_open",
+            "test_an_unreadable_pack_stops_the_run",
+            "test_deletion_is_not_repeated_after_a_resume",
+            "test_partial_deletion_records_only_what_is_gone",
+        ],
+    ),
+    (
+        9,
+        "RebuildTakesThePackFamilyLock",
+        &["test_the_lock_is_keyed_on_the_pack_base"],
+    ),
+    (
+        9,
+        "ConcurrentRunsAreLockedOut",
+        &[
+            "test_a_second_run_refuses_to_start",
+            "test_the_lock_is_released_after_a_run",
+            "test_the_lock_is_released_after_a_stop",
+        ],
+    ),
+    (
+        10,
+        "BuildFinishesWhenThePlanIsWalked",
+        &[
+            "test_a_clean_walk_is_done",
+            "test_a_crash_on_the_last_upload_is_partial_and_keeps_its_marker",
+            "test_trailing_skips_are_saved_and_the_walk_is_done",
+        ],
+    ),
+    (
+        10,
+        "CursorOrderAndPlanMustDescribeOneWalk",
+        &[
+            "test_a_marker_for_a_different_plan_entry_is_rejected",
+            "test_a_marker_with_no_cursor_behind_it_is_rejected",
+            "test_a_walk_with_skipped_entries_is_still_accepted",
+            "test_an_order_that_is_not_in_plan_order_is_rejected",
+            "test_an_upload_that_is_not_a_plan_entry_at_all_is_rejected",
+            "test_an_upload_the_cursor_never_reached_is_rejected",
+            "test_live_drift_stops_before_the_old_packs_are_deleted",
+            "test_uploads_with_no_set_to_live_in_are_rejected",
+        ],
+    ),
+    (
+        10,
+        "RetryableFailureKeepsThePlanPosition",
+        &[
+            "test_a_media_rejection_is_still_skipped_for_good",
+            "test_a_transport_failure_leaves_the_cursor_on_the_item",
+        ],
+    ),
+    (
+        10,
+        "TruncatedPlanFailsClosed",
+        &[
+            "test_a_plan_entry_missing_its_fields_is_rejected",
+            "test_a_sound_plan_still_loads",
+            "test_a_truncated_plan_refuses_to_build",
+            "test_the_plan_and_the_report_are_written_atomically",
+        ],
+    ),
+    (
+        11,
+        "AmbiguousUploadStopsTheRun",
+        &[
+            "test_an_ambiguous_create_records_the_set_it_may_have_made",
+            "test_the_second_entry_is_never_uploaded",
+            "test_the_unresolved_mutation_keeps_its_identity",
+        ],
+    ),
+    (
+        11,
+        "ResumeReconcilesTheMarker",
+        &[
+            "test_a_create_that_did_not_land_is_retried_once",
+            "test_a_create_that_landed_is_adopted_from_the_marker",
+            "test_an_unreadable_set_stops_instead_of_deciding",
+        ],
+    ),
+    (
+        11,
+        "InFlightIsResolvedByIdentity",
+        &[
+            "test_a_manual_sticker_cannot_satisfy_the_marker",
+            "test_an_unreadable_set_stops_instead_of_deciding",
+            "test_an_upload_that_never_landed_is_retried",
+            "test_our_own_image_is_recognised",
+        ],
+    ),
+    (
+        11,
+        "CreateIsAdoptedOnlyOnImageIdentity",
+        &[
+            "test_a_first_sticker_that_cannot_be_read_stops_the_run",
+            "test_a_foreign_first_image_is_never_adopted",
+            "test_an_empty_set_of_that_name_is_not_treated_as_ours",
+            "test_our_image_beside_a_foreign_one_is_not_our_create",
+            "test_our_own_image_is_still_adopted",
+        ],
+    ),
+    (
+        11,
+        "LiveStateUnknownStopsTheRun",
+        &["test_cursor_order_and_marker_are_left_untouched"],
+    ),
+    (
+        14,
+        "MapIsResolvedByImageIdentity",
+        &[
+            "test_a_live_sticker_that_cannot_be_read_refuses_to_map",
+            "test_a_missing_source_image_refuses_to_map",
+            "test_a_provider_cannot_change_the_map_during_the_snapshot",
+            "test_a_provider_top_up_is_mapped_from_its_own_image",
+            "test_a_provider_top_up_without_its_image_still_refuses",
+            "test_a_same_length_reorder_is_never_mapped_by_position",
+            "test_a_same_length_replacement_does_not_rewrite_the_map",
+            "test_aliases_in_the_current_map_survive_the_rebuild",
+            "test_an_alias_that_cannot_be_reapplied_stops_the_write",
+            "test_an_extra_live_sticker_refuses_to_map",
+            "test_the_canonical_map_is_written_under_the_shared_lock",
+            "test_the_pack_family_lock_is_held_across_the_mapping",
+            "test_the_untouched_pack_maps_by_content",
+        ],
+    ),
+    (
+        14,
+        "SharedLogoGuard",
+        &[
+            "test_one_to_one_map_is_clean",
+            "test_reviewed_shared_group_is_accepted",
+            "test_unreviewed_many_to_one_group_is_reported",
+        ],
+    ),
+];
+pub(super) const RESUME: &[&str] = &[
+    "AmbiguousUploadStopsTheRun",
+    "ResumeReconcilesTheMarker",
+    "InFlightIsResolvedByIdentity",
+    "CreateIsAdoptedOnlyOnImageIdentity",
+    "LiveStateUnknownStopsTheRun",
+];
+pub(super) const SCHEMA: &[&str] = &[
+    "test_a_boolean_cursor_is_not_read_as_a_number",
+    "test_a_live_count_over_the_pack_limit_is_rejected",
+    "test_a_marker_that_is_neither_object_nor_null_is_rejected",
+    "test_a_negative_cursor_is_rejected_before_any_deletion",
+    "test_a_non_integer_cursor_is_rejected",
+    "test_a_repeated_set_name_is_rejected",
+    "test_a_sound_state_still_builds",
+    "test_an_in_flight_marker_missing_its_target_is_rejected",
+    "test_an_order_that_repeats_an_entry_is_rejected",
+    "test_an_oversized_cursor_is_rejected_instead_of_reporting_done",
+    "test_an_unknown_in_flight_operation_is_rejected",
+    "test_following_the_legacy_repair_actually_clears_the_stop",
+    "test_set_indexes_must_ascend",
+    "test_the_legacy_bare_key_marker_is_rejected_here_not_at_recovery",
+    "test_wrong_types_are_rejected",
+];
+pub(super) fn proof_counts(class: &str, method: &str) -> (usize, usize) {
+    match (class, method) {
+        ("ResumeReconcilesTheMarker", "test_a_create_that_landed_is_adopted_from_the_marker")
+        | (
+            "CreateIsAdoptedOnlyOnImageIdentity",
+            "test_a_first_sticker_that_cannot_be_read_stops_the_run",
+        )
+        | ("CreateIsAdoptedOnlyOnImageIdentity", "test_a_foreign_first_image_is_never_adopted")
+        | ("CreateIsAdoptedOnlyOnImageIdentity", "test_our_own_image_is_still_adopted") => (0, 1),
+        ("InFlightIsResolvedByIdentity", "test_a_manual_sticker_cannot_satisfy_the_marker")
+        | ("InFlightIsResolvedByIdentity", "test_an_upload_that_never_landed_is_retried")
+        | ("InFlightIsResolvedByIdentity", "test_our_own_image_is_recognised") => (1, 0),
+        _ => (0, 0),
+    }
+}
+pub(super) const EXCLUDED_MAP: &str =
+    "test_the_real_committed_map_is_checked_against_the_real_groups";
+pub(super) fn map_proofs(method: &str) -> usize {
+    usize::from(!matches!(
+        method,
+        "test_a_missing_source_image_refuses_to_map"
+            | "test_a_provider_top_up_without_its_image_still_refuses"
+            | "test_the_canonical_map_is_written_under_the_shared_lock"
+            | "test_the_pack_family_lock_is_held_across_the_mapping"
+    ))
+}
+pub(super) const OWNER: &[&str] = &[
+    "test_a_typo_falls_back_instead_of_killing_the_import",
+    "test_a_valid_value_is_still_used",
+];

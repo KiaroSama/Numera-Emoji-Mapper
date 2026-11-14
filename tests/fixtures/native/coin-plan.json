@@ -1,0 +1,230 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "coins/_dedup_plan.py": "d5fe1edbd9ecf37cc59eada51b2108a756d49edece5b1fd47db4a1b325ec5bd3",
+    "coins/_dedup_map.py": "5fc72119e143b9d20af1f9280921d2503327f6c574e7b34e9d93a7ba1e27310e"
+  },
+  "plans": [
+    {
+      "files": [
+        {
+          "ticker": "btc",
+          "filename": "btc.png",
+          "hash": "one"
+        },
+        {
+          "ticker": "btcbsc",
+          "filename": "btcbsc.png",
+          "hash": "one"
+        },
+        {
+          "ticker": "eth",
+          "filename": "eth.png",
+          "hash": "two"
+        }
+      ],
+      "inventory": [
+        "btcbsc"
+      ],
+      "keywords": {
+        "btc": "BTC, Bitcoin",
+        "btcbsc": "BSC"
+      },
+      "expected": [
+        {
+          "rep": "btcbsc",
+          "tickers": [
+            "btcbsc",
+            "btc"
+          ],
+          "kw": "BSC, BTC, Bitcoin",
+          "hash": "one"
+        },
+        {
+          "rep": "eth",
+          "tickers": [
+            "eth"
+          ],
+          "kw": "eth",
+          "hash": "two"
+        }
+      ]
+    },
+    {
+      "files": [
+        {
+          "ticker": "z",
+          "filename": "z.png",
+          "hash": "one"
+        },
+        {
+          "ticker": "a",
+          "filename": "a.png",
+          "hash": "one"
+        },
+        {
+          "ticker": "a",
+          "filename": "A.png",
+          "hash": "one"
+        }
+      ],
+      "inventory": [],
+      "keywords": {},
+      "expected": [
+        {
+          "rep": "a",
+          "tickers": [
+            "a",
+            "z"
+          ],
+          "kw": "a, z",
+          "hash": "one"
+        }
+      ]
+    },
+    {
+      "files": [],
+      "inventory": [],
+      "keywords": {},
+      "expected": []
+    },
+    {
+      "files": [
+        {
+          "ticker": "x",
+          "filename": "x.png",
+          "hash": "one"
+        },
+        {
+          "ticker": "y",
+          "filename": "y.png",
+          "hash": "two"
+        },
+        {
+          "ticker": "z",
+          "filename": "z.png",
+          "hash": "one"
+        }
+      ],
+      "inventory": [
+        "z",
+        "y"
+      ],
+      "keywords": {
+        "z": ""
+      },
+      "expected": [
+        {
+          "rep": "y",
+          "tickers": [
+            "y"
+          ],
+          "kw": "y",
+          "hash": "two"
+        },
+        {
+          "rep": "z",
+          "tickers": [
+            "z",
+            "x"
+          ],
+          "kw": ", x",
+          "hash": "one"
+        }
+      ]
+    }
+  ],
+  "replays": [
+    {
+      "new": {
+        "btc": "new"
+      },
+      "current": {
+        "btc": "old",
+        "btcbsc": "old",
+        "unknown": "other"
+      },
+      "approved": [],
+      "expected": {
+        "mapping": {
+          "btc": "new",
+          "btcbsc": "new"
+        },
+        "missing": [],
+        "unapproved": {
+          "new": [
+            "btc",
+            "btcbsc"
+          ]
+        }
+      }
+    },
+    {
+      "new": {},
+      "current": {
+        "a": "same",
+        "b": "same",
+        "c": "unique"
+      },
+      "approved": [],
+      "expected": {
+        "mapping": {},
+        "missing": [
+          "a",
+          "b"
+        ],
+        "unapproved": {}
+      }
+    },
+    {
+      "new": {
+        "b": "newb",
+        "a": "newa"
+      },
+      "current": {
+        "c": "old",
+        "a": "old",
+        "b": "old"
+      },
+      "approved": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expected": {
+        "mapping": {
+          "b": "newb",
+          "a": "newa",
+          "c": "newa"
+        },
+        "missing": [],
+        "unapproved": {}
+      }
+    },
+    {
+      "new": {
+        "a": "1",
+        "b": "1",
+        "c": "2"
+      },
+      "current": {},
+      "approved": [
+        "a"
+      ],
+      "expected": {
+        "mapping": {
+          "a": "1",
+          "b": "1",
+          "c": "2"
+        },
+        "missing": [],
+        "unapproved": {
+          "1": [
+            "a",
+            "b"
+          ]
+        }
+      }
+    }
+  ]
+}

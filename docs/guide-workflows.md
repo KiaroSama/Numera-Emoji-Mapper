@@ -2,59 +2,56 @@
 
 ## Appendix A — Command cheat-sheet
 
-All commands run from the project root. `PY = .venv\Scripts\python.exe` (Windows)
-or `.venv/bin/python` (macOS/Linux).
+Run commands from the package root. Examples use `.\numera-emoji.exe`; on
+Linux/macOS use `./numera-emoji`. No Python environment is required.
 
 ```powershell
-# --- setup ---
-py -3.11 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt         # core
-.venv\Scripts\python.exe -m pip install -r requirements-coins.txt   # only for coins/remap_ids.py
-copy .env.example .env            # then edit tokens + owner id
-.\run.ps1                         # launcher menu
-.\run.ps1 -Check                  # env doctor (CI-style)
-.\scripts\check.ps1               # byte-compile + full unit suite
+# --- setup / diagnostics ---
+Copy-Item .env.example .env       # then edit configuration
+.\numera-emoji.exe package-verify
+.\numera-emoji.exe doctor
+.\run.ps1                        # native menu; Linux/macOS: ./run.sh
 
-# --- single pack (general) ---
-$PY -m emojikit.make_emoji_pngs --in input\set --out build\set
-$PY -m emojikit.build_pack --base set --title "Set" --source-dir build\set --token-env GENERAL_BOT_TOKEN --dry-run
-$PY -m emojikit.build_pack --base set --title "Set" --source-dir build\set --token-env GENERAL_BOT_TOKEN
+# --- single pack ---
+.\numera-emoji.exe make-emoji-pngs --in input\set --out build\set
+.\numera-emoji.exe build-pack --base set --title "Set" --source-dir build\set --token-env GENERAL_BOT_TOKEN --dry-run
+.\numera-emoji.exe build-pack --base set --title "Set" --source-dir build\set --token-env GENERAL_BOT_TOKEN
 
 # --- collector ---
-$PY -m emojikit.fetch_pack <pack-or-link> --token-env GENERAL_BOT_TOKEN
-$PY -m emojikit.fetch_emoji_ids --ids-file <file-with-premium-ids> [--id <n>]
-$PY -m emojikit.add_media --in input\set --emoji 😀
-$PY -m emojikit.panel                                            # curate, then Save
-$PY -m emojikit.build_collection --base mypack --title "My Pack" --token-env GENERAL_BOT_TOKEN --dry-run
-$PY -m emojikit.build_collection --base mypack --title "My Pack" --token-env GENERAL_BOT_TOKEN
-$PY -m emojikit.sync_order --base mypack                          # reorder a LIVE pack
-$PY -m emojikit.sync_order --base mypack --apply
+.\numera-emoji.exe fetch-pack <pack-or-link> --token-env GENERAL_BOT_TOKEN
+.\numera-emoji.exe fetch-emoji-ids --ids-file <file-with-premium-ids>
+.\numera-emoji.exe add-media --in input\set --emoji 😀
+.\numera-emoji.exe panel
+.\numera-emoji.exe build-collection --base mypack --title "My Pack" --token-env GENERAL_BOT_TOKEN --dry-run
+.\numera-emoji.exe build-collection --base mypack --title "My Pack" --token-env GENERAL_BOT_TOKEN
+.\numera-emoji.exe sync-order --base mypack
+.\numera-emoji.exe sync-order --base mypack --apply
 
 # --- bot ---
-$PY -m emojikit.emoji_bot
+.\numera-emoji.exe emoji-bot
 
 # --- coins ---
-$PY -m coins.fetch_logos
-$PY -m emojikit.make_emoji_pngs --in coins\logos\svg --out coins\logos\emoji
-$PY -m emojikit.make_emoji_pngs --in coins\logos\png --out coins\logos\emoji
-$PY -m coins.rebuild_dedup        # all: deletes the recorded old packs first
-$PY -m coins.remap_ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
-$PY -m coins.enhance_map
-$PY -m coins.alias_map
-$PY -m coins.check_all_packs
-$PY -m coins.verify_logos --emoji-dir "<coin logo folder>"
-$PY -m coins.verify_logos --emoji-dir "<coin logo folder>" --fix --only sol,xrp
-$PY -m coins.write_manifests --out-dir "<coin archive folder>"
+.\numera-emoji.exe coin-fetch-logos
+.\numera-emoji.exe make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
+.\numera-emoji.exe make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
+.\numera-emoji.exe coin-check-packs
+.\numera-emoji.exe coin-remap-ids --emoji-dir "<coin logo folder>"
+.\numera-emoji.exe coin-remap-ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
+.\numera-emoji.exe coin-enhance-map
+.\numera-emoji.exe coin-alias-map
+.\numera-emoji.exe coin-verify-logos --emoji-dir "<coin logo folder>"
+.\numera-emoji.exe coin-verify-logos --emoji-dir "<coin logo folder>" --fix --only sol,xrp
+.\numera-emoji.exe coin-write-manifests --out-dir "<coin archive folder>"
+# DESTRUCTIVE: all/build can delete recorded old packs before uploading.
+.\numera-emoji.exe coin-rebuild all
 
-# --- tests / CI-locally ---
-.\scripts\check.ps1                                     # what CI runs (compile + suite)
-$PY -m unittest discover -s tests -t . -p "test_*.py"   # -t . is REQUIRED (see §10)
-$PY -c "from emojikit import build_pack, make_emoji_pngs, fetch_pack, fetch_emoji_ids, add_media, build_collection, emoji_bot, panel"
-
-# --- git ---
-git add -A; git commit -m "..."; git push origin main
-gh run list --repo KiaroSama/Numera-Emoji-Mapper --limit 1 --json status,conclusion
+# --- contributor tests (source checkout/toolchain required) ---
+cargo test --manifest-path runtime/Cargo.toml --locked
 ```
+
+Calibrate remapping without `--apply` before choosing a cutoff. Live publishing,
+rebuild and repair commands act on the configured account; run them only for the
+operator targets you intend to change. Use `COMMAND --help` for current flags.
 
 ---
 
@@ -63,17 +60,17 @@ gh run list --repo KiaroSama/Numera-Emoji-Mapper --limit 1 --json status,conclus
 ### B.1 Fetch + curate + publish
 
 ```
-> .\native\runtime\numera-emoji.exe fetch-pack https://t.me/addemoji/RMaccs --token-env GENERAL_BOT_TOKEN
+> .\numera-emoji.exe fetch-pack https://t.me/addemoji/RMaccs --token-env GENERAL_BOT_TOKEN
 [..] Authenticated bot: @YourEmojiBot
 [..] Pack RMaccs (Accounts store — @RMaccs): 80 stickers -> new=80 dedup=0 failed=0
 Done. new=80 dedup=0 failed=0
   catalog static: 80 total (80 pending upload)
 
-> .\native\runtime\numera-emoji.exe panel
+> .\numera-emoji.exe panel
 Emoji curate panel: http://127.0.0.1:9450/
 # (open browser, untick a few, click Save -> "Saved ✓  76 included · 4 excluded")
 
-> .\native\runtime\numera-emoji.exe build-collection --base accts --title "Accounts" --token-env GENERAL_BOT_TOKEN --dry-run
+> .\numera-emoji.exe build-collection --base accts --title "Accounts" --token-env GENERAL_BOT_TOKEN --dry-run
 DRY RUN: nothing uploaded.
   static: 76 emoji -> 1 set(s) named acctss1_by_<bot> ...
   video: 0 emoji -> 0 set(s) ...
@@ -83,13 +80,13 @@ DRY RUN: nothing uploaded.
 ### B.2 Resolve an id and download its pack
 
 ```
-> .\native\runtime\numera-emoji.exe fetch-pack 5283254221590787816 --token-env GENERAL_BOT_TOKEN
+> .\numera-emoji.exe fetch-pack 5283254221590787816 --token-env GENERAL_BOT_TOKEN
 ```
 
 ### B.3 Audit the coin packs
 
 ```
-> python -m coins.check_all_packs
+> .\numera-emoji.exe coin-check-packs
 ...
 total stickers audited: 5791
 BLANK stickers: 0
@@ -103,22 +100,16 @@ DUPLICATE image groups: 0 (extra duplicate stickers: 0)
 
 ## Appendix C — Conventions for contributors / agents
 
-- **Language:** all code, comments, filenames, logs, docs in English.
-- **Placement:** source at root or in `emojikit/`/`coins/`; tests in `tests/`;
-  docs in `docs/`; shipped images in `assets/`; the Cloudflare Worker in
-  `worker/`. Don't clutter the root.
-- **No new dedup/mapping mechanisms** — extend the catalog (§5, §13, §16).
-- **Never** commit `.env`, `secrets.md`, `collection/`, `logs/`, tokens.
-- **Logging** is mandatory for executable scripts via `emojikit.logsetup`
-  (UTC file logs; secrets redacted).
-- **Verify before claiming done:** `.\scripts\check.ps1` + a real run; for UI, a
-  real browser (Playwright) at the relevant breakpoints.
-- **Sync:** push to `main` and keep this guide + `README.md` current.
-
-*This guide is the single source of truth for how Numera Emoji Mapper works. If code
-and guide disagree, fix whichever is wrong and re-sync.*
-
----
+- Keep code, comments, filenames, logs and documentation in English.
+- Production local Rust belongs in `runtime/` or shared `native/src/` modules;
+  browser assets belong in `assets/`, Cloudflare code in `worker/`, docs in `docs/`.
+- Extend the existing catalog and identity contracts rather than adding another
+  dedup or mapping mechanism.
+- Never commit configuration secrets, operator data or logs.
+- Use native UTC run logs and redaction for application commands.
+- Verify the relevant native tests and real browser behavior when changing UI.
+  Historical oracle tests remain separate developer checks.
+- Keep documentation current and follow the repository's review workflow.
 
 ## Appendix D — Building the next pack: the fast path
 
@@ -129,12 +120,12 @@ prevented by code or answerable in seconds if you know to look.
 ### The order that works
 
 ```powershell
-$PY -m emojikit.fetch_emoji_ids --ids-file ids.txt      # or emojikit/fetch_pack.py / emojikit/add_media.py
-$PY -m emojikit.panel                                   # curate + order, then Save selection
+.\numera-emoji.exe fetch-emoji-ids --ids-file ids.txt      # or fetch-pack / add-media
+.\numera-emoji.exe panel                                   # curate + order, then Save selection
 # check the header: it warns when the total exceeds one pack
-$PY -m emojikit.build_collection --base <Base> --title "<Title>" --mixed --dry-run
-$PY -m emojikit.build_collection --base <Base> --title "<Title>" --mixed
-$PY -m emojikit.sync_order --base <Base>                # report; --apply to place them
+.\numera-emoji.exe build-collection --base <Base> --title "<Title>" --mixed --dry-run
+.\numera-emoji.exe build-collection --base <Base> --title "<Title>" --mixed
+.\numera-emoji.exe sync-order --base <Base>                # report; --apply to place them
 ```
 
 ### Count the brand logo
@@ -150,7 +141,7 @@ Launcher **B3** now runs `--preflight` between the dry run and the upload: every
 queued file is offered to Telegram's validator first, and a refusal stops the
 run before a single sticker is published. About a minute for a 200-emoji queue,
 against the 46 it cost to discover the same file mid-publish. Run it by hand
-with `$PY -m emojikit.build_collection --base <Base> --title "<T>" --preflight`.
+with `.\numera-emoji.exe build-collection --base <Base> --title "<T>" --preflight`.
 
 ### Probe a suspect file before a 45-minute run
 
@@ -212,7 +203,7 @@ catalog cannot identify.
 
 - **Telegram re-encodes what it stores.** Never confirm an upload by exact
   content key — the key is a SHA of exact pixels, so a lossy re-encode changes
-  it for a picture that is visually identical. `media.same_image` owns this
+  it for a picture that is visually identical. the native media comparator owns this
   comparison for every caller: exact key first, then **both** a dHash and a
   colour check, since neither alone is safe. dHash survives the re-encode but
   is grayscale, so a stranger's green square sits 4 bits from our red one; the
@@ -233,4 +224,4 @@ catalog cannot identify.
 A pack still being filled keeps its files under `collection/media/<format>/`,
 named by content key, with `collection/manifests/<set>.md` listing what went
 where; a FULL pack's media moves to the archive (§12.5d). To take one pack away as a zip in pack order with an index:
-`.\native\runtime\numera-emoji.exe pack-archive --export <n> --zip pack<n>.zip` (§12.5d).
+`.\numera-emoji.exe pack-archive --export <n> --zip pack<n>.zip` (§12.5d).

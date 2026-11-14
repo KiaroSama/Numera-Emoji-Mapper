@@ -108,7 +108,10 @@ pub fn save(
             "catalog identities or visibility changed; export the draft and reload",
         ));
     }
-    let previous = read_plan(plan_path)?;
+    let previous = match read_plan(plan_path) {
+        Ok(plan) => plan,
+        Err(error) => return Ok(response(409, &error)),
+    };
     for card in view.iter_mut() {
         let key = card
             .get("key")
@@ -145,7 +148,7 @@ pub fn save(
     let counts = cat.inclusion(&all_excluded.into_iter().collect::<Vec<_>>())?;
     let mut body = json!({"ok":true,"included":counts[0],"excluded":counts[1]});
     if let Some(plan) = plan {
-        #[cfg(test)]
+        #[cfg(all(test, not(numera_native_runtime)))]
         crate::panel_save_tests::before_replace(plan_path);
         atomic::write_json(plan_path, &plan).map_err(|e| e.to_string())?;
         body["moves"] = json!(plan["moves"].as_array().ok_or("invalid moves")?.len());

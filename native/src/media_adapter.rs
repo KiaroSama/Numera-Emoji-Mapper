@@ -14,6 +14,78 @@ pub struct MediaAdapter {
     pub scratch: PathBuf,
 }
 
+pub trait MediaCodec: Sync {
+    fn with_scratch(&self, scratch: PathBuf) -> Self;
+
+    fn call(&self, request: Value) -> impl Future<Output = Result<Value, String>> + Send;
+
+    fn publication_usable<'a>(
+        &'a self,
+        source: &'a Path,
+        format: &'a str,
+    ) -> impl Future<Output = Result<bool, String>> + Send + 'a {
+        async move {
+            self.call(serde_json::json!({"operation":"publication_usable","source":source,"format":format}))
+                .await?
+                .as_bool()
+                .ok_or_else(|| "invalid publication media admission result".into())
+        }
+    }
+
+    fn compare<'a>(
+        &'a self,
+        a: &'a Path,
+        b: &'a Path,
+        format: &'a str,
+    ) -> impl Future<Output = Result<Option<bool>, String>> + Send + 'a {
+        async move {
+            let value = self
+                .call(
+                    serde_json::json!({"operation":"compare","source":a,"other":b,"format":format}),
+                )
+                .await?;
+            if value.is_null() {
+                Ok(None)
+            } else {
+                value
+                    .as_bool()
+                    .map(Some)
+                    .ok_or_else(|| "invalid media comparison result".into())
+            }
+        }
+    }
+}
+
+impl MediaCodec for MediaAdapter {
+    fn with_scratch(&self, scratch: PathBuf) -> Self {
+        Self {
+            python: self.python.clone(),
+            root: self.root.clone(),
+            scratch,
+        }
+    }
+
+    async fn call(&self, request: Value) -> Result<Value, String> {
+        MediaAdapter::call(self, request).await
+    }
+
+    async fn publication_usable<'a>(
+        &'a self,
+        source: &'a Path,
+        format: &'a str,
+    ) -> Result<bool, String> {
+        if format == "static" {
+            // Retained static decoding stays in its bounded worker until full adapter acceptance.
+            return self
+                .call(serde_json::json!({"operation":"publication_usable","source":source,"format":format}))
+                .await?
+                .as_bool()
+                .ok_or_else(|| "invalid publication media admission result".into());
+        }
+        crate::publication_media::usable(&self.root, source, format).await
+    }
+}
+
 impl MediaAdapter {
     pub async fn call(&self, request: Value) -> Result<Value, String> {
         #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -49,6 +121,7 @@ impl MediaAdapter {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .env("PYTHONUTF8", "1")
+            .env("PYTHONPATH", &self.root)
             .env("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1")
             .env("EMOJI_FFMPEG_TIMEOUT", ffmpeg_timeout.to_string())
             .env("TEMP", &directory)
@@ -106,17 +179,7 @@ impl MediaAdapter {
     }
 
     pub async fn compare(&self, a: &Path, b: &Path, fmt: &str) -> Result<Option<bool>, String> {
-        let value = self
-            .call(serde_json::json!({"operation":"compare","source":a,"other":b,"format":fmt}))
-            .await?;
-        if value.is_null() {
-            Ok(None)
-        } else {
-            value
-                .as_bool()
-                .map(Some)
-                .ok_or_else(|| "invalid media comparison result".into())
-        }
+        MediaCodec::compare(self, a, b, fmt).await
     }
 }
 

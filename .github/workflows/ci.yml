@@ -2,17 +2,20 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# A superseded push stops instead of running to completion: only the newest
-# commit on a ref is ever reported.
+env:
+  CARGO_BUILD_JOBS: "2"
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
+
+# Each event is checked; only superseded runs of that event/ref stop each other.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 # Jobs use ephemeral GitHub-HOSTED Ubuntu/Windows runners. This account's hosted
@@ -34,13 +37,119 @@ concurrency:
 # expectations.
 
 jobs:
+  native-build:
+    name: Standalone Rust runtime (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: windows-2025
+            platform: windows-x64
+          - os: macos-15-intel
+            platform: macos-x64
+          - os: macos-15
+            platform: macos-arm64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select Rust compiler
+        run: |
+          rustup default 1.99.0
+          rustup component add rustfmt clippy --toolchain 1.99.0
+      - name: Build Python-free release executable
+        run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+      - name: Production Rust format and lint
+        run: |
+          cargo fmt --manifest-path runtime/Cargo.toml --check
+          cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Install Linux video prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/.cache/apt/archives/partial" "$GITHUB_WORKSPACE/.cache/apt/lists/partial"
+          sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" update
+          sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" -o Dir::Cache::archives="$GITHUB_WORKSPACE/.cache/apt/archives" install -y --no-install-recommends ffmpeg
+      - name: Install Apple Silicon media prerequisite
+        if: matrix.platform == 'macos-arm64'
+        run: brew install ffmpeg
+      # Homebrew no longer provides an Intel bottle, and the signed binary
+      # mirror rate-limits signatures. Build only this CI prerequisite from
+      # checksum-pinned upstream releases; package users never compile it.
+      - name: Build Intel media prerequisite on hosted CI
+        if: matrix.platform == 'macos-x64'
+        shell: bash
+        run: |
+          mkdir -p .cache/ffmpeg
+          cd .cache/ffmpeg
+          curl --fail --location --retry 2 --max-time 120 https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/nasm-2.16.03.tar.xz -o nasm.tar.xz
+          echo '1412a1c760bbd05db026b6c0d1657affd6631cd0a63cddb6f73cc6d4aa616148  nasm.tar.xz' | shasum -a 256 -c -
+          tar -xf nasm.tar.xz
+          cd nasm-2.16.03
+          ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime"
+          make -j2
+          make install
+          cd ..
+          curl --fail --location --retry 2 --max-time 120 https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz -o libvpx.tar.gz
+          echo '1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a  libvpx.tar.gz' | shasum -a 256 -c -
+          tar -xzf libvpx.tar.gz
+          cd libvpx-1.17.0
+          ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-examples --disable-tools --disable-unit-tests --disable-docs --target=generic-gnu
+          make -j2
+          make install
+          cd ..
+          curl --fail --location --retry 2 --max-time 120 https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz -o ffmpeg.tar.xz
+          echo '8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e  ffmpeg.tar.xz' | shasum -a 256 -c -
+          tar -xf ffmpeg.tar.xz
+          cd ffmpeg-9.0.2
+          # Scalar swscale rounding changes historical decoded pixels. Preserve
+          # the normal x86 SIMD path and its original video identity checks.
+          PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/lib/pkgconfig" ./configure --prefix="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime" --disable-doc --disable-debug --disable-autodetect --enable-x86asm --x86asmexe="$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/bin/nasm" --enable-libvpx --enable-zlib
+          make -j2
+          make install
+          echo "$GITHUB_WORKSPACE/.cache/ffmpeg/runtime/bin" >> "$GITHUB_PATH"
+      - name: Install Windows media prerequisite
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg --yes --no-progress --cache-location="$env:GITHUB_WORKSPACE\.cache\chocolatey"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $env:PATH = [Environment]::GetEnvironmentVariable('PATH','Machine') + ';' + $env:PATH
+            "PATH=$env:PATH" >> $env:GITHUB_ENV
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) { throw 'FFmpeg and FFprobe are required' }
+      - name: Require actual FFmpeg and FFprobe before native video tests
+        shell: bash
+        run: |
+          command -v ffmpeg
+          command -v ffprobe
+          ffmpeg -version
+          ffprobe -version
+      - name: Permit private runtime test namespaces
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/test-network
+      - name: Native codecs, package integrity and offline installation
+        run: cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked -- --test-threads=1
+      - name: Upload standalone executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-build-${{ matrix.platform }}
+          path: |
+            runtime/target/release/numera-emoji
+            runtime/target/release/numera-emoji.exe
+          if-no-files-found: error
+
   # The Worker is TypeScript with its own vitest suite. Its own job rather than
   # a step in `build`: it shares nothing with the Python matrix, needs Node
   # instead of Python + ffmpeg, and running it twice (once per Python version)
   # would be pure waste. A separate job also means a Worker failure is legible
   # as a Worker failure.
   worker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
@@ -94,8 +203,12 @@ jobs:
   # is a hard error, never a silent skip, when the browser is missing, so the
   # opt-out has to be stated somewhere rather than left to chance.
   panel-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/ms-playwright
+      CARGO_BUILD_JOBS: "2"
+      HOOKMAKER_MAX_TEST_WORKERS: "2"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -122,7 +235,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji --bin numera-compat
 
       # `--with-deps` runs apt-get under sudo to install Chromium's system
       # libraries. It was forbidden on the old self-hosted runner, which had no
@@ -135,7 +248,7 @@ jobs:
       - name: Cache Playwright browsers
         uses: actions/cache@v6
         with:
-          path: ~/.cache/ms-playwright
+          path: .cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('requirements-dev.txt') }}
 
       - name: Install Chromium
@@ -152,9 +265,19 @@ jobs:
       - name: Panel browser tests
         run: python -m unittest tests.test_panel_browser tests.test_panel_queues tests.test_panel_curation tests.test_panel_perf -v
 
+      # Rust owns the driver/catalog and typed external Playwright calls. The
+      # existing test runner owns driver/browser descendants (900s wall/180s idle).
+      - name: Permit private test namespaces
+        uses: ./.github/actions/test-network
+
+      - name: Native panel browser tests
+        env:
+          PYO3_PYTHON: python
+        run: native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test panel_browser -- --test-threads=1 --nocapture
+
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     # The panel's browser suite has its own job above. Opting out here is
     # deliberate and must stay explicit: test_panel_browser.py raises rather
     # than skipping when playwright or Chromium is missing, because a browser
@@ -162,6 +285,7 @@ jobs:
     env:
       NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS: "1"
     strategy:
+      fail-fast: false
       matrix:
         # 3.11 is the runtime run.ps1 / .venv target; 3.12 guards against the
         # old reportlab-era assumption that newer Pythons are unsupported --
@@ -176,7 +300,8 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          # Only the source-oracle lane pins the historical patch; other lanes remain current.
+          python-version: ${{ matrix.python-version == '3.11' && '3.11.9' || matrix.python-version }}
           cache: pip
 
       # Both manifests: the core one, plus the coin extra (numpy). Not optional
@@ -185,8 +310,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-coins.txt
-          pip install -r requirements-lint.txt
+          pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt
 
       - name: Select supported Rust toolchain
         run: rustup default 1.99.0
@@ -198,7 +322,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+        run: cargo build --manifest-path native/Cargo.toml --locked --lib --bin numera-emoji --bin numera-compat --bin numera-build
 
       # INSTALLED here, not merely checked: a hosted runner is a fresh machine
       # with no ffmpeg, where the old self-hosted box had it in its global
@@ -233,6 +357,10 @@ jobs:
         if: matrix.python-version == '3.11'
         run: rustup component add rustfmt clippy
 
+      - name: Permit private test namespaces
+        if: matrix.python-version == '3.11'
+        uses: ./.github/actions/test-network
+
       - name: Rust format, lint and unit checks
         if: matrix.python-version == '3.11'
         env:
@@ -241,11 +369,19 @@ jobs:
         run: |
           cargo fmt --manifest-path native/Cargo.toml --check
           cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
-          cargo test --manifest-path native/Cargo.toml --locked -- --test-threads=2
+          native/target/debug/numera-compat source-static-images --output-dir logs/checkpoint/static-images
+          export NUMERA_STATIC_CONVERT_ORACLE="$PWD/logs/checkpoint/static-images/static-convert-source.json"
+          export NUMERA_PROVIDER_IMAGE_ORACLE="$PWD/logs/checkpoint/static-images/provider-image-source.json"
+          native/target/debug/numera-compat source-lottie-render --output-dir logs/checkpoint/lottie-render
+          export NUMERA_LOTTIE_PREVIEW_ORACLE="$PWD/logs/checkpoint/lottie-render/lottie-preview-source.json"
+          export NUMERA_GALLERY_CODEC_ORACLE="$PWD/logs/checkpoint/lottie-render/gallery-codec-source.json"
+          rustc --edition=2024 native/tests/fixtures/media_worker.rs -o "$PWD/logs/checkpoint/media-worker-fixture"
+          export NUMERA_MEDIA_FIXTURE_WORKER="$PWD/logs/checkpoint/media-worker-fixture"
+          native/target/debug/numera-compat test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --no-fail-fast -- --test-threads=1
 
       - name: Similarity benchmark and parity
         if: matrix.python-version == '3.11'
-        run: python scripts/benchmark_similarity.py
+        run: native/target/debug/numera-compat benchmark-similarity
 
       - name: build_pack dry-run (no network)
         run: |
@@ -271,7 +407,9 @@ jobs:
   # former self-hosted runner merely to obtain Windows coverage.
   windows-safety:
     runs-on: windows-latest
-    timeout-minutes: 25
+    # Cold native builds precede all three retained acceptance buckets. Their
+    # own Cargo/suite watchdogs stay bounded independently of this job ceiling.
+    timeout-minutes: 90
     env:
       NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS: "1"
     steps:
@@ -290,12 +428,30 @@ jobs:
             if ($e) { "$_"; $e }
           }
           if ($bad) { $bad; exit 1 }
+      - name: Fast real Windows PowerShell launcher contract
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force logs/checkpoint | Out-Null
+          $fixture = Join-Path $PWD 'logs/checkpoint/launcher-contract.exe'
+          rustc --edition=2024 native/tests/fixtures/launcher_contract.rs -o $fixture
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $fixture (Join-Path $PWD 'run.ps1') 2>&1 | Tee-Object -FilePath logs/checkpoint/launcher-contract.log
+          exit $LASTEXITCODE
+      - name: Retain early Windows launcher diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: windows-launcher-contract
+          path: logs/checkpoint/launcher-contract.log
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          # Native/source lock interoperability replays the exact historical runtime.
+          python-version: "3.11.9"
           cache: pip
       - name: Install isolated test dependencies
-        run: python -m pip install -r requirements.txt -r requirements-coins.txt
+        run: python -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt
       - name: Select supported Rust toolchain
         run: rustup default 1.99.0
 
@@ -306,7 +462,7 @@ jobs:
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
+        run: cargo build --manifest-path native/Cargo.toml --locked --lib --bin numera-emoji --bin numera-compat --bin numera-build
       - name: Require native Windows and FFmpeg
         shell: pwsh
         run: |
@@ -319,19 +475,58 @@ jobs:
           if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) {
             throw 'ffmpeg and ffprobe are required for native Windows regressions'
           }
-      - name: Native codec lifecycle regressions
+      - name: Build native Windows lifecycle fixture
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force logs/checkpoint, logs/tmp | Out-Null
+          $fixture = Join-Path $PWD 'logs/checkpoint/media-worker-fixture.exe'
+          rustc --edition=2024 native/tests/fixtures/media_worker.rs -o $fixture
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "NUMERA_MEDIA_FIXTURE_WORKER=$fixture" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      # The running driver must not lock the executable Cargo is about to rebuild.
+      - name: Copy native Cargo observation driver
+        id: native-cargo-driver
+        shell: pwsh
+        run: |
+          $driver = Join-Path $PWD 'logs/checkpoint/test-cargo-driver.exe'
+          if (Test-Path -LiteralPath $driver) { throw 'Cargo observation driver already exists' }
+          Copy-Item -LiteralPath native/target/debug/numera-compat.exe -Destination $driver -ErrorAction Stop
+      # Run this command early so filesystem/launcher failures are visible
+      # before compiling the complete Windows acceptance cohort.
+      - name: Native Windows archive regression
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_commit --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test atomic_failure --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store --test media_config -- --test-threads=1
+        run: logs/checkpoint/test-cargo-driver.exe test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test archive_commands -- --test-threads=1
+      - name: Native Windows successful-command cleanup regression
+        if: ${{ !cancelled() && steps.native-cargo-driver.outcome == 'success' }}
+        env:
+          PYO3_PYTHON: python
+          CARGO_BUILD_JOBS: "2"
+        shell: pwsh
+        run: |
+          # Exercise the real descendant-handle race before compiling the full
+          # acceptance cohort. Its original unfiltered suite still runs below.
+          for ($attempt = 0; $attempt -lt 8; $attempt++) {
+            logs/checkpoint/test-cargo-driver.exe test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --test tooling_process -- --test-threads=1
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Native codec lifecycle regressions
+        if: ${{ !cancelled() && steps.native-cargo-driver.outcome == 'success' }}
+        env:
+          PYO3_PYTHON: python
+          CARGO_BUILD_JOBS: "2"
+        run: logs/checkpoint/test-cargo-driver.exe test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --no-fail-fast --test tooling_process --test tooling_test_runner --test tooling_runtime --test tooling_doctor --test tooling_menu --test tooling_launch --test tooling_sandbox --test tooling_build --test tooling_install --test tooling_policy --test wheel_package --test catalog_integrity --test catalog_paths --test pack_locks --test source_git_inventory --test source_assertions --test source_state_compat_recipe --test source_logging_admission --test logging_parity --test tooling_sandbox_serve --test tooling_convert_cli --test state_compat_parity --test ingest_parity --test telegram_transport --test bot_commands --test announce_binding --test process_session --test codec_prepare_tint --test codec_static --test codec_format --test codec_static_source_boundary --test codec_static_lifetime --test codec_svg_lifetime --test codec_lottie_file --test codec_reencode --test codec_compare --test codec_video_operations --test codec_process_policy --test codec_video --test codec_video_fidelity --test codec_lottie_lifetime --test codec_lottie_prepare --test repaint_gate --test source_fake_contracts --test source_reference_behavior --test source_lock_order --test codec_worker_error_ipc --test media_native_lifecycle --test media_native_consumers --test media_native_paths --test media_native_identity --test media_native_convert --test media_native_collect --test media_native_ids --test fetch_ids_cli --test coin_audit --test coin_audit_cli --test coin_keywords --test coin_provider_cli --test coin_http --test coin_provider_wire --test coin_gecko_fetch --test coin_provider_image --test coin_provider_effects --test coin_provider_restart --test coin_state --test coin_provider_cache --test coin_inventory --test coin_map_cli --test coin_remap_cli --test coin_remap_cache --test coin_remap_math --test coin_remap --test coin_verify_cli --test coin_replace_effects --test coin_replace_proof --test coin_logo_distance --test coin_rebuild_effects --test coin_rebuild_add_cli --test coin_plan_disk --test coin_plan --test coin_rebuild_map_cli --test coin_rebuild_recovery_disk --test coin_rebuild_links_cli --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_view_parity --test reconcile_commit --test reconcile_identity --test publication_scratch --test operator_config --test sync_order --test archive_state --test archive_commands --test plan_removal --test plan_steps_parity --test pack_export --test status --test roster_state --test roster_commands --test pack_reports --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test atomic_failure --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store --test media_config -- --test-threads=1
 
       - name: Native process-death migration replay
+        if: ${{ !cancelled() && steps.native-cargo-driver.outcome == 'success' }}
         env:
           PYO3_PYTHON: python
           CARGO_BUILD_JOBS: "2"
-        run: cargo test --manifest-path native/Cargo.toml --locked --lib -- --test-threads=1
+        run: logs/checkpoint/test-cargo-driver.exe test-cargo --baseline 1a36a968b006236bd0665a1da65c541938c06061 -- --config .cargo/tests.toml --manifest-path native/Cargo.toml --locked --lib -- --test-threads=1
 
       - name: Native lock, migration, HTTP persistence, identity and CLI regressions
+        if: ${{ !cancelled() && steps.native-cargo-driver.outcome == 'success' }}
         env:
           PYO3_PYTHON: python
         run: >-
@@ -350,3 +545,15 @@ jobs:
           tests.test_native_publish_cli tests.test_native_publication tests.test_native_video_visibility tests.test_native_bot
           tests.test_native_bot_poll tests.test_native_preview_codec tests.test_native_plan_cli tests.test_native_plan_status_cli tests.test_native_convert_cli tests.test_native_remove_cli
           tests.test_native_roster tests.test_native_roster_cli tests.test_native_archive_cli tests.test_native_export_cli tests.test_native_status_cli tests.test_native_ticker_cli tests.test_native_identity_cli tests.test_native_migration_cli tests.test_native_ids_cli tests.test_native_reorder_cli -v
+
+      - name: Retain native Cargo failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-native-failure-diagnostics
+          path: |
+            logs/tmp/test-cargo-*/build.log
+            logs/tmp/test-cargo-*/stderr.log
+            logs/test-observations/**/results.log
+          if-no-files-found: ignore
+          retention-days: 7

@@ -5,7 +5,7 @@ use crate::{
     collection_names,
     config::Config,
     logging::RunLog,
-    media_adapter::MediaAdapter,
+    media_native_adapter::NativeMediaAdapter,
     publication::Publisher,
     publish_collection::{self, Options},
     reconcile, resume,
@@ -13,7 +13,7 @@ use crate::{
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn take(args: &[String], i: &mut usize) -> Result<String, String> {
     *i += 1;
@@ -111,21 +111,8 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     let data = data.canonicalize().map_err(|e| e.to_string())?;
     let state_path = data.join(format!("publish_{base}.json"));
     let plan_path = data.join(format!("publish_plan_{base}.json"));
-    let logo_bots = if options["no_logo"] == true {
-        vec![]
-    } else {
-        config.logo_bots(true)?
-    };
-    let logo_path = if let Some(path) = options["logo"].as_str() {
-        Some(config.path(path))
-    } else if logo_bots.is_empty() {
-        None
-    } else {
-        config.logo_path(true)?
-    };
-    if !logo_bots.is_empty() && logo_path.as_ref().is_none_or(|p| !p.is_file()) {
-        return Err("required brand logo is missing; nothing was changed".into());
-    }
+    let (logo_bots, logo_path) =
+        config.brand_logo(options["no_logo"] == true, options["logo"].as_str())?;
     let capacity = per_set
         .checked_sub(u64::from(!logo_bots.is_empty()))
         .filter(|n| *n > 0)
@@ -152,6 +139,8 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             return Ok(4);
         }
     };
+    #[cfg(all(test, not(numera_native_runtime)))]
+    crate::migration_crash_tests::barrier("writer-publisher");
     let mut state =
         match read(&state_path, json!({})).and_then(|state| resume::collection(state, base)) {
             Ok(state) => state,
@@ -178,7 +167,20 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         &config.root,
     )?;
     cat.dispatch(json!({"operation":"adopt","base":base}))?;
-    let plan = resume::freeze(read(&plan_path, json!({}))?, &cat.all(None)?, &formats)?;
+    let loaded = match read(&plan_path, json!({})) {
+        Ok(plan) => plan,
+        Err(error) => {
+            log.event("ERROR", "publisher", &error);
+            return Ok(4);
+        }
+    };
+    let plan = match resume::freeze(loaded, &cat.all(None)?, &formats) {
+        Ok(plan) => plan,
+        Err(error) => {
+            log.event("ERROR", "publisher", &error);
+            return Ok(4);
+        }
+    };
     let skipped = state["skipped"]
         .as_array()
         .ok_or("invalid skipped")?
@@ -214,7 +216,9 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     } else {
         "https://api.telegram.org".into()
     };
-    let tg = Telegram::new(token.into(), api).map_err(|e| e.to_string())?;
+    let tg = Telegram::new(token.into(), api)
+        .map_err(|e| e.to_string())?
+        .with_log(log);
     let bot = tg
         .read_call("getMe", &BTreeMap::new())
         .map_err(|e| e.to_string())?["username"]
@@ -235,28 +239,24 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
             (user_id, log),
         );
     }
-    let python = std::env::var_os("PYO3_PYTHON")
-        .filter(|_| std::env::var("NUMERA_EMOJI_MAPPER_NO_DOTENV").as_deref() == Ok("1"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            config.root.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            })
-        });
-    let media = MediaAdapter {
-        python,
-        root: config.root.clone(),
-        scratch: data.join("tmp/native-codec"),
-    };
+    let media = NativeMediaAdapter::for_project(&config.root, data.join("tmp/native-codec"))?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
     let logo = if logo_bots.iter().any(|b| b == &bot.to_lowercase()) && options["no_logo"] != true {
         let path = logo_path.ok_or("required brand logo is missing")?;
-        Some(runtime.block_on(crate::brand_logo::prepare(&media, &path, &data, config))?)
+        match runtime.block_on(crate::brand_logo::prepare(&media, &path, &data, config)) {
+            Ok(logo) => Some(logo),
+            Err(error) => {
+                log.event(
+                    "ERROR",
+                    "publisher",
+                    &format!("brand logo cannot be used: {error}. Nothing was published."),
+                );
+                return Ok(2);
+            }
+        }
     } else {
         None
     };
@@ -322,7 +322,14 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
                 .into(),
             logo: logo.clone(),
         };
-        let result = publish_collection::publish_locked(&mut publisher, &opts, &keys, &mut state)?;
+        let result =
+            match publish_collection::publish_checked(&mut publisher, &opts, &keys, &mut state) {
+                Ok(result) => result,
+                Err(failure) => {
+                    log.event("ERROR", "publisher", &failure.message);
+                    return Ok(failure.code);
+                }
+            };
         done += result["uploaded"].as_u64().unwrap_or(0);
         failed += result["failed"].as_u64().unwrap_or(0);
     }
@@ -465,5 +472,43 @@ fn preflight(
     } else {
         println!("All {accepted} queued file(s) are acceptable to Telegram.\n");
         Ok(0)
+    }
+}
+
+#[cfg(all(test, not(numera_native_runtime)))]
+mod tests {
+    use super::read;
+    use serde_json::{Value, json};
+
+    #[test]
+    fn original_absent_json_defaults_but_existing_bytes_and_errors_do_not() {
+        let project = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap();
+        let parent =
+            crate::tooling_environment::confined_directory(project, "logs/tmp", true).unwrap();
+        let root = parent.join(format!("collection JSON defaults {}", std::process::id()));
+        std::fs::create_dir(&root).unwrap();
+        let path = root.join("nope.json");
+        assert_eq!(read(&path, json!({"d":1})).unwrap(), json!({"d":1}));
+        assert!(!path.exists());
+        for (bytes, expected) in [
+            (b"null".as_slice(), Value::Null),
+            (b"{\"d\":2}".as_slice(), json!({"d":2})),
+        ] {
+            std::fs::write(&path, bytes).unwrap();
+            assert_eq!(read(&path, json!({"d":1})).unwrap(), expected);
+            assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        }
+        let truncated = b"{\"sent\":[\"first\"";
+        std::fs::write(&path, truncated).unwrap();
+        assert!(read(&path, json!({"d":1})).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), truncated);
+        let directory = root.join("directory.json");
+        std::fs::create_dir(&directory).unwrap();
+        assert!(read(&directory, json!({"d":1})).is_err());
+        assert!(std::fs::read_dir(&directory).unwrap().next().is_none());
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(), 2);
+        std::fs::remove_dir_all(root).unwrap();
     }
 }
