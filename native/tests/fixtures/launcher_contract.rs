@@ -57,13 +57,20 @@ mod windows {
         );
     }
 
+    #[derive(Clone, Copy, Debug)]
+    enum Mode {
+        Host,
+        File,
+        Native,
+    }
+
     fn probe(
         parent: &Path,
         executable: &Path,
         script: &str,
         label: &str,
         additional: &[&str],
-        file_mode: bool,
+        mode: Mode,
     ) -> Result<bool, String> {
         let root = parent.join(label);
         std::fs::create_dir(&root).map_err(|e| e.to_string())?;
@@ -89,21 +96,37 @@ mod windows {
                 .open(path)
                 .map_err(|e| e.to_string())
         };
-        let mut command = Command::new(&powershell);
-        command.args(["-NoLogo", "-NoProfile", "-NonInteractive"]);
-        if file_mode {
-            command
-                .arg("-File")
-                .arg(launcher)
-                .args(["-NoRelaunch", "-Check"]);
+        let mut command = if matches!(mode, Mode::Native) {
+            Command::new(package.join("numera-emoji.exe"))
         } else {
-            command.args([
-                "-Command",
-                "[Console]::Out.WriteLine('NUMERA_POWERSHELL_HOST_READY')",
-            ]);
+            Command::new(&powershell)
+        };
+        match mode {
+            Mode::Native => {
+                command.arg("doctor");
+            }
+            Mode::File => {
+                command
+                    .args(["-NoLogo", "-NoProfile", "-NonInteractive"])
+                    .arg("-File")
+                    .arg(launcher)
+                    .args(["-NoRelaunch", "-Check"]);
+            }
+            Mode::Host => {
+                command
+                    .args(["-NoLogo", "-NoProfile", "-NonInteractive"])
+                    .args([
+                        "-Command",
+                        "[Console]::Out.WriteLine('NUMERA_POWERSHELL_HOST_READY')",
+                    ]);
+            }
         }
         command
-            .current_dir(cwd)
+            .current_dir(if matches!(mode, Mode::Native) {
+                &package
+            } else {
+                &cwd
+            })
             .env_clear()
             .env("PATH", &empty_path)
             .env("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1")
@@ -122,11 +145,13 @@ mod windows {
         {
             if matches!(key, "TEMP" | "TMP") {
                 command.env(key, &temporary);
+            } else if key == "PATHEXT" {
+                command.env(key, ".EXE");
             } else if let Some(value) = std::env::var_os(key) {
                 command.env(key, value);
             }
         }
-        println!("probe={label} file_mode={file_mode} additional_OS_keys={additional:?}");
+        println!("probe={label} mode={mode:?} additional_OS_keys={additional:?}");
         let started = Instant::now();
         let mut child = command.spawn().map_err(|e| e.to_string())?;
         // Command retains the parent copies of redirected files after spawn.
@@ -168,21 +193,30 @@ mod windows {
         }
         let text = String::from_utf8_lossy(&stdout);
         let passed = status.success()
-            && if file_mode {
-                invocation == b"doctor"
-                    && text.contains("Environment check complete")
-                    && text.contains("NUMERA_LAUNCHER_SCRIPT_ENTERED")
-            } else {
-                text.contains("NUMERA_POWERSHELL_HOST_READY")
+            && match mode {
+                Mode::File => {
+                    invocation == b"doctor"
+                        && text.contains("Environment check complete")
+                        && text.contains("NUMERA_LAUNCHER_SCRIPT_ENTERED")
+                }
+                Mode::Native => {
+                    invocation == b"doctor" && text.contains("Environment check complete")
+                }
+                Mode::Host => text.contains("NUMERA_POWERSHELL_HOST_READY"),
             };
         // The real script invokes this finite, non-forking stub synchronously.
         // Both processes and all parent capture handles are settled before cleanup.
-        std::fs::remove_dir_all(&root).map_err(|e| {
-            format!(
-                "owned launcher fixture cleanup failed, retained {}: {e}",
+        if !passed {
+            eprintln!(
+                "probe={label} did not prove settled native execution; owned fixture retained without deletion at {}",
                 root.display()
-            )
-        })?;
+            );
+        } else if let Err(error) = std::fs::remove_dir_all(&root) {
+            eprintln!(
+                "probe={label} output passed but cleanup was refused; owned fixture retained at {}: {error}",
+                root.display()
+            );
+        }
         Ok(passed)
     }
 
@@ -203,10 +237,45 @@ mod windows {
         }
         // Trace only the owned fixture copy. The actual schema2 test runs the
         // shipped script unchanged and still requires the real native doctor.
-        let script = script.replace(
+        let mut script = script.replace(
             marker,
             &format!("[Console]::Out.WriteLine('NUMERA_LAUNCHER_SCRIPT_ENTERED')\n{marker}"),
         );
+        for (before, after) in [
+            (
+                "$candidates = @(",
+                "[Console]::Out.WriteLine('NUMERA_TRACE_BEFORE_CANDIDATES')\n$candidates = @(",
+            ),
+            (
+                "$binary = $null",
+                "[Console]::Out.WriteLine('NUMERA_TRACE_AFTER_CANDIDATES')\n$binary = $null",
+            ),
+            (
+                "foreach ($candidate in $candidates) {",
+                "foreach ($candidate in $candidates) {\n[Console]::Out.WriteLine(\"NUMERA_TRACE_BEFORE_TEST_PATH candidate=$candidate\")",
+            ),
+            (
+                "$item = Get-Item -LiteralPath $candidate -Force",
+                "[Console]::Out.WriteLine('NUMERA_TRACE_BEFORE_GET_ITEM')\n$item = Get-Item -LiteralPath $candidate -Force\n[Console]::Out.WriteLine('NUMERA_TRACE_AFTER_GET_ITEM')",
+            ),
+            (
+                "if ($Check) {",
+                "[Console]::Out.WriteLine(\"NUMERA_TRACE_CHECK check=$Check\")\nif ($Check) {",
+            ),
+            (
+                "Push-Location -LiteralPath $ScriptRoot",
+                "[Console]::Out.WriteLine(\"NUMERA_TRACE_BEFORE_PUSH_LOCATION args=$($CommandArguments -join ',')\")\nPush-Location -LiteralPath $ScriptRoot\n[Console]::Out.WriteLine('NUMERA_TRACE_AFTER_PUSH_LOCATION')",
+            ),
+            (
+                "& $binary @CommandArguments",
+                "[Console]::Out.WriteLine(\"NUMERA_TRACE_BEFORE_NATIVE_INVOKE binary=$binary args=$($CommandArguments -join ',')\")\n& $binary @CommandArguments\n[Console]::Out.WriteLine(\"NUMERA_TRACE_AFTER_NATIVE_INVOKE last_exit=$LASTEXITCODE\")",
+            ),
+        ] {
+            if script.matches(before).count() != 1 {
+                return Err(format!("real launcher trace marker changed: {before}"));
+            }
+            script = script.replace(before, after);
+        }
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|e| e.to_string())?
@@ -217,20 +286,6 @@ mod windows {
         ));
         std::fs::create_dir(&root).map_err(|e| e.to_string())?;
         let scenarios: &[(&str, &[&str])] = &[
-            ("minimal", &[]),
-            ("temporary", &["TEMP", "TMP"]),
-            (
-                "profile",
-                &[
-                    "TEMP",
-                    "TMP",
-                    "USERPROFILE",
-                    "APPDATA",
-                    "LOCALAPPDATA",
-                    "HOMEDRIVE",
-                    "HOMEPATH",
-                ],
-            ),
             (
                 "windows-host",
                 &[
@@ -260,38 +315,50 @@ mod windows {
                     "ALLUSERSPROFILE",
                 ],
             ),
+            ("pathext-only", &["PATHEXT"]),
+            ("minimal", &[]),
         ];
         let mut complete = false;
         for (name, keys) in scenarios {
+            let native = probe(
+                &root,
+                executable,
+                &script,
+                &format!("{name}-native"),
+                keys,
+                Mode::Native,
+            )?;
             let host = probe(
                 &root,
                 executable,
                 &script,
                 &format!("{name}-command"),
                 keys,
-                false,
+                Mode::Host,
             )?;
-            // Always replay the original minimal case, even if its host probe
-            // fails. Other file probes run once the PowerShell host proves ready.
-            let file = if host || *name == "minimal" {
+            let file = {
                 probe(
                     &root,
                     executable,
                     &script,
                     &format!("{name}-file"),
                     keys,
-                    true,
+                    Mode::File,
                 )?
-            } else {
-                false
             };
-            println!("scenario={name} host_ready={host} actual_script_doctor_verified={file}");
+            println!(
+                "scenario={name} direct_native_verified={native} host_ready={host} actual_script_doctor_verified={file}"
+            );
             if *name == "windows-host" {
-                complete = host && file;
+                complete = native && host && file;
             }
         }
-        std::fs::remove_dir(&root)
-            .map_err(|e| format!("owned diagnostic root retained at {}: {e}", root.display()))?;
+        if let Err(error) = std::fs::remove_dir(&root) {
+            eprintln!(
+                "Diagnostic probes retained at {} (no broad cleanup attempted): {error}",
+                root.display()
+            );
+        }
         if !complete {
             return Err("real Windows PowerShell launcher did not forward doctor and its completion output with the Windows host prerequisites".into());
         }
