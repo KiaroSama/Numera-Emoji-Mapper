@@ -26,7 +26,7 @@ pub(crate) enum VideoFailure {
         tool: PathBuf,
         args: Vec<String>,
         context: CommandContext,
-        settled: SettledCapture,
+        settled: Box<SettledCapture>,
     },
 }
 pub(crate) fn capture_result(
@@ -42,7 +42,7 @@ pub(crate) fn capture_result(
             tool: tool.into(),
             args: args.into(),
             context,
-            settled,
+            settled: Box::new(settled),
         })
     }
 }
