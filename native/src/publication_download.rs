@@ -21,7 +21,10 @@ impl Download {
                     std::process::id(),
                     NEXT.fetch_add(1, Ordering::Relaxed)
                 ));
+                #[cfg(unix)]
                 let mut builder = std::fs::DirBuilder::new();
+                #[cfg(not(unix))]
+                let builder = std::fs::DirBuilder::new();
                 #[cfg(unix)]
                 {
                     use std::os::unix::fs::DirBuilderExt;
