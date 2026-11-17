@@ -51,6 +51,7 @@ ryu = "=1.0.23"
 
 [build-dependencies]
 cmake = "=0.1.58"
+find-msvc-tools = "=0.1.15"
 
 [dev-dependencies]
 ctor = { version = "=1.0.14", default-features = false, features = ["proc_macro"] }

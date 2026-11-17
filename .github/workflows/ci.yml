@@ -91,6 +91,14 @@ jobs:
       - name: Permit private test namespaces
         if: runner.os == 'Linux'
         uses: ./.github/actions/test-network
+      - name: Verify original test identities and inventory tooling
+        shell: bash
+        run: |
+          cargo fmt --manifest-path tools/test-inventory/Cargo.toml --check
+          cargo clippy --manifest-path tools/test-inventory/Cargo.toml --locked --all-targets -- -D warnings
+          cargo test --config .cargo/runtime-tests.toml --manifest-path tools/test-inventory/Cargo.toml --locked
+          cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode rust
+          cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode language --output logs/checkpoint/language-policy.json
       - name: All Rust tests through the isolated runner
         # Preserve optimized distribution binaries while avoiding LTO for each
         # test executable. Release cfg, assertions and test discovery stay the same.
@@ -102,14 +110,6 @@ jobs:
         run: |
           mkdir -p logs/checkpoint
           cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log
-      - name: Verify original test identities and inventory tooling
-        shell: bash
-        run: |
-          cargo fmt --manifest-path tools/test-inventory/Cargo.toml --check
-          cargo clippy --manifest-path tools/test-inventory/Cargo.toml --locked --all-targets -- -D warnings
-          cargo test --config .cargo/runtime-tests.toml --manifest-path tools/test-inventory/Cargo.toml --locked
-          cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode rust
-          cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode language --output logs/checkpoint/language-policy.json
       - name: Similarity benchmark and parity
         shell: bash
         run: |

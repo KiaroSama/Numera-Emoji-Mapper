@@ -22,10 +22,19 @@ fn busy(path: &Path) {
         let expected = std::io::Error::from_raw_os_error(
             windows_sys::Win32::Foundation::ERROR_LOCK_VIOLATION as i32,
         );
-        assert_eq!(
-            error.to_string(),
-            format!("OS lock acquisition failed: {expected}")
+        let message = error.to_string();
+        assert_eq!(error.kind(), expected.kind(), "{message}");
+        assert!(message.contains(" is held by "), "{message}");
+        assert!(
+            message.contains("Refusing to mutate the same pack family concurrently."),
+            "{message}"
         );
+        let pid = document(path)["pid"]
+            .as_u64()
+            .filter(|pid| *pid > 0)
+            .expect("held lease must record a positive owner PID");
+        assert!(message.contains(&format!("pid {pid}")), "{message}");
+        assert!(message.ends_with(&format!("[{expected}]")), "{message}");
     }
     #[cfg(not(windows))]
     assert_eq!(error.kind(), std::io::ErrorKind::WouldBlock, "{error}");

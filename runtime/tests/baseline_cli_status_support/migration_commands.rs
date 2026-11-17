@@ -62,7 +62,9 @@ fn identity_report_preserves_database_and_refuses_missing_media_and_corrupt_evid
     assert!(r.out.contains("s:obsolete"));
     let expected = format!(
         "catalog: {}\n\nVIDEO IDENTITY: 0 row(s) checked\n  keys that would change : 0\n  hash-only corrections  : 0\n  already correct        : 0\n  media missing on disk  : 0\n  undecodable            : 0\n  collisions             : 0\n\n  state/plan files naming unknown keys: 1\n    publish_plan_fixture.json: 1 stale key(s), e.g. s:obsolete\n\nSUSPECT MAPPINGS: 0 (heuristic only)\n  Rows with a recorded Telegram id AND a look-alike of the same\n  format. The old recovery rule compared grayscale structure alone,\n  so these are the rows it COULD have confused. This is NOT a\n  validation of historical id mappings, and zero here would not\n  prove none was ever wrong: the handle a past download was\n  attributed by is not stored, so it cannot be re-checked.\n\nClean: identities, media and all required references agree.\nObsolete frozen-plan/skipped-history entries are retained; they are not live references.\n",
-        database.display()
+        native::migration_bundle::resolved(&database)
+            .unwrap()
+            .display()
     );
     assert_eq!(r.out, expected);
     assert_eq!(std::fs::read(&database).unwrap(), before);

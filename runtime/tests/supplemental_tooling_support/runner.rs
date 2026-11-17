@@ -92,6 +92,7 @@ fn run(root: &Path, mode: &str) -> tooling_process::Completed {
         "PLAYWRIGHT_BROWSERS_PATH",
         "PYO3_PYTHON",
         "NUMERA_STATIC_CONVERT_ORACLE",
+        "LIB",
     ] {
         environment.insert(name.into(), "synthetic-never-admitted".into());
     }
@@ -130,6 +131,10 @@ fn actual_runner_scrubs_before_config_preserves_paths_and_parent_environment() {
         assert_eq!(environment["NUMERA_RUNTIME_TEST_ADMISSION"],"isolated-v1");
         assert_eq!(environment["TELEGRAM_API_BASE"],"http://127.0.0.1:9");
         let allowed = ["PATH", "SystemRoot", "SYSTEMROOT", "WINDIR", "PATHEXT", "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "LANG", "LC_ALL", "NUMERA_EMOJI_MAPPER_NO_DOTENV", "NUMERA_RUNTIME_TEST_ADMISSION", "NUMERA_CODEC_OWNED_GROUP", "TELEGRAM_API_BASE", "BRAND_LOGO_BOTS", "COLLECTION_PACK_BASE", "COIN_PACK_BASE", "COIN_PACK_TITLE", "RUST_BACKTRACE", "TEMP", "TMP", "TMPDIR", "XDG_CACHE_HOME"];
+        #[cfg(all(windows, target_env = "msvc"))]
+        let allowed = allowed.into_iter().chain(["LIB"]).collect::<Vec<_>>();
+        #[cfg(all(windows, target_env = "msvc"))]
+        assert_eq!(environment["LIB"], env!("NUMERA_BASELINE_MSVC_LIB"));
         // The Linux process owner injects this exact marker after env_clear;
         // Windows uses Job handles and injects no equivalent environment key.
         #[cfg(target_os = "linux")]

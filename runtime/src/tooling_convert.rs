@@ -49,6 +49,146 @@ pub fn resolve_path(root: &Path, path: &Path) -> PathBuf {
     }
 }
 
+#[cfg(windows)]
+fn ordinary_verbatim_component(name: &std::ffi::OsStr) -> bool {
+    let Some(name) = name.to_str() else {
+        return false;
+    };
+    // Verbatim paths preserve slash, trailing dot/space and DOS-special names;
+    // bridging their prefix to DOS is faithful only for ordinary components.
+    // See std::path::Prefix and Microsoft's Naming Files/Paths/Namespaces.
+    if name.ends_with('.')
+        || name.ends_with(' ')
+        || name
+            .chars()
+            .any(|ch| ch <= '\u{1f}' || matches!(ch, '<' | '>' | ':' | '"' | '/' | '|' | '?' | '*'))
+    {
+        return false;
+    }
+    let stem = name
+        .split('.')
+        .next()
+        .unwrap_or("")
+        .trim_end_matches(' ')
+        .to_ascii_uppercase();
+    if matches!(
+        stem.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$" | "CLOCK$"
+    ) {
+        return false;
+    }
+    if let Some(number) = stem
+        .strip_prefix("COM")
+        .or_else(|| stem.strip_prefix("LPT"))
+    {
+        let mut chars = number.chars();
+        if matches!(chars.next(), Some('1'..='9' | '¹' | '²' | '³')) && chars.next().is_none() {
+            return false;
+        }
+    }
+    true
+}
+
+fn owned_path(root: &Path, path: &Path, directory: bool) -> Result<PathBuf, String> {
+    use std::path::Component;
+    const OUTSIDE: &str = "Converter output/capture must stay inside its owning project";
+    // Bind the original spelling before any stat/canonicalization. An outside
+    // UNC/device path must never cause filesystem or credential access.
+    if path.components().any(|part| part == Component::ParentDir) {
+        return Err(OUTSIDE.into());
+    }
+    // Win32 may trim ASCII spaces and interpret this ordinary DOS component
+    // as parent traversal. Refuse before even inspecting its filesystem path.
+    #[cfg(windows)]
+    if path.components().any(|part| {
+        matches!(part, Component::Normal(name) if name.to_str().is_some_and(|text| text.trim_end_matches(' ') == ".."))
+    }) {
+        return Err(OUTSIDE.into());
+    }
+    #[cfg(windows)]
+    if let Some(Component::Prefix(prefix)) = path.components().next() {
+        use std::path::Prefix;
+        if !path.is_absolute()
+            || !matches!(
+                prefix.kind(),
+                Prefix::Disk(_)
+                    | Prefix::VerbatimDisk(_)
+                    | Prefix::UNC(..)
+                    | Prefix::VerbatimUNC(..)
+            )
+        {
+            return Err(OUTSIDE.into());
+        }
+        if matches!(
+            prefix.kind(),
+            Prefix::VerbatimDisk(_) | Prefix::VerbatimUNC(..)
+        ) && path.components().any(|part| {
+            matches!(part, Component::CurDir | Component::ParentDir)
+                || matches!(part, Component::Normal(name) if !ordinary_verbatim_component(name))
+        }) {
+            return Err(OUTSIDE.into());
+        }
+    }
+    let absolute = resolve_path(root, path);
+    let mut parts = absolute.components();
+    for expected in root.components() {
+        let Some(actual) = parts.next() else {
+            return Err(OUTSIDE.into());
+        };
+        #[cfg(windows)]
+        let same = {
+            use std::path::Prefix;
+            match (expected, actual) {
+                (Component::Prefix(left), Component::Prefix(right)) => {
+                    match (left.kind(), right.kind()) {
+                        (
+                            Prefix::Disk(left) | Prefix::VerbatimDisk(left),
+                            Prefix::Disk(right) | Prefix::VerbatimDisk(right),
+                        ) => left == right,
+                        (
+                            Prefix::UNC(left_server, left_share)
+                            | Prefix::VerbatimUNC(left_server, left_share),
+                            Prefix::UNC(right_server, right_share)
+                            | Prefix::VerbatimUNC(right_server, right_share),
+                        ) => left_server == right_server && left_share == right_share,
+                        _ => false,
+                    }
+                }
+                (left, right) => left == right,
+            }
+        };
+        #[cfg(not(windows))]
+        let same = expected == actual;
+        if !same {
+            return Err(OUTSIDE.into());
+        }
+    }
+    let relative = parts.collect::<PathBuf>();
+    // Reuse the original directory-syntax and physical-confinement admission
+    // before canonicalizing a candidate. Captures keep their prior leaf-name
+    // policy; their containing directory is the confined directory.
+    let containing = if directory {
+        relative.as_path()
+    } else {
+        relative.parent().ok_or("Converter capture has no parent")?
+    };
+    tooling_environment::confined_directory(
+        root,
+        containing
+            .to_str()
+            .ok_or("Converter capture path is not UTF-8")?,
+        false,
+    )?;
+    // Keep original ancestor admission before a resolver can hide a link.
+    tooling_environment::reject_links(&absolute, "Linked converter output/capture")?;
+    let normalized = tooling_environment::canonical_existing_prefix(&root.join(relative))?;
+    if !normalized.starts_with(root) {
+        return Err(OUTSIDE.into());
+    }
+    tooling_environment::reject_links(&normalized, "Linked converter output/capture")?;
+    Ok(normalized)
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct Watchdog {
     pub wall: Duration,
@@ -152,9 +292,9 @@ where
         .ok_or("Converter watchdog bound overflow")?;
     let root = tooling_environment::physical_root(root)?;
     let source = resolve_path(&root, source);
-    let output = resolve_path(&root, output);
-    let stdout = resolve_path(&root, stdout);
-    let stderr = resolve_path(&root, stderr);
+    let output = owned_path(&root, output, true)?;
+    let stdout = owned_path(&root, stdout, false)?;
+    let stderr = owned_path(&root, stderr, false)?;
     let arguments = vec![
         "make-emoji-pngs".into(),
         "--in".into(),

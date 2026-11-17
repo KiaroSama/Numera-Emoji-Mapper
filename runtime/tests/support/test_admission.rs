@@ -131,10 +131,12 @@ mod platform {
         // interfaces without IP addresses. Inspect every row and require that
         // link inventory as well as both loopback IP families.
         unsafe {
-            let mut addresses = core::ptr::null_mut();
-            if libc::getifaddrs(&mut addresses) != 0 {
+            let mut output = core::mem::MaybeUninit::<*mut libc::ifaddrs>::uninit();
+            if libc::getifaddrs(output.as_mut_ptr()) != 0 {
                 return false;
             }
+            // getifaddrs initializes *ifap on success; never read an error-path output.
+            let addresses = output.assume_init();
             let mut current = addresses;
             let (mut packet, mut ipv4, mut ipv6, mut valid) = (false, false, false, true);
             while !current.is_null() {

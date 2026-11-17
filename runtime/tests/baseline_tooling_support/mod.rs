@@ -502,6 +502,7 @@ impl FailureServer {
             loop {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        stream.set_nonblocking(false).unwrap();
                         accepted.fetch_add(1, Ordering::SeqCst);
                         stream
                             .set_read_timeout(Some(Duration::from_secs(3)))
@@ -736,6 +737,7 @@ impl Legacy {
             while !ended.load(Ordering::SeqCst) {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        stream.set_nonblocking(false).unwrap();
                         stream
                             .set_read_timeout(Some(Duration::from_secs(3)))
                             .unwrap();

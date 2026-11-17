@@ -1229,6 +1229,7 @@ dependencies = [
  "cmake",
  "csv",
  "ctor",
+ "find-msvc-tools",
  "flate2",
  "getrandom 0.4.3",
  "image",
