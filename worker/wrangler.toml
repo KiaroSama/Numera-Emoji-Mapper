@@ -15,8 +15,8 @@ preview_urls = false
 #
 # The channel is not a credential, but putting it here would publish the owner's
 # channel name in a public repo, and a secret costs nothing extra: both arrive
-# as `env.PACK_LINKS_CHAT_ID` at runtime. Use `worker\scripts\put-secrets.ps1`
-# to push all of them straight from .env without printing any value.
+# as `env.PACK_LINKS_CHAT_ID` at runtime. Use `numera-worker-admin secrets`
+# from the repository root to push them from .env without printing values.
 
 # Workers Logs keeps every console.log line searchable in the dashboard. It is
 # where the routine lines live now: only warnings, errors and publishes are
