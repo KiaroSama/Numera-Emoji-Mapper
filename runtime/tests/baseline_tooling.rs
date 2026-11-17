@@ -109,7 +109,11 @@ mod TheCloneSharesNothingWithTheSource {
         let files = paths(&session.directory);
         assert!(!files.is_empty());
         for path in files {
-            assert!(path.canonicalize().unwrap().starts_with(&session.directory));
+            assert!(
+                runtime::migration_bundle::resolved(&path)
+                    .unwrap()
+                    .starts_with(runtime::migration_bundle::resolved(&session.directory).unwrap())
+            );
         }
         session.finish().unwrap();
     }
@@ -581,8 +585,38 @@ mod TheLifetimeLeaseDoesNotBlockThePanelItStarts {
         let root = Root::new();
         root.install();
         let source = root.source(&["s:a"], false);
-        let mut live = Live::wrapper(&root, &source, port());
-        live.ready();
+        let live = Live::wrapper(&root, &source, port());
+        // A live HTTP listener is not an initial catalog-refresh barrier.
+        // Wait inside the same readiness budget for the actual child to finish
+        // its startup writer phase before this separate parent writer opens.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        loop {
+            let listening = get(&format!("{}/api/ping", live.url)).map(|v| v.0) == Some(200);
+            let catalog_ready = listening
+                && std::fs::read_dir(root.0.join("logs"))
+                    .unwrap()
+                    .map(|entry| entry.unwrap().path())
+                    .filter(|path| {
+                        path.file_name()
+                            .and_then(|name| name.to_str())
+                            .is_some_and(|name| name.starts_with("numera-emoji_"))
+                    })
+                    .any(|path| {
+                        let marker = b"[preview] warm-up rendered=";
+                        std::fs::read(path)
+                            .unwrap()
+                            .windows(marker.len())
+                            .any(|window| window == marker)
+                    });
+            if listening && catalog_ready {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "panel did not complete its initial catalog phase"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
         let clone = active_clone(&root);
         let cat = Catalog::open(&clone.join("catalog.db"), UTC, &root.0).unwrap();
         assert_eq!(cat.all(None).unwrap().len(), 1);

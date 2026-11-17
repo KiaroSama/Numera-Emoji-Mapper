@@ -196,6 +196,10 @@ pub fn validate(data: &Path, root: &Path, doc: &Value) -> Result<(), String> {
     Ok(())
 }
 pub fn current(data: &Path, root: &Path, doc: &Value) -> Result<String, String> {
+    // Use the same physical spelling as trusted file intents before deriving
+    // their data-relative signature aliases (DOS/verbatim on Windows).
+    let directory = resolved(data)?;
+    let data = directory.as_path();
     validate(data, root, doc)?;
     let files = doc["files"].as_array().ok_or("invalid file intents")?;
     migration_files::verify(files, false)?;

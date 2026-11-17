@@ -10,6 +10,50 @@ use std::time::Duration;
 #[path = "tooling_test_network_linux.rs"]
 mod network;
 
+#[cfg(all(windows, target_env = "msvc"))]
+fn compiler_environment(environment: &mut BTreeMap<String, String>) -> Result<(), String> {
+    let linker = Path::new(env!("NUMERA_BASELINE_MSVC_LINKER"));
+    if !linker.is_absolute()
+        || !linker.is_file()
+        || !linker
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.eq_ignore_ascii_case("link.exe"))
+    {
+        return Err("compiled MSVC linker is unavailable".into());
+    }
+    let libraries = env!("NUMERA_BASELINE_MSVC_LIB");
+    let directories = std::env::split_paths(libraries).collect::<Vec<_>>();
+    if directories.is_empty()
+        || directories
+            .iter()
+            .any(|path| !path.is_absolute() || !path.is_dir())
+    {
+        return Err("compiled MSVC library directories are unavailable".into());
+    }
+    let original = environment
+        .get("PATH")
+        .ok_or("test compiler requires PATH")?;
+    // Native x64 MSVC keeps its host DLLs beside this linker. Preserve the
+    // already admitted PATH, including FFmpeg, after that one tool directory.
+    let path = std::env::join_paths(
+        std::iter::once(
+            linker
+                .parent()
+                .ok_or("MSVC linker has no directory")?
+                .to_path_buf(),
+        )
+        .chain(std::env::split_paths(original)),
+    )
+    .map_err(|_| "cannot construct isolated compiler PATH")?;
+    let path = path
+        .into_string()
+        .map_err(|_| "isolated compiler PATH must be UTF-8")?;
+    environment.insert("PATH".into(), path);
+    environment.insert("LIB".into(), libraries.into());
+    Ok(())
+}
+
 // Validate before preparing a workspace or starting a child. Keep every
 // ordinary libtest argument as an OsString; only lower valid parallelism.
 fn test_arguments(args: &[OsString]) -> Result<Vec<OsString>, String> {
@@ -81,6 +125,8 @@ fn execute(root: &Path, args: &[OsString]) -> Result<i32, String> {
             environment.insert(key.into(), value);
         }
     }
+    #[cfg(all(windows, target_env = "msvc"))]
+    compiler_environment(&mut environment)?;
     for (key, value) in [
         ("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1"),
         ("NUMERA_RUNTIME_TEST_ADMISSION", "isolated-v1"),

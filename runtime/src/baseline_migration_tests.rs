@@ -17,24 +17,16 @@ pub(crate) fn barrier(stage: &str) {
             std::process::exit(73);
         }
         if stage == "files" && action == "absolute-paths" {
+            // Original old_apply_files writes the trusted intent destination
+            // literally, rather than reconstructing a new OS-specific alias.
+            let journal = migration_apply::journal(&data).unwrap().unwrap();
             let db = rusqlite::Connection::open(data.join("catalog.db")).unwrap();
-            let mut query = db
-                .prepare("SELECT content_key,file_path FROM items")
-                .unwrap();
-            let rows = query
-                .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
-                .unwrap()
-                .map(Result::unwrap)
-                .collect::<Vec<_>>();
-            drop(query);
-            for (key, stored) in rows {
+            for file in journal["files"].as_array().unwrap() {
                 db.execute(
                     "UPDATE items SET file_path=? WHERE content_key=?",
                     rusqlite::params![
-                        crate::paths::resolve(&data, &stored, data.parent().unwrap())
-                            .to_str()
-                            .unwrap(),
-                        key
+                        file["destination"].as_str().unwrap(),
+                        file["key"].as_str().unwrap()
                     ],
                 )
                 .unwrap();

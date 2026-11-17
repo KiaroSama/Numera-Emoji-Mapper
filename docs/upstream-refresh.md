@@ -33,8 +33,8 @@ Axum's supported graph. The lockfile retains the upstream requirement.
 The Gitleaks release API confirms 8.30.1 remains the latest release. The Linux x64
 archive's official SHA256 is
 `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb`, matching
-the Rust security tool's pin. Its exact historical finding identities and
-metadata-only reporting remain unchanged.
+the Rust security tool's pin. Exact introduction identities are individually
+reviewed; metadata-only reporting remains unchanged.
 
 Playwright 1.65 adds inert-element actionability checks and changes some cookie,
 accessible-name and request-parameter behavior. Its official supported Node

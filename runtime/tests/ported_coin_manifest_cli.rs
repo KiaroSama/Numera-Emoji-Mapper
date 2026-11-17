@@ -50,6 +50,7 @@ fn actual_manifest_command_reads_live_ids_and_redacts_custom_token() {
                     Err(e) => panic!("manifest fixture: {e}"),
                 }
             };
+            stream.set_nonblocking(false).unwrap();
             stream
                 .set_read_timeout(Some(Duration::from_secs(2)))
                 .unwrap();

@@ -16,7 +16,17 @@ fn busy(path: &Path) -> io::Error {
     match Lease::acquire(path, "second") {
         Ok(_) => panic!("second publisher acquired held lease"),
         Err(e) => {
-            assert_eq!(e.kind(), io::ErrorKind::WouldBlock);
+            // Lease preserves the native error kind; Windows lock violation33
+            // need not share POSIX's WouldBlock mapping in this Rust version.
+            let expected = if cfg!(windows) {
+                io::Error::from_raw_os_error(33).kind()
+            } else {
+                io::ErrorKind::WouldBlock
+            };
+            assert_eq!(e.kind(), expected);
+            let message = e.to_string();
+            assert!(message.starts_with("OS lock acquisition failed:"));
+            assert!(message.contains("Refusing to mutate"));
             e
         }
     }
