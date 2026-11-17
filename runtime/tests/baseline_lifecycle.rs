@@ -113,11 +113,13 @@ mod CloneBoundaries {
         root.install();
         let source = root.source(&["s:a"], false);
         let mut live = Live::wrapper(&root, &source, port());
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
         live.ready();
         let clone = active_clone(&root);
         let base = clone.parent().unwrap().to_path_buf();
         let lock = tooling_sandbox::lifetime_lock_path(&clone).unwrap();
         assert_eq!(tooling_sandbox::sweep_stale(&base).unwrap(), 0);
+        live.ready_for_catalog(deadline);
         assert_eq!(
             Catalog::open(&clone.join("catalog.db"), UTC, &root.0)
                 .unwrap()
