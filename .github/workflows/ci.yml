@@ -22,7 +22,8 @@ jobs:
   native-build:
     name: Rust build and tests (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    # Cold release compilation includes every test crate on the Windows host.
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
