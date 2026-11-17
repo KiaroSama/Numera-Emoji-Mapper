@@ -173,3 +173,7 @@ fn original_cache_assertions() {
         assert!(!cache.to_string().contains("TOKEN123"));
     }
 }
+
+#[cfg(test)]
+#[path = "support/test_admission.rs"]
+mod test_admission;

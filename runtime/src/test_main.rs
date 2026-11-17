@@ -7,8 +7,45 @@ use std::process::Stdio;
 use std::time::Duration;
 
 #[cfg(target_os = "linux")]
-#[path = "../../native/src/tooling_test_network_linux.rs"]
+#[path = "tooling_test_network_linux.rs"]
 mod network;
+
+// Validate before preparing a workspace or starting a child. Keep every
+// ordinary libtest argument as an OsString; only lower valid parallelism.
+fn test_arguments(args: &[OsString]) -> Result<Vec<OsString>, String> {
+    let mut result = args.to_vec();
+    let mut present = false;
+    let mut index = 0;
+    while index < result.len() {
+        let raw = result[index].clone();
+        if raw == "--test-threads" {
+            index += 1;
+            let value = result
+                .get_mut(index)
+                .ok_or("--test-threads requires a value")?;
+            value
+                .to_str()
+                .and_then(|value| value.parse::<usize>().ok())
+                .filter(|count| *count > 0)
+                .ok_or("--test-threads must be a positive integer")?;
+            *value = "1".into();
+            present = true;
+        } else if let Some(value) = raw.to_string_lossy().strip_prefix("--test-threads=") {
+            value
+                .parse::<usize>()
+                .ok()
+                .filter(|count| *count > 0)
+                .ok_or("--test-threads must be a positive integer")?;
+            result[index] = "--test-threads=1".into();
+            present = true;
+        }
+        index += 1;
+    }
+    if !present {
+        result.push("--test-threads=1".into());
+    }
+    Ok(result)
+}
 
 fn execute(root: &Path, args: &[OsString]) -> Result<i32, String> {
     let physical_root = tooling_environment::physical_root(root)?;
@@ -26,6 +63,7 @@ fn execute(root: &Path, args: &[OsString]) -> Result<i32, String> {
     if !executable.starts_with(root) || !executable.is_file() {
         return Err("test executable must be a regular project-contained file".into());
     }
+    let test_args = test_arguments(&args[1..])?;
     let mut environment = BTreeMap::new();
     for key in [
         "PATH",
@@ -45,6 +83,7 @@ fn execute(root: &Path, args: &[OsString]) -> Result<i32, String> {
     }
     for (key, value) in [
         ("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1"),
+        ("NUMERA_RUNTIME_TEST_ADMISSION", "isolated-v1"),
         ("TELEGRAM_API_BASE", "http://127.0.0.1:9"),
         ("BRAND_LOGO_BOTS", ""),
         ("COLLECTION_PACK_BASE", "YourBrand_Emoji_Packs"),
@@ -82,21 +121,8 @@ fn execute(root: &Path, args: &[OsString]) -> Result<i32, String> {
     };
     #[cfg(not(target_os = "linux"))]
     let mut command = std::process::Command::new(executable);
-    let mut test_args = Vec::new();
-    let mut index = 1;
-    while index < args.len() {
-        if args[index] == "--test-threads" {
-            index += 2;
-            continue;
-        }
-        if !args[index].to_string_lossy().starts_with("--test-threads=") {
-            test_args.push(args[index].clone());
-        }
-        index += 1;
-    }
     command
         .args(test_args)
-        .arg("--test-threads=1")
         .current_dir(root)
         .env_clear()
         .envs(environment)
@@ -166,3 +192,11 @@ fn main() -> std::process::ExitCode {
     #[cfg(not(windows))]
     (code as u8).into()
 }
+
+#[cfg(test)]
+#[path = "../tests/support/test_admission.rs"]
+mod test_admission;
+
+#[cfg(test)]
+#[path = "supplemental_runner_argument_tests.rs"]
+mod supplemental_arguments;

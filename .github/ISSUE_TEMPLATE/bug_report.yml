@@ -22,12 +22,12 @@ body:
       options:
         - General emoji pack (GENERAL_BOT_TOKEN)
         - Crypto-coin pack (TELEGRAM_BOT_TOKEN)
-        - Collector ingest (fetch_pack / fetch_emoji_ids / add_media)
-        - Curate panel (python -m emojikit.panel)
-        - Pack roster or archive (pack_manifest / pack_archive)
+        - Collector ingest (fetch-pack / fetch-emoji-ids / add-media)
+        - Curate panel (numera-emoji panel)
+        - Pack roster or archive
         - Emoji-id bot or Worker
-        - Image conversion only (make_emoji_pngs)
-        - Launcher (run.ps1)
+        - Image conversion only (numera-emoji make-emoji-pngs)
+        - Developer tools (numera-dev)
         - Other
     validations:
       required: true
@@ -43,7 +43,7 @@ body:
     id: logs
     attributes:
       label: Error output
-      description: Full error / traceback (redact tokens).
+      description: Full error output (redact tokens).
       render: shell
   - type: input
     id: version
@@ -54,12 +54,12 @@ body:
     validations:
       required: true
   - type: input
-    id: python
+    id: rust
     attributes:
-      label: Python version
-      placeholder: e.g. 3.11.9
+      label: Rust version (source builds only)
+      placeholder: Output of rustc --version; leave blank for a prebuilt package
     validations:
-      required: true
+      required: false
   - type: input
     id: os
     attributes:

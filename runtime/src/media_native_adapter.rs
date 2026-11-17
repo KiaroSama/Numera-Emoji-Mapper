@@ -518,7 +518,7 @@ impl crate::media_adapter::MediaCodec for NativeMediaAdapter {
     }
 }
 
-#[cfg(all(test, not(numera_native_runtime)))]
+#[cfg(test)]
 mod publication_evidence_tests {
     use super::*;
     const REQUEST: &[u8] = br#"{"operation":"preview","output":"owned-render.webp"}"#;

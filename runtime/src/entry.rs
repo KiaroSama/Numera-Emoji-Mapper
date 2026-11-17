@@ -10,6 +10,138 @@ use std::sync::{Arc, Mutex};
 fn root() -> Result<PathBuf, String> {
     _native::tooling_environment::project_root()
 }
+fn command_secrets(config: &Config, args: &[String]) -> Vec<String> {
+    let mut secrets = config.secret_values();
+    for option in args.windows(2).filter(|pair| pair[0] == "--token-env") {
+        let token = config.value(&option[1]);
+        if !token.is_empty() {
+            secrets.push(token.into());
+        }
+    }
+    secrets
+}
+
+#[cfg(test)]
+mod baseline_logging_tests {
+    use super::*;
+    // tests.test_logsetup.TestRedaction.test_a_token_env_of_any_name_is_masked
+    #[test]
+    fn selected_token_environment_is_registered_before_validation() {
+        let scratch = crate::baseline_catalog_support::Scratch::new();
+        let value = "an-unlisted-token-value-for-this-test";
+        for name in ["SOME_OTHER_TOKEN", "OPERATOR_CREDENTIAL"] {
+            let environment = std::collections::BTreeMap::from([
+                ("NUMERA_EMOJI_MAPPER_NO_DOTENV".into(), "1".into()),
+                (name.into(), value.into()),
+            ]);
+            let config = Config::load_with_environment(scratch.0.clone(), &environment).unwrap();
+            let args = [
+                "--base",
+                "t",
+                "--title",
+                "T",
+                "--user-id",
+                "1",
+                "--source-dir",
+                "no-such-dir",
+                "--token-env",
+                name,
+                "--dry-run",
+            ]
+            .map(str::to_owned);
+            if name == "OPERATOR_CREDENTIAL" {
+                assert!(config.secret_values().is_empty());
+            }
+            let secrets = command_secrets(&config, &args);
+            assert!(secrets.iter().any(|secret| secret == value));
+            let text = crate::logging::redact(&format!("token {value}"), &secrets);
+            assert!(!text.contains(value));
+            assert!(text.contains("[REDACTED]"));
+        }
+        // An actual entry/logging positive control detects a disconnected helper:
+        // OPERATOR_CREDENTIAL is intentionally absent from secret_values().
+        let assets = scratch.0.join("assets");
+        std::fs::create_dir(&assets).unwrap();
+        std::fs::write(assets.join("panel.html"), "isolated native root").unwrap();
+        let current = std::env::current_exe().unwrap();
+        let profile = current
+            .ancestors()
+            .find(|path| {
+                path.file_name()
+                    .is_some_and(|name| name == "debug" || name == "release")
+            })
+            .unwrap();
+        let name = if cfg!(windows) {
+            "numera-emoji.exe"
+        } else {
+            "numera-emoji"
+        };
+        let executable = scratch.0.join(name);
+        std::fs::copy(profile.join(name), &executable).unwrap();
+        let mut environment = std::collections::BTreeMap::from([
+            ("NUMERA_EMOJI_MAPPER_NO_DOTENV".into(), "1".into()),
+            ("OPERATOR_CREDENTIAL".into(), value.into()),
+        ]);
+        for name in ["PATH", "SystemRoot", "WINDIR", "SYSTEMROOT"] {
+            if let Ok(value) = std::env::var(name) {
+                environment.insert(name.into(), value);
+            }
+        }
+        let mut argv = vec![executable.into_os_string()];
+        argv.extend(
+            [
+                "build-pack",
+                "--base",
+                "t",
+                "--title",
+                "T",
+                "--user-id",
+                "1",
+                "--source-dir",
+                "no-such-dir",
+                "--token-env",
+                "OPERATOR_CREDENTIAL",
+                "--dry-run",
+                value,
+            ]
+            .map(std::ffi::OsString::from),
+        );
+        let log = RunLog::open(&scratch.0, "selected-token-control", vec![value.into()]);
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let output = runtime
+            .block_on(crate::tooling_process::capture(
+                &scratch.0,
+                &argv,
+                &environment,
+                std::time::Duration::from_secs(15),
+                std::time::Duration::from_secs(10),
+                &log,
+            ))
+            .unwrap();
+        assert_eq!(output.code, 2);
+        assert!(
+            output
+                .stderr
+                .contains("unknown build-pack option: [REDACTED]"),
+            "actual entry did not exercise selected-secret validation redaction"
+        );
+        assert!(!output.stdout.contains(value));
+        assert!(!output.stderr.contains(value));
+        let logs = std::fs::read_dir(scratch.0.join("logs"))
+            .unwrap()
+            .filter_map(|entry| {
+                let path = entry.unwrap().path();
+                path.is_file()
+                    .then(|| std::fs::read_to_string(path).unwrap())
+            })
+            .collect::<String>();
+        assert!(logs.contains("unknown build-pack option: [REDACTED]"));
+        assert!(!logs.contains(value));
+    }
+}
 fn value(args: &[String], i: &mut usize) -> Result<String, String> {
     *i += 1;
     args.get(*i)
@@ -86,6 +218,8 @@ const COMMANDS: &[&str] = &[
     "coin-verify-logos",
     "coin-rebuild-map",
     "coin-rebuild",
+    "coin-convert",
+    "coin-rebuild-loop",
 ];
 pub fn run() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -105,7 +239,7 @@ pub fn run() -> std::process::ExitCode {
                 | "runtime-probe"
         ) {
             eprintln!(
-                "{command} belongs to the optional numera-compat developer toolkit. The standalone application runs without it."
+                "{command} is a retired compatibility command. Use numera-dev --help for current Rust contributor commands and numera-runtime-tests for guarded tests."
             );
             return 2.into();
         }
@@ -158,14 +292,8 @@ pub fn run() -> std::process::ExitCode {
         let result = (|| {
             let root = root()?;
             let config = Config::load(root.clone())?;
-            let mut secrets = config.secret_values();
             // Register before argument validation: even an error may contain the selected value.
-            for option in args[1..].windows(2).filter(|pair| pair[0] == "--token-env") {
-                let token = config.value(&option[1]);
-                if !token.is_empty() {
-                    secrets.push(token.into());
-                }
-            }
+            let secrets = command_secrets(&config, &args[1..]);
             let log = Arc::new(RunLog::open(&root, &args[0], secrets));
             log.install_panic_hook();
             log.apply_retention(&root, config.value("EMOJI_LOG_RETENTION_DAYS"));
@@ -178,6 +306,21 @@ pub fn run() -> std::process::ExitCode {
                     &args[1..],
                     &log,
                 )
+            } else if matches!(args[0].as_str(), "coin-convert" | "coin-rebuild-loop") {
+                match _native::coin_workflows::run(&config, &args[0], &args[1..], &log) {
+                    Ok(code) => {
+                        #[cfg(windows)]
+                        {
+                            log.finish(code);
+                            std::process::exit(code);
+                        }
+                        #[cfg(not(windows))]
+                        {
+                            Ok(code as u8)
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
             } else if args[0] == "coin-rebuild" {
                 _native::coin_rebuild_cli::run(&config, &args[1..], &log)
             } else if args[0] == "coin-rebuild-map" {
@@ -281,12 +424,26 @@ pub fn run() -> std::process::ExitCode {
     }
 }
 fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), String> {
+    start_panel_with_browser(config, options, log, |runtime, port, no_open| {
+        runtime.block_on(_native::browser_open::open(port, no_open))
+    })
+}
+fn start_panel_with_browser(
+    config: &Config,
+    options: Value,
+    log: Arc<RunLog>,
+    mut open: impl FnMut(&tokio::runtime::Runtime, u16, bool) -> Result<(), String>,
+) -> Result<(), String> {
     let data = config.path(
         options["data_dir"]
             .as_str()
             .ok_or("invalid data directory")?,
     );
-    let _sandbox_lifetime = _native::sandbox_lease::inherit(&data)?;
+    let sandbox_lifetime = _native::sandbox_lease::inherit(&data)?;
+    let sandbox_owned = config.value("NUMERA_SANDBOX_OWNED") == "1";
+    if sandbox_owned {
+        _native::sandbox_lease::validate_marker(&data)?;
+    }
     let db = data.join("catalog.db");
     if !db.is_file() {
         return Err("no catalog; run a collector first".into());
@@ -302,7 +459,10 @@ fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), 
         .ok_or("invalid show_published")?;
     let port = options["port"].as_u64().ok_or("invalid port")? as u16;
     let session = panel_session::identity(&db, show, &packs)?;
-    if let Some(existing) = panel_session::probe(port) {
+    if sandbox_lifetime.is_none()
+        && !sandbox_owned
+        && let Some(existing) = panel_session::probe(port)
+    {
         if existing.get("legacy") == Some(&Value::Bool(true)) {
             log.event(
                 "WARNING",
@@ -320,10 +480,7 @@ fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), 
             .enable_all()
             .build()
             .map_err(|e| e.to_string())?;
-        if let Err(error) = runtime.block_on(_native::browser_open::open(
-            port,
-            options["no_open"] == true,
-        )) {
+        if let Err(error) = open(&runtime, port, options["no_open"] == true) {
             log.event("WARNING", "panel", &error);
         }
         return Ok(());
@@ -376,6 +533,7 @@ fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), 
         options: view_options,
         view: Mutex::new(json!({"view":[],"by_key":{},"hidden":0})),
         session,
+        last_refreshed: std::sync::Mutex::new(None),
         utc: _native::logging::iso_utc,
         log: log.clone(),
         events: Mutex::new(Default::default()),
@@ -409,6 +567,10 @@ fn start_panel(config: &Config, options: Value, log: Arc<RunLog>) -> Result<(), 
         }
     }
 }
+
+#[cfg(test)]
+#[path = "baseline_cli_panel_tests.rs"]
+mod baseline_cli_panel_tests;
 
 fn package_command(root: &std::path::Path, command: &str, args: &[String]) -> i32 {
     if args == ["--help"] || args == ["-h"] {
@@ -491,12 +653,10 @@ fn package_command(root: &std::path::Path, command: &str, args: &[String]) -> i3
                 let system = match std::env::consts::OS {
                     "windows" => "windows",
                     "linux" => "linux",
-                    "macos" => "macos",
                     _ => return Err("unsupported package operating system".into()),
                 };
                 let arch = match std::env::consts::ARCH {
                     "x86_64" => "x64",
-                    "aarch64" => "arm64",
                     _ => return Err("unsupported package CPU architecture".into()),
                 };
                 let default_target = format!("{system}-{arch}");

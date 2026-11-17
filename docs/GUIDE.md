@@ -1,7 +1,7 @@
 # Numera Emoji Mapper — Complete Guide (0 → 100)
 
 The local application runs from the standalone Rust executable in the package
-root: `.\numera-emoji.exe` on Windows or `./numera-emoji` on Linux/macOS.
+root: `.\numera-emoji.exe` on Windows or `./numera-emoji` on Linux.
 Normal use requires no Python, virtual environment, pip, NumPy or Rust toolchain.
 FFmpeg and FFprobe are needed for video emoji. Keep the executable beside its
 packaged assets, libraries and configuration template.
@@ -14,8 +14,8 @@ packaged assets, libraries and configuration template.
 6. [Command cheat-sheet and worked workflows (Appendices A–D)](guide-workflows.md)
 
 Start with `numera-emoji doctor`, then `numera-emoji menu` or a command's
-`--help`. `run.ps1` and `run.sh` launch an existing executable; they never build
-it or install prerequisites. [Launcher and packaging details](native-launcher.md)
+`--help`. The Rust executable provides both diagnostics and the interactive menu;
+it does not install prerequisites or build itself. [Launcher and packaging details](native-launcher.md)
 cover package verification, offline copying and explicit contributor builds.
 
 Rust owns the local backend, media worker, raster/SVG/Lottie handling and coin
@@ -26,11 +26,13 @@ TypeScript. The panel's default animation budget remains 24 visible cards.
 alpha handling, validation and recovery. Encoded PNG/WebP bytes may differ from
 historical encoders while decoded pixels and catalogue identities remain stable.
 
-The optional `numera-compat` developer harness retains historical Python/PyO3
-oracles and test tools outside the production dependency graph. Historical ADRs,
-audit reports and migration notes describe their recorded checkpoints; they are
-not current installation instructions. See [backend ownership](native-backend.md)
-and [test evidence](native-test-migration.md) for those boundaries.
+All first-party local application, contributor and administration tools are Rust
+under `runtime/`. Historical ADRs and audit reports describe their recorded
+checkpoints, including the retired Python/PyO3 implementation; they are not
+current installation instructions. See [backend ownership](native-backend.md)
+and [test evidence](native-test-migration.md). Supported packages are Linux x64
+and Windows x64. Final-source CI results must be checked for the exact revision;
+these guides do not certify an untested build.
 
 Tokens, configuration, collections and recovery journals remain local. Use isolated
 fixtures for development; do not test publishing against live packs.

@@ -17,8 +17,8 @@ See COPYING and licenses/ for the MIT, Skia/BSD, FreeType, Pixman, stb,
 RapidJSON, and Mozilla license notices associated with this source. These
 notices must accompany redistributed binary artifacts.
 
-Release CI compiles this source statically for Linux, macOS Intel/ARM, and
-Windows. CMake and a C++ compiler are build dependencies only.
+Release CI compiles this source statically for Linux x86_64 and Windows x86_64.
+CMake and a C++ compiler are build dependencies only.
 
 The subset retains the native public headers, C API, parser/renderer, SIMD,
 image decoder, complete native dependency headers, CMake inputs, AUTHORS,

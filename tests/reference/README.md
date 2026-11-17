@@ -1,14 +1,16 @@
-# Test-only legacy backend references
+# Historical test-only backend reference provenance
 
 This package is feature013's test-only source-derived application reference corpus,
-not a production fallback. Import modules explicitly under `tests.reference`.
+not a production fallback. Module import descriptions below record that
+historical checkpoint; the current Rust test workflow does not import or install
+this package. Original executable sources remain identifiable in Git history.
 Production counterparts were retired after parity, rollback and cutover gates;
 original Git source revisions and immutable oracles remain preserved.
 
 The dated cohort descriptions below record the incremental adaptation history,
 not current pending work. Final core acceptance at `0811e9b` verifies reference
 integrity and isolation after retirement; native runtime packages exclude these
-references. See [native backend evidence](../../docs/native-backend.md#verification-status-and-limitations).
+references. See [native backend evidence](../../docs/native-test-migration.md).
 
 ## Provenance
 

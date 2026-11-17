@@ -1,0 +1,938 @@
+[
+  {
+    "original": "test_panel_browser.F01OrderSavesAreRevisioned.test_F01_an_old_acknowledgement_does_not_clear_a_newer_arrangement",
+    "test_file": "panel_browser.spec.js",
+    "line": 8,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F01OrderSavesAreRevisioned.test_F01_a_failed_save_does_not_overwrite_a_newer_arrangement",
+    "test_file": "panel_browser.spec.js",
+    "line": 29,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F01OrderSavesAreRevisioned.test_F01_only_one_order_request_is_ever_in_flight",
+    "test_file": "panel_browser.spec.js",
+    "line": 44,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F01TheCatalogKeepsTheNewestOrder.test_F01_a_failed_save_still_lands_the_newest_arrangement",
+    "test_file": "panel_browser.spec.js",
+    "line": 61,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F01TheCatalogKeepsTheNewestOrder.test_F01_a_real_drag_reaches_the_catalog",
+    "test_file": "panel_browser.spec.js",
+    "line": 84,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F02SelectionSavesSurviveAFailure.test_F02_a_successful_ping_does_not_dismiss_a_failed_save",
+    "test_file": "panel_browser.spec.js",
+    "line": 106,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F02SelectionSavesSurviveAFailure.test_F02_the_tab_is_protected_until_the_save_lands",
+    "test_file": "panel_browser.spec.js",
+    "line": 113,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F02SelectionSavesSurviveAFailure.test_F02_a_refused_save_is_retried_with_what_Save_asked_for",
+    "test_file": "panel_browser.spec.js",
+    "line": 126,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F02SelectionSavesSurviveAFailure.test_F02_an_order_success_does_not_dismiss_a_failed_save",
+    "test_file": "panel_browser.spec.js",
+    "line": 136,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F03EveryRunHasItsOwnSeparator.test_F03_a_repeated_pack_gets_a_separator_of_its_own",
+    "test_file": "panel_browser.spec.js",
+    "line": 148,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F03EveryRunHasItsOwnSeparator.test_F03_each_marker_sits_at_the_head_of_its_own_run",
+    "test_file": "panel_browser.spec.js",
+    "line": 154,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F03EveryRunHasItsOwnSeparator.test_F03_reordering_keeps_one_marker_per_run",
+    "test_file": "panel_browser.spec.js",
+    "line": 162,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F03EveryRunHasItsOwnSeparator.test_F03_a_run_that_goes_away_takes_its_marker_with_it",
+    "test_file": "panel_browser.spec.js",
+    "line": 169,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F04ZoomKeepsItsAnchor.test_F04_the_anchor_survives_a_zoom_anywhere_in_the_grid",
+    "test_file": "panel_browser.spec.js",
+    "line": 185,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F04ZoomKeepsItsAnchor.test_the_zoom_level_survives_a_reload",
+    "test_file": "panel_browser.spec.js",
+    "line": 200,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F04ZoomKeepsItsAnchor.test_F04_a_zoom_round_trip_comes_back_to_the_same_item",
+    "test_file": "panel_browser.spec.js",
+    "line": 210,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F05AFreezeIsNeverUndone.test_F05_what_you_can_see_still_animates",
+    "test_file": "panel_browser.spec.js",
+    "line": 231,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F05AFreezeIsNeverUndone.test_F05_a_hidden_page_stays_frozen_when_new_cards_arrive",
+    "test_file": "panel_browser.spec.js",
+    "line": 237,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F05AFreezeIsNeverUndone.test_F05_a_switched_off_grid_stays_frozen_when_new_cards_arrive",
+    "test_file": "panel_browser.spec.js",
+    "line": 247,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F05AFreezeIsNeverUndone.test_F05_a_scrolling_grid_stays_frozen_until_it_settles",
+    "test_file": "panel_browser.spec.js",
+    "line": 255,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F05AFreezeIsNeverUndone.test_F05_hover_under_reduced_motion_obeys_the_master_switch",
+    "test_file": "panel_browser.spec.js",
+    "line": 265,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F05AFreezeIsNeverUndone.test_F05_hover_moves_a_video_preview_under_reduced_motion",
+    "test_file": "panel_browser.spec.js",
+    "line": 275,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.VideoCardsArePreviews.test_video_cards_are_previews_by_default",
+    "test_file": "panel_browser.spec.js",
+    "line": 284,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F06ThePackCountMatchesTheGrid.test_F06_the_count_is_the_number_of_runs_the_grid_draws",
+    "test_file": "panel_browser.spec.js",
+    "line": 304,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F06ThePackCountMatchesTheGrid.test_F06_without_a_logo_the_whole_set_is_available",
+    "test_file": "panel_browser.spec.js",
+    "line": 313,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F06ThePackCountMatchesTheGrid.test_F06_an_excluded_card_takes_no_slot",
+    "test_file": "panel_browser.spec.js",
+    "line": 318,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F06ThePackCountMatchesTheGrid.test_F06_live_membership_is_reported_as_an_estimate",
+    "test_file": "panel_browser.spec.js",
+    "line": 323,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F07DeniedStorageStillBoots.test_F07_denied_site_data_does_not_abort_setup",
+    "test_file": "panel_browser.spec.js",
+    "line": 329,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_browser.F07DeniedStorageStillBoots.test_F07_a_malformed_stored_preference_is_ignored",
+    "test_file": "panel_browser.spec.js",
+    "line": 349,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.CurationControls.test_toolbar_does_not_cover_brand_or_save_at_desktop_widths",
+    "test_file": "panel_curation.spec.js",
+    "line": 14,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.CurationControls.test_shift_hold_unhold_and_history_restore_the_whole_gesture",
+    "test_file": "panel_curation.spec.js",
+    "line": 28,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.CurationControls.test_several_held_emoji_are_picked_and_come_back_in_one_gesture",
+    "test_file": "panel_curation.spec.js",
+    "line": 53,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.CurationControls.test_a_held_emoji_joins_the_pack_it_is_dropped_into",
+    "test_file": "panel_curation.spec.js",
+    "line": 70,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_the_drop_and_points_at_the_tray",
+    "test_file": "panel_curation.spec.js",
+    "line": 109,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.CurationControls.test_unhold_all_refuses_a_full_original_pack_without_partial_changes",
+    "test_file": "panel_curation.spec.js",
+    "line": 132,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.CurationControls.test_reset_uses_the_submitted_save_and_is_itself_undoable",
+    "test_file": "panel_curation.spec.js",
+    "line": 142,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.CurationControls.test_hold_save_and_reload_use_the_real_server_and_catalog",
+    "test_file": "panel_curation.spec.js",
+    "line": 167,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.CurationControls.test_native_drag_history_and_unhold_restore_the_original_slot",
+    "test_file": "panel_curation.spec.js",
+    "line": 182,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheHoldTrayIsSelectableByHand.test_an_unselected_tick_is_empty_and_only_a_selected_one_shows_a_check",
+    "test_file": "panel_curation.spec.js",
+    "line": 209,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheHoldTrayIsSelectableByHand.test_clicking_a_cards_face_selects_it_and_shift_takes_the_range",
+    "test_file": "panel_curation.spec.js",
+    "line": 219,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheHoldTrayIsSelectableByHand.test_one_click_on_the_box_toggles_once_not_twice",
+    "test_file": "panel_curation.spec.js",
+    "line": 230,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheHoldTrayIsSelectableByHand.test_unhold_does_not_disturb_the_selection",
+    "test_file": "panel_curation.spec.js",
+    "line": 238,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheHoldTrayIsSelectableByHand.test_outside_selection_mode_a_click_selects_nothing",
+    "test_file": "panel_curation.spec.js",
+    "line": 250,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheHoldTrayIsSelectableByHand.test_a_drag_from_the_tray_carries_every_selected_emoji",
+    "test_file": "panel_curation.spec.js",
+    "line": 260,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheHoldTrayIsSelectableByHand.test_dragging_an_unselected_held_card_carries_only_itself",
+    "test_file": "panel_curation.spec.js",
+    "line": 273,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheHoldTrayIsSelectableByHand.test_a_card_dropped_from_the_tray_into_the_grid_leaves_the_tray",
+    "test_file": "panel_curation.spec.js",
+    "line": 284,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.ALargeTrayIsWindowed.test_a_large_tray_mounts_only_what_is_in_view",
+    "test_file": "panel_curation.spec.js",
+    "line": 312,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.ALargeTrayIsWindowed.test_shift_range_picks_across_unmounted_tray_cards",
+    "test_file": "panel_curation.spec.js",
+    "line": 319,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.ALargeTrayIsWindowed.test_picking_a_run_touches_each_card_once",
+    "test_file": "panel_curation.spec.js",
+    "line": 328,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.AnExportedDraftComesBack.test_a_draft_is_applied_without_saving_and_can_be_undone",
+    "test_file": "panel_curation.spec.js",
+    "line": 340,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.AnExportedDraftComesBack.test_an_unknown_version_is_refused",
+    "test_file": "panel_curation.spec.js",
+    "line": 354,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.ADroppedEmojiJoinsThePackItWasAimedAt.test_a_drop_on_a_packs_first_card_joins_that_pack_not_the_one_above",
+    "test_file": "panel_curation.spec.js",
+    "line": 369,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.ADroppedEmojiJoinsThePackItWasAimedAt.test_a_grid_to_grid_move_re_stamps_and_does_not_split_the_pack",
+    "test_file": "panel_curation.spec.js",
+    "line": 391,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.ADroppedEmojiJoinsThePackItWasAimedAt.test_a_drop_that_aimed_at_nothing_stamps_nothing",
+    "test_file": "panel_curation.spec.js",
+    "line": 409,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.ADroppedEmojiJoinsThePackItWasAimedAt.test_a_drop_into_a_run_with_no_pack_number_invents_no_number",
+    "test_file": "panel_curation.spec.js",
+    "line": 425,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheGridIsSelectableByClick.test_clicking_a_cards_face_selects_it_and_shift_takes_the_range",
+    "test_file": "panel_curation.spec.js",
+    "line": 442,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheGridIsSelectableByClick.test_a_click_on_the_box_still_toggles_exactly_once",
+    "test_file": "panel_curation.spec.js",
+    "line": 451,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheGridIsSelectableByClick.test_outside_selection_mode_a_click_still_toggles_what_ships",
+    "test_file": "panel_curation.spec.js",
+    "line": 460,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.TheGridIsSelectableByClick.test_the_brand_logo_is_never_picked",
+    "test_file": "panel_curation.spec.js",
+    "line": 467,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.APickedCardWearsAMovingRing.test_only_a_picked_card_carries_the_ring_and_it_runs",
+    "test_file": "panel_curation.spec.js",
+    "line": 478,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_curation.APickedCardWearsAMovingRing.test_a_picked_held_card_carries_the_same_ring",
+    "test_file": "panel_curation.spec.js",
+    "line": 489,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_the_drop_keeps_the_model_instead_of_recomputing_an_index",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 9,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_a_cancelled_drag_restores_the_order_taken_at_dragstart",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 22,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_the_pointer_side_decides_before_or_after",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 29,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_hovering_the_slot_the_run_already_holds_changes_nothing",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 35,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_dragging_to_an_edge_scrolls_the_page",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 41,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_a_carried_card_is_parked_never_unmounted",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 48,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_the_position_number_is_projected_not_stored",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 57,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_the_logo_IS_numbered_because_it_takes_a_real_slot",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 65,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_a_selection_that_cannot_be_one_pack_says_so",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 73,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_the_card_header_cannot_overlap_itself",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 82,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.DragAndDropOrdering.test_the_scroll_loop_cannot_outlive_the_drag",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 93,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_every_mutation_records_the_state_to_return_to",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 100,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_the_history_is_bounded",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 107,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_a_new_action_drops_the_redo_branch",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 113,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_undo_re_projects_the_grid_instead_of_rebuilding_it",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 118,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_each_format_has_its_own_accent",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 128,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_two_frames_answer_two_questions",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 141,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_the_tick_offers_a_click_not_a_grab",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 149,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_scrolling_holds_every_card_on_frame_zero",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 153,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_a_switch_shows_its_own_state",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 163,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_the_card_header_stacks_number_over_format",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 173,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.UndoRedoAndFormatColours.test_only_save_selection_sits_outside_the_centre_group",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 181,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_the_pick_box_is_not_the_tick",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 190,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_only_a_picked_box_draws_a_check",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 197,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_the_empty_box_is_still_visible_over_artwork",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 206,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_leaving_the_mode_drops_the_picks",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 212,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_arranging_never_changes_what_ships",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 216,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_the_box_owns_its_own_click",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 223,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_a_picked_card_is_marked_by_a_moving_ring_on_both_surfaces",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 228,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_reduced_motion_keeps_the_ring_and_stops_it_moving",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 238,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_the_ring_pauses_while_the_page_moves",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 243,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_dragging_a_picked_card_carries_the_whole_set_even_off_screen",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 248,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_a_pick_survives_the_card_being_unmounted",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 256,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_actions.SelectionModeCarriesARun.test_dragging_back_shrinks_the_run",
+    "test_file": "panel_page_actions.spec.js",
+    "line": 261,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.OffScreenCostsNothing.test_leaving_the_viewport_stops_video_AND_animation",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 9,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.OffScreenCostsNothing.test_a_mounted_card_is_observed_and_an_unmounted_one_released",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 21,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.OffScreenCostsNothing.test_a_video_holds_a_player_only_near_the_viewport",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 32,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.OffScreenCostsNothing.test_the_sticky_header_does_not_blur_its_backdrop",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 46,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.TheGridIsVirtual.test_only_rows_near_the_viewport_are_in_the_document",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 51,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.TheGridIsVirtual.test_the_layout_is_arithmetic_on_whole_pixels",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 64,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.TheGridIsVirtual.test_a_separator_starts_a_fresh_row_like_css_would",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 77,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.TheGridIsVirtual.test_scrolling_within_the_same_rows_costs_a_binary_search",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 83,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.TheGridIsVirtual.test_reconciling_moves_nodes_and_retires_only_the_stale_ones",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 91,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.ZoomFitsMoreOrLess.test_the_header_offers_zoom_in_out_and_reset",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 98,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.ZoomFitsMoreOrLess.test_ctrl_wheel_and_ctrl_keys_are_taken_over_from_the_browser",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 109,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.ZoomFitsMoreOrLess.test_the_level_is_clamped_and_remembered",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 119,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.ZoomFitsMoreOrLess.test_zooming_keeps_the_top_item_on_screen",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 129,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.ZoomFitsMoreOrLess.test_far_out_the_text_rows_are_dropped",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 135,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.ZoomFitsMoreOrLess.test_everything_in_a_card_scales_from_one_font_size",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 141,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.ThePanelPageActuallyShips.test_the_page_is_a_real_file_inside_the_repo",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 150,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.ThePanelPageActuallyShips.test_the_loaded_page_is_the_document_the_handler_expects",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 156,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.PackSplitsAndJumpButtons.test_a_separator_is_never_a_card",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 164,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.PackSplitsAndJumpButtons.test_the_splits_are_counted_from_included_items_only",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 173,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.PackSplitsAndJumpButtons.test_a_candidate_no_longer_splits_the_pack_it_was_dropped_into",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 179,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.PackSplitsAndJumpButtons.test_the_logo_opens_its_own_packs_run",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 185,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.PackSplitsAndJumpButtons.test_selection_changes_recompute_the_splits",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 193,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.PackSplitsAndJumpButtons.test_separators_are_part_of_the_row_model_not_accumulated",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 198,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.PackSplitsAndJumpButtons.test_one_pack_needs_no_divider",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 204,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_page_grid.PackSplitsAndJumpButtons.test_the_header_offers_top_and_bottom",
+    "test_file": "panel_page_grid.spec.js",
+    "line": 208,
+    "type": "served-text-contract"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_nothing_outside_the_viewport_animates_once_settled",
+    "test_file": "panel_perf.spec.js",
+    "line": 47,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_a_scroll_gesture_reports_its_cost_at_compact_zoom",
+    "test_file": "panel_perf.spec.js",
+    "line": 59,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_light_mode_animates_at_most_the_budget",
+    "test_file": "panel_perf.spec.js",
+    "line": 65,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_the_budget_goes_to_the_cards_nearest_the_centre",
+    "test_file": "panel_perf.spec.js",
+    "line": 72,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_all_visible_brings_back_every_animation",
+    "test_file": "panel_perf.spec.js",
+    "line": 85,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_a_drag_storm_writes_no_unchanged_css_variable",
+    "test_file": "panel_perf.spec.js",
+    "line": 97,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_zoomed_out_mounts_a_bounded_window_of_slim_cards",
+    "test_file": "panel_perf.spec.js",
+    "line": 111,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_the_pick_ring_pauses_while_scrolling",
+    "test_file": "panel_perf.spec.js",
+    "line": 128,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_the_checkerboard_keeps_its_pixels",
+    "test_file": "panel_perf.spec.js",
+    "line": 140,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_bulk_hold_and_release_report_their_cost",
+    "test_file": "panel_perf.spec.js",
+    "line": 155,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_bulk_hold_matches_the_item_by_item_result",
+    "test_file": "panel_perf.spec.js",
+    "line": 167,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_undo_restores_the_all_visible_switch",
+    "test_file": "panel_perf.spec.js",
+    "line": 173,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_perf.AnimationCost.test_a_scroll_gesture_reports_its_cost_at_full_zoom",
+    "test_file": "panel_perf.spec.js",
+    "line": 181,
+    "type": "browser-performance"
+  },
+  {
+    "original": "test_panel_queues.RefusalsBelongToTheSubmittedBody.test_a_newer_order_outlives_an_older_permanent_refusal",
+    "test_file": "panel_queues.spec.js",
+    "line": 10,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.RefusalsBelongToTheSubmittedBody.test_new_bodies_survive_old_refusals_and_keep_transient_retries",
+    "test_file": "panel_queues.spec.js",
+    "line": 27,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.UnsavedSelectionIsProtected.test_an_edit_with_no_save_is_dirty_and_blocks_unload",
+    "test_file": "panel_queues.spec.js",
+    "line": 56,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.UnsavedSelectionIsProtected.test_an_edit_made_DURING_a_save_survives_its_acknowledgement",
+    "test_file": "panel_queues.spec.js",
+    "line": 65,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.UnsavedSelectionIsProtected.test_saving_the_newer_state_finally_clears_it",
+    "test_file": "panel_queues.spec.js",
+    "line": 80,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.UnsavedSelectionIsProtected.test_undoing_back_to_the_acknowledged_state_is_clean_again",
+    "test_file": "panel_queues.spec.js",
+    "line": 94,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.UnsavedSelectionIsProtected.test_a_failed_save_leaves_it_dirty_and_a_retry_clears_it",
+    "test_file": "panel_queues.spec.js",
+    "line": 103,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.UnsavedSelectionIsProtected.test_a_selection_really_reaches_the_catalog",
+    "test_file": "panel_queues.spec.js",
+    "line": 117,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.APermanentRefusalIsNotRetried.test_a_400_on_the_order_queue_stops_resubmitting",
+    "test_file": "panel_queues.spec.js",
+    "line": 127,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.APermanentRefusalIsNotRetried.test_a_409_on_the_save_queue_stops_resubmitting",
+    "test_file": "panel_queues.spec.js",
+    "line": 138,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.APermanentRefusalIsNotRetried.test_a_permanent_refusal_still_guards_the_work",
+    "test_file": "panel_queues.spec.js",
+    "line": 149,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.APermanentRefusalIsNotRetried.test_pressing_save_again_is_a_new_request_and_does_go",
+    "test_file": "panel_queues.spec.js",
+    "line": 159,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.APermanentRefusalIsNotRetried.test_a_transient_refusal_is_still_retried",
+    "test_file": "panel_queues.spec.js",
+    "line": 171,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.TheHeartbeatHonoursTheSchedule.test_the_heartbeat_does_not_send_inside_a_pending_backoff",
+    "test_file": "panel_queues.spec.js",
+    "line": 181,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.AHangingRequestDoesNotWedgeTheQueue.test_a_never_resolving_order_post_is_bounded",
+    "test_file": "panel_queues.spec.js",
+    "line": 200,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.AHangingRequestDoesNotWedgeTheQueue.test_the_newest_revision_is_the_one_that_goes",
+    "test_file": "panel_queues.spec.js",
+    "line": 211,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.CompleteSaveSnapshots.test_pack_only_edits_are_dirty_and_the_old_ack_does_not_clear_them",
+    "test_file": "panel_queues.spec.js",
+    "line": 225,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.CompleteSaveSnapshots.test_retry_does_not_submit_new_pack_intent_without_another_save",
+    "test_file": "panel_queues.spec.js",
+    "line": 235,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.CompleteSaveSnapshots.test_new_pack_only_body_outlives_old_permanent_refusal",
+    "test_file": "panel_queues.spec.js",
+    "line": 249,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.CompleteSaveSnapshots.test_reset_restores_the_absence_of_a_pack_assignment",
+    "test_file": "panel_queues.spec.js",
+    "line": 267,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.AcknowledgementsMustBeComplete.test_invalid_success_bodies_keep_both_queues_pending_and_retryable",
+    "test_file": "panel_queues.spec.js",
+    "line": 278,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.AcknowledgementsMustBeComplete.test_hanging_success_body_and_json_parse_error_do_not_acknowledge",
+    "test_file": "panel_queues.spec.js",
+    "line": 300,
+    "type": "browser"
+  },
+  {
+    "original": "test_panel_queues.AcknowledgementsMustBeComplete.test_malformed_error_body_does_not_wedge_a_flight_or_loop_permanently",
+    "test_file": "panel_queues.spec.js",
+    "line": 318,
+    "type": "browser"
+  }
+]

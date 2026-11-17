@@ -1,92 +1,39 @@
-# Rust migration and CI acceptance
+# Rust build and CI policy
 
-The migration branch is `feature/first-party-rust`, reviewed in
-[PR #70](https://github.com/KiaroSama/Numera-Emoji-Mapper/pull/70). It must remain
-unmerged until the complete migration and required CI checks pass.
+The supported compiler is Rust **1.100.0**, pinned in `rust-toolchain.toml` and
+CI. Supported application targets are **Linux x86_64** and **Windows x86_64**.
+macOS, ARM and 32-bit build/test matrices are removed.
 
-The Cloudflare Worker and browser interface intentionally retain TypeScript and
-JavaScript. The Rust scope includes the local core, contributor tools and the production
-media backend. The standalone `runtime/` crate has no interpreter dependency.
+Every push and pull request runs:
 
-## Coverage retained
+- A mandatory release build of all standalone Rust executables on both OSes.
+- rustfmt, Clippy with warnings denied, and unfiltered Cargo test discovery.
+- Native codecs, SQLite/locking, process death/recovery and offline package tests.
+- One Chromium job for all 156 panel browser/source cases, with actual discovery.
+- Worker TypeScript checks, Vitest, dependency advisories and dry-run packaging.
+- Rust security-tool regressions and the Gitleaks scan under its retained policy.
 
-- The original Rust tests from the starting migration branch remain, with
-  additional tests for native raster/Lottie/video engines, standalone package
-  installation, bounded source parsing, demand-driven previews and source-bound
-  assertion accounting. Historical wheel cases remain in a separate compatibility job.
-- Original Python regression cases are retained, with an added journal-integrity
-  regression; browser and Windows cases retain their separate CI jobs.
-- All 119 Worker tests remain. Dependency updates repair the `undici` advisory
-  without changing the Worker's implementation language.
-- Both production and compatibility acceptance use unfiltered Cargo discovery.
-  Compilation-only jobs are additional checks and never count as executed coverage.
-- Original-case migration mappings remain pending until actual parity evidence
-  is verified. A larger Rust suite alone does not authorize deleting old cases.
+The Prebuilt packages workflow also runs on pushes and PRs. It builds the native
+executable on both platforms, exercises extracted offline installation and
+uploads ZIP/checksum pairs. Only a version tag can attach those archives to a
+release. The manual Rust checkpoint is diagnostic, not a replacement for CI.
 
-## Build and test policy
+All jobs check out the triggering PR head SHA (or push SHA) and retain
+`source-revision.log`. Linux and Windows matrix entries do not cancel each
+other. Build artifacts and failure diagnostics are uploaded with explicit
+retention; failures are not hidden with `continue-on-error`.
 
-CI and package workflows run on every push and pull request, with manual dispatch
-available. Production release binaries and every production Rust test target build and
-execute on Linux x64, Windows x64, Intel macOS and Apple Silicon macOS.
-The separate historical compatibility matrix and original acceptance buckets remain. Matrix jobs do not stop their
-siblings when one fails.
-Concurrency groups separate push, pull-request and manual events so simultaneous
-checks of one commit complete without cancelling each other. Superseded runs of
-the same event and branch still stop.
+Rust test discovery has no maintained target list that can omit a new suite.
+Browser discovery uses the committed Playwright test directory. The separate
+[test inventory](native-test-migration.md) checks all 1,516 original IDs and
+preserves browser/performance/source categories, inherited cases and genuine
+platform skips.
 
-The Gitleaks workflow inherited from main retains its scheduled and pull-request
-secret scans. Its security event policy is checked separately from automatic
-builds and the manual native checkpoint. Four historical false positives (two
-source SHA-256 digests and two synthetic redaction-test identifiers) have exact
-introduction commit/file/line/rule identities. Repeated merge-diff matches require
-Git blame to prove the unchanged line's reviewed origin; new matches remain
-reportable. A Rust regression checks those boundaries and summary privacy. Scanner integrity,
-full-history coverage, repository-suppression refusal and privacy guards remain.
+The application archive contains the Rust executable, runtime web assets,
+configuration template, licenses and native dependency notices. It excludes
+Python, shell launchers, contributor tests, npm dependencies and build tools.
+FFmpeg/FFprobe remain external tools for video.
 
-Native cases run serially because embedded codec patches and descendant custody
-share process state. Tests that exercise concurrent callers and competing
-processes retain their explicit concurrency.
-
-The Cargo batch has a 40-minute aggregate bound on Unix and a 60-minute bound on
-Windows, including compilation. Individual suite and codec watchdogs are
-unchanged. Once the Windows driver is built, all three acceptance buckets run
-even when an earlier bucket fails, and failure logs are retained for diagnosis.
-
-Linux test bootstraps create private user/network namespaces. A checkout-scoped
-AppArmor profile permits that operation on hosted Ubuntu; the loopback-only
-network guard stays enabled. Windows uses Job ownership and retains verified
-member handles until both the Job's active count is zero and each original
-process object signals termination; a zero counter alone cannot finish cleanup.
-Its existing 10-second cleanup ceiling remains. Darwin uses the existing
-process-group owner and each lifecycle test's own child owner and cleanup markers;
-it does not claim Linux subreaper semantics.
-
-Image output checks preserve independent source generation and input hashes.
-Historical codec tests continue to compare their original encoder outputs. The
-production encoder is checked against frozen decoded pixels and durable identity;
-compressed bytes may differ where the new encoder makes an equivalent image.
-Pillow remains pinned only for the historical test oracle. Native Lottie rendering
-uses the exact historical rlottie revision; fixture frames and timing stay independent.
-
-## Runtime and verification status
-
-The CLI and panel use the same executable's native Rust media worker. The
-production dependency graph excludes PyO3 and CPython. Schema2 archives contain
-the executable, assets and manifest; extracted installs are tested with an empty
-PATH and deliberately invalid interpreter settings. FFmpeg/FFprobe remain optional
-external tools until a video operation needs them.
-
-The original compatibility library and `numera-compat` developer toolkit remain
-for behavioral and fault-injection coverage. They are built separately and are
-excluded from production archives. No original CI cohort is removed. Packages
-verify manifest hashes; they do not claim cryptographic publisher signatures.
-
-Latest hosted checks and failures are visible in the PR. Passing builds on some
-platforms are not a substitute for a green final revision and package acceptance
-on every required platform.
-
-The panel now uses the same executable's Rust codec worker for previews. Opening
-a catalog primes only stills for the first eight cards; full animations are
-rendered on demand and cached. A second warm-up reuses those files. The browser's
-default remains **24 simultaneous animations**, with its existing visibility,
-scroll and background-tab controls.
+Badges report GitHub's current workflow state; they do not certify unrun edits.
+For an unmerged migration, inspect the PR/branch's latest commit checks. The
+main branch's latest commit and its check mark change only when main changes.

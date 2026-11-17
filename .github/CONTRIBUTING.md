@@ -1,125 +1,93 @@
 # Contributing
 
 Numera Emoji Mapper is free software under the **GNU General Public License v3 or
-later** (see [LICENSE](../LICENSE)).
+later** (see [LICENSE](../LICENSE)). Pull requests are welcome. By submitting one
+you confirm that you have the right to contribute it under GPL-3.0-or-later;
+contributors keep their own copyright.
 
-## External contributions
+## Reporting issues and security
 
-Pull requests are welcome. By submitting one you confirm that you have the right
-to contribute the code and that it is offered under the same GPL-3.0-or-later
-terms as the rest of the project; contributors keep their own copyright.
+Include the application version or source revision, Linux/Windows x64 version,
+command, general/coin workflow and complete redacted error output. For source
+build failures include the Rust compiler and linker versions. Never include real
+tokens, API keys or private collection data. Report vulnerabilities privately as
+described in [SECURITY.md](SECURITY.md).
 
-## Reporting issues
+## Source development
 
-Bug reports and feature suggestions are welcome via the GitHub issue tracker.
-When reporting a bug, please include:
+First-party application and contributor tools live in `runtime/src/`. The panel
+retains HTML/CSS/JavaScript in `assets/`; the Cloudflare Worker retains TypeScript
+and SQL in `worker/`. Native C/C++ dependency internals are built through Cargo;
+they do not introduce a first-party interpreter or extension layer.
 
-- the command you ran, with secrets redacted,
-- the workflow used (general or crypto-coin),
-- the application version/build and operating system,
-- the full error output, without real bot tokens or API keys.
+Install the compiler pinned in `rust-toolchain.toml` (Rust 1.100.0), rustfmt,
+Clippy, CMake and a C/C++ compiler/linker. Windows builds use x64 MSVC. Install
+FFmpeg and FFprobe for the video cohorts. Node 24 and Chromium are contributor
+requirements for the browser/Worker suites, not installed application requirements.
 
-For source-build problems, also include the Rust version and compiler/linker
-error. A Python version is relevant only when reporting an optional compatibility
-harness failure.
+From the repository root:
 
-## Security
-
-Do not file security issues publicly. Follow the process in
-[SECURITY.md](SECURITY.md).
-
-## Production Rust development
-
-The standalone application lives in `runtime/Cargo.toml` and reuses shared Rust
-modules from `native/src/`. Install the manifest's Rust toolchain (currently
-Rust 1.99), a platform C/C++ compiler and linker, and CMake for bundled native
-codecs. FFmpeg and FFprobe must be on `PATH` for the full video test cohort.
-Python, pip, virtual environments and NumPy are not production build or runtime
-requirements.
-
-From the repository root, use the same production build and test commands as CI:
-
-```powershell
+```sh
 cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
 cargo fmt --manifest-path runtime/Cargo.toml --check
 cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked -- --test-threads=1
+cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1
 ```
 
-Build `--release --bins` before testing: the explicit Cargo runner configuration
-uses `runtime/target/release/numera-runtime-tests` (`.exe` on Windows), including
-when Cargo builds the tests in the debug profile. The runner scrubs credentials,
-disables dotenv, selects loopback fixtures and owns test process trees. On Linux
-its private-network bootstrap must be available; report a failed prerequisite
-rather than bypassing the official runner or counting an unexecuted test as
-passing. See the current CI job and [test documentation](../tests/README.md) for
-platform setup and the exact cohorts.
+The explicit runner configuration uses the release `numera-runtime-tests`
+executable, with `.exe` on Windows. Build release binaries first. The runner
+scrubs credentials, disables dotenv, confines temporary storage, owns descendant
+processes and uses a private network on Linux. Missing prerequisites must fail
+visibly; do not bypass the runner or disable a guard to obtain a passing result.
+See [test documentation](../tests/README.md) and the current CI workflow.
 
-For an operator check use the root packaged executable's `doctor` command, or
-`run.ps1 -Check` / `run.sh --check`. Launchers only run an existing executable;
-they do not build, install dependencies or run contributor suites. Production
-package and launcher details are in [native-launcher.md](../docs/native-launcher.md).
+The built `numera-dev` binary provides `build`, `check`, `test`, `panel-sandbox`
+and `benchmark-similarity`; use its `--help` for selection and timeout options.
+`numera-emoji doctor` is an offline operator check, while `numera-dev check` runs
+contributor checks. Neither command installs prerequisites automatically.
 
-## Historical compatibility and browser checks
+## Browser and Worker checks
 
-The separate `native/Cargo.toml` crate retains the optional `numera-compat`
-Python/PyO3 oracle and fault-injection harness. Its Python environment, pinned
-requirements, Ruff and Playwright/Chromium are developer-test dependencies,
-separate from the production graph. Follow [tests/README.md](../tests/README.md)
-for that environment and each historical cohort before invoking its checks.
+Browser tests use the real Rust server and Chromium:
 
-The retained Python check entry point is:
-
-```powershell
-.\scripts\check.ps1
-.\scripts\check.ps1 -Tests test_catalog,test_panel_plan -SkipCompile -SkipLint
+```sh
+npm ci --prefix assets
+npx --prefix assets playwright install chromium
+npm test --prefix assets
 ```
 
-`-Tests` runs package-qualified `tests.<name>` suites so the credential/network
-guard in `tests/__init__.py` remains active. If invoking discovery directly, keep
-its exact form, including `-t .`:
+Run the separate Worker checks with its committed lockfile:
 
-```text
-python -m unittest discover -s tests -t . -p "test_*.py"
+```sh
+npm ci --prefix worker
+npm run typecheck --prefix worker
+npm test --prefix worker
 ```
 
-Compatibility Rust suites use `.cargo/tests.toml` and the separately built
-`numera-compat` runner, rather than the production runner. Keep prerequisite
-failures visible and follow their documented setup; installing compatibility
-requirements is not a way to repair the standalone application's doctor.
+For the panel's JavaScript type check, run
+`npx tsc -p ../assets/jsconfig.json --noEmit` from `worker/` after `npm ci`.
+Use [browser test documentation](../assets/tests/README.md) for binary/browser
+selection. Missing Chromium is a failed prerequisite, not a successful skip.
 
-For retained Python lint, use `ruff check .` without command-line rule overrides:
-`ruff.toml` owns selection and exclusions. Do not silence failures with
-`--exit-zero` or `continue-on-error`.
+## Coverage and review
 
-The panel remains browser JavaScript and needs real browser tests when behavior
-changes. The Cloudflare Worker remains TypeScript; run its committed-lockfile
-checks separately:
+Preserve each original case, category, fault and variant. The 1,516-case baseline
+contains 1,360 backend cases, 84 browser cases, 13 browser performance cases and
+59 served-source contracts. The 34 applicable original-main Rust declarations
+and 119 Worker cases are separate inventories. A Rust declaration or inventory
+match alone does not prove its assertions passed.
 
-```bash
-cd worker
-npm ci
-npm run typecheck
-npx vitest run
-```
+Keep independent fixture provenance; do not derive replacement expectations from
+the new implementation. Preserve real lock, crash, recovery, cancellation,
+credential/network, browser and package assertions. See the
+[inventory tool](../tools/test-inventory/README.md) and
+[migration evidence](../docs/native-test-migration.md).
 
-## Test preservation and safe verification
+Run the relevant checks and report what actually executed, including platform
+limits and explicit skips. CI acceptance belongs to the exact source revision;
+a passing earlier run or another branch does not establish the current result.
+Never use real Telegram packs or operator credentials for verification.
 
-Keep every original test case and test type/cohort. Update the analogous native
-test when implementation behavior changes; do not delete, disable, ignore or
-replace historical assertions to obtain a green run. Preserve independent
-fixtures and oracle evidence rather than generating expected identities from
-the replacement implementation.
-
-Run relevant checks before claiming success and report exactly what executed.
-A listing, ignored case, observation manifest or process exit alone is not proof
-that a cohort's assertions passed. Keep raw diagnostic and observation logs local
-unless they have been reviewed and redacted.
-
-Use isolated data and loopback services for tests. Never load operator credentials
-or mutate live Telegram packs to test a change. Do not weaken network/credential
-guards to work around an environment failure. Preserve existing lock, migration,
-recovery and cleanup assertions alongside codec, browser and package checks.
-
-Keep code comments and documentation in English, match the existing style, and
-never commit `.env`, `secrets.md`, operator collections, logs or real credentials.
+Keep source comments and documentation in English. Do not commit `.env`,
+`secrets.md`, operator collections, logs, caches or real credentials. Historical
+ADRs and audits retain their recorded context; they are not current setup guides.

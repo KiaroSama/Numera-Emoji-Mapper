@@ -1,0 +1,31 @@
+{
+  "source_revision": "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede",
+  "source_file": "tests/test_media_reencode.py",
+  "source_file_sha256": "fa25c5717d7048d1eb2863f26d58c504314f0e6b6d6f73a8fb00376831c1fb5a",
+  "source_method": "SameImageSurvivesAReEncode._art",
+  "source_method_sha256": "f56ab2090ea5500e293c2bfa615e9186f679db4d1dea47f5f931e5da6a1d72d5",
+  "Pillow": "12.3.0",
+  "generation": "Exact original _art AST only, no project imports, no APIs; PNG inputs frozen before native-engine testing.",
+  "inputs": [
+    {
+      "seed": 0,
+      "path": "seed-0.png",
+      "png_sha256": "6ed1e725988157ba5409f4aa06fe06e27ef582e231ffa771c7eee8574cf9a77d",
+      "rgba_sha256": "ccef19198d3a5486043f2fea97fedbdb543efb0917b37c81fd0769c1ce624d09",
+      "size": [
+        100,
+        100
+      ]
+    },
+    {
+      "seed": 9,
+      "path": "seed-9.png",
+      "png_sha256": "cd6aefdf6f817cd1c1b1250d35b8d7ed336506cb2f470b93b8ea0046bb22d3e7",
+      "rgba_sha256": "5bc4ac5f246db62ec28ee023e5f5e99e77f1f0ec82824c55c4f1d512625a3124",
+      "size": [
+        100,
+        100
+      ]
+    }
+  ]
+}

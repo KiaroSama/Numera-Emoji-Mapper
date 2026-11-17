@@ -1,5 +1,12 @@
 # Coin migration test boundaries
 
+Historical migration checkpoint record. The descriptions of pending, authored or
+unexecuted work below refer to their original checkpoint and are preserved as
+provenance. They are not current setup instructions or final CI status. Current
+Rust/browser execution and original-case inventories are documented in
+[README.md](README.md). Original executable source names identify Git history;
+no interpreter or compatibility extension is required by the current suites.
+
 These authored additions are uncompiled and unrun. File existence, source hashes,
 AST inventories and CI selection are not execution or migration acceptance.
 Original Python tests remain until all applicable parity and package gates pass.

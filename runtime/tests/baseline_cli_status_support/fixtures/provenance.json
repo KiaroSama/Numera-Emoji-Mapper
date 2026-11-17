@@ -1,0 +1,50 @@
+{
+  "source": "emojikit.media.to_static_png + fit_100",
+  "source_sha256": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+  "Pillow": "12.3.0",
+  "definitions": {
+    "_trim": "af0e1785ad25e8b16c02f3f1ba47dd260a12cbbc9a5f5f0b3438a0c8e9ad92de",
+    "fit_100": "6cf958284490628295d7b41b8f33be31ef0fe5f93397f0e94a59c752cd3e904d",
+    "_load_image": "f0473365a5290ed7411f866c6d8af37842d24bc0609ff37114cb45c98b32dc39",
+    "is_blank_image": "08764952530f5407d25723a0e21fcc866bc87c323ee90220bec6baa83bcaae04",
+    "to_static_png": "6732855cbcdd9ef7e4109826e005b8051caaf2bed673c3b5a267002d59ea27dd"
+  },
+  "cases": [
+    {
+      "input": "assets/numera-emoji-mapper-logo.png",
+      "input_sha256": "6f85376de3893dfa1e78045ce264103b0055acec400dd8a35222405d5c4f6951",
+      "output": "numera-emoji-mapper-logo.png",
+      "output_sha256": "6516c02d3e209bb2567b471e198a469a867e4834cc08d20674ca65df3e3182bf",
+      "size": [
+        100,
+        100
+      ],
+      "mode": "RGBA",
+      "rgba_sha256": "5ee0faa7c2dfa0bc29655b4c215b1de1ae132c521cd29d266d37ac3a9a401f86"
+    },
+    {
+      "input": "assets/numera-emoji-mapper-logo-circle.png",
+      "input_sha256": "8c278a42ab70a8cff3eaec0c7a6ed6cbc2d0ead11791cbadaf0aa8e06df3909c",
+      "output": "numera-emoji-mapper-logo-circle.png",
+      "output_sha256": "a6888ed566b6230eafffa859225f5e58699762b58a72eb7ca8a206e22d698643",
+      "size": [
+        100,
+        100
+      ],
+      "mode": "RGBA",
+      "rgba_sha256": "6bb5f2d07894541d1560dc2a2bd2c8be1ef599973ec334468960f7010ee854c7"
+    },
+    {
+      "input": "assets/numera-coin-emoji-mapper-logo.png",
+      "input_sha256": "f1ed763b31339e5dbb398abaa8e3870572acf0bed87d512279a84a88a23059a3",
+      "output": "numera-coin-emoji-mapper-logo.png",
+      "output_sha256": "4b496d5015296138e51c4ba214b330bb292008bd9d3f7dc1097d09c604320f07",
+      "size": [
+        100,
+        100
+      ],
+      "mode": "RGBA",
+      "rgba_sha256": "d0232b529fb971adfd4053b55c4e3f2e5f009c22e4f910aa34cf3d0d2cf46d34"
+    }
+  ]
+}

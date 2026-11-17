@@ -1,0 +1,148 @@
+{
+  "baseline_revision": "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede",
+  "source": "tests/_rebuild_fixtures.py",
+  "source_sha256": "2fbd14088a6de0e06306fcd2d37dfd689bfb256de5f6edd614dacdebb250be3a",
+  "function": "_image",
+  "function_sha256": "73121ac322ecee91b3735e3af57d17e64ed5e4abf53b8dd256e1de19f979f168",
+  "Pillow": "12.3.0",
+  "Python": "3.12.14",
+  "method": "offline unchanged original AST, no project import or network",
+  "cases": [
+    {
+      "key": "aaa",
+      "file": "aaa.png",
+      "sha256": "6ab2772d36a92f2a1696f1e06f255dd8c1df3143b1d54d567c2b81a370268996"
+    },
+    {
+      "key": "bbb",
+      "file": "bbb.png",
+      "sha256": "0f8dc8ce8768c2506f65e3b98edf8e48665ed01c9085433faaa647eb555c7459"
+    },
+    {
+      "key": "ccc",
+      "file": "ccc.png",
+      "sha256": "fd3b55732bc579da47d58c0d2bab654f66d6f31f0ec8a6761cb7411fbc7f3a6c"
+    },
+    {
+      "key": "ddd",
+      "file": "ddd.png",
+      "sha256": "6cdb0ccd52860ccc4e280a9f88a916888a1f870b43c9c36584de64a4fc2dc318"
+    },
+    {
+      "key": "seed",
+      "file": "seed.png",
+      "sha256": "c92231d8cee2682e2f3f2e763fc957d243582a27b1acccdfa69983ebef9ba711"
+    },
+    {
+      "key": "someone-elses-logo",
+      "file": "someone-elses-logo.png",
+      "sha256": "0598fe00618d08e1af70bed0a6a49ee21f7e13dfb1ce2436eb18d89bd34f73b1"
+    },
+    {
+      "key": "appended-by-a-concurrent-tool",
+      "file": "appended-by-a-concurrent-tool.png",
+      "sha256": "04b0530165b1ba6e3506f877ba6420a23d91e2abda5201ae3788d84a3d0fc815"
+    },
+    {
+      "key": "added-by-hand",
+      "file": "added-by-hand.png",
+      "sha256": "612c3a442327bad89b1ef8cbd4d93e7fbc74c7b5d257bee0fab1624de6437b62"
+    },
+    {
+      "key": "someone-elses-pack",
+      "file": "someone-elses-pack.png",
+      "sha256": "48b7110cff515b0460c8efac2d87c2d4ce92fde603644f8b7c4cb830bcf24457"
+    },
+    {
+      "key": "someone-elses-second",
+      "file": "someone-elses-second.png",
+      "sha256": "977a7b240cad9931c2a7bb6e8536dd4a615976c3984e499fcde3633f7fc3c6fb"
+    },
+    {
+      "key": "s1-seed0",
+      "file": "s1-seed0.png",
+      "sha256": "9336eb3cce7c47624ec389f7a4bcab3cc4d328fb3a22599cc18d4fe2e3f4031e"
+    },
+    {
+      "key": "s1-seed1",
+      "file": "s1-seed1.png",
+      "sha256": "70a4cc2e1f5dc32dfd77841d5c6563b3b448d83e3f0a05332386e4cabc54e6f2"
+    },
+    {
+      "key": "s1-seed2",
+      "file": "s1-seed2.png",
+      "sha256": "ef6136f6f784e028838631f4fa5106d82b43b898a577771c1c08982e96883fcb"
+    },
+    {
+      "key": "s1-seed3",
+      "file": "s1-seed3.png",
+      "sha256": "749a16611362f22e1f3f4ac666bb87821bb2c7f3ee05e7bae6284d6782732f78"
+    },
+    {
+      "key": "s1-seed4",
+      "file": "s1-seed4.png",
+      "sha256": "33d97bfae9fb07b524596b3160f23dd7df633dc00fa04200bb508d20fb813f26"
+    },
+    {
+      "key": "old1-seed0",
+      "file": "old1-seed0.png",
+      "sha256": "4157d318825541ff7220cbc32b3bb893e157d78fdad73f322db9c1c13d652f73"
+    },
+    {
+      "key": "old1-seed1",
+      "file": "old1-seed1.png",
+      "sha256": "dab383738d498aa0082174fdf8c5beba8dbc06274aea918da4510aed82c06760"
+    },
+    {
+      "key": "old1-seed2",
+      "file": "old1-seed2.png",
+      "sha256": "f3455abd14fc391d827d8858d5cb7606fbec85b80d4b329108d01fdb0807d9e7"
+    },
+    {
+      "key": "old1-seed3",
+      "file": "old1-seed3.png",
+      "sha256": "251d3614bbad605a5f510f73196bb9ae9157ebf6ca704b2bba2cd338fe4dada3"
+    },
+    {
+      "key": "old1-seed4",
+      "file": "old1-seed4.png",
+      "sha256": "945b86691d6dfe7595ec73acbd6dcc303432586b13865f7a684068c3ce3a4051"
+    },
+    {
+      "key": "old2-seed0",
+      "file": "old2-seed0.png",
+      "sha256": "aad1bd2be60ad77dedbbf89e443de97171eabf575e77d1e6b6c40403bec78e04"
+    },
+    {
+      "key": "old2-seed1",
+      "file": "old2-seed1.png",
+      "sha256": "2dfbc1f59f66b8820d28197db884ab83542101e9ba3343cac5b233629a9cc9c4"
+    },
+    {
+      "key": "old2-seed2",
+      "file": "old2-seed2.png",
+      "sha256": "00b27db972d007d44347ea9481607d1abdb74cf44395743a671376e83fb9175d"
+    },
+    {
+      "key": "old2-seed3",
+      "file": "old2-seed3.png",
+      "sha256": "7f1e273f4f7a5c32af66184f743956e6fde7b43676cc99dca60fa1795e5d6005"
+    },
+    {
+      "key": "old2-seed4",
+      "file": "old2-seed4.png",
+      "sha256": "1aae640c971cbb35be6d85119ceb929f891d5ff9fa59d4939d48a7362718c5b3"
+    },
+    {
+      "key": "btc-original-cli",
+      "input_key": "btc",
+      "size": 64,
+      "file": "btc-cli64.png",
+      "sha256": "5b9b9c14e2f128224f52da575faf7f6a49014cc111c04ff7b4a05762a77ec826",
+      "source": "tests/_cli_fixtures.py",
+      "source_sha256": "25fccc28b1662f1b37e1505d9c359b598e642b5254184afc4daf751b5ef390cd",
+      "function": "_noise_png_bytes",
+      "function_sha256": "915036c193235a98aae077b8ec081b70e693c1c96fa5bff2df3a91753bc8a2ec"
+    }
+  ]
+}
