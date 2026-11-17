@@ -304,7 +304,6 @@ mod lifecycle {
 
     #[cfg(windows)]
     mod identity {
-        use super::*;
         use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
         use windows_sys::Win32::Foundation::{WAIT_OBJECT_0, WAIT_TIMEOUT};
         use windows_sys::Win32::System::Threading::{

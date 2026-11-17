@@ -30,7 +30,7 @@ pub fn worker() -> PathBuf {
             let output = directory.join(format!("media-worker{}", std::env::consts::EXE_SUFFIX));
             let source =
                 root.join("runtime/tests/supplemental_native_support/fixtures/media_worker.rs");
-            let compiler = option_env!("NUMERA_BASELINE_RUSTC").unwrap_or("rustc");
+            let compiler = env!("NUMERA_BASELINE_RUSTC");
             let args = [
                 compiler.into(),
                 "--edition=2024".into(),

@@ -27,7 +27,7 @@ impl Scratch {
         let path = self
             .0
             .join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
-        let compiler = option_env!("NUMERA_BASELINE_RUSTC").unwrap_or("rustc");
+        let compiler = env!("NUMERA_BASELINE_RUSTC");
         let result = Command::new(compiler)
             .args(["--edition=2024", "--crate-name=original_main_fixture"])
             .arg(project().join("runtime/tests/original_main_rust_support/worker.rs"))

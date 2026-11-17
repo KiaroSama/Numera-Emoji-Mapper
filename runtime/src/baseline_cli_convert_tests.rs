@@ -8,7 +8,7 @@ fn converter_idle_timeout_stops_real_owned_tree_without_waiting_minutes() {
     let executable = root
         .0
         .join(format!("idle-observer{}", std::env::consts::EXE_SUFFIX));
-    let compiler = option_env!("NUMERA_BASELINE_RUSTC").unwrap_or("rustc");
+    let compiler = env!("NUMERA_BASELINE_RUSTC");
     let source = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/baseline_cli_status_support/watchdog_observer.rs");
     let result = Command::new(compiler)

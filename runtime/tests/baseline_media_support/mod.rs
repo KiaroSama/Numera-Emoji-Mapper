@@ -403,7 +403,7 @@ pub fn observe(test: &str) -> bool {
         return true;
     }
     let t = Scratch::new();
-    let compiler = option_env!("NUMERA_BASELINE_RUSTC").unwrap_or("rustc");
+    let compiler = env!("NUMERA_BASELINE_RUSTC");
     let out = t.join(if cfg!(windows) {
         "ffmpeg.exe"
     } else {
