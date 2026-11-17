@@ -482,7 +482,7 @@ pub fn fault_case(name: &str) -> Option<Fault> {
     } else {
         "ffmpeg"
     });
-    let compiler = option_env!("NUMERA_BASELINE_RUSTC").unwrap_or("rustc");
+    let compiler = env!("NUMERA_BASELINE_RUSTC");
     let (status, _, errors) = common::bounded(
         &t.0,
         Command::new(compiler)

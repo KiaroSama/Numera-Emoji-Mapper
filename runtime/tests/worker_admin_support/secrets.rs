@@ -16,8 +16,7 @@ fn fixture() -> (tempfile::TempDir, Settings) {
         .path()
         .join("bin")
         .join(if cfg!(windows) { "node.exe" } else { "node" });
-    let mut compiler =
-        std::process::Command::new(option_env!("NUMERA_BASELINE_RUSTC").unwrap_or("rustc"));
+    let mut compiler = std::process::Command::new(env!("NUMERA_BASELINE_RUSTC"));
     compiler
         .args(["--edition=2024", "--crate-name", "worker_node_observer"])
         .arg(

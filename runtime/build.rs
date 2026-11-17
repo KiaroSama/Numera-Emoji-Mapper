@@ -1,5 +1,27 @@
 // Compile the pinned renderer into release artifacts; no runtime toolchain or Python is used.
 fn main() {
+    // Test fixtures need the actual compiler after the runner removes Rustup's
+    // user configuration. Resolve Cargo's compiler before entering isolation.
+    println!("cargo:rerun-if-env-changed=RUSTC");
+    let compiler = std::env::var_os("RUSTC").expect("Cargo selects the actual compiler");
+    let output = std::process::Command::new(compiler)
+        .args(["--print", "sysroot"])
+        .output()
+        .expect("inspect actual compiler sysroot");
+    assert!(
+        output.status.success(),
+        "compiler sysroot inspection failed"
+    );
+    let sysroot = String::from_utf8(output.stdout).expect("UTF-8 compiler sysroot");
+    let compiler = std::path::Path::new(sysroot.trim())
+        .join("bin")
+        .join(format!("rustc{}", std::env::consts::EXE_SUFFIX));
+    assert!(compiler.is_file(), "actual compiler component is missing");
+    println!(
+        "cargo:rustc-env=NUMERA_BASELINE_RUSTC={}",
+        compiler.display()
+    );
+
     println!("cargo:rerun-if-changed=vendor/rlottie");
     let target = std::env::var("TARGET").expect("Cargo target");
     let mut config = cmake::Config::new("vendor/rlottie");

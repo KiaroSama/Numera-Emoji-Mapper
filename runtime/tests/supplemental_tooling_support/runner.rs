@@ -31,7 +31,7 @@ fn observer() -> &'static Path {
             .join(format!("runner-observer-{}", std::process::id()));
         std::fs::create_dir(&directory).unwrap();
         let output = directory.join(format!("observer{}", std::env::consts::EXE_SUFFIX));
-        let compiler = option_env!("NUMERA_BASELINE_RUSTC").unwrap_or("rustc");
+        let compiler = env!("NUMERA_BASELINE_RUSTC");
         let args = vec![
             OsString::from(compiler),
             "--edition=2024".into(),

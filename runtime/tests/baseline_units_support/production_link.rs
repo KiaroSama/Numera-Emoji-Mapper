@@ -108,35 +108,11 @@ impl ProductionLink {
                 std::fs::copy(artifact, &target).unwrap();
             }
         }
-        let binary = if cfg!(windows) { "rustc.exe" } else { "rustc" };
-        let toolchain_homes = [
-            option_env!("RUSTUP_HOME").map(PathBuf::from),
-            option_env!("HOME").map(|p| Path::new(p).join(".rustup")),
-            option_env!("USERPROFILE").map(|p| Path::new(p).join(".rustup")),
-        ];
-        let compiler = toolchain_homes
-            .into_iter()
-            .flatten()
-            .find_map(|home| {
-                std::fs::read_dir(home.join("toolchains"))
-                    .ok()?
-                    .filter_map(Result::ok)
-                    .map(|e| e.path())
-                    .filter(|p| {
-                        p.file_name()
-                            .unwrap()
-                            .to_string_lossy()
-                            .starts_with("1.100.0-")
-                    })
-                    .map(|p| p.join("bin").join(binary))
-                    .find(|p| p.is_file())
-            })
-            .or_else(|| {
-                option_env!("RUSTC")
-                    .map(PathBuf::from)
-                    .filter(|p| p.is_file())
-            })
-            .expect("the actual Rust1.100 compiler used to build this test must remain available");
+        let compiler = PathBuf::from(env!("NUMERA_BASELINE_RUSTC"));
+        assert!(
+            compiler.is_file(),
+            "the actual compiler must remain available"
+        );
         Self {
             compiler,
             dependencies,
