@@ -1,5 +1,10 @@
 # Design: applying the panel's pack plan
 
+Historical design and owner-decision record from 2026-09-29. The implementation
+names and pre-implementation gap below describe that date. The current command
+is `numera-emoji plan-apply`; see the [current CLI guide](../guide-cli-panel-coin.md).
+This record is not an instruction to install or run the retired Python backend.
+
 Status: **built 2026-09-29** as `python -m emojikit.plan_apply` (usage: GUIDE, "The move
 plan"). Decided the same day — the owner answered the three questions (see
 "Owner decisions" at the end). The applier is built on this design, dry run by

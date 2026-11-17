@@ -1,0 +1,762 @@
+[
+  {
+    "original": "tests.test_fetch_emoji_ids.ExtractRealIds.test_bare_entry_lines",
+    "rust": "fetch_emoji_ids__ExtractRealIds__test_bare_entry_lines",
+    "category": "pure parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 14,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.ExtractRealIds.test_example_prose_line_is_ignored",
+    "rust": "fetch_emoji_ids__ExtractRealIds__test_example_prose_line_is_ignored",
+    "category": "pure parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 30,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.ExtractRealIds.test_trailing_label_and_emoji_still_captured",
+    "rust": "fetch_emoji_ids__ExtractRealIds__test_trailing_label_and_emoji_still_captured",
+    "category": "pure parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 42,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.ExtractRealIds.test_bullet_and_spacing_variants",
+    "rust": "fetch_emoji_ids__ExtractRealIds__test_bullet_and_spacing_variants",
+    "category": "pure parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 58,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.ExtractRealIds.test_bare_number_list_fallback",
+    "rust": "fetch_emoji_ids__ExtractRealIds__test_bare_number_list_fallback",
+    "category": "pure parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 78,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.ExtractRealIds.test_short_or_nonnumeric_noise_ignored",
+    "rust": "fetch_emoji_ids__ExtractRealIds__test_short_or_nonnumeric_noise_ignored",
+    "category": "pure parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 98,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.ExtractRealIds.test_overlong_number_not_truncated",
+    "rust": "fetch_emoji_ids__ExtractRealIds__test_overlong_number_not_truncated",
+    "category": "pure parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 110,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.WithinFileDuplicates.test_detects_true_within_file_duplicate",
+    "rust": "fetch_emoji_ids__WithinFileDuplicates__test_detects_true_within_file_duplicate",
+    "category": "pure parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 122,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.WithinFileDuplicates.test_example_line_is_not_a_duplicate",
+    "rust": "fetch_emoji_ids__WithinFileDuplicates__test_example_line_is_not_a_duplicate",
+    "category": "pure parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 134,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.CollectIdsDedup.test_cross_file_dedup_preserves_first_seen_order",
+    "rust": "fetch_emoji_ids__CollectIdsDedup__test_cross_file_dedup_preserves_first_seen_order",
+    "category": "real UTF-8 files + parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 146,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.CollectIdsDedup.test_within_and_cross_file_and_inline_all_collapse",
+    "rust": "fetch_emoji_ids__CollectIdsDedup__test_within_and_cross_file_and_inline_all_collapse",
+    "category": "real UTF-8 files + parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 182,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_fetch_emoji_ids.CollectIdsDedup.test_example_ids_never_downloaded",
+    "rust": "fetch_emoji_ids__CollectIdsDedup__test_example_ids_never_downloaded",
+    "category": "real UTF-8 files + parsing",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 210,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.ThePlanSaysWhatTheOwnerDecided.test_an_emoji_dragged_into_another_pack_is_recorded_as_a_move",
+    "rust": "panel_plan__ThePlanSaysWhatTheOwnerDecided__test_an_emoji_dragged_into_another_pack_is_recorded_as_a_move",
+    "category": "pure intent",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 228,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.ThePlanSaysWhatTheOwnerDecided.test_an_emoji_the_panel_has_no_opinion_about_is_absent",
+    "rust": "panel_plan__ThePlanSaysWhatTheOwnerDecided__test_an_emoji_the_panel_has_no_opinion_about_is_absent",
+    "category": "pure intent",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 247,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.ThePlanSaysWhatTheOwnerDecided.test_a_parked_emoji_is_held_not_moved",
+    "rust": "panel_plan__ThePlanSaysWhatTheOwnerDecided__test_a_parked_emoji_is_held_not_moved",
+    "category": "pure intent",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 264,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.ThePlanSaysWhatTheOwnerDecided.test_the_brand_logo_is_not_part_of_the_plan",
+    "rust": "panel_plan__ThePlanSaysWhatTheOwnerDecided__test_the_brand_logo_is_not_part_of_the_plan",
+    "category": "pure intent",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 281,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.ThePlanSaysWhatTheOwnerDecided.test_a_candidate_that_was_never_live_is_counted_but_never_a_move",
+    "rust": "panel_plan__ThePlanSaysWhatTheOwnerDecided__test_a_candidate_that_was_never_live_is_counted_but_never_a_move",
+    "category": "pure intent",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 297,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.ThePlanSaysWhatTheOwnerDecided.test_an_over_full_pack_is_reported_rather_than_silently_fine",
+    "rust": "panel_plan__ThePlanSaysWhatTheOwnerDecided__test_an_over_full_pack_is_reported_rather_than_silently_fine",
+    "category": "pure intent",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 311,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.ThePlanSaysWhatTheOwnerDecided.test_it_round_trips_through_the_file_it_writes",
+    "rust": "panel_plan__ThePlanSaysWhatTheOwnerDecided__test_it_round_trips_through_the_file_it_writes",
+    "category": "pure intent + atomic file",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 329,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.TheMergeDropsDecisionsAboutEmojiThatAreGone.test_a_target_for_a_deleted_emoji_is_dropped",
+    "rust": "panel_plan__TheMergeDropsDecisionsAboutEmojiThatAreGone__test_a_target_for_a_deleted_emoji_is_dropped",
+    "category": "pure intent merge",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 345,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.TheMergeDropsDecisionsAboutEmojiThatAreGone.test_without_the_catalog_it_still_only_adds",
+    "rust": "panel_plan__TheMergeDropsDecisionsAboutEmojiThatAreGone__test_without_the_catalog_it_still_only_adds",
+    "category": "pure intent merge",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 362,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.TheMergeDropsDecisionsAboutEmojiThatAreGone.test_a_held_row_for_a_deleted_emoji_is_dropped",
+    "rust": "panel_plan__TheMergeDropsDecisionsAboutEmojiThatAreGone__test_a_held_row_for_a_deleted_emoji_is_dropped",
+    "category": "pure intent merge",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 377,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.TheMergeDropsDecisionsAboutEmojiThatAreGone.test_a_logo_slot_for_a_vanished_pack_is_dropped",
+    "rust": "panel_plan__TheMergeDropsDecisionsAboutEmojiThatAreGone__test_a_logo_slot_for_a_vanished_pack_is_dropped",
+    "category": "pure intent merge",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 390,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_panel_plan.TheMergeDropsDecisionsAboutEmojiThatAreGone.test_a_decision_about_a_live_emoji_outside_the_scope_survives",
+    "rust": "panel_plan__TheMergeDropsDecisionsAboutEmojiThatAreGone__test_a_decision_about_a_live_emoji_outside_the_scope_survives",
+    "category": "pure intent merge",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 403,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.OnlyAFinishedPackIsArchived.test_a_pack_still_being_filled_must_own_no_folder",
+    "rust": "pack_archive__OnlyAFinishedPackIsArchived__test_a_pack_still_being_filled_must_own_no_folder",
+    "category": "real SQLite/archive freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 418,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.OnlyAFinishedPackIsArchived.test_a_full_pack_that_was_never_archived_is_stale",
+    "rust": "pack_archive__OnlyAFinishedPackIsArchived__test_a_full_pack_that_was_never_archived_is_stale",
+    "category": "real SQLite/archive freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 428,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.OnlyAFinishedPackIsArchived.test_a_half_full_pack_with_no_folder_is_simply_fine",
+    "rust": "pack_archive__OnlyAFinishedPackIsArchived__test_a_half_full_pack_with_no_folder_is_simply_fine",
+    "category": "real SQLite/archive freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 438,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.OnlyAFinishedPackIsArchived.test_a_synced_full_pack_is_fresh",
+    "rust": "pack_archive__OnlyAFinishedPackIsArchived__test_a_synced_full_pack_is_fresh",
+    "category": "real SQLite/archive freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 447,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.TheArchiveHasToFollowThePack.test_a_replaced_id_makes_the_archive_stale",
+    "rust": "pack_archive__TheArchiveHasToFollowThePack__test_a_replaced_id_makes_the_archive_stale",
+    "category": "real SQLite/archive freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 455,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.TheArchiveHasToFollowThePack.test_media_still_inside_the_project_is_stale",
+    "rust": "pack_archive__TheArchiveHasToFollowThePack__test_media_still_inside_the_project_is_stale",
+    "category": "real SQLite/archive freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 466,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.TheArchiveHasToFollowThePack.test_a_missing_metadata_file_is_stale",
+    "rust": "pack_archive__TheArchiveHasToFollowThePack__test_a_missing_metadata_file_is_stale",
+    "category": "real SQLite/archive freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 479,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.TheNameCarriesTheSlot.test_the_filename_matches_the_convention_already_on_disk",
+    "rust": "pack_archive__TheNameCarriesTheSlot__test_the_filename_matches_the_convention_already_on_disk",
+    "category": "pure archive rows/Markdown",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 493,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.TheNameCarriesTheSlot.test_the_logo_leads_and_carries_no_id",
+    "rust": "pack_archive__TheNameCarriesTheSlot__test_the_logo_leads_and_carries_no_id",
+    "category": "pure archive rows/Markdown",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 514,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.TheNameCarriesTheSlot.test_the_two_human_files_count_the_logo_differently_on_purpose",
+    "rust": "pack_archive__TheNameCarriesTheSlot__test_the_two_human_files_count_the_logo_differently_on_purpose",
+    "category": "pure archive rows/Markdown",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 525,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.TheNameCarriesTheSlot.test_only_slot_one_can_be_the_logo",
+    "rust": "pack_archive__TheNameCarriesTheSlot__test_only_slot_one_can_be_the_logo",
+    "category": "pure slot/Markdown contract + production unidentified-row warning sink",
+    "target": "lib archive_rows",
+    "file": "runtime/tests/baseline_packs_support/archive_private_tests.rs",
+    "line": 6
+  },
+  {
+    "original": "tests.test_pack_archive.FolderNames.test_reserved_characters_become_underscores",
+    "rust": "pack_archive__FolderNames__test_reserved_characters_become_underscores",
+    "category": "pure filename policy",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 541,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.FolderNames.test_a_plain_title_is_unchanged",
+    "rust": "pack_archive__FolderNames__test_a_plain_title_is_unchanged",
+    "category": "pure filename policy",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 548,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_archive.AMovedFileStaysRecorded.test_a_missing_second_source_keeps_the_first_move",
+    "rust": "pack_archive__AMovedFileStaysRecorded__test_a_missing_second_source_keeps_the_first_move",
+    "category": "real HTTP + partial file movement + SQLite durable path + error log",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 555,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.TheRosterDescribesTheLiveSet.test_the_brand_logo_keeps_its_id_and_is_emoji_zero",
+    "rust": "pack_manifest__TheRosterDescribesTheLiveSet__test_the_brand_logo_keeps_its_id_and_is_emoji_zero",
+    "category": "live roster/provenance",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 621,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.TheRosterDescribesTheLiveSet.test_a_coin_pack_has_no_logo_row",
+    "rust": "pack_manifest__TheRosterDescribesTheLiveSet__test_a_coin_pack_has_no_logo_row",
+    "category": "live roster/provenance",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 643,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.TheRosterDescribesTheLiveSet.test_our_own_id_is_not_reported_as_a_source",
+    "rust": "pack_manifest__TheRosterDescribesTheLiveSet__test_our_own_id_is_not_reported_as_a_source",
+    "category": "real SQLite provenance",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 658,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.TheRosterDescribesTheLiveSet.test_one_ticker_per_line_is_not_enough",
+    "rust": "pack_manifest__TheRosterDescribesTheLiveSet__test_one_ticker_per_line_is_not_enough",
+    "category": "live roster/provenance",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 686,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.TheRosterRemembersRetiredIds.test_a_changed_id_pushes_the_old_one_into_the_history",
+    "rust": "pack_manifest__TheRosterRemembersRetiredIds__test_a_changed_id_pushes_the_old_one_into_the_history",
+    "category": "roster history",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 697,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.TheRosterRemembersRetiredIds.test_an_unchanged_id_invents_no_history",
+    "rust": "pack_manifest__TheRosterRemembersRetiredIds__test_an_unchanged_id_invents_no_history",
+    "category": "roster history",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 711,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.TheRosterRemembersRetiredIds.test_the_trail_keeps_growing_and_never_repeats",
+    "rust": "pack_manifest__TheRosterRemembersRetiredIds__test_the_trail_keeps_growing_and_never_repeats",
+    "category": "roster history",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 719,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.TheRosterRemembersRetiredIds.test_history_follows_the_emoji_not_the_id_or_the_slot",
+    "rust": "pack_manifest__TheRosterRemembersRetiredIds__test_history_follows_the_emoji_not_the_id_or_the_slot",
+    "category": "roster history",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 735,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.TheRosterRemembersRetiredIds.test_the_page_shows_the_retired_id_and_lets_it_be_copied",
+    "rust": "pack_manifest__TheRosterRemembersRetiredIds__test_the_page_shows_the_retired_id_and_lets_it_be_copied",
+    "category": "roster history + rendered HTML",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 750,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.StalenessIsNotOptimistic.test_a_missing_roster_is_stale",
+    "rust": "pack_manifest__StalenessIsNotOptimistic__test_a_missing_roster_is_stale",
+    "category": "real file fingerprint freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 761,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.StalenessIsNotOptimistic.test_a_changed_input_is_stale_and_names_the_file",
+    "rust": "pack_manifest__StalenessIsNotOptimistic__test_a_changed_input_is_stale_and_names_the_file",
+    "category": "real file fingerprint freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 771,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.StalenessIsNotOptimistic.test_an_unreadable_roster_is_stale_not_fresh",
+    "rust": "pack_manifest__StalenessIsNotOptimistic__test_an_unreadable_roster_is_stale_not_fresh",
+    "category": "real file fingerprint freshness",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 787,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.ThePageCarriesTheDataToo.test_the_html_repeats_the_roster_for_machines",
+    "rust": "pack_manifest__ThePageCarriesTheDataToo__test_the_html_repeats_the_roster_for_machines",
+    "category": "rendered HTML/data contract",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 796,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.ThePageCarriesTheDataToo.test_a_label_cannot_close_the_roster_block",
+    "rust": "pack_manifest__ThePageCarriesTheDataToo__test_a_label_cannot_close_the_roster_block",
+    "category": "rendered HTML/data contract",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 814,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.ThePageCarriesTheDataToo.test_a_missing_art_file_leaves_a_hole_not_an_exception",
+    "rust": "pack_manifest__ThePageCarriesTheDataToo__test_a_missing_art_file_leaves_a_hole_not_an_exception",
+    "category": "rendered HTML/data contract",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 831,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.ThePageCarriesTheDataToo.test_both_ids_are_copyable_and_the_glyph_is_shown",
+    "rust": "pack_manifest__ThePageCarriesTheDataToo__test_both_ids_are_copyable_and_the_glyph_is_shown",
+    "category": "rendered HTML/data contract",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 861,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.ThePageCarriesTheDataToo.test_the_page_offers_nothing_that_changes_anything",
+    "rust": "pack_manifest__ThePageCarriesTheDataToo__test_the_page_offers_nothing_that_changes_anything",
+    "category": "rendered HTML/data contract",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 882,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.ThePageCarriesTheDataToo.test_the_view_only_controls_survive_the_read_only_stripping",
+    "rust": "pack_manifest__ThePageCarriesTheDataToo__test_the_view_only_controls_survive_the_read_only_stripping",
+    "category": "rendered HTML/data contract",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 907,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.ThePageCarriesTheDataToo.test_an_animated_card_starts_frozen",
+    "rust": "pack_manifest__ThePageCarriesTheDataToo__test_an_animated_card_starts_frozen",
+    "category": "production Rust/JS source contract",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 931,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.ThePageCarriesTheDataToo.test_the_zero_note_matches_the_family",
+    "rust": "pack_manifest__ThePageCarriesTheDataToo__test_the_zero_note_matches_the_family",
+    "category": "rendered HTML/data contract",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 943,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_pack_manifest.EveryFormatGetsAThumbnail.test_each_format_is_inlined_and_the_second_render_hits_the_cache",
+    "rust": "pack_manifest__EveryFormatGetsAThumbnail__test_each_format_is_inlined_and_the_second_render_hits_the_cache",
+    "category": "real Rust codec static/Lottie/VP9 + thumbnail cache",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 953,
+    "target": "baseline_packs"
+  },
+  {
+    "original": "tests.test_sync_order.PlanMoves.test_an_already_correct_set_needs_no_calls",
+    "rust": "sync_order__PlanMoves__test_an_already_correct_set_needs_no_calls",
+    "category": "pure order",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1022
+  },
+  {
+    "original": "tests.test_sync_order.PlanMoves.test_it_sorts_into_the_wanted_order",
+    "rust": "sync_order__PlanMoves__test_it_sorts_into_the_wanted_order",
+    "category": "pure order",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1037
+  },
+  {
+    "original": "tests.test_sync_order.PlanMoves.test_the_pinned_logo_is_never_moved",
+    "rust": "sync_order__PlanMoves__test_the_pinned_logo_is_never_moved",
+    "category": "pure order",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1050
+  },
+  {
+    "original": "tests.test_sync_order.PlanMoves.test_a_full_reversal_still_lands_exactly",
+    "rust": "sync_order__PlanMoves__test_a_full_reversal_still_lands_exactly",
+    "category": "pure order",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1064
+  },
+  {
+    "original": "tests.test_sync_order.ReorderIsIdempotent.test_replaying_a_plan_twice_changes_nothing_the_second_time",
+    "rust": "sync_order__ReorderIsIdempotent__test_replaying_a_plan_twice_changes_nothing_the_second_time",
+    "category": "pure order",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1081
+  },
+  {
+    "original": "tests.test_sync_order.TheRecordedOrderFollowsTheLiveOne.test_desired_order_is_the_panel_order_of_the_live_ids",
+    "rust": "sync_order__TheRecordedOrderFollowsTheLiveOne__test_desired_order_is_the_panel_order_of_the_live_ids",
+    "category": "real HTTP + catalog order projection",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1098
+  },
+  {
+    "original": "tests.test_sync_order.TheRecordedOrderFollowsTheLiveOne.test_a_reorder_rewrites_the_recorded_keys",
+    "rust": "sync_order__TheRecordedOrderFollowsTheLiveOne__test_a_reorder_rewrites_the_recorded_keys",
+    "category": "real HTTP + catalog order projection",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1128
+  },
+  {
+    "original": "tests.test_sync_order.TheRecordedOrderFollowsTheLiveOne.test_a_stale_record_is_repaired_even_with_nothing_to_move",
+    "rust": "sync_order__TheRecordedOrderFollowsTheLiveOne__test_a_stale_record_is_repaired_even_with_nothing_to_move",
+    "category": "real HTTP + catalog order projection",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1143
+  },
+  {
+    "original": "tests.test_sync_order.TheRecordedOrderFollowsTheLiveOne.test_a_report_only_run_leaves_the_record_alone",
+    "rust": "sync_order__TheRecordedOrderFollowsTheLiveOne__test_a_report_only_run_leaves_the_record_alone",
+    "category": "real HTTP + catalog order projection",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1160
+  },
+  {
+    "original": "tests.test_sync_order.OnePackAtATime.test_without_the_flag_every_pack_is_visited",
+    "rust": "sync_order__OnePackAtATime__test_without_the_flag_every_pack_is_visited",
+    "category": "CLI selection + real HTTP/catalog/lock",
+    "target": "lib sync_order",
+    "file": "runtime/tests/baseline_packs_support/sync_private_tests.rs",
+    "line": 63
+  },
+  {
+    "original": "tests.test_sync_order.OnePackAtATime.test_pack_limits_the_run_to_that_set",
+    "rust": "sync_order__OnePackAtATime__test_pack_limits_the_run_to_that_set",
+    "category": "CLI selection + real HTTP/catalog/lock",
+    "target": "lib sync_order",
+    "file": "runtime/tests/baseline_packs_support/sync_private_tests.rs",
+    "line": 72
+  },
+  {
+    "original": "tests.test_sync_order.OnePackAtATime.test_pack_is_repeatable",
+    "rust": "sync_order__OnePackAtATime__test_pack_is_repeatable",
+    "category": "CLI selection + real HTTP/catalog/lock",
+    "target": "lib sync_order",
+    "file": "runtime/tests/baseline_packs_support/sync_private_tests.rs",
+    "line": 81
+  },
+  {
+    "original": "tests.test_sync_order.OnePackAtATime.test_an_unknown_pack_is_a_usage_error_not_a_silent_no_op",
+    "rust": "sync_order__OnePackAtATime__test_an_unknown_pack_is_a_usage_error_not_a_silent_no_op",
+    "category": "CLI selection + real HTTP/catalog/lock",
+    "target": "lib sync_order",
+    "file": "runtime/tests/baseline_packs_support/sync_private_tests.rs",
+    "line": 90
+  },
+  {
+    "original": "tests.test_pack_manifest.AOneFamilyRefreshKeepsTheOther.test_the_general_family_and_its_lookups_survive",
+    "rust": "pack_manifest__AOneFamilyRefreshKeepsTheOther__test_the_general_family_and_its_lookups_survive",
+    "category": "real refresh CLI/files/HTTP with original document/fingerprint collaborator doubles",
+    "target": "lib roster_cli",
+    "file": "runtime/tests/baseline_packs_support/roster_private_tests.rs",
+    "line": 42
+  },
+  {
+    "original": "tests.test_pack_manifest.AOneFamilyRefreshKeepsTheOther.test_the_other_familys_inputs_keep_their_old_fingerprint",
+    "rust": "pack_manifest__AOneFamilyRefreshKeepsTheOther__test_the_other_familys_inputs_keep_their_old_fingerprint",
+    "category": "real refresh CLI/files/HTTP with original document/fingerprint collaborator doubles",
+    "target": "lib roster_cli",
+    "file": "runtime/tests/baseline_packs_support/roster_private_tests.rs",
+    "line": 64
+  },
+  {
+    "original": "tests.test_pack_manifest.AOneFamilyRefreshKeepsTheOther.test_check_with_a_family_is_a_usage_error",
+    "rust": "pack_manifest__AOneFamilyRefreshKeepsTheOther__test_check_with_a_family_is_a_usage_error",
+    "category": "real refresh CLI/files/HTTP with original document/fingerprint collaborator doubles",
+    "target": "lib roster_cli",
+    "file": "runtime/tests/baseline_packs_support/roster_private_tests.rs",
+    "line": 75
+  },
+  {
+    "original": "tests.test_plan_apply.CatalogUnpublish.test_forgets_one_item_in_one_family_only",
+    "rust": "plan_apply__CatalogUnpublish__test_forgets_one_item_in_one_family_only",
+    "category": "real SQLite family-scoped unpublish",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1173
+  },
+  {
+    "original": "tests.test_plan_apply.DryRun.test_lists_the_work_retires_ids_and_writes_nothing",
+    "rust": "plan_apply__DryRun__test_lists_the_work_retires_ids_and_writes_nothing",
+    "category": "real saved-plan dry CLI/SQLite/files",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 54
+  },
+  {
+    "original": "tests.test_plan_apply.DryRun.test_a_plan_the_packs_already_match_exits_0",
+    "rust": "plan_apply__DryRun__test_a_plan_the_packs_already_match_exits_0",
+    "category": "real saved-plan dry CLI/SQLite/files",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 89
+  },
+  {
+    "original": "tests.test_plan_apply.DryRun.test_a_held_emoji_that_is_live_stays_and_is_not_a_removal",
+    "rust": "plan_apply__DryRun__test_a_held_emoji_that_is_live_stays_and_is_not_a_removal",
+    "category": "real saved-plan dry CLI/SQLite/files",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 100
+  },
+  {
+    "original": "tests.test_plan_apply.DryRun.test_two_hundred_moves_plan_offline_in_seconds",
+    "rust": "plan_apply__DryRun__test_two_hundred_moves_plan_offline_in_seconds",
+    "category": "offline400-key planning performance",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 116
+  },
+  {
+    "original": "tests.test_plan_apply.ApplyInBoundedRuns.test_twenty_five_changes_take_two_runs_then_nothing",
+    "rust": "plan_apply__ApplyInBoundedRuns__test_twenty_five_changes_take_two_runs_then_nothing",
+    "category": "bounded plan execution with real HTTP/codec/SQLite",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 145
+  },
+  {
+    "original": "tests.test_plan_apply.ApplyInBoundedRuns.test_the_next_new_pack_is_created_with_the_logo_first",
+    "rust": "plan_apply__ApplyInBoundedRuns__test_the_next_new_pack_is_created_with_the_logo_first",
+    "category": "bounded plan execution with real HTTP/codec/SQLite",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 198
+  },
+  {
+    "original": "tests.test_plan_apply.ApplyInBoundedRuns.test_a_delete_applied_before_a_crash_is_settled_not_resent",
+    "rust": "plan_apply__ApplyInBoundedRuns__test_a_delete_applied_before_a_crash_is_settled_not_resent",
+    "category": "actual process crash after HTTP delete + real WAL/journal restart",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 231
+  },
+  {
+    "original": "tests.test_plan_apply.ApplyInBoundedRuns.test_an_intent_whose_delete_never_landed_is_cleared_and_redone_once",
+    "rust": "plan_apply__ApplyInBoundedRuns__test_an_intent_whose_delete_never_landed_is_cleared_and_redone_once",
+    "category": "bounded plan execution with real HTTP/codec/SQLite",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 281
+  },
+  {
+    "original": "tests.test_plan_apply.LongFloodWaitEndsTheRunCleanly.test_on_a_delete_the_intent_is_cleared_and_nothing_is_recorded",
+    "rust": "plan_apply__LongFloodWaitEndsTheRunCleanly__test_on_a_delete_the_intent_is_cleared_and_nothing_is_recorded",
+    "category": "real wire900s flood refusal + durable restart",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 294
+  },
+  {
+    "original": "tests.test_plan_apply.LongFloodWaitEndsTheRunCleanly.test_on_an_add_the_removal_stays_recorded_and_the_next_run_adds",
+    "rust": "plan_apply__LongFloodWaitEndsTheRunCleanly__test_on_an_add_the_removal_stays_recorded_and_the_next_run_adds",
+    "category": "real wire900s flood refusal + durable restart",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 311
+  },
+  {
+    "original": "tests.test_plan_apply.ClientFloodCeiling.test_a_wait_over_the_ceiling_raises_without_sleeping",
+    "rust": "plan_apply__ClientFloodCeiling__test_a_wait_over_the_ceiling_raises_without_sleeping",
+    "category": "real wire retry parser + deterministic clock",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1211
+  },
+  {
+    "original": "tests.test_plan_apply.ClientFloodCeiling.test_a_wait_under_the_ceiling_is_still_honoured",
+    "rust": "plan_apply__ClientFloodCeiling__test_a_wait_under_the_ceiling_is_still_honoured",
+    "category": "real wire retry parser + deterministic clock",
+    "target": "baseline_packs",
+    "file": "runtime/tests/baseline_packs.rs",
+    "line": 1246
+  },
+  {
+    "original": "tests.test_plan_apply.RefuseBeforeTouchingAnything.test_a_pack_over_its_cap",
+    "rust": "plan_apply__RefuseBeforeTouchingAnything__test_a_pack_over_its_cap",
+    "category": "real preflight state/catalog refusal + unchanged files",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 333
+  },
+  {
+    "original": "tests.test_plan_apply.RefuseBeforeTouchingAnything.test_the_panel_flagged_over_capacity",
+    "rust": "plan_apply__RefuseBeforeTouchingAnything__test_the_panel_flagged_over_capacity",
+    "category": "real preflight state/catalog refusal + unchanged files",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 343
+  },
+  {
+    "original": "tests.test_plan_apply.RefuseBeforeTouchingAnything.test_a_key_the_catalog_no_longer_holds",
+    "rust": "plan_apply__RefuseBeforeTouchingAnything__test_a_key_the_catalog_no_longer_holds",
+    "category": "real preflight state/catalog refusal + unchanged files",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 352
+  },
+  {
+    "original": "tests.test_plan_apply.RefuseBeforeTouchingAnything.test_a_per_format_family",
+    "rust": "plan_apply__RefuseBeforeTouchingAnything__test_a_per_format_family",
+    "category": "real preflight state/catalog refusal + unchanged files",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 363
+  },
+  {
+    "original": "tests.test_plan_apply.RefuseBeforeTouchingAnything.test_a_gap_in_the_pack_numbers",
+    "rust": "plan_apply__RefuseBeforeTouchingAnything__test_a_gap_in_the_pack_numbers",
+    "category": "real preflight state/catalog refusal + unchanged files",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 372
+  },
+  {
+    "original": "tests.test_plan_apply.RefuseBeforeTouchingAnything.test_an_unreadable_live_set_stops_before_changing_it",
+    "rust": "plan_apply__RefuseBeforeTouchingAnything__test_an_unreadable_live_set_stops_before_changing_it",
+    "category": "real preflight state/catalog refusal + unchanged files",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 383
+  },
+  {
+    "original": "tests.test_plan_apply.RefuseBeforeTouchingAnything.test_the_family_lock_held_by_another_writer",
+    "rust": "plan_apply__RefuseBeforeTouchingAnything__test_the_family_lock_held_by_another_writer",
+    "category": "real exclusive family lock refusal before API construction",
+    "target": "lib plan_apply",
+    "file": "runtime/tests/baseline_packs_support/apply_private_tests.rs",
+    "line": 403
+  }
+]

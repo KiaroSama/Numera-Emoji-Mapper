@@ -10,9 +10,8 @@ remains JavaScript and the Cloudflare Worker remains TypeScript.
 
 Rust owns application policy, SQLite persistence, Bot API transport, retries,
 publication proof, intent recovery, filesystem leases and atomic publication.
-Pure application modules are shared with the historical regression crate under
-`native/src`; sharing a Rust source file does not introduce its old interpreter
-binding into the production dependency graph.
+Application modules live in `runtime/src`; contributor orchestration and backend
+tests use Rust as well. There is no interpreter bridge or extension crate.
 
 The native media stack consists of:
 
@@ -63,21 +62,21 @@ Linux test execution retains private network namespaces and descendant custody.
 ## Install a package
 
 Download a matching artifact from **Prebuilt packages**, or a published release,
-and extract it into a new folder. Packages support Linux x64, Windows x64 and
-Intel/Apple Silicon macOS. They contain the application, public assets, native
-manifest, launchers, license and sample configuration. Schema2 packages contain
+and extract it into a new folder. Packages support Linux x64 and Windows x64.
+They contain the application, public assets, native
+manifest, license and sample configuration. Schema2 packages contain
 no Python wheels, interpreter or virtual environment.
 
 ```bash
 ./numera-emoji --help
 ./numera-emoji doctor
-./run.sh panel
+./numera-emoji panel
 ```
 
 ```powershell
 .\numera-emoji.exe --help
-.\run.ps1 -Check
-.\run.ps1
+.\numera-emoji.exe doctor
+.\numera-emoji.exe panel
 ```
 
 The extracted executable can also verify and copy an installation offline:
@@ -103,7 +102,7 @@ Source builds require the pinned Rust toolchain, a C/C++ compiler and CMake for
 bundled native libraries. They do not require Python:
 
 ```bash
-cargo build --manifest-path runtime/Cargo.toml --locked --release
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
 runtime/target/release/numera-emoji --help
 ```
 
@@ -111,26 +110,28 @@ Use the standalone test runner for production tests:
 
 ```bash
 cargo build --manifest-path runtime/Cargo.toml --locked --release --bin numera-runtime-tests
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked -- --test-threads=1
+cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
 ```
 
-The launchers select an existing executable. They do not build an application or
-install dependencies during normal operation.
+The installed CLI and menu run the bundled executable directly. Normal
+application commands do not build or install dependencies.
 
-## Historical regression and contributor tools
+## Regression and contributor tools
 
-`native/Cargo.toml` retains the original PyO3 library and a `numera-compat`
-developer executable. They run historical source observations, fault-injection
-cases and original regression suites. `tests/` and retained reference modules are
-acceptance evidence; they are excluded from production packages. The ordinary
-application never falls back to them.
+The application, codecs and contributor tools share the Rust crate under
+`runtime/`. `numera-dev` provides explicit build, check, test, panel-sandbox and
+similarity benchmark commands. Worker administration uses `numera-worker-admin`.
+The former PyO3 crate, interpreter-based observations and shell launchers are
+retired; no optional compatibility toolkit is needed.
 
-The compatibility crate's public `numera-emoji` binary is a small shim calling
-the standalone Rust library, so public CLI, collection and browser integration
-tests exercise the production implementation. Source-observation and legacy
-tooling cases explicitly invoke `numera-compat`. Building that optional developer
-toolkit still requires its pinned CPython/codec environment.
+Rust tests exercise the actual production library and installed binaries, with
+real owned processes, codecs, SQLite and loopback transport. Frozen media/JSON
+and immutable historical source receipts preserve independent expectations.
+Bounded historical Git reads support provenance without executing the retired
+source. Browser acceptance remains JavaScript/Chromium and Worker tests remain
+TypeScript. Test helpers and build tools are excluded from application archives.
 
-CI retains all original test cohorts, adds standalone engine/package/operator
-checks, and builds the production executable on every supported platform. See
-[CI acceptance](rust-ci-status.md) for the current verification status.
+CI preserves the original application identities and test categories, retains
+native regression properties, and builds release executables on Linux x64 and
+Windows x64. See [test ownership](native-test-migration.md) and
+[CI acceptance](rust-ci-status.md) for the gates and evidence limits.

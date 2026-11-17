@@ -2,26 +2,24 @@
 
 ## 20. The Curate panel internals (`panel`)
 
-A `ThreadingHTTPServer` on `127.0.0.1`. Routes:
+A Rust Tokio/Axum HTTP server bound to `127.0.0.1`. Routes:
 
 | Route | Response |
 |-------|----------|
 | `GET /` | The page (`assets/panel.html`: markup, CSS, items embedded as JSON, the per-run values). |
 | `GET /img/<key>` | The media bytes (webp/png/webm) with correct MIME. |
 | `GET /preview/<key>?fps=N&size=S` | Cached animated WebP for TGS; `still=1` returns a still for static/video/TGS. Sizes: 52, 72 or 104; rates: 1–30, bounded by `--preview-fps`. |
-| `GET /static/<file>` | Static assets (logo, favicon, and the panel scripts, `emojikit.panel.SCRIPT_FILES`), traversal-guarded. The scripts are requested as `panel-grid.js?v=<hash>` — the hash is the scripts' content (`emojikit.panel.ASSET_VER`), because the route is immutable-cached and an edited script would otherwise be served stale. The logo is requested the same way, as `logo-128.png?v=<hash>` of its own bytes (`emojikit.panel.ICON_VER`), so a replaced logo is not served stale either. The query is stripped before the file lookup. |
+| `GET /static/<file>` | Static assets (logo, favicon, and the panel scripts, `asset_version::PANEL_SCRIPTS`), traversal-guarded. The scripts are requested as `panel-grid.js?v=<hash>` — the hash is the scripts' content (`asset_version::versions`), because the route is immutable-cached and an edited script would otherwise be served stale. The logo is requested the same way, as `logo-128.png?v=<hash>` of its own bytes (the icon result from `asset_version::versions`), so a replaced logo is not served stale either. The query is stripped before the file lookup. |
 | `GET /api/ping` | `{"ok":true}`. The page polls it to tell you when the panel process is gone; it touches neither the lock nor the catalog. |
 | `GET /api/session` | Which catalog and view this panel serves (a hash of the catalog path, `all`, `packs`). A second launch on the same port reads it to reopen this panel instead of starting another. |
 | `POST /api/save` | Body `{"excluded":[keys], "known":[keys], "packs":[[key, pack], …]}` → `catalog.set_inclusion(...)`, **restricted to `known`**; `packs` (optional) is the intended pack per emoji, written to `pack_plan.json`. |
 | `POST /api/order` | Body `{"order":[keys]}` → `catalog.set_order(...)` (drag-to-reorder = publish order). |
 | `POST /api/client-log` | Up to 32 whitelisted events, 16KiB per batch; counts/revisions/status/error type and location only. No token, label, media ID or arbitrary message fields. |
 
-**Transport.** HTTP/1.1 keep-alive (the old HTTP/1.0 opened a connection and a
-handler thread per thumbnail, and a browser allows six per host), a listen
-backlog of 64 (the stdlib's 5 refused the page's own script loads when a
-screenful of thumbnails arrived at once), and a 30 s idle timeout so a
-kept-alive connection cannot hold its thread forever. Every response carries an
-accurate `Content-Length`, except a 204, which carries none (RFC 9110).
+**Transport.** The native server supports HTTP/1.1 keep-alive. POST bodies need
+an explicit Content-Length, are bounded to 4 MiB and have a 30-second read
+deadline; client-log batches have their narrower 16 KiB cap. Responses carry
+accurate lengths, while 204 responses carry no Content-Length (RFC 9110).
 Every response also carries `X-Content-Type-Options: nosniff` and
 `Referrer-Policy: no-referrer`; the page adds `X-Frame-Options: DENY` and
 `Content-Security-Policy: frame-ancestors 'none'`, because a page on another
@@ -30,7 +28,7 @@ Host check.
 
 All POST routes are guarded: loopback-only `Host`/
 `Origin`, a per-run token sent as `X-Panel-Token`, an exact-permutation check on
-the order, a content-type check and a body cap (`tests/test_panel.py`).
+the order, a content-type check and a body cap (the native panel regression cohort).
 
 **`known` is the save's scope, and it is mandatory.** A save carries the FULL
 selection — every key it does not name becomes *included* — so a request with no
@@ -43,14 +41,12 @@ only inside that scope (intersected with what the catalog currently holds, so a
 key that has since vanished is harmless). A page too old to say gets **409** and
 a "reload the page and save again" message: one reload costs a second, while a
 silent re-inclusion is invisible until a publish ships the wrong pack.
-`tests/test_panel_save_scope.py` drives all of it through the real handler.
+The native save-scope tests drive these cases through the real HTTP handler.
 
-Ordering: `emojikit.panel_view.order_by_similarity` groups items by format (static, then
-video, then animated) and within each runs a greedy nearest-neighbour walk on
-the perceptual hash so look-alikes are adjacent. Items without a hash (animated)
-keep content order. The view model lives in `emojikit/panel_view.py` — `build_view`,
-`order_by_similarity`, `packs_named`, `copy_id_for` — with `panel` left
-holding the server. Pure functions on one side, sockets on the other.
+Ordering: `panel_view` and the native similarity module group by format (static,
+video, animated), then use a greedy nearest-neighbor walk on perceptual hashes.
+Unhashed items retain content order. `panel_view` owns view construction, pack
+lookup and copy-ID selection; `panel_http` owns sockets and handler state.
 
 Front-end:
 
@@ -139,14 +135,14 @@ Front-end:
   share the same eligibility deadline. Dirty state and unload protection remain
   until the corresponding state is acknowledged; the warning offers a local
   JSON draft export for conflict recovery.
-- **UI logs** (`emojikit/panel_logging.py`). Browser events are batched at most
+- **UI logs** (`panel_events` and `panel_http`). Browser events are batched at most
   once per second, with a three-second delivery deadline and a 32-event buffer.
   The authenticated endpoint validates the complete batch before logging and
   caps request frequency. UI actions and error locations go to the panel's
   normal UTF-8 UTC log; arbitrary exception text and private content do not.
   Logging failure does not enter or block either save queue.
 - **The panel scripts** load in this order, as classic scripts sharing one
-  scope (`emojikit.panel.SCRIPT_FILES`): `panel-grid.js`, `panel-motion.js`,
+  scope (`asset_version::PANEL_SCRIPTS`): `panel-grid.js`, `panel-motion.js`,
   `panel-save.js`, `panel-drag.js`, `panel-actions.js`, `panel-holding.js`,
   `panel-draft.js`. `assets/jsconfig.json` and `assets/panel-globals.d.ts` let
   `tsc` type-check them (`checkJs`); the CI `worker` job runs it.

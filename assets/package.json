@@ -1,0 +1,15 @@
+{
+  "name": "numera-panel-browser-tests",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "test": "playwright test",
+    "test:contracts": "playwright test panel_page_actions panel_page_grid",
+    "test:browser": "playwright test panel_browser panel_queues panel_curation panel_perf"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "pngjs": "7.0.0"
+  }
+}

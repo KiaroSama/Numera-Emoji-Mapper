@@ -1,0 +1,534 @@
+{
+  "schema": 1,
+  "source_revision": "9c3cbb43305b0e507085003d4a33806e4a60b677",
+  "cases": [
+    {
+      "id": "archive_parity::archive_metadata_matches_original_source",
+      "source_file": "native/tests/archive_parity.rs",
+      "source_sha256": "47bcd0d12088df6624db1f50bea3008f613b86442c7418731d6db8afdf066bde",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_archive_parity.rs",
+        "target": "ported_archive_parity",
+        "function": "archive_metadata_matches_original_source",
+        "body_sha256": "6be0fcf99700d96a294eefe86d41274f442930180ea1538f3c32ea9edb4e200e"
+      }
+    },
+    {
+      "id": "atomic_failure::invalid_destination_preserves_contents_and_reaps_staging",
+      "source_file": "native/tests/atomic_failure.rs",
+      "source_sha256": "243f8b00e4373376651646756568a7d4e1d474489d7a96d211cceb5fcac32985",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_atomic_failure.rs",
+        "target": "ported_atomic_failure",
+        "function": "invalid_destination_preserves_contents_and_reaps_staging",
+        "body_sha256": "d20e8db55fcec53fa2d7c7381e7fa8f9bad8c730b423fe38c70f3225c7a3c677"
+      }
+    },
+    {
+      "id": "atomic_failure::occupied_state_preserves_previous_file_and_reaps_staging",
+      "source_file": "native/tests/atomic_failure.rs",
+      "source_sha256": "243f8b00e4373376651646756568a7d4e1d474489d7a96d211cceb5fcac32985",
+      "linux": false,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_atomic_failure.rs",
+        "target": "ported_atomic_failure",
+        "function": "occupied_state_preserves_previous_file_and_reaps_staging",
+        "body_sha256": "5c648d0242ba0f8fef110ddd77e7816b31a15160371eb5eea62df428ba59c308"
+      }
+    },
+    {
+      "id": "browser_open::no_open_returns_without_platform_side_effects",
+      "source_file": "native/tests/browser_open.rs",
+      "source_sha256": "8eb011358ce9857dcc087504feec86c64dbe84197f1dd9349bd32c16269fa128",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_browser_open.rs",
+        "target": "ported_browser_open",
+        "function": "no_open_returns_without_platform_side_effects",
+        "body_sha256": "cec0c7c6ee66c641c23fb63eed7aea0f115d5fdfaa842acea9ab6d4fbf8412c3"
+      }
+    },
+    {
+      "id": "darwin_exit::successful_children_reap_exit_transition_before_removing_scratch",
+      "source_file": "native/tests/darwin_exit.rs",
+      "source_sha256": "46b78a55bf1985631fa276fb96ac9a117331fbf54472d43e828b7186a5e010bd",
+      "linux": false,
+      "windows": false,
+      "technical_helper": false,
+      "disposition": "retired-macos",
+      "target": null
+    },
+    {
+      "id": "emoji_ids::unicode_decimal_inventory_and_line_breaks_match_source",
+      "source_file": "native/tests/emoji_ids.rs",
+      "source_sha256": "38eff21c8ae1b7be553c863009efbc1402de5c8c19ac26ff8bb1b4e9d55a7b8a",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_emoji_ids.rs",
+        "target": "ported_emoji_ids",
+        "function": "unicode_decimal_inventory_and_line_breaks_match_source",
+        "body_sha256": "75370cd7964d82229413b496eacd4b42dca4b6bf5fe7ab38f7d60c0d4c05e0b3"
+      }
+    },
+    {
+      "id": "gallery_parity::cancelled_gallery_reaps_codec_before_removing_outer_staging",
+      "source_file": "native/tests/gallery_parity.rs",
+      "source_sha256": "9381e85ae9fa4c11f196abf7d7f739cedce1f4e3f1ff5fd7f110f1054d650bfa",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust_gallery_parity.rs",
+        "target": "original_main_rust_gallery_parity",
+        "function": "cancelled_gallery_reaps_codec_before_removing_outer_staging",
+        "body_sha256": "f2594592d05ec77e31c38ea7c55e3f59bbb2e0e24d668c9ca21c5897cd538996"
+      }
+    },
+    {
+      "id": "gallery_parity::incumbent_markup_controls_and_safe_roster_json_match_source",
+      "source_file": "native/tests/gallery_parity.rs",
+      "source_sha256": "9381e85ae9fa4c11f196abf7d7f739cedce1f4e3f1ff5fd7f110f1054d650bfa",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust_gallery_parity.rs",
+        "target": "original_main_rust_gallery_parity",
+        "function": "incumbent_markup_controls_and_safe_roster_json_match_source",
+        "body_sha256": "8db67baaa9774bc9e74fcc092ca76efcf6d174f579f333c0959c89bcfb3003b1"
+      }
+    },
+    {
+      "id": "gallery_parity::real_public_static_codec_and_native_cache_match_original_page",
+      "source_file": "native/tests/gallery_parity.rs",
+      "source_sha256": "9381e85ae9fa4c11f196abf7d7f739cedce1f4e3f1ff5fd7f110f1054d650bfa",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust_gallery_parity.rs",
+        "target": "original_main_rust_gallery_parity",
+        "function": "real_public_static_codec_and_native_cache_match_original_page",
+        "body_sha256": "372535af0c5a16128f494af49e62d14fdd22a3d662ee99d26c2d469c8a685c5c"
+      }
+    },
+    {
+      "id": "lib::migration_crash_tests::migration_worker",
+      "source_file": "native/src/migration_crash_tests.rs",
+      "source_sha256": "92165c33d74771bb0bbf54979f4eadb565fcd42dba11353a9613117c2f6fc250",
+      "linux": true,
+      "windows": true,
+      "technical_helper": true,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/src/baseline_migration_tests.rs",
+        "target": "lib",
+        "function": "migration_crash_tests::migration_worker",
+        "body_sha256": "48414afb411f1ca3de53b0eadb53e3eeb030cb171bae633c529e12b394de28c2"
+      }
+    },
+    {
+      "id": "lib::migration_crash_tests::real_process_death_replays_each_durable_migration_stage",
+      "source_file": "native/src/migration_crash_tests.rs",
+      "source_sha256": "92165c33d74771bb0bbf54979f4eadb565fcd42dba11353a9613117c2f6fc250",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/src/original_main_rust_migration_tests.rs",
+        "target": "lib",
+        "function": "migration_crash_tests::original_main_rust::real_process_death_replays_each_durable_migration_stage",
+        "body_sha256": "3d09abc819f761ffb2d3f60f682703629119854bbbb3ad4fd3689821e9d0ad11"
+      }
+    },
+    {
+      "id": "lib::panel_save_tests::maintenance_is_excluded_until_plan_replacement_and_catalog_close",
+      "source_file": "native/src/panel_save_tests.rs",
+      "source_sha256": "e7ff70ac3e8bb4503bc92aa39cd83bcdbbb9ced7b9356db165c495c5883095e8",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/baseline_panel_support/plan_write_tests.rs",
+        "target": "lib",
+        "function": "panel_save_tests::maintenance_is_excluded_until_plan_replacement_and_catalog_close",
+        "body_sha256": "4f6e9af8b95efbaf8e1d34a335e1fdd22dd604f3499fc8554e48694e178d317b"
+      }
+    },
+    {
+      "id": "lib::tests::stable_ties_and_empty_input",
+      "source_file": "native/src/lib.rs",
+      "source_sha256": "b6759b9257d2a43156bced2596c9f5fab78f80c9bf88c7760cd279e334bd2697",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust.rs",
+        "target": "original_main_rust",
+        "function": "stable_ties_and_empty_input",
+        "body_sha256": "75161f8d2c80c3375eac460d89d660320119a3cc73c24e55dc189fa8b8bec363"
+      }
+    },
+    {
+      "id": "local_format::source_extension_and_magic_rules_choose_without_starting_a_codec",
+      "source_file": "native/tests/local_format.rs",
+      "source_sha256": "80f1e1ac098d856a4ff2455a60476cead5f404f9be3dd6edcce0ff138184fa57",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust_local_format.rs",
+        "target": "original_main_rust_local_format",
+        "function": "source_extension_and_magic_rules_choose_without_starting_a_codec",
+        "body_sha256": "71bc9cf96955db4c58f9c26ca4424a892084c3ce7a184983eafc876d07ac9553"
+      }
+    },
+    {
+      "id": "media_config::codec_timeout_uses_dotenv_then_environment_and_keeps_hermetic_children",
+      "source_file": "native/tests/media_config.rs",
+      "source_sha256": "b89357be72a2ce619c4504258e8953ecb567ee6c575169b37279e938482c246b",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust_media_config.rs",
+        "target": "original_main_rust_media_config",
+        "function": "codec_timeout_uses_dotenv_then_environment_and_keeps_hermetic_children",
+        "body_sha256": "5f4a70f1f93836642d33cb6526e672674ca312ba5e93ad4c1e74f3778fbab570"
+      }
+    },
+    {
+      "id": "media_store::incomplete_existing_destination_is_never_adopted_or_overwritten",
+      "source_file": "native/tests/media_store.rs",
+      "source_sha256": "469beb6d506b5043fff2271681cc5bf3a850499d69c76236ba63a63c4508a792",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_media_store.rs",
+        "target": "ported_media_store",
+        "function": "incomplete_existing_destination_is_never_adopted_or_overwritten",
+        "body_sha256": "8f1fc594f175d46329407dd04449cf4523ec3effe87d9b503e4d2777430a3b2e"
+      }
+    },
+    {
+      "id": "migration_bundle::inconsistent_state_version_or_backup_refuses_without_catalog_changes",
+      "source_file": "native/tests/migration_bundle.rs",
+      "source_sha256": "7f09a5b160566dbd9ae47873ae9a80e5d222ef7ef0617f86d8bd997c8520b1e4",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_migration_bundle.rs",
+        "target": "ported_migration_bundle",
+        "function": "inconsistent_state_version_or_backup_refuses_without_catalog_changes",
+        "body_sha256": "f21fcd54995413d5286ba56fc4065afadeb0a2cb32c2df28f51f3bb6f09325c6"
+      }
+    },
+    {
+      "id": "migration_database::source_transaction_swaps_every_reference_and_preserves_signed_hashes",
+      "source_file": "native/tests/migration_database.rs",
+      "source_sha256": "70a78374f0f4286fc8571f86dcb9b4518e7422af04ff70136022b685d29fcdbe",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_migration_database.rs",
+        "target": "ported_migration_database",
+        "function": "source_transaction_swaps_every_reference_and_preserves_signed_hashes",
+        "body_sha256": "36b1a6301f5c5ee4fb5af07f0e9cb82082bac82d9ecb4778ce322a3e77ff822b"
+      }
+    },
+    {
+      "id": "migration_signature::original_repr_sorted_sql_signature_matches_both_source_cases",
+      "source_file": "native/tests/migration_signature.rs",
+      "source_sha256": "ebf3cf6f352f5ed08e24e89661d9c6b174b6107f3f25060bf4bcd6671598fefd",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_migration_signature.rs",
+        "target": "ported_migration_signature",
+        "function": "original_repr_sorted_sql_signature_matches_both_source_cases",
+        "body_sha256": "642f7c12136d132b52a8799725da383e58836471a1180a6bc27ff64acc686222"
+      }
+    },
+    {
+      "id": "ownership::nested_same_mode_preserves_os_lock_until_last_owner",
+      "source_file": "native/tests/ownership.rs",
+      "source_sha256": "58f12c11d72e31b1dfdc3525309bf3aadd7a57e12cf5f0f8dc6459cb21f8b5a6",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_ownership.rs",
+        "target": "ported_ownership",
+        "function": "nested_same_mode_preserves_os_lock_until_last_owner",
+        "body_sha256": "94268092cd8a7e3e2d45aeb63c5bcb8aaa590f7f15f40600f3a224bdf1ceccdc"
+      }
+    },
+    {
+      "id": "panel_branding::loopback_bot_lookup_accepts_only_verified_username_and_cancels_without_waiting",
+      "source_file": "native/tests/panel_branding.rs",
+      "source_sha256": "440fad21fa21c58707a97170020d9c7285ddbd23b21ef61e64b7ab0df1ce8f82",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_panel_branding.rs",
+        "target": "ported_panel_branding",
+        "function": "loopback_bot_lookup_accepts_only_verified_username_and_cancels_without_waiting",
+        "body_sha256": "783dd23b695b3d2bfda39e10a63406dd781c90b4b611dbd16fb9b63e553e18af"
+      }
+    },
+    {
+      "id": "panel_http::loopback_router_validates_mutations_and_persists_curation",
+      "source_file": "native/tests/panel_http.rs",
+      "source_sha256": "5f36b8464716b7f2f5c8b6d1aca5ae084e4ebcfe24dd75bceaaf85b246349613",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_panel_http.rs",
+        "target": "ported_panel_http",
+        "function": "loopback_router_validates_mutations_and_persists_curation",
+        "body_sha256": "eac04f45bf278fb4784f0a2bf4682a6505491c2407a2453ad67e87bf8201e994"
+      }
+    },
+    {
+      "id": "preview_cancel::cancelled_warmup_does_not_leave_codec_or_cache_staging",
+      "source_file": "native/tests/preview_cancel.rs",
+      "source_sha256": "03af5cb2e44ca41e226d4ebacf6d1489424083caeb8c5408b72661d046747459",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust_preview_cancel.rs",
+        "target": "original_main_rust_preview_cancel",
+        "function": "cancelled_warmup_does_not_leave_codec_or_cache_staging",
+        "body_sha256": "107d22e6e7c7d3fe0cf79b670c13dfa2b93f727735df355ec13e45c23dbbcc80"
+      }
+    },
+    {
+      "id": "preview_warm::held_static_warms_compact_only_and_reuses_after_source_disappears",
+      "source_file": "native/tests/preview_warm.rs",
+      "source_sha256": "a56b0317b5cf083fa3773eaeb40f276dac0938ca2640cc1cde87642ba4d908a1",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust_preview_warm.rs",
+        "target": "original_main_rust_preview_warm",
+        "function": "held_static_warms_compact_only_and_reuses_after_source_disappears",
+        "body_sha256": "bdf94d7e61568d380eadd231ab0f072c5639c4f1850e7cebd1555fb7e7cbb9c7"
+      }
+    },
+    {
+      "id": "process_lifecycle::cancellation_stops_descendant_before_workspace_removal",
+      "source_file": "native/tests/process_lifecycle.rs",
+      "source_sha256": "b31a316f3803b4aff4d703e876a16b6a51ded473b7f4b877136ed9b92724afab",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust_process_lifecycle.rs",
+        "target": "original_main_rust_process_lifecycle",
+        "function": "cancellation_stops_descendant_before_workspace_removal",
+        "body_sha256": "571cc04419ea585450736f69a9ec3cb64d5680d7b5ef8ed9cc8a3629d0c5a5df"
+      }
+    },
+    {
+      "id": "publication_recovery::applied_add_recovers_by_known_identity_without_second_mutation",
+      "source_file": "native/tests/publication_recovery.rs",
+      "source_sha256": "ce0e5f9ee8d827725a361a515b16fc25e5ac097bf0215c5f69c7499ee4bfa3b8",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_publication_recovery.rs",
+        "target": "ported_publication_recovery",
+        "function": "applied_add_recovers_by_known_identity_without_second_mutation",
+        "body_sha256": "4029ea34dfa2ac99557e477eb381b7e48d27edbb81b7397419bec00c45a841e5"
+      }
+    },
+    {
+      "id": "publication_unknown::unknown_or_missing_recorded_set_retains_original_upload_intent",
+      "source_file": "native/tests/publication_unknown.rs",
+      "source_sha256": "73024716713ea650815547c11da295a3bf281ce5da64cec52b65410dc250abc1",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_publication_unknown.rs",
+        "target": "ported_publication_unknown",
+        "function": "unknown_or_missing_recorded_set_retains_original_upload_intent",
+        "body_sha256": "acbda07eac3ab56554afaf7f608231efa232081ccb384af537e4f91e08a580b0"
+      }
+    },
+    {
+      "id": "reconcile_commit::duplicate_tail_refuses_without_overwriting_the_first_verified_id",
+      "source_file": "native/tests/reconcile_commit.rs",
+      "source_sha256": "c177b4b110a3b752bf35bd4c8657fa24a81461d67c185c1bc4e47d000dd3ea4e",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/original_main_rust_reconcile_commit.rs",
+        "target": "original_main_rust_reconcile_commit",
+        "function": "duplicate_tail_refuses_without_overwriting_the_first_verified_id",
+        "body_sha256": "8ea3b63beff12e9cc8470073d1c5086db15d37eacbef483a99e4df37042425b4"
+      }
+    },
+    {
+      "id": "roster_pack_parity::live_pack_provenance_and_history_match_pinned_source",
+      "source_file": "native/tests/roster_pack_parity.rs",
+      "source_sha256": "39843b2a1707b9b02b060fa599ada181aa00243595846eed05a65bbf662ff763",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_roster_pack_parity.rs",
+        "target": "ported_roster_pack_parity",
+        "function": "live_pack_provenance_and_history_match_pinned_source",
+        "body_sha256": "76fc80c6390abbe68813f85c95cf2d5c6ff513daa6256241280ebe404f265cf1"
+      }
+    },
+    {
+      "id": "sandbox_lease::posix::inherited_lease_child",
+      "source_file": "native/tests/sandbox_lease.rs",
+      "source_sha256": "a950932090150c32c8a6e161c4c2ee31f69868919ce97659801a6fee6fb20013",
+      "linux": true,
+      "windows": false,
+      "technical_helper": true,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_sandbox_lease.rs",
+        "target": "ported_sandbox_lease",
+        "function": "posix::inherited_lease_child",
+        "body_sha256": "e173b982d9fa5a548d2fb328a50f5fa14865df6a51d59b51bc8426e850f476ed"
+      }
+    },
+    {
+      "id": "sandbox_lease::posix::inherited_lease_survives_parent_close_until_native_child_finishes",
+      "source_file": "native/tests/sandbox_lease.rs",
+      "source_sha256": "a950932090150c32c8a6e161c4c2ee31f69868919ce97659801a6fee6fb20013",
+      "linux": true,
+      "windows": false,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_sandbox_lease.rs",
+        "target": "ported_sandbox_lease",
+        "function": "posix::inherited_lease_survives_parent_close_until_native_child_finishes",
+        "body_sha256": "6fdd465a3b4479214f4ca20810500286ede48cb24ae16b40fd51bab5cb43f494"
+      }
+    },
+    {
+      "id": "sandbox_lease_windows::no_inherited_flock_on_the_windows_job_path",
+      "source_file": "native/tests/sandbox_lease_windows.rs",
+      "source_sha256": "8d109d5487a650b109e82165f5b41750b9fcccf0b09ab5d34d04e845ea2ff5db",
+      "linux": false,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_sandbox_lease_windows.rs",
+        "target": "ported_sandbox_lease_windows",
+        "function": "no_inherited_flock_on_the_windows_job_path",
+        "body_sha256": "fc61363b176d2e0603b468876cd74c9d5494260f806fc57998ea897a380325f6"
+      }
+    },
+    {
+      "id": "sqlite_snapshot::snapshot_contains_wal_rows_and_restores_timeouts",
+      "source_file": "native/tests/sqlite_snapshot.rs",
+      "source_sha256": "b2009460fa95528a81e030e3685f2ba9e14da28f4f39f5fa3c8746ecd3cab9c6",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_sqlite_snapshot.rs",
+        "target": "ported_sqlite_snapshot",
+        "function": "snapshot_contains_wal_rows_and_restores_timeouts",
+        "body_sha256": "f3f85f0e4f5b84d4f621899be8cd77d47ff7f523218060bcb3237d88239b32ca"
+      }
+    },
+    {
+      "id": "state_artifacts::durable_references_are_rewritten_once_without_touching_labels",
+      "source_file": "native/tests/state_artifacts.rs",
+      "source_sha256": "4c0bf91802e6bbf901f33084b9a621eccb71df6d00f6b6eda00916cf733708ec",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_state_artifacts.rs",
+        "target": "ported_state_artifacts",
+        "function": "durable_references_are_rewritten_once_without_touching_labels",
+        "body_sha256": "34392a76805abfeebc96977ec190cf663ede870cfa22ce89079f4a6f86b72fd7"
+      }
+    },
+    {
+      "id": "ticker_keywords::quoted_multiline_keyword_fields_are_not_split_or_trimmed",
+      "source_file": "native/tests/ticker_keywords.rs",
+      "source_sha256": "789971093a740e106d4ca905ca2f2bfdeafd637a560255f218c4bae102fddbfe",
+      "linux": true,
+      "windows": true,
+      "technical_helper": false,
+      "disposition": "mapped",
+      "target": {
+        "file": "runtime/tests/ported_ticker_keywords.rs",
+        "target": "ported_ticker_keywords",
+        "function": "quoted_multiline_keyword_fields_are_not_split_or_trimmed",
+        "body_sha256": "4ea3da7dae18134a1a429f25719dac779b5d1f8a2d5d7573ca9f0a8bd8eb4c5c"
+      }
+    }
+  ],
+  "fixture_sha256": {
+    "tests/fixtures/backend/archive.json": "b09d84a67655825ee17d895decc6b73459dace9d34a6e2a5a4ef4c8fa6a9c8a3",
+    "tests/fixtures/backend/gallery.json": "e648f02e2e2556854859f7cd5190264a8a2d7de77d6b4cbab3e796e47892e9ec",
+    "tests/fixtures/backend/migration-database.json": "ebfd0bbbcc48f5eb6b0f36f403c140669d82e08f30207f7608efdc84ca6737a9",
+    "tests/fixtures/backend/roster-pack.json": "2c52d2338d7a515b21f6edd82d6d831b2f365c3bf47d47bdd1ed389396b60997",
+    "tests/fixtures/backend/signature.json": "9dfb74734872d03eac101cf41b9a177021315b90e077d07e7cc1c1052faddf0d",
+    "tests/fixtures/backend/state-artifacts.json": "c65e532105dfd1bba7f974f6fbcb09d46d36d3983a0568829919ba3ef256d4ed"
+  }
+}

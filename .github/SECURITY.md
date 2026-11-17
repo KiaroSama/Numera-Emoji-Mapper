@@ -17,17 +17,25 @@ never hard-coded in source:
 Rules:
 
 - Never commit `.env`. Use `.env.example` as a template.
-- Never use a real credential as a test fixture. `tests/test_logsetup.py`
-  enforces this: it fails if any secret-length value from `.env` appears in a
-  git-tracked file.
+- Never use a real credential as a test fixture. Rust credential/redaction
+  contracts and repository secret scanning protect tracked files; the guarded
+  test runner never loads an operator `.env`.
 - Bot tokens must not reach stdout, stderr or a log file. The token is embedded
   in every request URL, so exception text is redacted before printing
-  (`Telegram._safe`), and the uncaught-exception hook renders its own redacted
-  traceback rather than delegating to the default hook. If you add logging or a
-  new `print` on an error path, route the text through `logsetup.redact`.
+  (`telegram::Telegram::safe`), and native run logging renders redacted panic
+  and error output. Route new error diagnostics through `logging::redact` or
+  `logging::RunLog`, with configured secrets registered before validation.
 - A leaked bot token should be revoked immediately via @BotFather (`/revoke`),
   then update `.env`. Removing a secret from a file does **not** remove it from
   git history — rotate the credential as well.
+
+## Supported application platforms
+
+The application supports Linux x64 and Windows x64. The local application and
+its administration/contributor tools are Rust; the browser panel and Worker
+retain their own JavaScript/TypeScript security boundaries. Keep package
+integrity checks, loopback/Origin/token checks, webhook authentication and owned
+process cleanup active when changing those components.
 
 ## Reporting a vulnerability
 

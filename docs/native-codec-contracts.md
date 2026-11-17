@@ -4,13 +4,13 @@ The production media worker executes Rust and bundled native libraries, with no
 CPython, PyO3 or Python subprocess. Raster operations live in
 `runtime/src/native_raster.rs`; SVG uses resvg; Lottie uses the native canonical
 JSON implementation and rlottie renderer. Video uses bounded FFmpeg/FFprobe
-children. Historical Python implementations remain independent test oracles in
-the optional compatibility harness.
+children. Independent frozen historical media and source receipts remain test oracles;
+no interpreter or compatibility harness runs during acceptance.
 
 Existing frozen fixtures establish catalogue keys, decoded pixels, alpha,
 validation and comparison behavior. Do not regenerate expected identities from
-the replacement. PNG/WebP encoder bytes may differ; an encoding difference does
-not permit a decoded-pixel or identity change.
+the replacement. PNG/WebP encoder bytes may differ; each output must still meet
+its decoded-pixel, identity and timing contracts below.
 
 ## Gallery reads and preview lifetimes
 
@@ -18,6 +18,12 @@ The gallery reads one selected source and publishes into an exclusive staged
 output. Static thumbnails fit within 88×88 with Lanczos, do not enlarge smaller
 images, and encode WebP at quality 65. Static preview sizes are 52, 72 or 104;
 previews use bicubic thumbnails and lossless WebP with exact hidden RGB.
+
+Lossy animated gallery thumbnails retain the existing native platform encoder
+policy. Tests preserve historical encoded observations and check deterministic
+cache bytes, complete frame geometry and color/alpha bounds from the immutable
+source animation, dimensions, loop and timing. This display derivative does not
+replace exact canonical content keys or lossless preview/frame hashes.
 
 Lottie/video previews use bounded frame sampling. Animated WebP previews use
 libwebp's animation encoder, including duplicate-frame coalescing, spatial deltas
@@ -31,7 +37,7 @@ Native image buffers and codec resources have ordinary Rust ownership. WebP
 pictures, writers, muxes and decoder allocations have RAII guards, including
 error paths. There is no production Pillow object whose close method can replace
 an operation's result. Historical object-lifetime fault tests remain in the
-compatibility harness; native tests exercise publication, allocation and cleanup.
+historical source receipts; native tests exercise publication, allocation and cleanup.
 
 ## Static fitting call order
 

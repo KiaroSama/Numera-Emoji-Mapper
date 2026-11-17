@@ -53,7 +53,7 @@ graphify-out/
 !.env.example
 
 # ---------------------------------------------------------------------------
-# Python
+# Retired interpreter build/cache artifacts (never application inputs)
 # ---------------------------------------------------------------------------
 .venv/
 venv/
@@ -158,13 +158,15 @@ launch_test.txt
 # Cloudflare Worker (worker/): installed deps and wrangler's local state.
 node_modules/
 /runtime/target/
+/tools/ci/target/
+/tools/test-inventory/target/
 worker/.wrangler/
 .dev.vars
 
 # packs/ is the local catalogue of every published pack -- the id and position of
 # every emoji, plus a self-contained HTML page per pack with the artwork inlined.
 # LOCAL-ONLY by owner decision: it is regenerated from Telegram by
-# `pack_manifest.py --refresh`, so it is derived data, and a refresh rewrites
+# `numera-emoji pack-manifest --refresh`, so it is derived data, and a refresh rewrites
 # ~79 MB of pages and thumbnails that would otherwise land in the history.
 /packs/
 
@@ -172,7 +174,7 @@ worker/.wrangler/
 # repository ships the TOOL that builds emoji packs, not anybody's packs. These
 # name the live custom-emoji ids of a real published family, so they are the
 # owner's data rather than part of the tool, and they are rebuilt from Telegram
-# by `coins/rebuild_dedup.py map`. `coins/keywords.csv` deliberately stays
+# by `numera-emoji coin-rebuild map`. `coins/keywords.csv` deliberately stays
 # tracked: it is curated input the tool needs, and it carries no emoji ids.
 /coins/ticker_to_id.json
 /coins/ticker_to_id.*.bak.json

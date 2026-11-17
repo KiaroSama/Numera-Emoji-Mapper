@@ -1,0 +1,155 @@
+{
+  "source_revision": "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede",
+  "source_sha256": {
+    "tests/test_native_preview_codec.py": "8f8d5d1cdf52be2f2e65359eb11bc1f8e4878ccebfff4fa64090e24050420ead",
+    "tests/reference/panel_preview.py": "832548b52fdc4862ca02d8e7d4af9eae84751ef590f333c67f1dd483e9d26024",
+    "tests/_video_fixtures.py": "3b5175f1206e0fe685c53e42ff00bbcc7cbd8a0d36ec74196a8cb342bcc70caf",
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/media_lottie.py": "5112b55f21d4d241ffe9660d5294de20487d4ea1e9772188fb6bd125f7fef63b",
+    "emojikit/video_decode.py": "bab9579240a23bb8ee59c1a66e496586ca881398bb4d82e956e2fb6c2b3ff13a"
+  },
+  "dependencies": {
+    "Pillow": "12.3.0",
+    "rlottie-python": "1.3.8",
+    "resvg-py": "0.5.0"
+  },
+  "ffmpeg_version": "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026 the FFmpeg developers",
+  "generation": "Original pure Python panel_preview.preview_bytes and original _video_fixtures.encode under a kernel private network namespace; no native extension or current Rust runtime imported or executed.",
+  "network_interfaces": [
+    "lo"
+  ],
+  "cases": [
+    {
+      "input": "assets/numera-emoji-mapper-logo.png",
+      "input_sha256": "6f85376de3893dfa1e78045ce264103b0055acec400dd8a35222405d5c4f6951",
+      "format": "static",
+      "size": 104,
+      "fps": 15,
+      "still": true,
+      "expected": "static-104-true.webp",
+      "expected_bytes": 13488,
+      "expected_sha256": "f2f21891cfb24d7a8e8a62c7a08086825404d09ff263a5ce147f52f637fc43f1"
+    },
+    {
+      "input": "assets/numera-emoji-mapper-logo.png",
+      "input_sha256": "6f85376de3893dfa1e78045ce264103b0055acec400dd8a35222405d5c4f6951",
+      "format": "static",
+      "size": 104,
+      "fps": 15,
+      "still": false,
+      "expected": "static-104-false.webp",
+      "expected_bytes": 13488,
+      "expected_sha256": "f2f21891cfb24d7a8e8a62c7a08086825404d09ff263a5ce147f52f637fc43f1"
+    },
+    {
+      "input": "assets/numera-emoji-mapper-logo.png",
+      "input_sha256": "6f85376de3893dfa1e78045ce264103b0055acec400dd8a35222405d5c4f6951",
+      "format": "static",
+      "size": 72,
+      "fps": 10,
+      "still": true,
+      "expected": "static-72-true.webp",
+      "expected_bytes": 7644,
+      "expected_sha256": "2b80e79073171f065e2c1c71d4b4120abd3f8ccc8de81136e7484a8530eecd0c"
+    },
+    {
+      "input": "assets/numera-emoji-mapper-logo.png",
+      "input_sha256": "6f85376de3893dfa1e78045ce264103b0055acec400dd8a35222405d5c4f6951",
+      "format": "static",
+      "size": 72,
+      "fps": 10,
+      "still": false,
+      "expected": "static-72-false.webp",
+      "expected_bytes": 7644,
+      "expected_sha256": "2b80e79073171f065e2c1c71d4b4120abd3f8ccc8de81136e7484a8530eecd0c"
+    },
+    {
+      "input": "tests/fixtures/lottie/red_circle_512.tgs",
+      "input_sha256": "6bf94cd15f126d10d45da557627a375da84c81f1b18d2affbf4b21263d09a991",
+      "format": "animated",
+      "size": 104,
+      "fps": 15,
+      "still": true,
+      "expected": "animated-104-true.webp",
+      "expected_bytes": 766,
+      "expected_sha256": "ab18e7c3562be27becc2c661c1f659e181d00c3582b109bae0e00ac7cc6f2a57"
+    },
+    {
+      "input": "tests/fixtures/lottie/red_circle_512.tgs",
+      "input_sha256": "6bf94cd15f126d10d45da557627a375da84c81f1b18d2affbf4b21263d09a991",
+      "format": "animated",
+      "size": 104,
+      "fps": 15,
+      "still": false,
+      "expected": "animated-104-false.webp",
+      "expected_bytes": 716,
+      "expected_sha256": "71071380d6b398816a6d6db1c4b4ec88821dd34235fc3a02f78196a052861104"
+    },
+    {
+      "input": "tests/fixtures/lottie/red_circle_512.tgs",
+      "input_sha256": "6bf94cd15f126d10d45da557627a375da84c81f1b18d2affbf4b21263d09a991",
+      "format": "animated",
+      "size": 72,
+      "fps": 10,
+      "still": true,
+      "expected": "animated-72-true.webp",
+      "expected_bytes": 578,
+      "expected_sha256": "375a32db50f55526b783eeb9d501a26831f233646d147f378ce7758cac17ec3c"
+    },
+    {
+      "input": "tests/fixtures/lottie/red_circle_512.tgs",
+      "input_sha256": "6bf94cd15f126d10d45da557627a375da84c81f1b18d2affbf4b21263d09a991",
+      "format": "animated",
+      "size": 72,
+      "fps": 10,
+      "still": false,
+      "expected": "animated-72-false.webp",
+      "expected_bytes": 528,
+      "expected_sha256": "a8d3d93c299a977dcefcb1f4a1962947bbb3d6ad47f22628142f02ee3d48c2f5"
+    },
+    {
+      "input": "tests/fixtures/native/baseline-video/preview-alpha.webm",
+      "input_sha256": "ca023451d2c6edb34bd6ba9664bc53c241f8ee2dde35d97ea237b79264038a98",
+      "format": "video",
+      "size": 104,
+      "fps": 15,
+      "still": true,
+      "expected": "video-104-true.webp",
+      "expected_bytes": 138,
+      "expected_sha256": "b7d5f64a55a03a0c9713f0f261611cbbb7e54b64d70d2b1f73e789b391ae7327"
+    },
+    {
+      "input": "tests/fixtures/native/baseline-video/preview-alpha.webm",
+      "input_sha256": "ca023451d2c6edb34bd6ba9664bc53c241f8ee2dde35d97ea237b79264038a98",
+      "format": "video",
+      "size": 104,
+      "fps": 15,
+      "still": false,
+      "expected": "video-104-false.webp",
+      "expected_bytes": 298,
+      "expected_sha256": "4567735ff280b7443a16f72467d371ce1755d1577c0b0b5975db1e5245dc65c4"
+    },
+    {
+      "input": "tests/fixtures/native/baseline-video/preview-alpha.webm",
+      "input_sha256": "ca023451d2c6edb34bd6ba9664bc53c241f8ee2dde35d97ea237b79264038a98",
+      "format": "video",
+      "size": 72,
+      "fps": 10,
+      "still": true,
+      "expected": "video-72-true.webp",
+      "expected_bytes": 128,
+      "expected_sha256": "bf9382ef54c9c942183fd88edc6af10e63ecd6e8afd31f0e8a83fd96f9883e46"
+    },
+    {
+      "input": "tests/fixtures/native/baseline-video/preview-alpha.webm",
+      "input_sha256": "ca023451d2c6edb34bd6ba9664bc53c241f8ee2dde35d97ea237b79264038a98",
+      "format": "video",
+      "size": 72,
+      "fps": 10,
+      "still": false,
+      "expected": "video-72-false.webp",
+      "expected_bytes": 114,
+      "expected_sha256": "6e95e2f0aff070cf9799d2bfb3a1709ba44df1239e9bd426fb7e6b6386c38da9"
+    }
+  ]
+}

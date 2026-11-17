@@ -39,20 +39,12 @@ the whole catalog in one motion. Releasing anywhere that is not a card cancels
 — it used to mean "move to the end".
 
 **A refresh shows the current catalog, and only one panel may hold a port.**
-Two separate reasons a reload used to appear to do nothing:
-
-* the page served a snapshot of the catalog taken at start-up, so an emoji
-  added by `fetch-emoji-ids` afterwards was invisible until a restart. The
-  view is now re-read from the database on every page load (200 rows, a few
-  milliseconds), replacing the shared list **in place** — rebinding it would
-  leave every route closed over the old object;
-* `socketserver` sets `SO_REUSEADDR` by default, and **on Windows that lets a
-  second bind succeed on a port that already has a live listener**. Two panels
-  then ran, both logging `Panel at …`, the browser reached whichever socket the
-  OS picked, and the older process kept serving its own start-up snapshot —
-  which is why only closing the launcher (killing every instance) made a change
-  appear. `allow_reuse_address` stays off. B4 identifies an existing panel and
-  reopens its session without replacing it; an unrelated port holder is refused.
+The Rust server re-reads the catalog on each page load and updates its
+mutex-protected view/cache. An earlier implementation served its startup
+snapshot indefinitely. The former stdlib server also allowed Windows socket
+reuse that could seat two listeners on one port; the native launcher checks an
+existing panel's session and refuses unrelated listeners. An owned sandbox must
+start its own server rather than adopt a listener serving another catalog.
 
 If a refresh cannot open the catalog — a publish holding it, say — the page
 keeps the last view it had and says so beside the counts: "catalog busy (a
@@ -74,26 +66,27 @@ triggers the browser's "leave site?" prompt.
 **Never point automated UI checks at `collection/`.** Reordering is what this
 panel does, so a synthetic drag event *is* a write — there is no careful way to
 test it against real data. Use an isolated catalogue/media clone and separate
-port. The retained `scripts/panel_sandbox.py` is an optional compatibility-test
-helper, not a standalone package prerequisite. Its safeguards below describe the
-clone contract required of any replacement helper.
+port. From a source checkout with release binaries built, use
+`runtime/target/release/numera-dev panel-sandbox --source collection --port 9451`
+(add `.exe` on Windows). It creates and owns the isolated clone described below.
 
 It isolates four things, because cloning the data turned out to be only one of
 them.
 
 **The arguments are an allowlist.** `--source`, `--port`, `--all`,
 `--with-pack N` and `--bot-username` are accepted; everything else is refused,
-including abbreviations (`allow_abbrev=False`). Nothing is forwarded: the
+including abbreviated flags. `--timeout-seconds` sets a bounded lifetime
+(default 1,800 seconds, maximum 7,200). Nothing is forwarded: the
 panel's argument list is built inside the wrapper. It used to forward unknown
 options straight through, appended AFTER its own `--data-dir`, so
-`panel_sandbox.py --data-dir collection` served the live catalog while the
+a user-supplied `--data-dir collection` served the live catalog while the
 wrapper printed that the live catalog was not served.
 
 **Making it never writes to the source.** The source catalog is opened
 READ-ONLY under the ordinary writer lease -- never through `Catalog`, whose
 constructor sets WAL mode, creates tables and commits, so cloning an older
 catalog used to upgrade it in passing, even when the clone was then refused.
-The copy is an online snapshot through `emojikit.sqlite_snapshot`, so committed
+The copy is an online snapshot through the native `sqlite_snapshot` module, so committed
 rows still sitting in the WAL come too. (A read-only open of a WAL database may
 leave an empty `-wal`/`-shm` beside it: that is SQLite's own bookkeeping, not a
 change to the catalog.) The CLONE may upgrade its own schema when the panel
@@ -104,7 +97,7 @@ never hard-linked, into `media/<hex>.<ext>`, where `<hex>` is the content key's
 UTF-8 bytes in hexadecimal: injective, so two keys can never share a file (the
 old colon-to-underscore swap mapped `s:a_b` and `s_a:b` to one name), and free
 of the colon that opens an alternate data stream on NTFS. Each `file_path` says
-which rule it follows (`emojikit.media_paths.resolve`): `./...` is the source data
+which rule it follows (`paths::resolve`): `./...` is the source data
 folder, any other relative path is the PROJECT ROOT (the shape older code wrote) --
 and an absolute one (the owner's archive) stays absolute;
 searching beside the source first used to let a stray file of the same name win.
@@ -139,7 +132,7 @@ with `NUMERA_EMOJI_MAPPER_NO_DOTENV=1` and every key `.env.example` names, plus
 anything credential-shaped, stripped from its environment. An already-exported
 token otherwise needs no dotenv file and could reach live Telegram during bot
 detection. The standalone panel and its media worker execute native codecs;
-there is no selected Python codec interpreter.
+the server and codec workers execute Rust binaries.
 
 The wrapper owns the child's process tree and waits for it before deleting its
 clone. Windows uses a private kill-on-close Job. Linux passes the same locked
@@ -149,14 +142,10 @@ Killing the wrapper therefore cannot make a still-served clone reclaimable.
 A fresh clone's session identity never authorizes adoption of another listener.
 
 This is cooperative test-data isolation, not an OS boundary against hostile code
-running as you. For the retained helper, follow the optional compatibility
-harness setup. A manually prepared clone can be served by the standalone panel
-after applying the same credential-scrubbing and dotenv isolation. Selecting a
-different data directory alone does not isolate the account:
+running as the same user. Use the Rust sandbox command so credential scrubbing,
+process custody and clone lifetime ownership remain active. A different
+`--data-dir` alone does not isolate the account.
 
-```powershell
-.\numera-emoji.exe panel --data-dir <isolated-clone> --port 9451 --no-open
-```
 The sandbox copies the source's preview cache into the clone (best effort: a
 failed copy is logged and those previews render on demand), so a sandbox does
 not spend minutes re-rendering what the real catalog already has.
@@ -360,11 +349,13 @@ resolve is named in the reply.
 ### 12.8 `coins/` commands
 
 Run the standalone executable from the package root. Windows examples use
-`.\numera-emoji.exe`; Linux/macOS use `./numera-emoji`. All coin commands are
+`.\numera-emoji.exe`; Linux use `./numera-emoji`. All coin commands are
 Rust commands in the same application; remapping needs no NumPy or Python.
 
 | Command | Purpose and important options |
 |---|---|
+| `coin-convert` | Convert the configured coin SVG/PNG inputs through the native image workflow; accepts no options beyond `--help`. |
+| `coin-rebuild-loop [--coin-dir DIR] [--emoji-dir DIR] [--token-env KEY]` | Repeated rebuild orchestration with owned cancellation and local output logging. Review `--help` and the destructive rebuild scope first. |
 | `coin-fetch-logos [pages] [--coin-dir DIR]` | Fetch CoinGecko logos and update keywords. Defaults to 40 pages of 250 coins. Good cached images resume without a download; SVG takes precedence over same-ticker PNG. Paging failure exits 3. No Telegram request. |
 | `coin-build-keywords [--coin-dir DIR]` | Rebuild `keywords.csv` using canonical provider names and readable local artwork. Earlier names survive empty lookups; incomplete lookup exits 3. No Telegram request. |
 | `coin-fetch-paprika [--dry] [--retry-unmatched] [--coin-dir DIR]` | Resolve missing coins through CoinPaprika. Dry mode reports without image download or Telegram mutation; answered search-cache entries can still be saved. Without `--dry`, it can publish. |
@@ -381,6 +372,14 @@ Rust commands in the same application; remapping needs no NumPy or Python.
 `--coin-dir` defaults to project `coins/`. Commands use the configured coin
 family, token and owner where needed; `COMMAND --help` lists the exact accepted
 flags. `COIN_PAGE_DELAY` defaults to 2 seconds between provider pages.
+
+The rebuild loop allows at most 200 build attempts, stops after two consecutive
+non-advancing checkpoints and waits 15 seconds between retryable partial
+attempts. An individual rebuild phase has no added global wall deadline;
+cancellation still owns and cleans up its descendants. Coin conversion allows
+at most 100 SVG attempts, retaining the 120-second progress-idle and 3,600-second
+per-attempt wall bounds before PNG fallback. These interfaces remain subject to
+final runtime verification; examples do not claim an executed live workflow.
 
 Remapping downloads/caches live signatures and uses bounded native nearest-match
 arithmetic. Dry mode can write the signature cache, but leaves the canonical map
@@ -466,14 +465,23 @@ and stayed silent when it reached 200. Neither milestone fires twice, and a pack
 that was already announced full before this existed belongs in `sent_full` so
 the next run does not repost it.
 
-```powershell
-cd worker; npm install
-npm run typecheck                    # tsc --noEmit
-npm test                             # vitest; fetch stubbed, nothing reaches Telegram
-.\scripts\put-secrets.ps1 -DryRun    # which key comes from where; no values shown
-.\scripts\put-secrets.ps1            # pipes them from ..\.env into wrangler stdin
+```sh
+# Repository root: locked contributor checks
+npm ci --prefix worker
+npm run typecheck --prefix worker
+npm test --prefix worker
+# Build the dedicated Rust administration binary explicitly:
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bin numera-worker-admin
+runtime/target/release/numera-worker-admin secrets --env-file .env --dry-run
+runtime/target/release/numera-worker-admin secrets --env-file .env
+# Deploy the TypeScript Worker from worker/:
+cd worker
 npx wrangler deploy
 ```
+
+Worker administration uses the dedicated Rust `numera-worker-admin` command.
+Use `.exe` on Windows. The built tool's `--help` lists its options; use
+`secrets --dry-run` to inspect the selected keys before account changes.
 
 `wrangler.toml` has **no `[vars]`**. Everything the Worker reads — both tokens,
 both webhook secrets, the publish bearer, the admin list *and the channel* — is
@@ -481,7 +489,7 @@ a secret, so none of it is in the committed file. The channel is not a
 credential; it is a secret only because `wrangler.toml` is public and both
 forms arrive as `env.PACK_LINKS_CHAT_ID` anyway.
 
-`scripts\put-secrets.ps1` reads `.env` with the same parse as
+`numera-worker-admin secrets --env-file .env` reads `.env` with the same parse as
 the application configuration and pipes each value to `wrangler secret put` **through
 stdin** — never an argument (arguments are visible in the process list), never
 printed. It composes `ADMIN_USER_IDS` from `PACK_OWNER_USER_ID` +
@@ -491,12 +499,14 @@ webhook/publish secrets are generated and written **back** to `.env`, or the
 next run would mint different ones and every delivery would fail its check. A
 missing token or channel is an error, not something to invent.
 
-Webhook registration is `scripts\set-webhooks.ps1` — one webhook per bot, read
+Webhook registration is `numera-worker-admin webhooks --base-url URL` — one
+webhook per bot, read
 from the same `.env` the secrets came from so the registration and the deployed
 secret cannot drift. A mismatch is silent: Telegram accepts `setWebhook` and
 every delivery is then rejected 401, which looks exactly like a dead bot.
-`-Status` reports, `-Delete` hands a token back to the poller, and it refuses to
-replace a webhook pointing elsewhere without `-Force`.
+`--env-file PATH` selects the shared configuration. `--status` reports,
+`--delete` hands a token back to the poller, `--only general`
+or `--only coin` selects a bot, and replacing another webhook requires `--force`.
 
 **Logs.** The channel line puts the bot tag on its own first line, then a level
 emoji and the event:

@@ -21,15 +21,13 @@ Supported custom-emoji formats: **static** (PNG/WEBP, 100×100), **animated**
 
 ```text
 Numera Emoji Mapper/
-  numera-emoji.exe           packaged Windows executable (numera-emoji on Linux/macOS)
-  run.ps1 / run.sh           thin launchers for an existing executable
-  runtime/                  standalone production Rust crate, codecs and package tooling
-  native/src/               shared Rust catalog, transport, workflow and persistence modules
-  native/Cargo.toml         optional numera-compat developer/oracle harness
-  assets/                   panel HTML and browser JavaScript
+  numera-emoji.exe           packaged Windows executable (numera-emoji on Linux)
+  runtime/src/              Rust application, codecs, contributor and administration tools
+  runtime/Cargo.toml         standalone first-party Rust crate
+  assets/                   panel HTML/CSS/JavaScript and separate browser tests
   lib/                      packaged native libraries when required by the platform
   worker/                   Cloudflare Worker TypeScript and its tests
-  tests/                    independent fixtures and compatibility tests
+  tests/                    independent historical fixtures and test provenance
   runtime/tests/            standalone Rust integration tests
   docs/                     operator and contributor references
   .env.example              configuration template
@@ -39,8 +37,8 @@ Numera Emoji Mapper/
 
 The package executable, assets and native libraries stay together. Generated
 operator data, `.env`, `secrets.md`, caches, recovery journals and working folders
-are not source files to commit. Historical `emojikit/`, `coins/*.py` and oracle
-helpers are compatibility/developer material, not application launch paths.
+are not source files to commit. The retired Python, PowerShell and shell application tools are not required.
+Historical audits and ADRs retain their original implementation context.
 
 ---
 
@@ -55,11 +53,11 @@ Keep the packaged assets and libraries beside the root executable.
 Copy-Item .env.example .env       # then edit tokens, owner and data paths
 .\numera-emoji.exe package-verify
 .\numera-emoji.exe doctor
-.\run.ps1
+.\numera-emoji.exe menu
 ```
 
-On Linux/macOS use `./numera-emoji package-verify`, `./numera-emoji doctor` and
-`./run.sh`. A source checkout without `package.json` can run the native doctor;
+On Linux use `./numera-emoji package-verify`, `./numera-emoji doctor` and
+`./numera-emoji menu`. Supported packages are Linux x64 and Windows x64. A source checkout without `package.json` can run the native doctor;
 package verification requires a generated standalone package.
 
 An explicit offline copy is available with
@@ -73,15 +71,14 @@ removing the old one. See [launcher and packaging](native-launcher.md).
 Rust owns the catalog, transport/retries, state/locks, collectors/publishers,
 bot, HTTP panel, media worker, raster/SVG/Lottie codecs and coin matching.
 The browser UI remains JavaScript and the Cloudflare Worker remains TypeScript.
-FFmpeg/FFprobe are external tools for video. Neither launchers nor the local
-media/backend runtime start a Python interpreter.
+FFmpeg/FFprobe are external tools for video. The local application and its
+contributor tools execute Rust binaries.
 
 Contributors explicitly build with
-`cargo build --manifest-path runtime/Cargo.toml --locked --release`; see
+`cargo build --manifest-path runtime/Cargo.toml --locked --release --bins`; see
 [contributor requirements](native-launcher.md#transitional-source-check-orchestration).
-The menu never compiles or installs dependencies. The optional `numera-compat`
-harness has separate historical oracle dependencies and is not needed to run
-an operator package.
+The menu never compiles or installs dependencies. Contributor build and test
+tools are separate from the operator package.
 
 Persisted schemas, keys and identifiers retain their compatibility contracts.
 For rollback, keep the prior application separately and use verified recovery
@@ -131,37 +128,31 @@ alpha. There is no system Cairo or Python extension to install.
 
 ---
 
-## 4. The launcher (`run.ps1`)
+## 4. The native menu (`numera-emoji menu`)
 
-Run `.\run.ps1` on Windows or `./run.sh` on Linux/macOS to open the native menu.
-Both launch an existing executable and preserve its exit code. With no packaged
-root executable, source-checkout launchers can use an explicitly built
-`runtime/target/release` or `runtime/target/debug` executable. A missing executable
-is an error; there is no automatic environment setup, dependency installation or
-Cargo build.
-
-The menu groups the existing workflows:
+Run `.\numera-emoji.exe menu` on Windows or `./numera-emoji menu` on Linux.
+The menu runs the installed executable; it never creates an environment,
+installs dependencies or invokes Cargo. A source checkout must first be built
+explicitly with the contributor toolchain.
 
 | Group | Actions |
-|---|---|
+| --- | --- |
 | Build | General pack, image conversion, coin pack rebuild |
 | Collection | Collect IDs/packs, add media, publish, curate panel, report/apply live order |
 | Bot | Run the custom-emoji ID extractor |
-| Maintenance | Native environment check, offline status, roster and archive checks |
+| Maintenance | Environment check, offline status, roster and archive checks |
 
 The usual path is collect → panel → Save → publish dry run → preflight → publish.
-Publishing keeps an existing family's mixed/split mode. Report/apply actions retain
-their own confirmation and validation; opening the menu does not publish anything.
+Publishing keeps an existing family's mixed/split mode. Opening the menu does
+not publish anything. Back and exit commands return from prompts; foreground
+commands keep terminal input and cancellation attached to their owned processes.
+Native commands write redacted UTC logs beneath `logs/`.
 
-Prompts support `0` to return one step and `exit`/`quit` to leave. Foreground
-commands remain attached to the terminal so cancellation reaches their owned
-processes. Native commands create redacted UTC logs beneath `logs/`.
-
-For non-interactive diagnostics use `.\run.ps1 -Check`, `./run.sh --check` or
-`numera-emoji doctor`. The doctor checks native codec roundtrips, assets and
-package integrity and reports missing video tools or unset configuration keys.
-It never imports Python packages or contacts Telegram. The maintenance `check`
-command is the same doctor, not the compatibility test suite.
+For non-interactive diagnostics use `numera-emoji doctor`. It checks native
+codec round trips, assets and package integrity, and reports missing video tools
+or unset configuration keys. It does not contact Telegram or install anything.
+The application's `check` alias is the same doctor. Contributors use
+`numera-dev check` for formatting, lint and guarded tests.
 
 ---
 
@@ -189,7 +180,7 @@ Guarantees (root-cause fixes — do not regress these):
   `createNewStickerSet` are NOT idempotent, so a timeout after Telegram already
   applied the call is never blindly re-sent. The native Telegram client verifies the live
   set first (applied → success; not applied → safe retry; unknown →
-  `AmbiguousUploadError`), and `build-collection` reconciles every unrecorded
+  an ambiguous result), and `build-collection` reconciles every unrecorded
   live sticker back to its catalog item (by `file_unique_id`, else by
   downloaded content) before computing what is still pending. Upload payloads
   are sent as bytes so a retried request re-sends the full file.
@@ -246,7 +237,7 @@ Or name the pack by one of its emoji — an id fetches the whole pack it belongs
 shows the next pack's candidates and nothing else. `--with-pack N` un-hides one
 published set so it can be rearranged beside them; repeat the flag per pack.
 `--all` brings back every finished pack, which is usually hundreds of cards you
-cannot act on. `run.ps1 -> B4` reads the published sets from the publisher's own
+cannot act on. `numera-emoji menu` reads the published sets from the publisher's own
 state file and offers them (`[Y/n]`, Enter = yes) rather than leaving the grid
 looking empty.
 
@@ -320,8 +311,9 @@ Self-contained tool that reuses `build-pack` and the coin bot.
 .\numera-emoji.exe coin-build-keywords       # (re)build keywords.csv from logos
 
 # Convert logos to 100x100 emoji PNGs
-.\numera-emoji.exe make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
-.\numera-emoji.exe make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
+.\numera-emoji.exe coin-convert
+# Repeated rebuild workflow (see --help before live operation):
+.\numera-emoji.exe coin-rebuild-loop --help
 
 # Build / rebuild the packs (duplicate-proof, records upload order)
 .\numera-emoji.exe coin-rebuild        # all: DELETES the packs in rebuild_state.json, then build + map + links
@@ -374,7 +366,7 @@ not from positions** (a historical position-based bug scrambled it):
 Long-polling bot (run it and leave it running; only one instance at a time):
 
 ```powershell
-.\numera-emoji.exe emoji-bot    # uses GENERAL_BOT_TOKEN; or run.ps1 -> C1
+.\numera-emoji.exe emoji-bot    # uses GENERAL_BOT_TOKEN
 ```
 
 - Send it **one or more premium emoji in a row** (spaces/newlines between them
@@ -419,7 +411,8 @@ Operator diagnostics and contributor tests are separate:
 
 ```powershell
 .\numera-emoji.exe doctor
-cargo test --manifest-path runtime/Cargo.toml --locked
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1
 ```
 
 The first command needs only the installed application. The second is for a
@@ -428,12 +421,11 @@ codec fixtures, package behavior and native workflow contracts. See
 [native test migration](native-test-migration.md) and the current CI workflows
 for platform-specific checks and recorded evidence.
 
-Historical Python tests, reference implementations and API fault-injection tests
-remain in the optional `numera-compat` developer harness. Their Python, Ruff,
-Playwright and oracle dependencies do not become production prerequisites.
-When running that retained suite, use its documented command and preserve
-credential scrubbing and loopback-only test isolation. For Python discovery,
-`-t .` remains essential so `tests/__init__.py` runs.
+The complete original baseline contains 1,516 identities: 1,360 backend cases
+ported to Rust, 84 browser cases, 13 browser performance cases and 59 browser
+source contracts. The 34 original-main Rust cases are tracked separately;
+the Worker retains its 119 TypeScript cases. Keep categories and fault variants
+intact. A passing local cohort does not establish final-source CI acceptance.
 
 Browser behavior needs a real browser: source-text checks cannot establish save,
 drag, keyboard or animation behavior. The panel's browser suite and the
@@ -467,7 +459,7 @@ not a claim that all package platforms or live Telegram workflows passed.
 4. Respect inclusion, ordering, pack-family locks and recovery journals.
 5. Keep browser behavior accessible and bounded, including the default 24-card
    animation budget. Verify UI changes in a real browser.
-6. Run the relevant native, compatibility, browser or Worker checks and report
+6. Run the relevant Rust, browser or Worker checks and report
    which were executed. Update the command/reference documentation with changes.
 
 *Keep this document synchronized with the code. When you add or change a

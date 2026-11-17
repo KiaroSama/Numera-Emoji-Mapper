@@ -1,0 +1,506 @@
+{
+  "source_revision": "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede",
+  "declared": 69,
+  "inherited": 0,
+  "cases": [
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSandboxChildGetsNoCredentials.test_dotenv_reading_is_switched_off_for_the_child",
+      "rust_case": "TheSandboxChildGetsNoCredentials::test_dotenv_reading_is_switched_off_for_the_child",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSandboxChildGetsNoCredentials.test_an_exported_token_does_not_survive_into_the_child",
+      "rust_case": "TheSandboxChildGetsNoCredentials::test_an_exported_token_does_not_survive_into_the_child",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSandboxChildGetsNoCredentials.test_every_key_the_template_names_is_dropped",
+      "rust_case": "TheSandboxChildGetsNoCredentials::test_every_key_the_template_names_is_dropped",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSandboxChildGetsNoCredentials.test_a_credential_shape_is_dropped_even_when_the_template_is_silent",
+      "rust_case": "TheSandboxChildGetsNoCredentials::test_a_credential_shape_is_dropped_even_when_the_template_is_silent",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSandboxChildGetsNoCredentials.test_the_ordinary_environment_still_reaches_the_child",
+      "rust_case": "TheSandboxChildGetsNoCredentials::test_the_ordinary_environment_still_reaches_the_child",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneSharesNothingWithTheSource.test_no_cloned_file_shares_storage_with_its_source",
+      "rust_case": "TheCloneSharesNothingWithTheSource::test_no_cloned_file_shares_storage_with_its_source",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneSharesNothingWithTheSource.test_the_preview_cache_is_copied_not_shared",
+      "rust_case": "TheCloneSharesNothingWithTheSource::test_the_preview_cache_is_copied_not_shared",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneSharesNothingWithTheSource.test_a_failed_preview_copy_does_not_refuse_the_clone",
+      "rust_case": "TheCloneSharesNothingWithTheSource::test_a_failed_preview_copy_does_not_refuse_the_clone",
+      "target_file": "runtime/tests/baseline_tooling_support/sandbox_units.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneSharesNothingWithTheSource.test_a_media_file_outside_the_source_is_copied_in_not_referenced",
+      "rust_case": "TheCloneSharesNothingWithTheSource::test_a_media_file_outside_the_source_is_copied_in_not_referenced",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneSharesNothingWithTheSource.test_a_project_relative_media_path_is_copied_in",
+      "rust_case": "TheCloneSharesNothingWithTheSource::test_a_project_relative_media_path_is_copied_in",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneSharesNothingWithTheSource.test_a_key_with_colons_becomes_a_real_file",
+      "rust_case": "TheCloneSharesNothingWithTheSource::test_a_key_with_colons_becomes_a_real_file",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneSharesNothingWithTheSource.test_rows_still_only_in_the_write_ahead_log_are_cloned",
+      "rust_case": "TheCloneSharesNothingWithTheSource::test_rows_still_only_in_the_write_ahead_log_are_cloned",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneSharesNothingWithTheSource.test_the_curation_plan_travels_with_the_clone",
+      "rust_case": "TheCloneSharesNothingWithTheSource::test_the_curation_plan_travels_with_the_clone",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneSharesNothingWithTheSource.test_a_source_without_a_plan_still_clones",
+      "rust_case": "TheCloneSharesNothingWithTheSource::test_a_source_without_a_plan_still_clones",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneRefusesRatherThanLie.test_an_occupied_destination_is_never_erased",
+      "rust_case": "TheCloneRefusesRatherThanLie::test_an_occupied_destination_is_never_erased",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneRefusesRatherThanLie.test_a_destination_inside_the_source_is_refused",
+      "rust_case": "TheCloneRefusesRatherThanLie::test_a_destination_inside_the_source_is_refused",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneRefusesRatherThanLie.test_a_source_with_no_catalog_is_refused",
+      "rust_case": "TheCloneRefusesRatherThanLie::test_a_source_with_no_catalog_is_refused",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneRefusesRatherThanLie.test_an_interrupted_migration_refuses_and_leaves_nothing_behind",
+      "rust_case": "TheCloneRefusesRatherThanLie::test_an_interrupted_migration_refuses_and_leaves_nothing_behind",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneRefusesRatherThanLie.test_a_source_another_writer_holds_is_refused",
+      "rust_case": "TheCloneRefusesRatherThanLie::test_a_source_another_writer_holds_is_refused",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheCloneRefusesRatherThanLie.test_a_missing_media_file_abandons_the_clone_entirely",
+      "rust_case": "TheCloneRefusesRatherThanLie::test_a_missing_media_file_abandons_the_clone_entirely",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheWrapperRefusesAnythingOutsideItsAllowlist.test_a_data_directory_override_cannot_be_smuggled_through",
+      "rust_case": "TheWrapperRefusesAnythingOutsideItsAllowlist::test_a_data_directory_override_cannot_be_smuggled_through",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheWrapperRefusesAnythingOutsideItsAllowlist.test_an_unknown_option_is_not_forwarded",
+      "rust_case": "TheWrapperRefusesAnythingOutsideItsAllowlist::test_an_unknown_option_is_not_forwarded",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheWrapperRefusesAnythingOutsideItsAllowlist.test_abbreviations_are_refused",
+      "rust_case": "TheWrapperRefusesAnythingOutsideItsAllowlist::test_abbreviations_are_refused",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheWrapperRefusesAnythingOutsideItsAllowlist.test_the_presentation_options_are_accepted_and_reach_the_panel",
+      "rust_case": "TheWrapperRefusesAnythingOutsideItsAllowlist::test_the_presentation_options_are_accepted_and_reach_the_panel",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheWrapperRefusesAnythingOutsideItsAllowlist.test_the_real_panels_port_is_refused",
+      "rust_case": "TheWrapperRefusesAnythingOutsideItsAllowlist::test_the_real_panels_port_is_refused",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheWrapperRefusesAnythingOutsideItsAllowlist.test_a_number_that_is_not_a_port_is_refused",
+      "rust_case": "TheWrapperRefusesAnythingOutsideItsAllowlist::test_a_number_that_is_not_a_port_is_refused",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "ThePanelCanRunInProcessWithoutAdoptingAListener.test_reuse_disabled_reaches_neither_reopen_call_site",
+      "rust_case": "ThePanelCanRunInProcessWithoutAdoptingAListener::test_reuse_disabled_reaches_neither_reopen_call_site",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "ThePanelCanRunInProcessWithoutAdoptingAListener.test_main_still_reads_sys_argv_when_given_none",
+      "rust_case": "ThePanelCanRunInProcessWithoutAdoptingAListener::test_main_still_reads_sys_argv_when_given_none",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned.test_an_abandoned_sandbox_is_reclaimed",
+      "rust_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned::test_an_abandoned_sandbox_is_reclaimed",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned.test_a_sandbox_whose_lease_is_held_survives",
+      "rust_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned::test_a_sandbox_whose_lease_is_held_survives",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned.test_an_unmarked_directory_is_left_alone",
+      "rust_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned::test_an_unmarked_directory_is_left_alone",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned.test_a_marker_naming_another_directory_is_foreign",
+      "rust_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned::test_a_marker_naming_another_directory_is_foreign",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned.test_a_malformed_marker_is_not_proof_of_abandonment",
+      "rust_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned::test_a_malformed_marker_is_not_proof_of_abandonment",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned.test_a_reclaimed_directory_keeps_its_lock_file",
+      "rust_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned::test_a_reclaimed_directory_keeps_its_lock_file",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned.test_a_symlink_is_never_followed",
+      "rust_case": "TheSweepReclaimsOnlyWhatItCanProveIsAbandoned::test_a_symlink_is_never_followed",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheSandboxHoldsItsLeaseForTheLifeOfTheServer.test_the_lease_is_held_while_the_panel_runs_and_the_sweep_skips_it",
+      "rust_case": "TheSandboxHoldsItsLeaseForTheLifeOfTheServer::test_the_lease_is_held_while_the_panel_runs_and_the_sweep_skips_it",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheLifetimeLeaseDoesNotBlockThePanelItStarts.test_the_panel_can_open_its_catalog_while_the_lease_is_held",
+      "rust_case": "TheLifetimeLeaseDoesNotBlockThePanelItStarts::test_the_panel_can_open_its_catalog_while_the_lease_is_held",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheLifetimeLeaseDoesNotBlockThePanelItStarts.test_the_wrapper_lets_the_real_panel_reach_its_catalog",
+      "rust_case": "TheLifetimeLeaseDoesNotBlockThePanelItStarts::test_the_wrapper_lets_the_real_panel_reach_its_catalog",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheLifetimeLeaseDoesNotBlockThePanelItStarts.test_the_lifetime_lock_is_not_the_catalogs_writer_lock",
+      "rust_case": "TheLifetimeLeaseDoesNotBlockThePanelItStarts::test_the_lifetime_lock_is_not_the_catalogs_writer_lock",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheScrubLeavesTheProcessAbleToRun.test_the_machine_environment_survives_inside_the_context",
+      "rust_case": "TheScrubLeavesTheProcessAbleToRun::test_the_machine_environment_survives_inside_the_context",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_panel_sandbox.py",
+      "source_case": "TheScrubLeavesTheProcessAbleToRun.test_the_environment_is_restored_afterwards",
+      "rust_case": "TheScrubLeavesTheProcessAbleToRun::test_the_environment_is_restored_afterwards",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_launcher_contract.py",
+      "source_case": "TheLauncherPassesOnlyRealFlags.test_the_scan_finds_the_launchers_modules",
+      "rust_case": "TheLauncherPassesOnlyRealFlags::test_the_scan_finds_the_launchers_modules",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_launcher_contract.py",
+      "source_case": "TheLauncherPassesOnlyRealFlags.test_every_flag_is_in_its_modules_help",
+      "rust_case": "TheLauncherPassesOnlyRealFlags::test_every_flag_is_in_its_modules_help",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_launcher_contract.py",
+      "source_case": "TheLauncherPassesOnlyRealFlags.test_the_coin_rebuild_default_command_still_exists",
+      "rust_case": "TheLauncherPassesOnlyRealFlags::test_the_coin_rebuild_default_command_still_exists",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_points.py",
+      "source_case": "EntryPointsImport.test_discovery_found_the_expected_tools",
+      "rust_case": "EntryPointsImport::test_discovery_found_the_expected_tools",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_points.py",
+      "source_case": "EntryPointsImport.test_command_modules_preserve_project_data_paths",
+      "rust_case": "EntryPointsImport::test_command_modules_preserve_project_data_paths",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_points.py",
+      "source_case": "EntryPointsImport.test_every_entry_point_imports",
+      "rust_case": "EntryPointsImport::test_every_entry_point_imports",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_points.py",
+      "source_case": "SuiteIsHermetic.test_the_guard_was_installed_before_the_test_modules",
+      "rust_case": "SuiteIsHermetic::test_the_guard_was_installed_before_the_test_modules",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_points.py",
+      "source_case": "SuiteIsHermetic.test_the_real_dotenv_values_are_not_loaded",
+      "rust_case": "SuiteIsHermetic::test_the_real_dotenv_values_are_not_loaded",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_points.py",
+      "source_case": "SuiteIsHermetic.test_load_env_is_a_no_op_under_the_guard",
+      "rust_case": "SuiteIsHermetic::test_load_env_is_a_no_op_under_the_guard",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_points.py",
+      "source_case": "SuiteIsHermetic.test_outbound_connections_are_refused",
+      "rust_case": "SuiteIsHermetic::test_outbound_connections_are_refused",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_points.py",
+      "source_case": "SuiteIsHermetic.test_loopback_still_works",
+      "rust_case": "SuiteIsHermetic::test_loopback_still_works",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "FetchPackExitCodes.test_every_pack_failing_exits_nonzero",
+      "rust_case": "FetchPackExitCodes::test_every_pack_failing_exits_nonzero",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "FetchPackExitCodes.test_negative_limit_is_rejected_before_any_api_call",
+      "rust_case": "FetchPackExitCodes::test_negative_limit_is_rejected_before_any_api_call",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "FetchPackExitCodes.test_out_of_range_phash_threshold_is_a_usage_error",
+      "rust_case": "FetchPackExitCodes::test_out_of_range_phash_threshold_is_a_usage_error",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "FetchPackExitCodes.test_usable_phash_threshold_is_still_accepted",
+      "rust_case": "FetchPackExitCodes::test_usable_phash_threshold_is_still_accepted",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "MakeEmojiPngsContracts.test_negative_limit_is_rejected",
+      "rust_case": "MakeEmojiPngsContracts::test_negative_limit_is_rejected",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "MakeEmojiPngsContracts.test_blank_svg_falls_back_to_the_healthy_raster",
+      "rust_case": "MakeEmojiPngsContracts::test_blank_svg_falls_back_to_the_healthy_raster",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "MakeEmojiPngsContracts.test_group_with_no_usable_source_still_fails",
+      "rust_case": "MakeEmojiPngsContracts::test_group_with_no_usable_source_still_fails",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "MakeEmojiPngsContracts.test_preferred_source_is_still_tried_first",
+      "rust_case": "MakeEmojiPngsContracts::test_preferred_source_is_still_tried_first",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "MakeEmojiPngsLegacyFallback.test_blank_svg_with_healthy_png_fallback_exits_ok",
+      "rust_case": "MakeEmojiPngsLegacyFallback::test_blank_svg_with_healthy_png_fallback_exits_ok",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "MakeEmojiPngsLegacyFallback.test_stem_with_no_usable_source_anywhere_still_fails",
+      "rust_case": "MakeEmojiPngsLegacyFallback::test_stem_with_no_usable_source_anywhere_still_fails",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "MakeEmojiPngsLegacyFallback.test_blank_png_fallback_is_counted_once_not_twice",
+      "rust_case": "MakeEmojiPngsLegacyFallback::test_blank_png_fallback_is_counted_once_not_twice",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "PanelLottieBound.test_oversized_tgs_is_rejected",
+      "rust_case": "PanelLottieBound::test_oversized_tgs_is_rejected",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "PanelLottieBound.test_normal_tgs_is_served_as_animated_webp",
+      "rust_case": "PanelLottieBound::test_normal_tgs_is_served_as_animated_webp",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_entry_point_contracts.py",
+      "source_case": "PanelLottieBound.test_unknown_key_is_404",
+      "rust_case": "PanelLottieBound::test_unknown_key_is_404",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_cli_env.py",
+      "source_case": "ADotEnvWithAByteOrderMark.test_the_first_key_is_read_under_its_own_name",
+      "rust_case": "ADotEnvWithAByteOrderMark::test_the_first_key_is_read_under_its_own_name",
+      "target_file": "runtime/tests/baseline_tooling_support/config_units.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_cli_docs.py",
+      "source_case": "TheCliReferenceMatchesTheTools.test_the_scan_finds_the_sections",
+      "rust_case": "TheCliReferenceMatchesTheTools::test_the_scan_finds_the_sections",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    },
+    {
+      "source_file": "tests/test_cli_docs.py",
+      "source_case": "TheCliReferenceMatchesTheTools.test_every_flag_is_documented_and_every_documented_flag_exists",
+      "rust_case": "TheCliReferenceMatchesTheTools::test_every_flag_is_documented_and_every_documented_flag_exists",
+      "target_file": "runtime/tests/baseline_tooling.rs",
+      "status": "linux_verified_windows_pending"
+    }
+  ],
+  "status": "linux_verified_windows_pending",
+  "verification": {
+    "platform": "linux-x64",
+    "original_ids_passed": 69,
+    "integration_originals_passed": 67,
+    "private_originals_passed": 2,
+    "separate_regressions_passed": 1,
+    "integration_log": ".ai/research/tooling69-integration-full.log",
+    "private_logs": [
+      ".ai/research/tooling69-config-unit.log",
+      ".ai/research/tooling69-sandbox-unit.log"
+    ],
+    "clippy_log": ".ai/research/tooling69-clippy-green.log",
+    "windows": "not executed",
+    "targeted_refresh_log": ".ai/research/tooling69-worker-bin-refresh.log"
+  }
+}

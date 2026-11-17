@@ -511,3 +511,7 @@ fn svg_nested_image_depth_and_count_budgets_refuse_excess_work() {
             .contains("count limit")
     );
 }
+
+#[cfg(test)]
+#[path = "support/test_admission.rs"]
+mod test_admission;

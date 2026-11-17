@@ -1,5 +1,12 @@
 # First-party native migration fixtures
 
+Historical migration checkpoint record. The descriptions of pending, authored or
+unexecuted work below refer to their original checkpoint and are preserved as
+provenance. They are not current setup instructions or final CI status. Current
+Rust/browser execution and original-case inventories are documented in
+[../../README.md](../../README.md). Original executable source names identify Git history;
+no interpreter or compatibility extension is required by the current suites.
+
 These expected values come from the pinned source revision
 `1a36a968b006236bd0665a1da65c541938c06061`, not from the replacement Rust code.
 They cover an initial migration slice, not the whole source test inventory.
