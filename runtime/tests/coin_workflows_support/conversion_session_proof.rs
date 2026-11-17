@@ -142,7 +142,11 @@ impl Identity {
             // SAFETY: the pinned fixture handle is live for this read-only query.
             #[allow(unsafe_code)]
             let state = unsafe { WaitForSingleObject(self.handle.as_raw_handle(), 0) };
-            assert!(state == WAIT_OBJECT_0 || state == WAIT_TIMEOUT);
+            assert!(
+                state == WAIT_OBJECT_0 || state == WAIT_TIMEOUT,
+                "cannot inspect acknowledged fixture PID {}: unexpected wait state {state}",
+                self.pid
+            );
             state == WAIT_OBJECT_0
         }
     }

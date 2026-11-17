@@ -11,6 +11,7 @@ pub enum Presence {
 }
 
 impl Presence {
+    #[cfg(any(unix, test))]
     pub fn from_posix_probe(result: io::Result<()>) -> Self {
         match result {
             Ok(()) => Self::Present,

@@ -51,6 +51,50 @@ const REVIEWED: &[(&str, &str, u64, &str)] = &[
         4,
         "e3cdd76b5830c1b30cfbc790b5d7e133b319114f",
     ),
+    // Exact original redaction-preservation fixture, not an issued credential.
+    (
+        "generic-api-key",
+        "runtime/tests/baseline_observability.rs",
+        121,
+        "5d9d4bd09ac2080a119fe960cc1d923342d383fe",
+    ),
+    // SHA-256 integrity digests verified against each referenced committed file.
+    (
+        "generic-api-key",
+        "tools/test-inventory/language-policy.json",
+        18,
+        "5d9d4bd09ac2080a119fe960cc1d923342d383fe",
+    ),
+    (
+        "generic-api-key",
+        "tools/test-inventory/language-policy.json",
+        32,
+        "5d9d4bd09ac2080a119fe960cc1d923342d383fe",
+    ),
+    (
+        "generic-api-key",
+        "tools/test-inventory/language-policy.json",
+        38,
+        "5d9d4bd09ac2080a119fe960cc1d923342d383fe",
+    ),
+    (
+        "generic-api-key",
+        "tools/test-inventory/language-policy.json",
+        39,
+        "5d9d4bd09ac2080a119fe960cc1d923342d383fe",
+    ),
+    (
+        "generic-api-key",
+        "tools/test-inventory/language-policy.json",
+        40,
+        "5d9d4bd09ac2080a119fe960cc1d923342d383fe",
+    ),
+    (
+        "generic-api-key",
+        "tools/test-inventory/language-policy.json",
+        238,
+        "5d9d4bd09ac2080a119fe960cc1d923342d383fe",
+    ),
 ];
 
 /// Discard secret-bearing fields at deserialization. Invalid metadata fails closed.
@@ -120,7 +164,7 @@ fn partition_by(
     let mut remaining = Vec::new();
     let mut excluded = 0;
     for finding in findings {
-        if approved(&finding.identity())
+        if (finding.line == finding.end_line && approved(&finding.identity()))
             || (finding.may_have_reviewed_origin()
                 && origin(&finding).as_ref().is_some_and(&approved))
         {
@@ -157,7 +201,7 @@ pub fn summary(findings: &[Finding], scope: &str, excluded: usize) -> String {
         "## Gitleaks\n\nScanner: **{VERSION}**\n\nScope: **{scope}**\n\nRules: Pinned built-in Gitleaks rules with standard exclusions. Full history describes revision coverage, not universal byte or credential coverage.\n\n"
     );
     if excluded > 0 {
-        output.push_str(&format!("Excluded **{excluded}** reviewed historical non-secret matches (source SHA-256 digests and synthetic test identifiers), pinned to exact introduction commit/file/line/rule identities, including Git-proven unchanged merge repetitions. New matches remain reportable.\n\n"));
+        output.push_str(&format!("Excluded **{excluded}** reviewed historical non-secret matches (source SHA-256 digests and synthetic test data), pinned to exact introduction commit/file/line/rule identities, including Git-proven unchanged merge repetitions. New matches remain reportable.\n\n"));
     }
     if findings.is_empty() {
         output.push_str("No unreviewed secret matches remain in the scanned Git history.\n");
@@ -633,19 +677,27 @@ mod tests {
     #[test]
     fn exact_reviewed_identities_only() {
         let all = REVIEWED.iter().map(finding).collect::<Vec<_>>();
-        assert_eq!(partition_findings(all.clone(), |_| None), (vec![], 4));
+        assert_eq!(
+            partition_findings(all.clone(), |_| None),
+            (vec![], REVIEWED.len())
+        );
         for original in &all {
-            for field in 0..4 {
+            for field in 0..6 {
                 let mut changed = original.clone();
                 match field {
                     0 => changed.rule.push_str("-unknown"),
                     1 => changed.file.push_str(".other"),
                     2 => changed.line = Some(changed.line.unwrap() + 1),
-                    _ => changed.commit = "f".repeat(40),
+                    3 => changed.commit = "f".repeat(40),
+                    4 => changed.end_line = Some(changed.end_line.unwrap() + 1),
+                    _ => changed.end_line = None,
                 }
                 let mut input = all.clone();
                 input.push(changed.clone());
-                assert_eq!(partition_findings(input, |_| None), (vec![changed], 4));
+                assert_eq!(
+                    partition_findings(input, |_| None),
+                    (vec![changed], REVIEWED.len())
+                );
             }
         }
         assert_eq!(partition_findings(vec![], |_| None), (vec![], 0));
