@@ -1206,7 +1206,7 @@ fn probe(raw: &[u8], hang: bool) -> Run {
     });
     let build = f.root.0.join("probe-build");
     std::fs::create_dir(&build).unwrap();
-    let mut cmd = Command::new(option_env!("NUMERA_BASELINE_RUSTC").unwrap_or("rustc"));
+    let mut cmd = Command::new(env!("NUMERA_BASELINE_RUSTC"));
     cmd.arg("--edition=2024")
         .arg(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
