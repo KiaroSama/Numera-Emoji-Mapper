@@ -92,6 +92,12 @@ jobs:
         if: runner.os == 'Linux'
         uses: ./.github/actions/test-network
       - name: All Rust tests through the isolated runner
+        # Preserve optimized distribution binaries while avoiding LTO for each
+        # test executable. Release cfg, assertions and test discovery stay the same.
+        env:
+          CARGO_TARGET_DIR: runtime/target/ci-tests
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
         shell: bash
         run: |
           mkdir -p logs/checkpoint

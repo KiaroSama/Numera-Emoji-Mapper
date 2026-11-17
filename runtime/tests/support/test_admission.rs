@@ -126,31 +126,17 @@ mod platform {
         false
     }
     fn private_loopback() -> bool {
-        // SAFETY: libc owns terminated interface/address lists, which remain
-        // live until explicitly freed. Only read-only kernel inspection occurs.
+        // SAFETY: libc owns the terminated address list until freeifaddrs.
+        // Linux getifaddrs includes one AF_PACKET row per interface, including
+        // interfaces without IP addresses. Inspect every row and require that
+        // link inventory as well as both loopback IP families.
         unsafe {
-            let names = libc::if_nameindex();
-            if names.is_null() {
-                return false;
-            }
-            let first = &*names;
-            let valid = first.if_index != 0
-                && !first.if_name.is_null()
-                && CStr::from_ptr(first.if_name).to_bytes() == b"lo";
-            let only = valid && {
-                let end = &*names.add(1);
-                end.if_index == 0 && end.if_name.is_null()
-            };
-            libc::if_freenameindex(names);
-            if !only {
-                return false;
-            }
             let mut addresses = core::ptr::null_mut();
             if libc::getifaddrs(&mut addresses) != 0 {
                 return false;
             }
             let mut current = addresses;
-            let (mut ipv4, mut ipv6, mut valid) = (false, false, true);
+            let (mut packet, mut ipv4, mut ipv6, mut valid) = (false, false, false, true);
             while !current.is_null() {
                 let row = &*current;
                 if row.ifa_name.is_null()
@@ -182,7 +168,7 @@ mod platform {
                             }
                             ipv6 = true;
                         }
-                        libc::AF_PACKET => {}
+                        libc::AF_PACKET => packet = true,
                         _ => {
                             valid = false;
                             break;
@@ -192,7 +178,7 @@ mod platform {
                 current = row.ifa_next;
             }
             libc::freeifaddrs(addresses);
-            valid && ipv4 && ipv6
+            valid && packet && ipv4 && ipv6
         }
     }
     pub(super) fn admitted() -> bool {

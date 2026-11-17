@@ -212,10 +212,22 @@ fn both_actual_fetch_cli_cleanups_preserve_refused_complete_video() {
         let binary = option_env!("CARGO_BIN_EXE_numera-emoji")
             .map(PathBuf::from)
             .unwrap_or_else(|| {
-                Path::new(env!("CARGO_MANIFEST_DIR"))
-                    .join("target/debug")
+                let current = std::env::current_exe().unwrap();
+                current
+                    .ancestors()
+                    .find(|path| {
+                        matches!(
+                            path.file_name().and_then(|name| name.to_str()),
+                            Some("debug" | "release")
+                        )
+                    })
+                    .expect("test must be inside its actual Cargo profile output")
                     .join(&name)
             });
+        assert!(
+            binary.is_file(),
+            "actual Cargo companion executable is missing"
+        );
         std::fs::copy(binary, folder.join(&name)).unwrap();
         let data = folder.join("data");
         let receipt = folder.join("receipt.json");
