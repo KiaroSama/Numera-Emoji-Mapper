@@ -18,6 +18,13 @@ executable on both platforms, exercises extracted offline installation and
 uploads ZIP/checksum pairs. Only a version tag can attach those archives to a
 release. The manual Rust checkpoint is diagnostic, not a replacement for CI.
 
+CI compiles the unfiltered Rust tests in `runtime/target/ci-tests` using release
+settings with LTO disabled and 16 codegen units. This avoids repeating link-time
+optimization for every test executable. Test companions use those compilation
+settings; distribution executables, package smoke tests and the similarity
+benchmark retain the normal optimized release build. The test cfg, default
+features, assertions and discovery are unchanged.
+
 All jobs check out the triggering PR head SHA (or push SHA) and retain
 `source-revision.log`. Linux and Windows matrix entries do not cancel each
 other. Build artifacts and failure diagnostics are uploaded with explicit

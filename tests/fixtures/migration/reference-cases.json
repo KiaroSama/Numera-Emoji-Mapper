@@ -6862,7 +6862,7 @@
         "file": "runtime/src/baseline_cli_retention_tests.rs",
         "target": "lib",
         "function": "fetch_cli::baseline_cli_retention_tests::both_actual_fetch_cli_cleanups_preserve_refused_complete_video",
-        "body_sha256": "e559c238e91d14da4a67f24cb39242339d6e076374b6ac1d2bf820f7f8e25f51"
+        "body_sha256": "449f9e49b9fdeae42c8524fd8b2ca9608ca480f447f25f1e1a18ad89dba2dac9"
       }
     },
     {
