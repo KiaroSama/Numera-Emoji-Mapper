@@ -2340,7 +2340,7 @@
         "file": "runtime/tests/baseline_tooling.rs",
         "target": "baseline_tooling",
         "function": "TheCliReferenceMatchesTheTools::test_every_flag_is_documented_and_every_documented_flag_exists",
-        "body_sha256": "e7465783a064d529f33e34933bb8c708e9a87f8180fbb1d69ce4cd3a7b4295f4"
+        "body_sha256": "9cb14dce0d0615103017bb06979264d56feb303312a0d7c0a125b14d3d643563"
       }
     },
     {
@@ -2360,7 +2360,7 @@
         "file": "runtime/tests/baseline_tooling.rs",
         "target": "baseline_tooling",
         "function": "TheCliReferenceMatchesTheTools::test_the_scan_finds_the_sections",
-        "body_sha256": "f1837ec8dfcc3117f4542cad5017e8b9ef8d28c207d243f4b04d17f49756e9c5"
+        "body_sha256": "b722449a66380731a62d9d667b3b8d8f5c70fd7f73c869c810cc8667a697f734"
       }
     },
     {
