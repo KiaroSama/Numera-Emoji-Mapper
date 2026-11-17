@@ -1,0 +1,54 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media_bridge.py": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7",
+    "emojikit/media_lottie.py": "5112b55f21d4d241ffe9660d5294de20487d4ea1e9772188fb6bd125f7fef63b"
+  },
+  "cases": [
+    {
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "format": "static",
+      "still": false,
+      "bytes": 134,
+      "sha256": "8662e4a51dc0cb0e41315369722810521b237f5cd09eb5df263917d8b99cc201",
+      "animation_info": false
+    },
+    {
+      "input": "tests/fixtures/native/static-codec/transparent-rgb.png",
+      "input_sha256": "07618aaae1edc16ce6a01933b9f5148ea14b0b6638b58e0c75a26a33559956c0",
+      "format": "static",
+      "still": true,
+      "bytes": 98,
+      "sha256": "e009ebcdf3fdf6e88fd5e074cfa4e69a4c31f6cb387ae33ff1edb884e4182f10",
+      "animation_info": false
+    },
+    {
+      "input": "tests/fixtures/native/lottie-preview/moving.json",
+      "input_sha256": "689bc545cc022669eec1a996940306e4e55ea012ec94a6b3c26e32f1a7f1eebf",
+      "format": "animated",
+      "still": false,
+      "bytes": 6262,
+      "sha256": "d006d19e0a1aaee42909186e070f35426eec886978cd193f491d72e2dd6dddd6",
+      "animation_info": false
+    },
+    {
+      "input": "tests/fixtures/native/lottie-preview/moving.json",
+      "input_sha256": "689bc545cc022669eec1a996940306e4e55ea012ec94a6b3c26e32f1a7f1eebf",
+      "format": "animated",
+      "still": true,
+      "bytes": 682,
+      "sha256": "cb28e3fcdbf438b6d6570668594f260f666875adefb88e451f107c9cac1c675b",
+      "animation_info": false
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/alpha.webm",
+      "input_sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "format": "video",
+      "still": false,
+      "bytes": 1088,
+      "sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "animation_info": false
+    }
+  ]
+}

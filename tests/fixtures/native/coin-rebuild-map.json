@@ -1,0 +1,891 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "5fc72119e143b9d20af1f9280921d2503327f6c574e7b34e9d93a7ba1e27310e",
+  "cases": [
+    {
+      "name": "content reorder and current aliases",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa",
+              "aaabsc"
+            ],
+            "kw": "A"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "B"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1"
+            }
+          ],
+          "order": [
+            "aaa",
+            "bbb"
+          ],
+          "provider_added": []
+        },
+        "live": {
+          "s1": [
+            {
+              "custom_emoji_id": "b",
+              "file_id": "fb"
+            },
+            {
+              "custom_emoji_id": "a",
+              "file_id": "fa"
+            }
+          ]
+        },
+        "identity": {
+          "bbb": "b",
+          "aaa": "a"
+        },
+        "current": {
+          "aaa": "old-a",
+          "aaabsc": "old-a",
+          "aaaerc": "old-a"
+        },
+        "approved": [
+          "aaa",
+          "aaabsc",
+          "aaaerc"
+        ]
+      },
+      "expected": {
+        "events": [
+          [
+            "list",
+            "s1"
+          ],
+          [
+            "identity",
+            [
+              [
+                "b",
+                "fb"
+              ],
+              [
+                "a",
+                "fa"
+              ]
+            ],
+            [
+              "aaa",
+              "bbb"
+            ]
+          ],
+          [
+            "current"
+          ],
+          [
+            "write",
+            "ticker_to_id.json",
+            {
+              "bbb": "b",
+              "aaa": "a",
+              "aaabsc": "a",
+              "aaaerc": "a"
+            }
+          ],
+          [
+            "fill",
+            {
+              "bbb": "b",
+              "aaa": "a",
+              "aaabsc": "a",
+              "aaaerc": "a"
+            }
+          ]
+        ],
+        "output": "mapped by verified image identity (2 stickers)\n  re-applied 1 aliases from the current map.\nmapped 4 tickers across 1 sets (2 live stickers)\n",
+        "error": null
+      }
+    },
+    {
+      "name": "no recorded order",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa",
+              "aaabsc"
+            ],
+            "kw": "A"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "B"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1"
+            }
+          ],
+          "order": []
+        },
+        "live": {
+          "s1": [
+            {
+              "custom_emoji_id": "b",
+              "file_id": "fb"
+            },
+            {
+              "custom_emoji_id": "a",
+              "file_id": "fa"
+            }
+          ]
+        },
+        "identity": {
+          "bbb": "b",
+          "aaa": "a"
+        },
+        "current": {
+          "aaa": "old-a",
+          "aaabsc": "old-a",
+          "aaaerc": "old-a"
+        },
+        "approved": [
+          "aaa",
+          "aaabsc",
+          "aaaerc"
+        ]
+      },
+      "expected": {
+        "events": [
+          [
+            "list",
+            "s1"
+          ],
+          [
+            "write",
+            "ticker_to_id.candidate.json",
+            {
+              "error": "no uploads are recorded",
+              "live_stickers": 2,
+              "plan_entries": 2
+            }
+          ]
+        ],
+        "output": "",
+        "error": "ERROR: no uploads are recorded but 2 stickers are live.\n       Refusing to write ticker_to_id.json from positional guesswork -- that is what corrupts the map.\n       Rebuild identities from image content with coins/remap_ids.py. Details: ticker_to_id.candidate.json"
+      }
+    },
+    {
+      "name": "identity refuses",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa",
+              "aaabsc"
+            ],
+            "kw": "A"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "B"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1"
+            }
+          ],
+          "order": [
+            "aaa",
+            "bbb"
+          ],
+          "provider_added": []
+        },
+        "live": {
+          "s1": [
+            {
+              "custom_emoji_id": "b",
+              "file_id": "fb"
+            },
+            {
+              "custom_emoji_id": "a",
+              "file_id": "fa"
+            }
+          ]
+        },
+        "identity": {
+          "bbb": "b",
+          "aaa": "a"
+        },
+        "current": {
+          "aaa": "old-a",
+          "aaabsc": "old-a",
+          "aaaerc": "old-a"
+        },
+        "approved": [
+          "aaa",
+          "aaabsc",
+          "aaaerc"
+        ],
+        "identity_error": "live sticker b could not be read (controlled failure)"
+      },
+      "expected": {
+        "events": [
+          [
+            "list",
+            "s1"
+          ],
+          [
+            "identity",
+            [
+              [
+                "b",
+                "fb"
+              ],
+              [
+                "a",
+                "fa"
+              ]
+            ],
+            [
+              "aaa",
+              "bbb"
+            ]
+          ],
+          [
+            "write",
+            "ticker_to_id.candidate.json",
+            {
+              "error": "live sticker b could not be read (controlled failure)",
+              "recorded_uploads": 2,
+              "live_stickers": 2,
+              "plan_entries": 2
+            }
+          ]
+        ],
+        "output": "",
+        "error": "ERROR: live sticker b could not be read (controlled failure).\n       Refusing to write ticker_to_id.json: equal counts are not identity, and mapping by position is what put an unrelated logo on a real ticker.\n       Rebuild identities from image content with coins/remap_ids.py. Details: ticker_to_id.candidate.json"
+      }
+    },
+    {
+      "name": "lost alias refuses",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa",
+              "aaabsc"
+            ],
+            "kw": "A"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "B"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1"
+            }
+          ],
+          "order": [
+            "aaa",
+            "bbb"
+          ],
+          "provider_added": []
+        },
+        "live": {
+          "s1": [
+            {
+              "custom_emoji_id": "b",
+              "file_id": "fb"
+            },
+            {
+              "custom_emoji_id": "a",
+              "file_id": "fa"
+            }
+          ]
+        },
+        "identity": {
+          "bbb": "b",
+          "aaa": "a"
+        },
+        "current": {
+          "zzz": "old-z",
+          "zzzbsc": "old-z"
+        },
+        "approved": [
+          "aaa",
+          "aaabsc",
+          "aaaerc"
+        ]
+      },
+      "expected": {
+        "events": [
+          [
+            "list",
+            "s1"
+          ],
+          [
+            "identity",
+            [
+              [
+                "b",
+                "fb"
+              ],
+              [
+                "a",
+                "fa"
+              ]
+            ],
+            [
+              "aaa",
+              "bbb"
+            ]
+          ],
+          [
+            "current"
+          ],
+          [
+            "write",
+            "ticker_to_id.candidate.json",
+            {
+              "bbb": "b",
+              "aaa": "a",
+              "aaabsc": "a"
+            }
+          ]
+        ],
+        "output": "mapped by verified image identity (2 stickers)\n  re-applied 0 aliases from the current map.\n",
+        "error": "ERROR: 2 alias(es) in ticker_to_id.json have no sibling in the rebuilt map (e.g. ['zzz', 'zzzbsc']).\n       Refusing to write a map that drops them; review ticker_to_id.candidate.json and the plan."
+      }
+    },
+    {
+      "name": "oversized unreviewed refuses",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "t0",
+              "t1",
+              "t2",
+              "t3",
+              "t4",
+              "t5",
+              "t6",
+              "t7",
+              "t8",
+              "t9",
+              "t10",
+              "t11",
+              "t12",
+              "t13",
+              "t14",
+              "t15",
+              "t16",
+              "t17",
+              "t18",
+              "t19",
+              "t20"
+            ],
+            "kw": "A"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1"
+            }
+          ],
+          "order": [
+            "aaa"
+          ]
+        },
+        "live": {
+          "s1": [
+            {
+              "custom_emoji_id": "b",
+              "file_id": "fb"
+            },
+            {
+              "custom_emoji_id": "a",
+              "file_id": "fa"
+            }
+          ]
+        },
+        "identity": {
+          "aaa": "a"
+        },
+        "current": {},
+        "approved": []
+      },
+      "expected": {
+        "events": [
+          [
+            "list",
+            "s1"
+          ],
+          [
+            "identity",
+            [
+              [
+                "b",
+                "fb"
+              ],
+              [
+                "a",
+                "fa"
+              ]
+            ],
+            [
+              "aaa"
+            ]
+          ],
+          [
+            "write",
+            "ticker_to_id.candidate.json",
+            {
+              "t0": "a",
+              "t1": "a",
+              "t2": "a",
+              "t3": "a",
+              "t4": "a",
+              "t5": "a",
+              "t6": "a",
+              "t7": "a",
+              "t8": "a",
+              "t9": "a",
+              "t10": "a",
+              "t11": "a",
+              "t12": "a",
+              "t13": "a",
+              "t14": "a",
+              "t15": "a",
+              "t16": "a",
+              "t17": "a",
+              "t18": "a",
+              "t19": "a",
+              "t20": "a"
+            }
+          ]
+        ],
+        "output": "mapped by verified image identity (2 stickers)\n  re-applied 0 aliases from the current map.\n",
+        "error": "ERROR: one emoji id would be shared by 21 unreviewed tickers (e.g. ['t0', 't1', 't10', 't11', 't12', 't13']).\n       A group that large is the signature of a mis-aligned mapping, not a shared logo. Refusing to overwrite ticker_to_id.json; review ticker_to_id.candidate.json instead."
+      }
+    },
+    {
+      "name": "reviewed crowd admitted",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "t0",
+              "t1",
+              "t2",
+              "t3",
+              "t4",
+              "t5",
+              "t6",
+              "t7",
+              "t8",
+              "t9",
+              "t10",
+              "t11",
+              "t12",
+              "t13",
+              "t14",
+              "t15",
+              "t16",
+              "t17",
+              "t18",
+              "t19",
+              "t20"
+            ],
+            "kw": "A"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1"
+            }
+          ],
+          "order": [
+            "aaa"
+          ]
+        },
+        "live": {
+          "s1": [
+            {
+              "custom_emoji_id": "b",
+              "file_id": "fb"
+            },
+            {
+              "custom_emoji_id": "a",
+              "file_id": "fa"
+            }
+          ]
+        },
+        "identity": {
+          "aaa": "a"
+        },
+        "current": {},
+        "approved": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "t5",
+          "t6",
+          "t7",
+          "t8",
+          "t9",
+          "t10",
+          "t11",
+          "t12",
+          "t13",
+          "t14",
+          "t15",
+          "t16",
+          "t17",
+          "t18",
+          "t19",
+          "t20"
+        ]
+      },
+      "expected": {
+        "events": [
+          [
+            "list",
+            "s1"
+          ],
+          [
+            "identity",
+            [
+              [
+                "b",
+                "fb"
+              ],
+              [
+                "a",
+                "fa"
+              ]
+            ],
+            [
+              "aaa"
+            ]
+          ],
+          [
+            "write",
+            "ticker_to_id.json",
+            {
+              "t0": "a",
+              "t1": "a",
+              "t2": "a",
+              "t3": "a",
+              "t4": "a",
+              "t5": "a",
+              "t6": "a",
+              "t7": "a",
+              "t8": "a",
+              "t9": "a",
+              "t10": "a",
+              "t11": "a",
+              "t12": "a",
+              "t13": "a",
+              "t14": "a",
+              "t15": "a",
+              "t16": "a",
+              "t17": "a",
+              "t18": "a",
+              "t19": "a",
+              "t20": "a"
+            }
+          ],
+          [
+            "fill",
+            {
+              "t0": "a",
+              "t1": "a",
+              "t2": "a",
+              "t3": "a",
+              "t4": "a",
+              "t5": "a",
+              "t6": "a",
+              "t7": "a",
+              "t8": "a",
+              "t9": "a",
+              "t10": "a",
+              "t11": "a",
+              "t12": "a",
+              "t13": "a",
+              "t14": "a",
+              "t15": "a",
+              "t16": "a",
+              "t17": "a",
+              "t18": "a",
+              "t19": "a",
+              "t20": "a"
+            }
+          ]
+        ],
+        "output": "mapped by verified image identity (2 stickers)\n  re-applied 0 aliases from the current map.\nmapped 21 tickers across 1 sets (2 live stickers)\n",
+        "error": null
+      }
+    },
+    {
+      "name": "provider top up and overlap",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa",
+              "aaabsc"
+            ],
+            "kw": "A"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "B"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1"
+            }
+          ],
+          "order": [
+            "aaa",
+            "bbb"
+          ],
+          "provider_added": [
+            "aaa",
+            "ddd"
+          ]
+        },
+        "live": {
+          "s1": [
+            {
+              "custom_emoji_id": "b",
+              "file_id": "fb"
+            },
+            {
+              "custom_emoji_id": "a",
+              "file_id": "fa"
+            }
+          ]
+        },
+        "identity": {
+          "ddd": "d",
+          "bbb": "b",
+          "aaa": "a"
+        },
+        "current": {
+          "aaa": "old-a",
+          "aaabsc": "old-a",
+          "aaaerc": "old-a"
+        },
+        "approved": [
+          "aaa",
+          "aaabsc",
+          "aaaerc"
+        ]
+      },
+      "expected": {
+        "events": [
+          [
+            "list",
+            "s1"
+          ],
+          [
+            "identity",
+            [
+              [
+                "b",
+                "fb"
+              ],
+              [
+                "a",
+                "fa"
+              ]
+            ],
+            [
+              "aaa",
+              "bbb",
+              "ddd"
+            ]
+          ],
+          [
+            "current"
+          ],
+          [
+            "write",
+            "ticker_to_id.json",
+            {
+              "bbb": "b",
+              "aaa": "a",
+              "aaabsc": "a",
+              "ddd": "d",
+              "aaaerc": "a"
+            }
+          ],
+          [
+            "fill",
+            {
+              "bbb": "b",
+              "aaa": "a",
+              "aaabsc": "a",
+              "ddd": "d",
+              "aaaerc": "a"
+            }
+          ]
+        ],
+        "output": "mapped by verified image identity (2 stickers)\n  re-applied 1 aliases from the current map.\nmapped 5 tickers across 1 sets (2 live stickers)\n",
+        "error": null
+      }
+    },
+    {
+      "name": "small unreviewed group admitted",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa",
+              "aaabsc"
+            ],
+            "kw": "A"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "B"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1"
+            }
+          ],
+          "order": [
+            "aaa",
+            "bbb"
+          ],
+          "provider_added": []
+        },
+        "live": {
+          "s1": [
+            {
+              "custom_emoji_id": "b",
+              "file_id": "fb"
+            },
+            {
+              "custom_emoji_id": "a",
+              "file_id": "fa"
+            }
+          ]
+        },
+        "identity": {
+          "bbb": "b",
+          "aaa": "a"
+        },
+        "current": {
+          "aaa": "old-a",
+          "aaabsc": "old-a",
+          "aaaerc": "old-a"
+        },
+        "approved": []
+      },
+      "expected": {
+        "events": [
+          [
+            "list",
+            "s1"
+          ],
+          [
+            "identity",
+            [
+              [
+                "b",
+                "fb"
+              ],
+              [
+                "a",
+                "fa"
+              ]
+            ],
+            [
+              "aaa",
+              "bbb"
+            ]
+          ],
+          [
+            "current"
+          ],
+          [
+            "write",
+            "ticker_to_id.json",
+            {
+              "bbb": "b",
+              "aaa": "a",
+              "aaabsc": "a",
+              "aaaerc": "a"
+            }
+          ],
+          [
+            "fill",
+            {
+              "bbb": "b",
+              "aaa": "a",
+              "aaabsc": "a",
+              "aaaerc": "a"
+            }
+          ]
+        ],
+        "output": "mapped by verified image identity (2 stickers)\n  re-applied 1 aliases from the current map.\n  note: 1 shared-logo group(s) are not listed in shared_logo_groups.json (largest 3). Cross-chain variants of one asset are expected here; add them to that file to silence this.\nmapped 4 tickers across 1 sets (2 live stickers)\n",
+        "error": null
+      }
+    }
+  ]
+}

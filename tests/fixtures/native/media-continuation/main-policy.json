@@ -1,0 +1,161 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media_bridge.py": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7",
+    "emojikit/logsetup.py": "97c34490fde4b280ac005e0095d187ff1a38904a25521f5680930d915367eca6"
+  },
+  "source_runtime": "CPython3.11.9",
+  "source": "emojikit.media_bridge.main catch/envelope policy; controlled execute/filesystem seams",
+  "cases": [
+    {
+      "name": "success",
+      "request": {
+        "result": {
+          "typed": true
+        }
+      },
+      "exit": 0,
+      "response": {
+        "ok": true,
+        "result": {
+          "typed": true
+        }
+      },
+      "writes": [
+        {
+          "ok": true,
+          "result": {
+            "typed": true
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "value",
+      "request": {
+        "fault": "ValueError",
+        "message": "source refused"
+      },
+      "exit": 1,
+      "response": {
+        "ok": false,
+        "error": "source refused"
+      },
+      "writes": [
+        {
+          "ok": false,
+          "error": "source refused"
+        }
+      ],
+      "errors": [
+        "Media adapter failed: source refused"
+      ]
+    },
+    {
+      "name": "runtime",
+      "request": {
+        "fault": "RuntimeError",
+        "message": "codec refused"
+      },
+      "exit": 1,
+      "response": {
+        "ok": false,
+        "error": "codec refused"
+      },
+      "writes": [
+        {
+          "ok": false,
+          "error": "codec refused"
+        }
+      ],
+      "errors": [
+        "Media adapter failed: codec refused"
+      ]
+    },
+    {
+      "name": "os",
+      "request": {
+        "fault": "OSError",
+        "message": "controlled io failure"
+      },
+      "exit": 1,
+      "response": {
+        "ok": false,
+        "error": "controlled io failure"
+      },
+      "writes": [
+        {
+          "ok": false,
+          "error": "controlled io failure"
+        }
+      ],
+      "errors": [
+        "Media adapter failed: controlled io failure"
+      ]
+    },
+    {
+      "name": "type",
+      "request": {
+        "fault": "TypeError",
+        "message": "unhashable type: 'list'"
+      },
+      "escaped": {
+        "kind": "TypeError",
+        "message": "unhashable type: 'list'"
+      },
+      "response": null,
+      "writes": [],
+      "errors": []
+    },
+    {
+      "name": "eof",
+      "request": {
+        "fault": "EOFError",
+        "message": "controlled eof failure"
+      },
+      "escaped": {
+        "kind": "EOFError",
+        "message": "controlled eof failure"
+      },
+      "response": null,
+      "writes": [],
+      "errors": []
+    },
+    {
+      "name": "key",
+      "request": {
+        "fault": "KeyError",
+        "message": "controlled missing key"
+      },
+      "escaped": {
+        "kind": "KeyError",
+        "message": "'controlled missing key'"
+      },
+      "response": null,
+      "writes": [],
+      "errors": []
+    },
+    {
+      "name": "redaction",
+      "request": {
+        "fault": "ValueError",
+        "message": "refused 123456789:abcdefghijklmnopqrstuvwxyz0123456789"
+      },
+      "exit": 1,
+      "response": {
+        "ok": false,
+        "error": "refused [REDACTED]"
+      },
+      "writes": [
+        {
+          "ok": false,
+          "error": "refused [REDACTED]"
+        }
+      ],
+      "errors": [
+        "Media adapter failed: refused [REDACTED]"
+      ]
+    }
+  ]
+}

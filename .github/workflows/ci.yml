@@ -2,45 +2,148 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# A superseded push stops instead of running to completion: only the newest
-# commit on a ref is ever reported.
+env:
+  NUMERA_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+  CARGO_BUILD_JOBS: "2"
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
+
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
-# Jobs use ephemeral GitHub-HOSTED Ubuntu/Windows runners. This account's hosted
-# minutes are blocked for PRIVATE repositories, which is why CI used to run on
-# a self-hosted WSL runner; hosted minutes are free for PUBLIC ones, so the
-# block stopped applying when this repository was published.
-#
-# A self-hosted runner must NEVER be registered and selected on a public
-# repository: a public repo accepts pull requests from anyone, and a fork's
-# workflow would then execute a stranger's code on the owner's own machine.
-# The runner was deregistered before publication, and that order is the safety
-# property, not a detail.
-#
-# Consequences of hosted runners to respect, all the opposite of the old box:
-# every job starts from a FRESH machine, so nothing may assume state survives
-# between jobs; passwordless sudo IS available, so a job installs the system
-# packages it needs rather than relying on a global setup; and the machines are
-# small (2 cores), so the timeouts below are ceilings sized for that, not
-# expectations.
-
 jobs:
-  # The Worker is TypeScript with its own vitest suite. Its own job rather than
-  # a step in `build`: it shares nothing with the Python matrix, needs Node
-  # instead of Python + ffmpeg, and running it twice (once per Python version)
-  # would be pure waste. A separate job also means a Worker failure is legible
-  # as a Worker failure.
+  native-build:
+    name: Rust build and tests (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    # Cold release compilation includes every test crate on the Windows host.
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: windows-2025
+            platform: windows-x64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Record and verify tested source revision
+        shell: bash
+        run: |
+          mkdir -p logs/checkpoint
+          git rev-parse HEAD > logs/checkpoint/source-revision.log
+          test "$(cat logs/checkpoint/source-revision.log)" = "$NUMERA_SOURCE_REVISION"
+      - name: Select Rust compiler
+        shell: bash
+        run: |
+          rustup default 1.100.0
+          rustup component add rustfmt clippy --toolchain 1.100.0
+      - name: Retain the immutable migration provenance source
+        shell: bash
+        env:
+          NUMERA_MIGRATION_REFERENCE: a32dbab6e3e694f1fac9656997fa2edb6e3b2ede
+        run: |
+          if ! git cat-file -e "$NUMERA_MIGRATION_REFERENCE^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 https://github.com/KiaroSama/Numera-Emoji-Mapper.git "$NUMERA_MIGRATION_REFERENCE"
+          fi
+          git cat-file -e "$NUMERA_MIGRATION_REFERENCE^{commit}"
+      - name: Build standalone release executables
+        id: runtime-build
+        run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+      - name: Rust format and lint
+        shell: bash
+        run: |
+          cargo fmt --manifest-path runtime/Cargo.toml --check
+          cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Install Linux video prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/.cache/apt/archives/partial" "$GITHUB_WORKSPACE/.cache/apt/lists/partial"
+          sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" update
+          sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" -o Dir::Cache::archives="$GITHUB_WORKSPACE/.cache/apt/archives" install -y --no-install-recommends ffmpeg
+      - name: Install Windows video prerequisites
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg --yes --no-progress --cache-location="$env:GITHUB_WORKSPACE\.cache\chocolatey"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $env:PATH = [Environment]::GetEnvironmentVariable('PATH','Machine') + ';' + $env:PATH
+            "PATH=$env:PATH" >> $env:GITHUB_ENV
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) { throw 'FFmpeg and FFprobe are required' }
+      - name: Require actual video tools
+        shell: bash
+        run: |
+          ffmpeg -version
+          ffprobe -version
+      - name: Permit private test namespaces
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/test-network
+      - name: Verify original test identities and inventory tooling
+        shell: bash
+        run: |
+          cargo fmt --manifest-path tools/test-inventory/Cargo.toml --check
+          cargo clippy --manifest-path tools/test-inventory/Cargo.toml --locked --all-targets -- -D warnings
+          cargo test --config .cargo/runtime-tests.toml --manifest-path tools/test-inventory/Cargo.toml --locked
+          cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode rust
+          cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode language --output logs/checkpoint/language-policy.json
+      - name: All Rust tests through the isolated runner
+        # Preserve optimized distribution binaries while avoiding LTO for each
+        # test executable. Release cfg, assertions and test discovery stay the same.
+        env:
+          CARGO_TARGET_DIR: runtime/target/ci-tests
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+        shell: bash
+        run: |
+          mkdir -p logs/checkpoint
+          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log
+      - name: Similarity benchmark and parity
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then suffix=.exe; else suffix=; fi
+          "runtime/target/release/numera-dev$suffix" benchmark-similarity --count 1500 --seed 321 --repeats 5
+      - name: Upload standalone executables
+        if: ${{ always() && steps.runtime-build.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-build-${{ matrix.platform }}
+          path: |
+            runtime/target/release/numera-emoji
+            runtime/target/release/numera-emoji.exe
+            runtime/target/release/numera-dev
+            runtime/target/release/numera-dev.exe
+            runtime/target/release/numera-runtime-tests
+            runtime/target/release/numera-runtime-tests.exe
+            runtime/target/release/numera-worker-admin
+            runtime/target/release/numera-worker-admin.exe
+          if-no-files-found: error
+      - name: Preserve CI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-diagnostics-${{ matrix.platform }}
+          path: |
+            logs/**/*.log
+            logs/tmp/runtime-tests-*/stdout
+            logs/tmp/runtime-tests-*/stderr
+          if-no-files-found: warn
+          retention-days: 7
+
   worker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
@@ -48,7 +151,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+          persist-credentials: false
+      - name: Record and verify tested source revision
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p logs/checkpoint
+          git rev-parse HEAD > logs/checkpoint/source-revision.log
+          test "$(cat logs/checkpoint/source-revision.log)" = "$NUMERA_SOURCE_REVISION"
 
       - name: Set up Node
         uses: actions/setup-node@v7
@@ -72,11 +184,7 @@ jobs:
       - name: Type-check the panel scripts
         run: npx tsc -p ../assets/jsconfig.json --noEmit
 
-      # vitest stubs fetch, so nothing here can reach Telegram -- the same rule
-      # the Python suite enforces with its hermetic guard, for the same reason:
-      # a test once reached live Telegram and replaced a sticker in a published
-      # pack. `--run` is explicit so a CI runner can never land in watch mode
-      # and hang until the job timeout.
+      # Worker requests are intercepted by the existing Vitest fixtures.
       - name: Unit tests (vitest)
         run: npx vitest run
 
@@ -87,266 +195,73 @@ jobs:
           npm audit --audit-level=high
           npx wrangler deploy --dry-run --outdir .wrangler/dry-run
 
-  # The panel's browser suite drives the real page in headless Chromium. Its own
-  # job for the same reason as the Worker's: it tests JavaScript, so running it
-  # once per Python version would download Chromium twice to prove the same
-  # thing. The `build` matrix therefore opts out of it explicitly -- the module
-  # is a hard error, never a silent skip, when the browser is missing, so the
-  # opt-out has to be stated somewhere rather than left to chance.
+      - name: Preserve CI diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: worker-diagnostics
+          path: |
+            logs/**/*.log
+            logs/tmp/runtime-tests-*/stdout
+            logs/tmp/runtime-tests-*/stderr
+          if-no-files-found: warn
+          retention-days: 7
+
   panel-browser:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+    name: Panel browser and source contracts
+    needs: native-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: assets
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: Select supported Rust toolchain
-        run: rustup default 1.99.0
-
-      - name: Build required Rust computation module
-        run: python scripts/build_native.py
-
-      - name: Build native backend executable for command parity
-        env:
-          PYO3_PYTHON: python
-          CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
-
-      # `--with-deps` runs apt-get under sudo to install Chromium's system
-      # libraries. It was forbidden on the old self-hosted runner, which had no
-      # passwordless sudo and would have sat on a password prompt until the job
-      # timeout; a hosted runner has it, and starts from a bare machine where
-      # those libraries are genuinely absent.
-      # ~150 MB per run otherwise. Keyed on the pinned playwright version, so a
-      # bump downloads the matching browser once. `install --with-deps` still
-      # runs: it installs the system libraries and is fast on a cache hit.
-      - name: Cache Playwright browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('requirements-dev.txt') }}
-
-      - name: Install Chromium
-        run: python -m playwright install --with-deps chromium
-
-      # Named explicitly rather than globbed: `test_panel_*` would also match
-      # the five panel suites the build matrix already runs, and running a test
-      # in two jobs is worse than running it in one. `tests.` is the package
-      # path, so tests/__init__.py still executes -- that file is the credential
-      # scrub and the non-loopback socket block, and it is not optional.
-      #
-      # tests/test_ci_coverage.py fails if a browser suite exists on disk and is
-      # missing from this line.
-      - name: Panel browser tests
-        run: python -m unittest tests.test_panel_browser tests.test_panel_queues tests.test_panel_curation tests.test_panel_perf -v
-
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # The panel's browser suite has its own job above. Opting out here is
-    # deliberate and must stay explicit: test_panel_browser.py raises rather
-    # than skipping when playwright or Chromium is missing, because a browser
-    # test that reports green on a machine with no browser is worse than none.
-    env:
-      NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS: "1"
-    strategy:
-      matrix:
-        # 3.11 is the runtime run.ps1 / .venv target; 3.12 guards against the
-        # old reportlab-era assumption that newer Pythons are unsupported --
-        # every dependency ships wheels for all three. 3.14 is the newest stable
-        # release, so an incompatibility with it shows up here first.
-        python-version: ["3.11", "3.12", "3.14"]
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-
-      # Both manifests: the core one, plus the coin extra (numpy). Not optional
-      # here -- tests/test_entry_points.py imports EVERY discovered entry point,
-      # and coins/remap_ids.py imports numpy at module level.
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-coins.txt
-          pip install -r requirements-lint.txt
-
-      - name: Select supported Rust toolchain
-        run: rustup default 1.99.0
-
-      - name: Build required Rust computation module
-        run: python scripts/build_native.py
-
-      - name: Build native backend executable for command parity
-        env:
-          PYO3_PYTHON: python
-          CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
-
-      # INSTALLED here, not merely checked: a hosted runner is a fresh machine
-      # with no ffmpeg, where the old self-hosted box had it in its global
-      # setup. The `command -v` check afterwards is the load-bearing half --
-      # apt can answer a mirror outage by installing nothing and still exiting
-      # 0, and the failure then surfaces three steps later as an application
-      # error that names the wrong component.
-      - name: Install ffmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg
-          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
-            echo "::error::ffmpeg/ffprobe did not resolve after apt-get reported success."
-            exit 1
-          fi
-          ffmpeg -version | head -1
-
-      # Byte-compile + the full suite, through the same script a developer runs,
-      # so CI and local runs cannot drift into different invocations. The script
-      # owns the `-t .` form, which is REQUIRED, not cosmetic: without it the
-      # tests directory becomes the top level, modules load as `test_x` instead
-      # of `tests.test_x`, and tests/__init__.py -- which scrubs credentials and
-      # blocks the network -- never runs. tests.test_entry_points.SuiteIsHermetic
-      # fails loudly if the suite is ever started without it.
-      - name: Project checks (compile + lint + unit and entry-point tests)
-        shell: pwsh
-        run: |
-          ./scripts/check.ps1
-          exit $LASTEXITCODE
-
-      - name: Install Rust check components
-        if: matrix.python-version == '3.11'
-        run: rustup component add rustfmt clippy
-
-      - name: Rust format, lint and unit checks
-        if: matrix.python-version == '3.11'
-        env:
-          PYO3_PYTHON: python
-          CARGO_BUILD_JOBS: "2"
-        run: |
-          cargo fmt --manifest-path native/Cargo.toml --check
-          cargo clippy --manifest-path native/Cargo.toml --locked --all-targets -- -D warnings
-          cargo test --manifest-path native/Cargo.toml --locked -- --test-threads=2
-
-      - name: Similarity benchmark and parity
-        if: matrix.python-version == '3.11'
-        run: python scripts/benchmark_similarity.py
-
-      - name: build_pack dry-run (no network)
-        run: |
-          python - <<'PY'
-          import tests
-          import os, subprocess, sys, tempfile
-          from pathlib import Path
-          from PIL import Image
-          Path("logs").mkdir(exist_ok=True)
-          with tempfile.TemporaryDirectory(prefix="ci-smoke-", dir="logs") as folder:
-              Image.new("RGBA", (100, 100), (0, 128, 255, 255)).save(Path(folder) / "a.png")
-              os.environ["GENERAL_BOT_TOKEN"] = "dummy"
-              r = subprocess.run([str(Path("native/target/debug/numera-emoji").resolve()), "build-pack", "--base", "ci",
-                                  "--title", "CI", "--user-id", "1",
-                                  "--source-dir", folder,
-                                  "--token-env", "GENERAL_BOT_TOKEN", "--dry-run"],
-                                 timeout=30, stdin=subprocess.DEVNULL)
-          sys.exit(r.returncode)
-          PY
-
-  # Native Windows ownership and restore are not exercised by Linux or WSL.
-  # Keep this on an ephemeral hosted runner; never restore the public repo's
-  # former self-hosted runner merely to obtain Windows coverage.
-  windows-safety:
-    runs-on: windows-latest
-    timeout-minutes: 25
-    env:
-      NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS: "1"
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      # run.ps1 and the other scripts are never executed in CI, so a syntax
-      # error would ship unnoticed. Parse every tracked one; fail on any error.
-      - name: Every PowerShell script parses
-        shell: pwsh
+      - name: Record and verify tested source revision
+        shell: bash
+        working-directory: ${{ github.workspace }}
         run: |
-          $bad = git ls-files '*.ps1' | ForEach-Object {
-            $e = $null
-            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $_), [ref]$null, [ref]$e)
-            if ($e) { "$_"; $e }
-          }
-          if ($bad) { $bad; exit 1 }
-      - uses: actions/setup-python@v7
+          mkdir -p logs/checkpoint
+          git rev-parse HEAD > logs/checkpoint/source-revision.log
+          test "$(cat logs/checkpoint/source-revision.log)" = "$NUMERA_SOURCE_REVISION"
+      - uses: actions/download-artifact@v8
         with:
-          python-version: "3.11"
-          cache: pip
-      - name: Install isolated test dependencies
-        run: python -m pip install -r requirements.txt -r requirements-coins.txt
-      - name: Select supported Rust toolchain
-        run: rustup default 1.99.0
-
-      - name: Build required Rust computation module
-        run: python scripts/build_native.py
-
-      - name: Build native backend executable for command parity
-        env:
-          PYO3_PYTHON: python
-          CARGO_BUILD_JOBS: "2"
-        run: cargo build --manifest-path native/Cargo.toml --locked --bin numera-emoji
-      - name: Require native Windows and FFmpeg
-        shell: pwsh
+          name: rust-build-linux-x64
+          path: runtime/target/release
+      - name: Restore native executable permission
+        working-directory: ${{ github.workspace }}
+        run: chmod +x runtime/target/release/numera-emoji
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: assets/package-lock.json
+      - name: Install locked browser tooling
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Record actual browser test discovery
+        run: npx playwright test --list --reporter=json > ../logs/checkpoint/browser-inventory.json
+      - name: Verify actual browser and source-contract identities
+        working-directory: ${{ github.workspace }}
         run: |
-          python -c "import os; assert os.name == 'nt'"
-          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
-            choco install ffmpeg --yes --no-progress
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            $env:PATH = [Environment]::GetEnvironmentVariable('PATH','Machine') + ';' + $env:PATH
-          }
-          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) {
-            throw 'ffmpeg and ffprobe are required for native Windows regressions'
-          }
-      - name: Native codec lifecycle regressions
+          rustup default 1.100.0
+          cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode all --playwright-list logs/checkpoint/browser-inventory.json
+      - name: Panel browser tests
         env:
-          PYO3_PYTHON: python
-          CARGO_BUILD_JOBS: "2"
-        run: cargo test --manifest-path native/Cargo.toml --locked --test process_lifecycle --test publication_recovery --test publication_unknown --test reconcile_commit --test ticker_keywords --test emoji_ids --test gallery_parity --test roster_pack_parity --test archive_parity --test ownership --test state_artifacts --test atomic_failure --test sqlite_snapshot --test migration_database --test migration_signature --test migration_bundle --test panel_http --test panel_branding --test browser_open --test sandbox_lease_windows --test preview_warm --test preview_cancel --test local_format --test media_store --test media_config -- --test-threads=1
-
-      - name: Native process-death migration replay
-        env:
-          PYO3_PYTHON: python
-          CARGO_BUILD_JOBS: "2"
-        run: cargo test --manifest-path native/Cargo.toml --locked --lib -- --test-threads=1
-
-      - name: Native lock, migration, HTTP persistence, identity and CLI regressions
-        env:
-          PYO3_PYTHON: python
-        run: >-
-          python -m unittest
-          tests.test_pack_locks tests.test_pack_locks_exclusion
-          tests.test_migration_lifecycle tests.test_migration_provenance
-          tests.test_state_artifacts tests.test_sqlite_snapshot
-          tests.test_panel_intent_persistence tests.test_video_collision_ingest
-          tests.test_entry_point_contracts tests.test_panel_sandbox
-          tests.test_sandbox_lifecycle tests.test_atomic_state_files
-          tests.test_media_paths tests.test_media_bounds tests.test_native_similarity
-          tests.test_native_state tests.test_native_catalog tests.test_native_real_catalog tests.test_native_command_help tests.test_native_package tests.test_native_consumer_boundary tests.test_native_install tests.test_launcher_contract tests.test_cli_docs tests.test_build_process_owner tests.test_media_boundary
-          tests.test_native_storage_recovery tests.test_native_plan_steps
-          tests.test_native_telegram tests.test_native_telegram_compat tests.test_native_announce_compat tests.test_native_state_compat tests.test_native_panel tests.test_native_ingest
-          tests.test_native_reconcile tests.test_native_local_cli tests.test_native_fetch_cli tests.test_native_collect_partial
-          tests.test_native_publish_cli tests.test_native_publication tests.test_native_video_visibility tests.test_native_bot
-          tests.test_native_bot_poll tests.test_native_preview_codec tests.test_native_plan_cli tests.test_native_plan_status_cli tests.test_native_convert_cli tests.test_native_remove_cli
-          tests.test_native_roster tests.test_native_roster_cli tests.test_native_archive_cli tests.test_native_export_cli tests.test_native_status_cli tests.test_native_ticker_cli tests.test_native_identity_cli tests.test_native_migration_cli tests.test_native_ids_cli tests.test_native_reorder_cli -v
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/logs/checkpoint/browser-results.json
+        run: npm test -- --reporter=line,json
+      - name: Preserve browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: panel-browser-diagnostics
+          path: |
+            logs/**/*.log
+            logs/checkpoint/browser-*.json
+            logs/tmp/browser/**
+          if-no-files-found: warn
+          retention-days: 7

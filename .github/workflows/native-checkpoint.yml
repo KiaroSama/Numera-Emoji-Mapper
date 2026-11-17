@@ -1,0 +1,48 @@
+name: Rust checkpoint
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-checkpoint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checkpoint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Select supported Rust compiler
+        run: |
+          rustup default 1.100.0
+          rustup component add rustfmt clippy --toolchain 1.100.0
+      - name: Install external media tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Build every standalone executable
+        run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+      - name: Permit private test namespaces
+        uses: ./.github/actions/test-network
+      - name: Rust formatting and lint
+        run: |
+          cargo fmt --manifest-path runtime/Cargo.toml --check
+          cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Full isolated test discovery
+        shell: bash
+        run: |
+          mkdir -p logs/checkpoint
+          git rev-parse HEAD > logs/checkpoint/source-revision.log
+          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log
+      - name: Preserve checkpoint diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-checkpoint-diagnostics
+          path: logs/**
+          if-no-files-found: warn

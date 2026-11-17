@@ -1,0 +1,190 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "4bce8ae96c8ec69e22fa135bb622c26409100b124c578fed94f2b04cb8b114fc",
+  "cases": [
+    {
+      "state": "unknown",
+      "before": 0,
+      "want": 0,
+      "stickers": [],
+      "hashes": [],
+      "calls": [],
+      "expected": {
+        "unknown": true
+      }
+    },
+    {
+      "state": "missing",
+      "before": 0,
+      "want": 0,
+      "stickers": [],
+      "hashes": [],
+      "calls": [],
+      "expected": {
+        "id": null
+      }
+    },
+    {
+      "state": "exists",
+      "before": 0,
+      "want": 0,
+      "stickers": [],
+      "hashes": [],
+      "calls": [],
+      "expected": {
+        "id": null
+      }
+    },
+    {
+      "state": "exists",
+      "before": 1,
+      "want": 0,
+      "stickers": [
+        {
+          "file_id": "f0",
+          "file_unique_id": "u0",
+          "custom_emoji_id": "c0"
+        },
+        {
+          "file_id": "f1",
+          "file_unique_id": "u1",
+          "custom_emoji_id": "c1"
+        }
+      ],
+      "hashes": [
+        0,
+        0
+      ],
+      "calls": [
+        "f1"
+      ],
+      "expected": {
+        "id": "c1"
+      }
+    },
+    {
+      "state": "exists",
+      "before": 0,
+      "want": 0,
+      "stickers": [
+        {
+          "file_id": "f0",
+          "file_unique_id": "u0",
+          "custom_emoji_id": "c0"
+        }
+      ],
+      "hashes": [
+        255
+      ],
+      "calls": [
+        "f0"
+      ],
+      "expected": {
+        "id": "c0"
+      }
+    },
+    {
+      "state": "exists",
+      "before": 0,
+      "want": 0,
+      "stickers": [
+        {
+          "file_id": "f0",
+          "file_unique_id": "u0",
+          "custom_emoji_id": "c0"
+        }
+      ],
+      "hashes": [
+        511
+      ],
+      "calls": [
+        "f0"
+      ],
+      "expected": {
+        "id": null
+      }
+    },
+    {
+      "state": "exists",
+      "before": 0,
+      "want": 0,
+      "stickers": [
+        {
+          "file_id": "f0",
+          "file_unique_id": "u0",
+          "custom_emoji_id": "c0"
+        },
+        {
+          "file_id": "f1",
+          "file_unique_id": "u1",
+          "custom_emoji_id": "c1"
+        }
+      ],
+      "hashes": [
+        0,
+        0
+      ],
+      "calls": [
+        "f0",
+        "f1"
+      ],
+      "expected": {
+        "unknown": true
+      }
+    },
+    {
+      "state": "exists",
+      "before": 0,
+      "want": 0,
+      "stickers": [
+        {
+          "file_id": "f0",
+          "file_unique_id": "u0",
+          "custom_emoji_id": "c0"
+        }
+      ],
+      "hashes": [
+        "unreadable"
+      ],
+      "calls": [
+        "f0"
+      ],
+      "expected": {
+        "unknown": true
+      }
+    },
+    {
+      "state": "exists",
+      "before": 1,
+      "want": 0,
+      "stickers": [
+        {
+          "file_id": "f0",
+          "file_unique_id": "u0",
+          "custom_emoji_id": "c0"
+        },
+        {
+          "file_id": "f1",
+          "file_unique_id": "u1",
+          "custom_emoji_id": "c1"
+        }
+      ],
+      "hashes": [
+        "unreadable",
+        0
+      ],
+      "calls": [
+        "f1"
+      ],
+      "expected": {
+        "id": "c1"
+      }
+    }
+  ],
+  "tally": {
+    "provider_added": [
+      "a",
+      "b"
+    ]
+  }
+}

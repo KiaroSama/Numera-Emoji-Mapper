@@ -1,0 +1,56 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+  "source": "emojikit.media.reencode_in_place static",
+  "Pillow": "12.3.0",
+  "cases": [
+    {
+      "name": "public-logo",
+      "input": "tests/fixtures/native/static-codec/public-logo.png",
+      "input_sha256": "6f85376de3893dfa1e78045ce264103b0055acec400dd8a35222405d5c4f6951",
+      "expected": {
+        "rewritten": true,
+        "bytes": 201510,
+        "sha256": "db291b028d2a4873256190f8413ad1983d70f274c23a102ed4268e7ed5d7b787",
+        "rgba_sha256": "3a80bf85bf457489fc5c61e71cb838da98a481ee06bc8ba0fd221a42794bd529",
+        "repeat": false
+      }
+    },
+    {
+      "name": "opaque",
+      "input": "tests/fixtures/native/static-codec/opaque.png",
+      "input_sha256": "186ee151bdd1301c0e6c82e4e18550d248d4be36b8a0ae4c37ec6b91d44622f4",
+      "expected": {
+        "rewritten": true,
+        "bytes": 32,
+        "sha256": "2407c1b9ff869fd8f4ecfac3f23ec061d7a243da989417ed591cfadc91c207cd",
+        "rgba_sha256": "06e5efd6f63daccf0db3640bd56a029251116273386fbae1a2fb8041f25a140d",
+        "repeat": false
+      }
+    },
+    {
+      "name": "transparent-rgb",
+      "input": "tests/fixtures/native/static-codec/transparent-rgb.png",
+      "input_sha256": "07618aaae1edc16ce6a01933b9f5148ea14b0b6638b58e0c75a26a33559956c0",
+      "expected": {
+        "rewritten": true,
+        "bytes": 32,
+        "sha256": "ac855a01f5eacb370fa7428fe6135f85924ecde6b1d0f69032386a7f23ea9949",
+        "rgba_sha256": "f00539bb7c9b3069639807e216a5f4b221123750dad34af902fc12c70d3554b7",
+        "repeat": false
+      }
+    },
+    {
+      "name": "alpha-edge",
+      "input": "tests/fixtures/native/static-codec/alpha-edge.png",
+      "input_sha256": "d359d28b44f1871b588f04dc95ca56f8716b18768b6b91ef3f9aad66ed01aa71",
+      "expected": {
+        "rewritten": true,
+        "bytes": 46,
+        "sha256": "3059184a2424fbee0ba7d49cc601cdfc96c6c07a393ec310e8fd439f9c66f683",
+        "rgba_sha256": "4eaa88897ff04f7b9e4207b2536d6ae6b17c5fd508a8359f821d20553c5c7a26",
+        "repeat": false
+      }
+    }
+  ]
+}

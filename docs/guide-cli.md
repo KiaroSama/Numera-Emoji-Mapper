@@ -2,9 +2,11 @@
 
 ## 12. Full CLI reference
 
-Every entry point, every flag, with defaults and examples. All commands assume
-you run them from the project root with the venv Python
-(`.venv\Scripts\python.exe`). On macOS/Linux use `.venv/bin/python`.
+Every entry point, every flag, with defaults and examples. Native examples run
+from the project root with `.\numera-emoji.exe` on Windows or
+`./numera-emoji` on Linux. Coin commands in
+[§12.8](guide-cli-panel-coin.md#128-coins-commands) use the same standalone
+executable. No Python environment is required.
 
 ### 12.1 `make-emoji-pngs` — image → 100×100 PNG
 
@@ -49,9 +51,9 @@ Behaviour:
 Examples:
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
-.venv\Scripts\.\native\runtime\numera-emoji.exe make-emoji-pngs --in input\myset --limit 50
-.venv\Scripts\.\native\runtime\numera-emoji.exe make-emoji-pngs            # legacy coin mode
+.\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
+.\numera-emoji.exe make-emoji-pngs --in input\myset --limit 50
+.\numera-emoji.exe make-emoji-pngs            # legacy coin mode
 ```
 
 ### 12.2 `build-pack` — upload a folder of PNGs to emoji sets
@@ -74,7 +76,7 @@ Resumable: progress is saved to `state_<base>.json`; an interrupted/flood-limite
 run continues without recreating existing sets. Use `--dry-run` first.
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe build-pack --base myset --title "My Emojis" `
+.\numera-emoji.exe build-pack --base myset --title "My Emojis" `
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji 😀 --dry-run
 ```
 
@@ -85,7 +87,7 @@ run continues without recreating existing sets. Use `--dry-run` first.
 | `packs...` | *(required)* | One or more pack short-names, `t.me/addemoji/<name>` links, or emoji ids (digits or `premium-id:<id>`) — an id fetches the whole pack it belongs to. Each pack is fetched once; an id that names no pack is reported and counts as a failure (exit 3 when something else succeeded). |
 | `--token-env` | `GENERAL_BOT_TOKEN` | Bot token env var. |
 | `--data-dir` | `collection` | Catalog/media directory. |
-| `--phash-threshold` | `-1` (off) | Hamming distance for near-dup merging; `-1` keeps look-alikes. |
+| `--phash-threshold` | `-1` (off) | Hamming distance `0..16` for near-dup merging; `-1` keeps look-alikes. Out-of-range values are usage errors before pack lookup. |
 | `--limit <n>` | `0` (all) | Max new items per pack. |
 | `--repaintable` | `ask` | What to do with emoji Telegram REPAINTS (`ask`/`skip`/`keep`). The client overrides their colours, so the source pack does not show the stored art: in one of ours they render that art instead — sometimes flat black, sometimes full colour. Look before you decide; with no terminal to answer, `ask` skips them. |
 
@@ -119,14 +121,17 @@ duplicates** (the same real entry repeated inside one file) separately from
 cross-file duplicates. The run reports
 `unique_ids / new / dedup / failed / missing`; `missing` counts IDs Telegram
 could no longer resolve. Each row keeps its origin in `keywords`
-(`premium-id:<n>`). The extraction/dedup logic is covered by
-`tests/test_fetch_emoji_ids.py` (example lines, trailing labels, bullets,
-within-file and cross-file duplicates, bare-ID lists).
+(`premium-id:<n>`). The Rust pack/ID regression cohort retains example-line,
+trailing-label, bullet, duplicate and bare-ID cases against the actual parser
+and real files. `--tint` uses the shared native parser: `#RRGGBB` and `RRGGBB`
+are accepted and recorded as uppercase `tint:#RRGGBB`. Malformed UTF-8 is refused;
+it is not silently replaced. See [test inventories](../tests/README.md) for
+original identities and execution boundaries.
 
 Example — pull only the emoji referenced by four bot inventory files:
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe fetch-emoji-ids `
+.\numera-emoji.exe fetch-emoji-ids `
   --ids-file "...\GV Swap bot\bot-emoji-inventory-user.md" `
   --ids-file "...\GV Swap bot\bot-emoji-inventory-admin.md" `
   --ids-file "...\YourBrand Payment Bot\bot-emoji-inventory-admin.md" `
@@ -214,13 +219,13 @@ it never performed:
 | Outcome | Meaning | Effect on the exit code |
 |---------|---------|-------------------------|
 | accepted | Telegram said the file is uploadable. | — |
-| refused | Telegram rejected it (`BotApiError`); the message is printed. | exit 1 |
-| missing | The catalog row points at a file that is not on disk. | exit 1 |
+| refused | Telegram rejected it; the message is printed. | exit 4 |
+| missing | The catalog row points at a file that is not on disk. | exit 4 |
 | not checked | The request never reached Telegram (transport). | exit 3 |
 
 The last row is the one that matters, and the count of unreachable files does
 not change it. A dropped connection is **not** a verdict on the artwork, so it
-is never reported as a refusal — exit 1 is what a refusal returns, and
+is never reported as a refusal — exit 4 is what a refusal returns, and
 answering a lost connection with it sends someone editing artwork that was
 never the problem. It is not reported as an acceptance either: the old counter
 counted attempts, so a run in which every single check failed at the transport
@@ -296,8 +301,8 @@ emoji keeps its `file_id` **and** its `custom_emoji_id`: nobody who already
 uses one is affected, and no upload happens.
 
 ```powershell
-$PY -m emojikit.sync_order --base mypack             # what would move
-$PY -m emojikit.sync_order --base mypack --apply
+.\numera-emoji.exe sync-order --base mypack             # what would move
+.\numera-emoji.exe sync-order --base mypack --apply
 ```
 
 It is the one set mutation in this project that is genuinely idempotent —
@@ -345,7 +350,7 @@ header: ↑ Top, ↓ Bottom, the four-way backdrop cycle and the animation switc
 What is absent is everything that writes — no `draggable`, no tick, no selection,
 no save, no form field at all.
 
-**It gates its media like the emojikit.panel.** Every animated card inlines a still as
+**It gates its media like the curate panel.** Every animated card inlines a still as
 well as the animation, starts frozen, and only what is on screen is swapped to
 the moving version; scrolling freezes everything until 180 ms after it settles,
 and `Animation: Off` freezes it permanently. Thumbnails are 88px at 9fps — fps
@@ -391,7 +396,7 @@ pages come out without pictures (the data is unaffected).
 roster no longer matches its inputs — a new download, a replaced or recoloured
 sticker, a reorder, a coin remap. Run it after anything that changes a pack (or
 wire it into your own automation); `--refresh` rebuilds the roster.
-`.\native\runtime\numera-emoji.exe status` (§12.5e) runs this check and the archive's together.
+`.\numera-emoji.exe status` (§12.5e) runs this check and the archive's together.
 
 ### 12.5d `pack-archive` — the finished pack's media leaves the project
 
@@ -426,16 +431,16 @@ never deletes: a file the live pack no longer knows is reported, not removed.
 
 `--check` is cheap and offline and exits 3 when the archive has fallen behind;
 run it after anything that changes a full pack, and `--sync` to catch up.
-`.\native\runtime\numera-emoji.exe status` (§12.5e) runs it together with the roster check.
+`.\numera-emoji.exe status` (§12.5e) runs it together with the roster check.
 
 ### 12.5e `status` — is everything current?
 
 ```powershell
-.venv\Scripts\.\native\runtime\numera-emoji.exe status
+.\numera-emoji.exe status
 ```
 
-Offline and read-only: runs the roster check (`pack_manifest --check`) and the
-archive check (`pack_archive --check`), and counts the included catalog emoji
+Offline and read-only: runs the roster check (`pack-manifest --check`) and the
+archive check (`pack-archive --check`), and counts the included catalog emoji
 not yet published to `COLLECTION_PACK_BASE`. One line per item, each with the
 command that fixes it. Exit 0 when nothing is stale, 3 when something is;
 emoji waiting to be published are a to-do, not staleness. An archive whose

@@ -1,0 +1,172 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "8597f6f94e5e675144e5e1b93cdcc373b164eb64c126bae0bc0b57af86913ca6",
+  "cases": [
+    {
+      "responses": [
+        [
+          {
+            "symbol": " BTC ",
+            "name": " Bitcoin "
+          },
+          {
+            "symbol": "btc",
+            "name": "Wrong duplicate"
+          }
+        ],
+        [],
+        [
+          {
+            "symbol": "btc",
+            "name": "Tail duplicate"
+          },
+          {
+            "symbol": "new",
+            "name": "New coin"
+          }
+        ]
+      ],
+      "calls": [
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=2&sparkline=false",
+        "https://api.coingecko.com/api/v3/coins/list"
+      ],
+      "waits": [
+        2.0
+      ],
+      "expected": {
+        "names": {
+          "btc": "Bitcoin",
+          "new": "New coin"
+        },
+        "complete": true
+      }
+    },
+    {
+      "responses": [
+        "failure",
+        [
+          {
+            "symbol": " BTC ",
+            "name": " Bitcoin "
+          }
+        ]
+      ],
+      "calls": [
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+        "https://api.coingecko.com/api/v3/coins/list"
+      ],
+      "waits": [],
+      "expected": {
+        "names": {
+          "btc": "Bitcoin"
+        },
+        "complete": false
+      }
+    },
+    {
+      "responses": [
+        [],
+        "failure"
+      ],
+      "calls": [
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+        "https://api.coingecko.com/api/v3/coins/list"
+      ],
+      "waits": [],
+      "expected": {
+        "names": {},
+        "complete": false
+      }
+    },
+    {
+      "responses": [
+        null,
+        [
+          {
+            "symbol": " BTC ",
+            "name": " Bitcoin "
+          }
+        ]
+      ],
+      "calls": [
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+        "https://api.coingecko.com/api/v3/coins/list"
+      ],
+      "waits": [],
+      "expected": {
+        "names": {
+          "btc": "Bitcoin"
+        },
+        "complete": true
+      }
+    },
+    {
+      "responses": [
+        [
+          {
+            "symbol": " BTC ",
+            "name": " Bitcoin "
+          }
+        ],
+        "failure",
+        [
+          {
+            "symbol": "eth",
+            "name": "Ethereum"
+          }
+        ]
+      ],
+      "calls": [
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=2&sparkline=false",
+        "https://api.coingecko.com/api/v3/coins/list"
+      ],
+      "waits": [
+        2.0
+      ],
+      "expected": {
+        "names": {
+          "btc": "Bitcoin",
+          "eth": "Ethereum"
+        },
+        "complete": false
+      }
+    },
+    {
+      "responses": [
+        [
+          {
+            "symbol": "",
+            "name": "Ignore"
+          },
+          {
+            "symbol": "abc",
+            "name": ""
+          }
+        ],
+        [],
+        [
+          {
+            "symbol": "abc",
+            "name": "Later"
+          }
+        ]
+      ],
+      "calls": [
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false",
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=2&sparkline=false",
+        "https://api.coingecko.com/api/v3/coins/list"
+      ],
+      "waits": [
+        2.0
+      ],
+      "expected": {
+        "names": {
+          "abc": ""
+        },
+        "complete": true
+      }
+    }
+  ]
+}

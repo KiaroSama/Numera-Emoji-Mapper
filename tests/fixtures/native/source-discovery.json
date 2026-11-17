@@ -1,0 +1,144 @@
+{
+  "source_runtime": "CPython 3.11.9",
+  "boundary": "unittest.TestLoader.loadTestsFromTestCase on trusted synthetic classes only",
+  "cases": [
+    {
+      "name": "inherited override",
+      "source": "import unittest\nclass Parent(unittest.TestCase):\n def test_one(self): pass\n def test_two(self): pass\nclass Child(Parent):\n def test_one(self): pass\n def test_three(self): pass\n",
+      "sha256": "7672c778af9517b3b7e9a35f5b7521a0b3e311061d42866d838bd61d4bbce12f",
+      "expected": [
+        {
+          "class": "Parent",
+          "method": "test_one",
+          "defined_in": "Parent"
+        },
+        {
+          "class": "Parent",
+          "method": "test_two",
+          "defined_in": "Parent"
+        },
+        {
+          "class": "Child",
+          "method": "test_one",
+          "defined_in": "Child"
+        },
+        {
+          "class": "Child",
+          "method": "test_three",
+          "defined_in": "Child"
+        },
+        {
+          "class": "Child",
+          "method": "test_two",
+          "defined_in": "Parent"
+        }
+      ]
+    },
+    {
+      "name": "diamond follows C3",
+      "source": "import unittest\nclass Base(unittest.TestCase):\n def test_one(self): pass\nclass Left(Base): pass\nclass Right(Base):\n def test_one(self): pass\nclass Diamond(Left, Right): pass\n",
+      "sha256": "1c5d020232f7844523ddf10e9f9ea515d82f6decc989eff0e1004ef05fdacdfa",
+      "expected": [
+        {
+          "class": "Base",
+          "method": "test_one",
+          "defined_in": "Base"
+        },
+        {
+          "class": "Left",
+          "method": "test_one",
+          "defined_in": "Base"
+        },
+        {
+          "class": "Right",
+          "method": "test_one",
+          "defined_in": "Right"
+        },
+        {
+          "class": "Diamond",
+          "method": "test_one",
+          "defined_in": "Right"
+        }
+      ]
+    },
+    {
+      "name": "mixin and plain helper",
+      "source": "from unittest import TestCase as Case\nclass Mixin:\n def test_from_mixin(self): pass\nclass Plain:\n def test_not_collected(self): pass\nclass Concrete(Mixin, Case):\n def test_own(self): pass\n",
+      "sha256": "631bb9cbc3ef1da281d84dffb418087d62887494733bf6d93f73fe10a92eb377",
+      "expected": [
+        {
+          "class": "Concrete",
+          "method": "test_from_mixin",
+          "defined_in": "Mixin"
+        },
+        {
+          "class": "Concrete",
+          "method": "test_own",
+          "defined_in": "Concrete"
+        }
+      ]
+    },
+    {
+      "name": "prefix and runTest",
+      "source": "import unittest as unit\nclass Prefix(unit.TestCase):\n def testWithoutUnderscore(self): pass\n def test_z(self): pass\nclass Legacy(unit.TestCase):\n def runTest(self): pass\n",
+      "sha256": "197a5d7380bec0fcf1f54fa057094cbe0ada6e8b49aef22641974a27ab3e109f",
+      "expected": [
+        {
+          "class": "Prefix",
+          "method": "testWithoutUnderscore",
+          "defined_in": "Prefix"
+        },
+        {
+          "class": "Prefix",
+          "method": "test_z",
+          "defined_in": "Prefix"
+        },
+        {
+          "class": "Legacy",
+          "method": "runTest",
+          "defined_in": "Legacy"
+        }
+      ]
+    },
+    {
+      "name": "noncallable shadows inherited method",
+      "source": "from unittest import TestCase\nclass Parent(TestCase):\n def test_one(self): pass\n def test_two(self): pass\nclass Child(Parent):\n test_one = None\n",
+      "sha256": "b20fb8a903bce80c1d8011d8218c7aa1aa6bddd94b8a8bf039ac17e2db024429",
+      "expected": [
+        {
+          "class": "Parent",
+          "method": "test_one",
+          "defined_in": "Parent"
+        },
+        {
+          "class": "Parent",
+          "method": "test_two",
+          "defined_in": "Parent"
+        },
+        {
+          "class": "Child",
+          "method": "test_two",
+          "defined_in": "Parent"
+        }
+      ]
+    },
+    {
+      "name": "C3 inconsistent ordering",
+      "source": "import unittest\nclass X(unittest.TestCase): pass\nclass Y(unittest.TestCase): pass\nclass A(X,Y): pass\nclass B(Y,X): pass\nclass C(A,B): pass\n",
+      "sha256": "fdcde9d03ee76d44424fcf7baf7cb3e1fc64eb0a386677ac1dd1a93ac8e4b0e1",
+      "error": {
+        "kind": "TypeError",
+        "message": "Cannot create a consistent method resolution\norder (MRO) for bases X, Y"
+      }
+    },
+    {
+      "name": "duplicate bases",
+      "source": "import unittest\nclass Parent(unittest.TestCase): pass\nclass Child(Parent,Parent): pass\n",
+      "sha256": "9de45f0a7b39694545d3f6fb793666f29a0c9298c9b5f4fcdf3f69e48195901e",
+      "error": {
+        "kind": "TypeError",
+        "message": "duplicate base class Parent"
+      }
+    }
+  ]
+}

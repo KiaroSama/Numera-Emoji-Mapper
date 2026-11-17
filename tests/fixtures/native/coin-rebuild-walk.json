@@ -1,0 +1,1438 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "17771c6245dedf36d6c66deba99bb6405a624505962f74251f7f5a7f7e4eb54f",
+  "cases": [
+    {
+      "name": "create then add",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "live": {},
+        "missing": [],
+        "blank": [],
+        "errors": {},
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa",
+            "bbb"
+          ],
+          "cursor": 2,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "events": [
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 1,
+              "in_flight": {
+                "key": "aaa",
+                "operation": "create",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "create",
+            "cryptoemoji1_by_YourEmojiBot",
+            "aaa"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [],
+              "cursor": 1,
+              "in_flight": {
+                "key": "aaa",
+                "operation": "create",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 1,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "wait",
+            0.1
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 2,
+              "in_flight": {
+                "key": "bbb",
+                "operation": "add",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 1,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "add",
+            "cryptoemoji1_by_YourEmojiBot",
+            "bbb"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa",
+                "bbb"
+              ],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "wait",
+            0.1
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa",
+                "bbb"
+              ],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "notify",
+            "cryptoemoji1_by_YourEmojiBot",
+            "Fixture 1"
+          ]
+        ],
+        "error": null,
+        "output": "resume: 0 sets, 0 live stickers, plan position 0/2\n[set 1] created cryptoemoji1_by_YourEmojiBot\n"
+      }
+    },
+    {
+      "name": "all missing persists completion",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "live": {},
+        "missing": [
+          "aaa",
+          "bbb"
+        ],
+        "blank": [],
+        "errors": {},
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 2,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "events": [
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 1,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ]
+        ],
+        "error": null,
+        "output": "resume: 0 sets, 0 live stickers, plan position 0/2\n  skip aaa: missing/empty\n  skip bbb: missing/empty\n"
+      }
+    },
+    {
+      "name": "last blank persists cursor",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "live": {},
+        "missing": [],
+        "blank": [
+          "bbb"
+        ],
+        "errors": {},
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 2,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "events": [
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 1,
+              "in_flight": {
+                "key": "aaa",
+                "operation": "create",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "create",
+            "cryptoemoji1_by_YourEmojiBot",
+            "aaa"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [],
+              "cursor": 1,
+              "in_flight": {
+                "key": "aaa",
+                "operation": "create",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 1,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "wait",
+            0.1
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "notify",
+            "cryptoemoji1_by_YourEmojiBot",
+            "Fixture 1"
+          ]
+        ],
+        "error": null,
+        "output": "resume: 0 sets, 0 live stickers, plan position 0/2\n[set 1] created cryptoemoji1_by_YourEmojiBot\n  skip bbb: blank image (no blank emoji)\n"
+      }
+    },
+    {
+      "name": "permanent image rejection skips",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "live": {},
+        "missing": [],
+        "blank": [],
+        "errors": {
+          "aaa": "IMAGE_PROCESS_FAILED"
+        },
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "cryptoemoji1_by_YourEmojiBot",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "order": [
+            "bbb"
+          ],
+          "cursor": 2,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "events": [
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 1,
+              "in_flight": {
+                "key": "aaa",
+                "operation": "create",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "create",
+            "cryptoemoji1_by_YourEmojiBot",
+            "aaa"
+          ],
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 1,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 2,
+              "in_flight": {
+                "key": "bbb",
+                "operation": "create",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "create",
+            "cryptoemoji1_by_YourEmojiBot",
+            "bbb"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [],
+              "cursor": 2,
+              "in_flight": {
+                "key": "bbb",
+                "operation": "create",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "bbb"
+              ],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "wait",
+            0.1
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "cryptoemoji1_by_YourEmojiBot",
+                  "title": "Fixture 1"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "bbb"
+              ],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "notify",
+            "cryptoemoji1_by_YourEmojiBot",
+            "Fixture 1"
+          ]
+        ],
+        "error": null,
+        "output": "resume: 0 sets, 0 live stickers, plan position 0/2\n  skip aaa: IMAGE_PROCESS_FAILED\n[set 1] created cryptoemoji1_by_YourEmojiBot\n"
+      }
+    },
+    {
+      "name": "transient failure retries same position",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "live": {},
+        "missing": [],
+        "blank": [],
+        "errors": {
+          "aaa": "temporary failure"
+        },
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "events": [
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 1,
+              "in_flight": {
+                "key": "aaa",
+                "operation": "create",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "create",
+            "cryptoemoji1_by_YourEmojiBot",
+            "aaa"
+          ],
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 0,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ]
+        ],
+        "error": "aaa: temporary failure; not applied, retried next run",
+        "output": "resume: 0 sets, 0 live stickers, plan position 0/2\n"
+      }
+    },
+    {
+      "name": "ambiguous create stops next upload",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "live": {},
+        "missing": [],
+        "blank": [],
+        "errors": {
+          "aaa": "ambiguous"
+        },
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 1,
+          "in_flight": {
+            "key": "aaa",
+            "operation": "create",
+            "set_name": "cryptoemoji1_by_YourEmojiBot",
+            "set_index": 1,
+            "expected_before": 0,
+            "phase": "upload"
+          },
+          "deleted_old": true
+        },
+        "events": [
+          [
+            "save",
+            {
+              "sets": [],
+              "sent": [],
+              "order": [],
+              "cursor": 1,
+              "in_flight": {
+                "key": "aaa",
+                "operation": "create",
+                "set_name": "cryptoemoji1_by_YourEmojiBot",
+                "set_index": 1,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "create",
+            "cryptoemoji1_by_YourEmojiBot",
+            "aaa"
+          ]
+        ],
+        "error": "aaa: controlled ambiguous; resolved on the next run",
+        "output": "resume: 0 sets, 0 live stickers, plan position 0/2\n"
+      }
+    },
+    {
+      "name": "unknown add stops next upload",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 1,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "live": {
+          "s1": 1
+        },
+        "missing": [],
+        "blank": [],
+        "errors": {
+          "bbb": "unknown"
+        },
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1",
+              "live": 1
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 1,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "events": [
+          [
+            "live",
+            "s1"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1",
+                  "live": 1
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 2,
+              "in_flight": {
+                "key": "bbb",
+                "operation": "add",
+                "set_name": "s1",
+                "set_index": 1,
+                "expected_before": 1,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "add",
+            "s1",
+            "bbb"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1",
+                  "live": 1
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 1,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ]
+        ],
+        "error": "bbb: controlled unknown; not applied, retried next run",
+        "output": "resume: 1 sets, 1 live stickers, plan position 1/2\n"
+      }
+    },
+    {
+      "name": "server full rolls new set",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 1,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "live": {
+          "s1": 1
+        },
+        "missing": [],
+        "blank": [],
+        "errors": {
+          "bbb:add": "STICKERS_TOO_MUCH"
+        },
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1",
+              "live": 1
+            },
+            {
+              "index": 2,
+              "name": "cryptoemoji2_by_YourEmojiBot",
+              "title": "Fixture 2"
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa",
+            "bbb"
+          ],
+          "cursor": 2,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "events": [
+          [
+            "live",
+            "s1"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1",
+                  "live": 1
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 2,
+              "in_flight": {
+                "key": "bbb",
+                "operation": "add",
+                "set_name": "s1",
+                "set_index": 1,
+                "expected_before": 1,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "add",
+            "s1",
+            "bbb"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1",
+                  "live": 1
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 2,
+              "in_flight": {
+                "key": "bbb",
+                "operation": "create",
+                "set_name": "cryptoemoji2_by_YourEmojiBot",
+                "set_index": 2,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "mutate",
+            "create",
+            "cryptoemoji2_by_YourEmojiBot",
+            "bbb"
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1",
+                  "live": 1
+                },
+                {
+                  "index": 2,
+                  "name": "cryptoemoji2_by_YourEmojiBot",
+                  "title": "Fixture 2"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa"
+              ],
+              "cursor": 2,
+              "in_flight": {
+                "key": "bbb",
+                "operation": "create",
+                "set_name": "cryptoemoji2_by_YourEmojiBot",
+                "set_index": 2,
+                "expected_before": 0,
+                "phase": "upload"
+              },
+              "deleted_old": true
+            }
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1",
+                  "live": 1
+                },
+                {
+                  "index": 2,
+                  "name": "cryptoemoji2_by_YourEmojiBot",
+                  "title": "Fixture 2"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa",
+                "bbb"
+              ],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "wait",
+            0.1
+          ],
+          [
+            "save",
+            {
+              "sets": [
+                {
+                  "index": 1,
+                  "name": "s1",
+                  "title": "Fixture 1",
+                  "live": 1
+                },
+                {
+                  "index": 2,
+                  "name": "cryptoemoji2_by_YourEmojiBot",
+                  "title": "Fixture 2"
+                }
+              ],
+              "sent": [],
+              "order": [
+                "aaa",
+                "bbb"
+              ],
+              "cursor": 2,
+              "in_flight": null,
+              "deleted_old": true
+            }
+          ],
+          [
+            "notify",
+            "cryptoemoji2_by_YourEmojiBot",
+            "Fixture 2"
+          ]
+        ],
+        "error": null,
+        "output": "resume: 1 sets, 1 live stickers, plan position 1/2\n[set 2] created cryptoemoji2_by_YourEmojiBot\n"
+      }
+    },
+    {
+      "name": "live count discrepancy refuses",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 1,
+          "in_flight": null,
+          "deleted_old": false
+        },
+        "live": {},
+        "missing": [],
+        "blank": [],
+        "errors": {},
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1",
+              "live": 0
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 1,
+          "in_flight": null,
+          "deleted_old": false
+        },
+        "events": [
+          [
+            "live",
+            "s1"
+          ]
+        ],
+        "error": "ERROR: 0 stickers are live but 1 uploads are recorded.\n       Refusing to continue: the recorded order is what maps stickers to tickers, and continuing from a disagreeing state is what corrupts ticker_to_id.json.\n       Reconcile with coins/remap_ids.py, or delete the packs and the state file to rebuild cleanly.",
+        "output": ""
+      }
+    },
+    {
+      "name": "unknown live count refuses",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 1,
+          "in_flight": null,
+          "deleted_old": false
+        },
+        "live": {
+          "s1": "unknown"
+        },
+        "missing": [],
+        "blank": [],
+        "errors": {},
+        "owner": 1,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [
+            {
+              "index": 1,
+              "name": "s1",
+              "title": "Fixture 1"
+            }
+          ],
+          "sent": [],
+          "order": [
+            "aaa"
+          ],
+          "cursor": 1,
+          "in_flight": null,
+          "deleted_old": false
+        },
+        "events": [
+          [
+            "live",
+            "s1"
+          ]
+        ],
+        "error": "controlled live unknown; refusing to resume from a guessed live count",
+        "output": ""
+      }
+    },
+    {
+      "name": "delete incomplete refuses",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": false
+        },
+        "live": {},
+        "missing": [],
+        "blank": [],
+        "errors": {},
+        "owner": 1,
+        "deleted": false
+      },
+      "expected": {
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": false
+        },
+        "events": [
+          [
+            "delete"
+          ]
+        ],
+        "error": "some old packs still exist; refusing to build a second family beside them",
+        "output": "resume: 0 sets, 0 live stickers, plan position 0/2\ndeleting ALL old packs and rebuilding 2 images...\n"
+      }
+    },
+    {
+      "name": "owner absent refuses",
+      "input": {
+        "plan": [
+          {
+            "rep": "aaa",
+            "tickers": [
+              "aaa"
+            ],
+            "kw": "Alpha"
+          },
+          {
+            "rep": "bbb",
+            "tickers": [
+              "bbb"
+            ],
+            "kw": "Beta"
+          }
+        ],
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "live": {},
+        "missing": [],
+        "blank": [],
+        "errors": {},
+        "owner": 0,
+        "deleted": true
+      },
+      "expected": {
+        "state": {
+          "sets": [],
+          "sent": [],
+          "order": [],
+          "cursor": 0,
+          "in_flight": null,
+          "deleted_old": true
+        },
+        "events": [],
+        "error": "ERROR: PACK_OWNER_USER_ID is not set (env or .env); refusing to start a rebuild without a pack owner.",
+        "output": ""
+      }
+    }
+  ]
+}

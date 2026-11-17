@@ -1,0 +1,86 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_hashes": {
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "coins/_paprika_api.py": "34742583025adaad3c7513ce0031c13d32759e29cfa8076609150a0badeb1acc"
+  },
+  "Pillow": "12.3.0",
+  "cases": [
+    {
+      "name": "visible-0-alpha-255",
+      "input": "tests/fixtures/native/provider-image/visible-0-alpha-255.png",
+      "input_sha256": "a22b9d6429f74727c26f599bd3d58ac8280a1f164f96a8af7014e0b6ac0ad07d",
+      "expected": {
+        "accepted": false
+      }
+    },
+    {
+      "name": "visible-8-alpha-255",
+      "input": "tests/fixtures/native/provider-image/visible-8-alpha-255.png",
+      "input_sha256": "53cbc16b12ec7f9e1a31828600b732e67f42112fc9d4ffbfe30e448c31d794ae",
+      "expected": {
+        "accepted": false
+      }
+    },
+    {
+      "name": "visible-9-alpha-255",
+      "input": "tests/fixtures/native/provider-image/visible-9-alpha-255.png",
+      "input_sha256": "ff7301a08899225a5f0b24218e725b87697e56e98e0e00db7658e38972953d7f",
+      "expected": {
+        "accepted": true,
+        "size": [
+          100,
+          100
+        ],
+        "mode": "RGBA",
+        "rgba_sha256": "dc29507c31c055080554bd6efb20b9316f88cc99ab7e9008cfee8005486ba6bf",
+        "png_sha256": "a45341b8cd4797b4bc42e0a6153496928ebeb67afcb4ffcf8697a81a23e19552"
+      }
+    },
+    {
+      "name": "visible-9-alpha-10",
+      "input": "tests/fixtures/native/provider-image/visible-9-alpha-10.png",
+      "input_sha256": "83917e6c7fa9db08725292108c9c64a9c0b12ae7e447b09b07a565ea9b1c4d73",
+      "expected": {
+        "accepted": false
+      }
+    },
+    {
+      "name": "visible-9-alpha-11",
+      "input": "tests/fixtures/native/provider-image/visible-9-alpha-11.png",
+      "input_sha256": "df4b70bfa380c839d42d1e29066df050deba8ea4e220ca6c50f21ed096f89d8a",
+      "expected": {
+        "accepted": true,
+        "size": [
+          100,
+          100
+        ],
+        "mode": "RGBA",
+        "rgba_sha256": "597020ab35f619da715299f8e487e381ef8e0534c15da5f8d25d25612f0f9ec2",
+        "png_sha256": "341571d542ddca481e3785d5305769cc9af290fcad53c144c9a1e06c78945d42"
+      }
+    },
+    {
+      "name": "visible-16-alpha-128",
+      "input": "tests/fixtures/native/provider-image/visible-16-alpha-128.png",
+      "input_sha256": "541bd6f38518536d7bc147323a246f8876661bcaef84d8b66ce281ce860f4fb0",
+      "expected": {
+        "accepted": true,
+        "size": [
+          100,
+          100
+        ],
+        "mode": "RGBA",
+        "rgba_sha256": "e275f2b7d2b0a990934abc632313ef017a9d09f62eb27ca28ef35fb01b5d2d71",
+        "png_sha256": "916f72e8845903ef061da6db226c5c55a8ab3f0bdb66acd5743ef7d2136643ac"
+      }
+    },
+    {
+      "name": "corrupt",
+      "data": "not an image",
+      "expected": {
+        "accepted": false
+      }
+    }
+  ]
+}

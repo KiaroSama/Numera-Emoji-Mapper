@@ -1,0 +1,497 @@
+// Faithful real-browser scenarios; original class/method identity is retained.
+import assert from "node:assert/strict";
+import { test, synth } from "./browser-fixture.js";
+test.use({ catalogSize: 4 });
+test.skip(process.env.NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS === '1', 'Explicit browser opt-out');
+
+async function open(panel, items, options) {
+  if (items === undefined) panel.reset();
+  const page = await panel.open(items, options);
+  page.setDefaultTimeout(5000);
+  return page;
+}
+
+test("test_panel_curation.CurationControls.test_toolbar_does_not_cover_brand_or_save_at_desktop_widths", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  for (const width of [1920, 1200]) {
+    await test.step(`width=${width}`, async () => {
+      (await page.setViewportSize({"width": width, "height": 900}));
+      let brand = (await page.locator("header h1").boundingBox());
+      let toolbar = (await page.locator("header .actions").boundingBox());
+      let save = (await page.locator("header .hright").boundingBox());
+      assert.ok((brand["x"] + brand["width"]) <= toolbar["x"]);
+      assert.ok((toolbar["x"] + toolbar["width"]) <= save["x"]);
+    });
+  }
+});
+
+test("test_panel_curation.CurationControls.test_shift_hold_unhold_and_history_restore_the_whole_gesture", async ({ panel }) => {
+  let page = (await open(panel, synth(12, {packs: Array(6).fill(1).concat(Array(6).fill(2))})));
+  (await page.click("#selmode"));
+  assert.deepEqual((await page.locator(".tick:visible").count()), 0);
+  (await page.locator(".card .pick").nth(1).click());
+  (await page.locator(".card .pick").nth(4).click({modifiers: ["Shift"]}));
+  assert.deepEqual((await page.locator(".card.picked").count()), 4);
+  (await page.click("#toHold"));
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 4);
+  assert.deepEqual((await page.locator("#grid .card").count()), 8);
+  assert.deepEqual((await page.locator(".packsep .n").first().innerText()), "#1–#2");
+  (await page.click("#undo"));
+  assert.deepEqual((await page.locator("#grid .card").count()), 12);
+  assert.deepEqual((await page.locator(".card.picked").count()), 4);
+  (await page.click("#redo"));
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 4);
+  (await page.getByRole("button", {name: "Unhold all", exact: true}).click());
+  assert.deepEqual((await page.locator("#grid .card").count()), 12);
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 0);
+  (await page.click("#undo"));
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 4);
+  (await page.locator("#holdCards .hcard button").first().click());
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 3);
+});
+
+test("test_panel_curation.CurationControls.test_several_held_emoji_are_picked_and_come_back_in_one_gesture", async ({ panel }) => {
+  let page = (await open(panel, synth(12, {packs: Array(12).fill(1)})));
+  (await page.click("#selmode"));
+  (await page.locator(".card .pick").nth(0).click());
+  (await page.locator(".card .pick").nth(4).click({modifiers: ["Shift"]}));
+  (await page.click("#toHold"));
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 5);
+  assert.deepEqual((await page.locator("#holdCards .hcard .pick").count()), 5);
+  (await page.locator("#holdCards .hcard .pick").nth(0).click());
+  (await page.locator("#holdCards .hcard .pick").nth(3).click({modifiers: ["Shift"]}));
+  assert.deepEqual((await page.locator("#holdCards .hcard.picked").count()), 4);
+  assert.deepEqual((await page.locator("#selLabel").innerText()), "Selection: 4 picked");
+  (await page.locator("#holdCards .hcard.picked button").first().click());
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1);
+  assert.deepEqual((await page.locator("#grid .card").count()), 11);
+});
+
+test("test_panel_curation.CurationControls.test_a_held_emoji_joins_the_pack_it_is_dropped_into", async ({ panel }) => {
+  let page = (await open(panel, synth(12, {packs: Array(6).fill(1).concat(Array(6).fill(2))})));
+  (await page.click("#selmode"));
+  (await page.locator(".card .pick").nth(0).click());
+  (await page.click("#toHold"));
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1);
+  let moved = (await page.evaluate(() => {
+                const it = ITEMS.find(x => !x.included && !x.isLogo);
+                const from = it.pack;
+                const other = packStarts().starts.find(s => s.pack !== from);
+                // What `dragstart` does on the real path: without it the drop
+                // leaves no history entry and Undo pops the hold instead.
+                remember();
+                holdDragKeys = new Set([it.key]);
+                carried.clear(); carried.add(it.key);
+                // And what `dragover` does. The pack comes from the card the
+                // pointer is ON, so a test that skips this is testing a drop
+                // that cannot happen -- nothing was aimed at, so by design
+                // nothing is stamped.
+                aimAt(other.index);
+                ITEMS.splice(ITEMS.indexOf(it), 1);
+                ITEMS.splice(other.index + 1, 0, it);
+                const accepted = acceptDrop();
+                return {accepted, from, into: other.pack, now: it.pack,
+                        included: it.included,
+                        assigned: assignedPacks().get(it.key),
+                        runs: packStarts().starts.map(s => s.pack)};
+            }));
+  assert.ok(moved["accepted"], "moving between packs is what the panel is for");
+  assert.ok(moved["included"], "the emoji must land in the grid, not stay held");
+  assert.deepEqual(moved["now"], moved["into"], "it must carry the destination pack");
+  assert.deepEqual(moved["assigned"], moved["into"]);
+  assert.deepEqual(moved["runs"], [moved["from"], moved["into"]]);
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 0);
+  (await page.click("#undo"));
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1, "undo puts the emoji back in the tray");
+  assert.deepEqual((await page.evaluate(() => ITEMS.find(x => !x.included && !x.isLogo).pack)), moved["from"], "undo must roll the pack stamp back as well");
+});
+
+test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_the_drop_and_points_at_the_tray", async ({ panel }) => {
+  let page = (await open(panel, synth(202, {packs: Array(2).fill(1).concat(Array(200).fill(2)), excluded: [0]})));
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1);
+  let refused = (await page.evaluate(() => {
+                const it = ITEMS.find(x => !x.included && !x.isLogo);
+                const full = packStarts().starts.find(s => s.pack !== it.pack);
+                holdDragKeys = new Set([it.key]);
+                carried.clear(); carried.add(it.key);
+                aimAt(full.index);               // the pointer was over the full pack
+                ITEMS.splice(ITEMS.indexOf(it), 1);
+                ITEMS.splice(full.index + 1, 0, it);
+                let said = null; const real = toast; toast = m => { said = m; };
+                const accepted = acceptDrop();
+                toast = real;
+                return {accepted, said, held: !it.included, into: full.pack, pack: it.pack};
+            }));
+  assert.ok(!refused["accepted"], "a full pack must take nothing");
+  assert.ok(refused["held"], "the emoji stays in the tray");
+  assert.deepEqual(refused["pack"], 1, "a refused drop must not re-stamp it");
+  assert.ok(refused["said"].includes(`Pack ${refused["into"]} is full (200/200)`));
+  assert.ok(refused["said"].includes("Hold one of its emoji first"));
+});
+
+test("test_panel_curation.CurationControls.test_unhold_all_refuses_a_full_original_pack_without_partial_changes", async ({ panel }) => {
+  let items = synth(203, {packs: Array(201).fill(1).concat(Array(2).fill(2)), excluded: [195, 202]});
+  let page = (await open(panel, items));
+  (await page.getByRole("button", {name: "Unhold all", exact: true}).click());
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 2);
+  assert.ok((await page.locator("#toast").innerText()).includes("Pack 1 is full (200/200)"));
+  (await page.locator("#holdCards .hcard button").last().click());
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1);
+});
+
+test("test_panel_curation.CurationControls.test_reset_uses_the_submitted_save_and_is_itself_undoable", async ({ panel }) => {
+  let page = (await open(panel, synth(6), {clock: true}));
+  (await page.click("#anim"));
+  (await page.click("#bg"));
+  (await page.click("#selmode"));
+  (await page.locator(".card .pick").first().click());
+  (await page.click("#toHold"));
+  (await page.click("#save"));
+  (await page.waitForFunction("__sent('/api/save').length===1"));
+  let expected = (await page.evaluate("snapshot()"));
+  (await page.locator(".card .pick").first().click());
+  (await page.click("#toHold"));
+  (await page.click("#anim"));
+  (await page.evaluate("__settle(0,200)"));
+  (await page.clock.runFor(50));
+  assert.ok((await page.evaluate("selDirty()")));
+  let edited = (await page.evaluate("snapshot()"));
+  (await page.click("#resetAll"));
+  assert.deepEqual((await page.evaluate("snapshot()")), expected);
+  (await page.click("#undo"));
+  assert.deepEqual((await page.evaluate("snapshot()")), edited);
+  (await page.click("#redo"));
+  assert.deepEqual((await page.evaluate("snapshot()")), expected);
+});
+
+test("test_panel_curation.CurationControls.test_hold_save_and_reload_use_the_real_server_and_catalog", async ({ panel }) => {
+  let page = (await open(panel, undefined));
+  (await page.evaluate("window.__net.passthrough=true"));
+  (await page.click("#selmode"));
+  let held_key = (await page.locator(".card").first().getAttribute("data-key"));
+  (await page.locator(".card .pick").first().click());
+  (await page.click("#toHold"));
+  (await page.click("#save"));
+  (await page.waitForFunction("pendingSel===null && !selDirty()"));
+  assert.deepEqual(panel.excludedInDb(), new Set([held_key]));
+  (await page.reload({waitUntil: "load"}));
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1);
+  assert.deepEqual((await page.locator(`#grid .card[data-key="${held_key}"]`).count()), 0);
+});
+
+test("test_panel_curation.CurationControls.test_native_drag_history_and_unhold_restore_the_original_slot", async ({ panel }) => {
+  let items = synth(6, {packs: Array(6).fill(1)});
+  let page = (await open(panel, items));
+  (await page.click("#selmode"));
+  (await page.locator(".card .pick").nth(1).click());
+  (await page.click("#toHold"));
+  let first = page.locator("#grid .card").first();
+  (await first.dragTo(page.locator("#grid .card").last()));
+  assert.deepEqual((await page.locator("#grid .card").first().getAttribute("data-key")), items[2]["key"]);
+  (await page.click("#undo"));
+  assert.deepEqual((await page.locator("#grid .card").first().getAttribute("data-key")), items[0]["key"]);
+  (await page.click("#redo"));
+  (await page.locator("#holdCards .hcard button").click());
+  assert.deepEqual((await page.locator("#grid .card").nth(1).getAttribute("data-key")), items[1]["key"]);
+});
+
+async function held(panel, page, count = 5) {
+  (await page.click("#selmode"));
+  (await page.evaluate(n => holdKeys(new Set(ITEMS.filter(x=>!x.isLogo && x.included).slice(0, n).map(x=>x.key))), count));
+  (await page.waitForTimeout(200));
+  return page.locator("#holdCards .hcard");
+}
+
+async function ticks(panel, page) {
+  return (await page.evaluate("[...document.querySelectorAll('#holdCards .hcard')].map(c => getComputedStyle(c.querySelector('.pick'), '::after').content)"));
+}
+
+test("test_panel_curation.TheHoldTrayIsSelectableByHand.test_an_unselected_tick_is_empty_and_only_a_selected_one_shows_a_check", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  let cards = (await held(panel, page));
+  assert.ok((await ticks(panel, page)).map(t => (t === "none")).every(Boolean), `a tick was drawn with nothing selected: ${(await ticks(panel, page))}`);
+  (await cards.nth(1).locator("img").click());
+  (await page.waitForTimeout(150));
+  let drawn = (await ticks(panel, page)).map((value, index) => [index, value]).filter(([i, t]) => (t !== "none")).map(([i, t]) => i);
+  assert.deepEqual(drawn, [1], "exactly the selected card shows a check");
+});
+
+test("test_panel_curation.TheHoldTrayIsSelectableByHand.test_clicking_a_cards_face_selects_it_and_shift_takes_the_range", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  let cards = (await held(panel, page));
+  (await cards.nth(0).locator("img").click());
+  (await page.waitForTimeout(150));
+  assert.deepEqual((await page.evaluate("picked.size")), 1);
+  (await cards.nth(3).locator("img").click({modifiers: ["Shift"]}));
+  (await page.waitForTimeout(150));
+  assert.deepEqual((await page.evaluate("picked.size")), 4, "Shift must take the whole inclusive range");
+});
+
+test("test_panel_curation.TheHoldTrayIsSelectableByHand.test_one_click_on_the_box_toggles_once_not_twice", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  let cards = (await held(panel, page));
+  (await cards.nth(0).locator(".pick").click());
+  (await page.waitForTimeout(150));
+  assert.deepEqual((await page.evaluate("picked.size")), 1);
+});
+
+test("test_panel_curation.TheHoldTrayIsSelectableByHand.test_unhold_does_not_disturb_the_selection", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  let cards = (await held(panel, page));
+  (await cards.nth(0).locator("img").click());
+  (await cards.nth(2).locator("img").click());
+  (await page.waitForTimeout(150));
+  assert.deepEqual((await page.evaluate("picked.size")), 2);
+  (await page.locator("#holdCards .hcard button").nth(4).click());
+  (await page.waitForTimeout(250));
+  assert.deepEqual((await page.evaluate("picked.size")), 2, "unholding an unpicked card changed the selection");
+});
+
+test("test_panel_curation.TheHoldTrayIsSelectableByHand.test_outside_selection_mode_a_click_selects_nothing", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  let cards = (await held(panel, page));
+  (await page.click("#selmode"));
+  (await page.waitForTimeout(150));
+  (await cards.nth(0).locator("img").click());
+  (await page.waitForTimeout(150));
+  assert.deepEqual((await page.evaluate("picked.size")), 0);
+});
+
+test("test_panel_curation.TheHoldTrayIsSelectableByHand.test_a_drag_from_the_tray_carries_every_selected_emoji", async ({ panel }) => {
+  let page = (await open(panel, synth(12, {packs: Array(6).fill(1).concat(Array(6).fill(2))})));
+  let cards = (await held(panel, page, 3));
+  (await cards.nth(0).locator("img").click());
+  (await cards.nth(2).locator("img").click({modifiers: ["Shift"]}));
+  (await page.waitForTimeout(150));
+  assert.deepEqual((await page.evaluate("heldPicked().length")), 3);
+  let transfer = (await page.evaluateHandle(() => new DataTransfer()));
+  (await cards.nth(0).dispatchEvent("dragstart", {"dataTransfer": transfer}));
+  (await page.waitForTimeout(150));
+  assert.deepEqual((await page.evaluate("holdDragKeys.size")), 3, "the drag must carry the whole selection, not one card");
+});
+
+test("test_panel_curation.TheHoldTrayIsSelectableByHand.test_dragging_an_unselected_held_card_carries_only_itself", async ({ panel }) => {
+  let page = (await open(panel, synth(12, {packs: Array(6).fill(1).concat(Array(6).fill(2))})));
+  let cards = (await held(panel, page, 3));
+  (await cards.nth(0).locator("img").click());
+  (await page.waitForTimeout(150));
+  let transfer = (await page.evaluateHandle(() => new DataTransfer()));
+  (await cards.nth(2).dispatchEvent("dragstart", {"dataTransfer": transfer}));
+  (await page.waitForTimeout(150));
+  assert.deepEqual((await page.evaluate("holdDragKeys.size")), 1);
+});
+
+test("test_panel_curation.TheHoldTrayIsSelectableByHand.test_a_card_dropped_from_the_tray_into_the_grid_leaves_the_tray", async ({ panel }) => {
+  let page = (await open(panel, synth(12, {packs: Array(6).fill(1).concat(Array(6).fill(2))})));
+  let cards = (await held(panel, page, 1));
+  let key = (await cards.nth(0).getAttribute("data-key"));
+  let transfer = (await page.evaluateHandle(() => new DataTransfer()));
+  (await cards.nth(0).dispatchEvent("dragstart", {"dataTransfer": transfer}));
+  let target = page.locator("#grid .card:not(.logo)").nth(3);
+  (await target.dispatchEvent("dragover", {"dataTransfer": transfer}));
+  (await target.dispatchEvent("drop", {"dataTransfer": transfer}));
+  assert.ok((await page.evaluate(`ITEMS.find(x => x.key === ${JSON.stringify(key)}).included`)));
+  assert.deepEqual((await page.locator(`#holdCards .hcard[data-key="${key}"]`).count()), 0, "a card back in the grid must leave the tray at once");
+  assert.deepEqual((await page.locator("#holdCount").innerText()), "0");
+});
+
+async function FullTray(panel) {
+  let page = (await open(panel, synth(600)));
+  (await page.click("#none"));
+  assert.deepEqual((await page.evaluate("heldOrder().length")), 600);
+  return page;
+}
+
+async function ToEnd(panel, page) {
+  (await page.evaluate("const h = document.getElementById('holding'); h.scrollLeft = h.scrollWidth"));
+  let last = (await page.evaluate("heldOrder()[599]"));
+  (await page.waitForFunction(`!!document.querySelector('#holdCards .hcard[data-key="${last}"]')`));
+  return last;
+}
+
+test("test_panel_curation.ALargeTrayIsWindowed.test_a_large_tray_mounts_only_what_is_in_view", async ({ panel }) => {
+  let page = (await FullTray(panel));
+  assert.ok((await page.locator("#holdCards .hcard").count()) <= 60);
+  (await ToEnd(panel, page));
+  assert.ok((await page.locator("#holdCards .hcard").count()) <= 60);
+});
+
+test("test_panel_curation.ALargeTrayIsWindowed.test_shift_range_picks_across_unmounted_tray_cards", async ({ panel }) => {
+  let page = (await FullTray(panel));
+  (await page.click("#selmode"));
+  (await page.locator("#holdCards .hcard").first().click());
+  let last = (await ToEnd(panel, page));
+  (await page.locator(`#holdCards .hcard[data-key="${last}"]`).click({modifiers: ["Shift"]}));
+  assert.deepEqual((await page.evaluate("heldPicked().length")), 600);
+});
+
+test("test_panel_curation.ALargeTrayIsWindowed.test_picking_a_run_touches_each_card_once", async ({ panel }) => {
+  let page = (await open(panel, synth(400)));
+  (await page.click("#selmode"));
+  let calls = (await page.evaluate("(() => {\n            let n = 0; const real = markPicked;\n            markPicked = function(){ n++; return real.apply(this, arguments); };\n            paintFrom = 0; paintTo = true; strokeSpan = []; strokeBase = new Set();\n            const t = performance.now();\n            for (let j = 0; j < 300; j++) applyStroke(j);\n            const ms = performance.now() - t;\n            markPicked = real;\n            return [n, ms]; })()"));
+  console.log(("PANEL_PERF " + JSON.stringify({"scenario": "stroke-300", "mark_calls": calls[0], "ms": (Math.round(calls[1] * 10) / 10)})));
+  assert.deepEqual(calls[0], 300, "each card is marked once as the stroke reaches it");
+});
+
+async function Import(panel, page, doc) {
+  (await page.setInputFiles("#draftFile", [{"name": "numera-emoji-mapper-draft.json", "mimeType": "application/json", "buffer": Buffer.from(JSON.stringify(doc), "utf8")}]));
+}
+
+test("test_panel_curation.AnExportedDraftComesBack.test_a_draft_is_applied_without_saving_and_can_be_undone", async ({ panel }) => {
+  let page = (await open(panel, synth(6)));
+  let before = (await page.evaluate("ITEMS.map(x => x.key)"));
+  let snap = (await page.evaluate("snapshot()"));
+  snap["order"] = [...snap["order"]].reverse().concat(["x:gone"]);
+  (await Import(panel, page, {"version": 1, "snapshot": snap}));
+  (await page.waitForFunction("ITEMS[0].key !== %s".replace("%s", JSON.stringify(before[0]))));
+  assert.deepEqual((await page.evaluate("ITEMS.map(x => x.key)")), [...before].reverse());
+  assert.equal((await page.evaluate("pendingOrder")) ?? null, null, "an import must not post by itself");
+  assert.ok((await page.evaluate("document.getElementById('toast').textContent")).includes("1 not in this catalog"));
+  (await page.click("#undo"));
+  assert.deepEqual((await page.evaluate("ITEMS.map(x => x.key)")), before);
+});
+
+test("test_panel_curation.AnExportedDraftComesBack.test_an_unknown_version_is_refused", async ({ panel }) => {
+  let page = (await open(panel, synth(6)));
+  let before = (await page.evaluate("ITEMS.map(x => x.key)"));
+  (await Import(panel, page, {"version": 2, "snapshot": {"order": [...before].reverse()}}));
+  (await page.waitForFunction("document.getElementById('toast').textContent.includes('Not a draft')"));
+  assert.deepEqual((await page.evaluate("ITEMS.map(x => x.key)")), before);
+});
+
+async function holdFirst(panel, page) {
+  (await page.click("#selmode"));
+  (await page.locator(".card .pick").nth(0).click());
+  (await page.click("#toHold"));
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1);
+}
+
+test("test_panel_curation.ADroppedEmojiJoinsThePackItWasAimedAt.test_a_drop_on_a_packs_first_card_joins_that_pack_not_the_one_above", async ({ panel }) => {
+  let page = (await open(panel, synth(12, {packs: Array(6).fill(1).concat(Array(6).fill(2))})));
+  (await holdFirst(panel, page));
+  let moved = (await page.evaluate(() => {
+                const it = ITEMS.find(x => !x.included && !x.isLogo);
+                const head = packStarts().starts.find(s => s.pack === 2).index;
+                remember();
+                holdDragKeys = new Set([it.key]);
+                carried.clear(); carried.add(it.key);
+                aimAt(head);            // the pointer is ON pack 2's first card
+                moveCarried(head);      // dropped on its left half: before it
+                const accepted = acceptDrop();
+                return {accepted, pack: it.pack, at: ITEMS.indexOf(it),
+                        head: packStarts().starts.find(s => s.pack === 2).index,
+                        runs: packStarts().starts.map(s => s.pack)};
+            }));
+  assert.ok(moved["accepted"]);
+  assert.deepEqual(moved["pack"], 2, "aimed at pack 2, so it joins pack 2");
+  assert.deepEqual(moved["at"], moved["head"]);
+  assert.deepEqual(moved["runs"], [1, 2], "no run may be cut by a drop");
+});
+
+test("test_panel_curation.ADroppedEmojiJoinsThePackItWasAimedAt.test_a_grid_to_grid_move_re_stamps_and_does_not_split_the_pack", async ({ panel }) => {
+  let page = (await open(panel, synth(12, {packs: Array(6).fill(1).concat(Array(6).fill(2))})));
+  let moved = (await page.evaluate(() => {
+                const it = ITEMS.find(x => x.pack === 1 && x.included && !x.isLogo);
+                const mid = packStarts().starts.find(s => s.pack === 2).index + 2;
+                dragKey = it.key; dragSnap = snapshot(); aimedPack = undefined;
+                carried.clear(); carried.add(it.key);
+                aimAt(mid); moveCarried(mid);
+                const accepted = acceptDrop();
+                commitDrag(); endDrag(true);
+                return {accepted, pack: it.pack,
+                        runs: packStarts().starts.map(s => s.pack)};
+            }));
+  assert.ok(moved["accepted"]);
+  assert.deepEqual(moved["pack"], 2, "a grid drag must re-stamp too");
+  assert.deepEqual(moved["runs"], [1, 2], "the destination pack was split by the dropped card");
+});
+
+test("test_panel_curation.ADroppedEmojiJoinsThePackItWasAimedAt.test_a_drop_that_aimed_at_nothing_stamps_nothing", async ({ panel }) => {
+  let page = (await open(panel, synth(12, {packs: Array(6).fill(1).concat(Array(6).fill(2))})));
+  (await holdFirst(panel, page));
+  let after = (await page.evaluate(() => {
+                const it = ITEMS.find(x => !x.included && !x.isLogo);
+                const was = it.pack;
+                holdDragKeys = new Set([it.key]);
+                carried.clear(); carried.add(it.key);
+                aimedPack = undefined;           // no dragover ever fired
+                const accepted = acceptDrop();
+                return {accepted, was, now: it.pack};
+            }));
+  assert.ok(after["accepted"], "the emoji still comes out of the tray");
+  assert.deepEqual(after["now"], after["was"]);
+});
+
+test("test_panel_curation.ADroppedEmojiJoinsThePackItWasAimedAt.test_a_drop_into_a_run_with_no_pack_number_invents_no_number", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  let after = (await page.evaluate(() => {
+                const it = ITEMS.find(x => x.included && !x.isLogo);
+                it.pack = 7;                     // a stamp from somewhere else
+                dragKey = it.key; dragSnap = snapshot(); aimedPack = undefined;
+                carried.clear(); carried.add(it.key);
+                aimAt(6); moveCarried(6);
+                const accepted = acceptDrop();
+                endDrag(true);
+                return {accepted, aimed: aimedPack, now: it.pack ?? null};
+            }));
+  assert.ok(after["accepted"]);
+  assert.equal(after["aimed"] ?? null, null, "an unnumbered run has no number to aim at");
+  assert.equal(after["now"] ?? null, null, "the emoji joins the run, it does not keep a number");
+});
+
+test("test_panel_curation.TheGridIsSelectableByClick.test_clicking_a_cards_face_selects_it_and_shift_takes_the_range", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  (await page.click("#selmode"));
+  (await page.locator(".card .thumb").nth(1).click());
+  assert.deepEqual((await page.evaluate("picked.size")), 1);
+  (await page.locator(".card .thumb").nth(4).click({modifiers: ["Shift"]}));
+  assert.deepEqual((await page.evaluate("picked.size")), 4, "Shift must take the whole inclusive range");
+});
+
+test("test_panel_curation.TheGridIsSelectableByClick.test_a_click_on_the_box_still_toggles_exactly_once", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  (await page.click("#selmode"));
+  (await page.locator(".card .pick").nth(2).click());
+  assert.deepEqual((await page.evaluate("picked.size")), 1);
+  (await page.locator(".card .pick").nth(2).click());
+  assert.deepEqual((await page.evaluate("picked.size")), 0, "and once back off again");
+});
+
+test("test_panel_curation.TheGridIsSelectableByClick.test_outside_selection_mode_a_click_still_toggles_what_ships", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  (await page.locator(".card .thumb").nth(0).click());
+  assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1, "an unticked emoji goes to the tray, as it always has");
+  assert.deepEqual((await page.evaluate("picked.size")), 0);
+});
+
+test("test_panel_curation.TheGridIsSelectableByClick.test_the_brand_logo_is_never_picked", async ({ panel }) => {
+  let page = (await open(panel, synth(6, {logo: true})));
+  (await page.click("#selmode"));
+  (await page.locator(".card.logo").click());
+  assert.deepEqual((await page.evaluate("picked.size")), 0);
+});
+
+async function ring(panel, page, selector) {
+  return (await page.evaluate(s => {const n = document.querySelector(s); return n ? {anim: getComputedStyle(n, '::before').animationName,  play: n.getAnimations({subtree: true}).map(a => a.playState)} : null}, selector));
+}
+
+test("test_panel_curation.APickedCardWearsAMovingRing.test_only_a_picked_card_carries_the_ring_and_it_runs", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  (await page.click("#selmode"));
+  (await page.locator(".card .thumb").nth(0).click());
+  let marked = (await ring(panel, page, ".card.picked"));
+  let plain = (await ring(panel, page, ".card:not(.picked)"));
+  assert.deepEqual(marked["anim"], "pickspin");
+  assert.ok(marked["play"].includes("running"), "a still ring is not a moving one");
+  assert.deepEqual(plain["anim"], "none");
+});
+
+test("test_panel_curation.APickedCardWearsAMovingRing.test_a_picked_held_card_carries_the_same_ring", async ({ panel }) => {
+  let page = (await open(panel, synth(12)));
+  (await page.click("#selmode"));
+  (await page.locator(".card .pick").nth(0).click());
+  (await page.click("#toHold"));
+  (await page.locator("#holdCards .hcard img").click());
+  (await page.waitForTimeout(150));
+  assert.deepEqual((await ring(panel, page, ".hcard.picked"))["anim"], "pickspin");
+});

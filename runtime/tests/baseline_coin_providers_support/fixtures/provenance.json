@@ -1,0 +1,41 @@
+{
+  "baseline_revision": "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede",
+  "source": "tests/_cli_fixtures.py",
+  "source_sha256": "25fccc28b1662f1b37e1505d9c359b598e642b5254184afc4daf751b5ef390cd",
+  "function": "_noise_png_bytes",
+  "function_sha256": "915036c193235a98aae077b8ec081b70e693c1c96fa5bff2df3a91753bc8a2ec",
+  "Pillow": "12.3.0",
+  "method": "offline original function AST, no project imports or network",
+  "cases": [
+    {
+      "key": "some-coin",
+      "file": "some-coin.png",
+      "sha256": "f5cd13a102777a68e4542f2424b14e508a47cd253bbce7e203282157f3bd6970"
+    },
+    {
+      "key": "some-coin-inverted",
+      "file": "some-coin-inverted.png",
+      "sha256": "c220e644377bcffb15d01df2ed8dbcca95bb70558e9ebb1cd586cca3d8281b74"
+    },
+    {
+      "key": "solana",
+      "file": "solana.png",
+      "sha256": "4aaa9516160c8227945ac76f40211481f17016987d43673b5c680ed4912a2931"
+    },
+    {
+      "key": "solama-the-llama",
+      "file": "solama-the-llama.png",
+      "sha256": "290c6bd241aedc6ff60b6d9b19593a11ad99d2beccd0771b1902400221580a90"
+    },
+    {
+      "key": "official-btc",
+      "file": "official-btc.png",
+      "sha256": "0da4bb5febe8a6bd0f4dda848ea75ba462add844a6c1408279925ff20fab5dfd"
+    },
+    {
+      "key": "stranger",
+      "file": "stranger.png",
+      "sha256": "b6bbd8886e6a341bef2bfb28d4df0acbad28628513ab64f2e8d4bf3aa3cd6060"
+    }
+  ]
+}

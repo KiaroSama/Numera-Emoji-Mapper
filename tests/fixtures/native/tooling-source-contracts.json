@@ -1,0 +1,1121 @@
+{
+  "schema": 1,
+  "baselineRevision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "sourceHashes": {
+    "scripts/local_environment.py": "b568feffc0c75e27b7f08cb69aaf546be4ce544427234379316b8f708b619766",
+    "scripts/prebuilt_manifest.py": "7db57eb04bbc3640a411533a3ceffc755c79b25b2312744953fde714a0c30d0c"
+  },
+  "sourceRuntime": "3.11.9",
+  "manifest": [
+    {
+      "name": "linux-valid",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "windows-valid",
+      "host": {
+        "system": "Windows",
+        "machine": "AMD64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "windows-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji.exe": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji.exe": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "mac-intel-valid",
+      "host": {
+        "system": "Darwin",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "macos-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "mac-arm-valid",
+      "host": {
+        "system": "Darwin",
+        "machine": "aarch64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "16.2"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "macos-arm64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "wrong-platform",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "macos-arm64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Download the package matching this operating system and CPU",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "unknown-system",
+      "host": {
+        "system": "Plan9",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Download the package matching this operating system and CPU",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "unknown-cpu",
+      "host": {
+        "system": "Linux",
+        "machine": "sparc",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Download the package matching this operating system and CPU",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "wrong-python",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          12
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "This offline package needs Python 3.11 (matching its bundled dependency wheels)",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "old-glibc",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.38",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "This Linux package needs glibc 2.39+ (Ubuntu 24.04+); Alpine is not supported",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "musl",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "musl",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "This Linux package needs glibc 2.39+ (Ubuntu 24.04+); Alpine is not supported",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "bad-glibc",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "unknown",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "This Linux package needs glibc 2.39+ (Ubuntu 24.04+); Alpine is not supported",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "old-mac",
+      "host": {
+        "system": "Darwin",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "14.7"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "macos-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "This macOS package needs macOS 15+",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "schema-refused",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 2,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Unsupported package manifest",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "empty-inventory",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {}
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Package manifest has no file inventory",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "absolute-member",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98",
+          "/escape": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "parent-member",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98",
+          "assets/../escape": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "backslash-member",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98",
+          "assets\\escape": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "colon-member",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98",
+          "assets/file:stream": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "missing-member",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": "assets/panel.html",
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: assets/panel.html",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "changed-member",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": "assets/panel.html",
+      "expected": {
+        "error": "Missing or changed package member: assets/panel.html",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "version-mismatch",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "3.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "wheel-path",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "subdir/application.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "wheel-absent",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "scripts/launch_prebuilt.py": "2002fe03a81013deb2834dd3e1d4fc47441e704f3b965d2a4b8ce923c490f47f",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "scripts/launch_prebuilt.py": "source launcher input fixture, not executable\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    },
+    {
+      "name": "incomplete-package",
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "python": [
+          3,
+          11
+        ],
+        "libc": "glibc",
+        "libc_version": "2.39",
+        "macos": "15.0"
+      },
+      "manifest": {
+        "schema": 1,
+        "platform": "linux-x64",
+        "version": "2.0.0",
+        "wheel": "numera_emoji_core-2.0.0-cp311-abi3-fixture.whl",
+        "files": {
+          "native/runtime/numera-emoji": "036d44eef329f9cc95e8944cb514520a1ce12860daaf1a4d4cf45c9722a65c2c",
+          "assets/panel.html": "3f5a0341ffe73b58a06877ff3f1465f5b7a3353e5f5385e4d5aba595e9b8a207",
+          "requirements.txt": "e2fe85b176ffadb6e1b3c300a6a40b327305d7d53b5cd3861b250ed1c05c3075",
+          "pyproject.toml": "c6043e72dc6437229a94b9da5428458e3c83f08e523a6b6776c484c3e1c05bce",
+          "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "b843a7005022b13bde37a240a41f0c5d0402c28c2b293ba0eca93c3c8c73bf98"
+        }
+      },
+      "payload": {
+        "native/runtime/numera-emoji": "executable fixture",
+        "assets/panel.html": "public asset é",
+        "requirements.txt": "Pillow==12.2.0\n",
+        "pyproject.toml": "[project]\nversion = \"2.0.0\"\n",
+        "wheels/numera_emoji_core-2.0.0-cp311-abi3-fixture.whl": "wheel fixture"
+      },
+      "missing": null,
+      "changed": null,
+      "expected": {
+        "error": "Missing or changed package member: requirements.txt",
+        "error_type": "ValueError"
+      }
+    }
+  ],
+  "environment": [
+    {
+      "name": "runtime",
+      "build": false,
+      "original": {
+        "TEMP": "/outside",
+        "PIP_CACHE_DIR": "/outside",
+        "KEEP": "unchanged"
+      },
+      "expected": {
+        "TEMP": "$ROOT/logs/tmp",
+        "PIP_CACHE_DIR": "$ROOT/.cache/pip",
+        "KEEP": "unchanged",
+        "TMP": "$ROOT/logs/tmp",
+        "TMPDIR": "$ROOT/logs/tmp",
+        "XDG_CACHE_HOME": "$ROOT/.cache",
+        "PYTHONPYCACHEPREFIX": "$ROOT/.cache/pycache",
+        "PYTHONUTF8": "1",
+        "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+      },
+      "original_after": {
+        "TEMP": "/outside",
+        "PIP_CACHE_DIR": "/outside",
+        "KEEP": "unchanged"
+      },
+      "directories": [
+        ".cache",
+        ".cache/pip",
+        ".cache/pycache",
+        "logs",
+        "logs/tmp"
+      ]
+    },
+    {
+      "name": "build",
+      "build": true,
+      "original": {
+        "TEMP": "/outside",
+        "PIP_CACHE_DIR": "/outside",
+        "KEEP": "unchanged"
+      },
+      "expected": {
+        "TEMP": "$ROOT/logs/tmp",
+        "PIP_CACHE_DIR": "$ROOT/.cache/pip",
+        "KEEP": "unchanged",
+        "TMP": "$ROOT/logs/tmp",
+        "TMPDIR": "$ROOT/logs/tmp",
+        "XDG_CACHE_HOME": "$ROOT/.cache",
+        "PYTHONPYCACHEPREFIX": "$ROOT/.cache/pycache",
+        "CARGO_HOME": "$ROOT/.cache/cargo",
+        "CARGO_TARGET_DIR": "$ROOT/native/target",
+        "RUSTUP_HOME": "$ROOT/.cache/rustup",
+        "CCACHE_DIR": "$ROOT/.cache/ccache",
+        "SCCACHE_DIR": "$ROOT/.cache/sccache",
+        "HOMEBREW_CACHE": "$ROOT/.cache/homebrew",
+        "HOMEBREW_TEMP": "$ROOT/logs/tmp",
+        "npm_config_cache": "$ROOT/.cache/npm",
+        "PYTHONUTF8": "1",
+        "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+      },
+      "original_after": {
+        "TEMP": "/outside",
+        "PIP_CACHE_DIR": "/outside",
+        "KEEP": "unchanged"
+      },
+      "directories": [
+        ".cache",
+        ".cache/cargo",
+        ".cache/ccache",
+        ".cache/homebrew",
+        ".cache/npm",
+        ".cache/pip",
+        ".cache/pycache",
+        ".cache/rustup",
+        ".cache/sccache",
+        "logs",
+        "logs/tmp",
+        "native",
+        "native/target"
+      ]
+    }
+  ],
+  "confined": [
+    {
+      "relative": "logs/tmp",
+      "expected": {
+        "path": "$ROOT/logs/tmp"
+      }
+    },
+    {
+      "relative": "../outside",
+      "expected": {
+        "error": "Project-local storage escaped its root"
+      }
+    },
+    {
+      "relative": "/outside",
+      "expected": {
+        "error": "Project-local storage escaped its root"
+      }
+    },
+    {
+      "relative": "logs/../../outside",
+      "expected": {
+        "error": "Project-local storage escaped its root"
+      }
+    }
+  ]
+}

@@ -1,0 +1,462 @@
+{
+  "source_runtime": "CPython 3.11.9",
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "boundary": "parse-only assertion spans and control contexts; no runtime collection or case equivalence",
+  "cases": [
+    {
+      "path": "tests/test_native_state.py",
+      "sha256": "f2ffe4070d4002a3dfc9aec2a0c052b4be30b019b8eb06d0a42f1db4c6f76304",
+      "methods": [
+        {
+          "class": "NativeIntent",
+          "method": "test_intent_matches_pinned_source",
+          "assertions": [
+            {
+              "kind": "assertTrue",
+              "source": "self.assertTrue(data[\"cases\"])",
+              "line": 16,
+              "column": 8,
+              "end_line": 16,
+              "end_column": 38
+            },
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(json.loads(result), case[\"expected\"])",
+              "line": 27,
+              "column": 20,
+              "end_line": 27,
+              "end_column": 74
+            },
+            {
+              "kind": "assertRaisesRegex",
+              "source": "self.assertRaisesRegex(ValueError, case[\"error\"])",
+              "line": 23,
+              "column": 25,
+              "end_line": 23,
+              "end_column": 74
+            }
+          ],
+          "contexts": [
+            {
+              "kind": "For",
+              "line": 17,
+              "end_line": 27,
+              "expressions": [
+                "case",
+                "data[\"cases\"]"
+              ]
+            },
+            {
+              "kind": "With",
+              "line": 18,
+              "end_line": 27,
+              "expressions": [
+                "self.subTest(name=case[\"name\"])"
+              ]
+            },
+            {
+              "kind": "If",
+              "line": 22,
+              "end_line": 27,
+              "expressions": [
+                "\"error\" in case"
+              ]
+            },
+            {
+              "kind": "With",
+              "line": 23,
+              "end_line": 24,
+              "expressions": [
+                "self.assertRaisesRegex(ValueError, case[\"error\"])"
+              ]
+            }
+          ]
+        },
+        {
+          "class": "NativeIntent",
+          "method": "test_fixture_drift",
+          "assertions": [
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(json.loads(FIXTURE.read_text(encoding=\"utf-8\")), fixtures())",
+              "line": 30,
+              "column": 8,
+              "end_line": 30,
+              "end_column": 85
+            },
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(json.loads(FIXTURE.with_name(\"resume.json\").read_text(encoding=\"utf-8\")),\n                         resume_fixtures())",
+              "line": 31,
+              "column": 8,
+              "end_line": 32,
+              "end_column": 43
+            }
+          ],
+          "contexts": []
+        },
+        {
+          "class": "NativeIntent",
+          "method": "test_collection_resume_matches_source",
+          "assertions": [
+            {
+              "kind": "assertTrue",
+              "source": "self.assertTrue(data[\"cases\"])",
+              "line": 40,
+              "column": 8,
+              "end_line": 40,
+              "end_column": 38
+            },
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(json.loads(_native.resume_json(request)), case[\"expected\"])",
+              "line": 49,
+              "column": 20,
+              "end_line": 49,
+              "end_column": 96
+            },
+            {
+              "kind": "assertRaises",
+              "source": "self.assertRaises(ValueError)",
+              "line": 46,
+              "column": 25,
+              "end_line": 46,
+              "end_column": 54
+            }
+          ],
+          "contexts": [
+            {
+              "kind": "For",
+              "line": 41,
+              "end_line": 49,
+              "expressions": [
+                "case",
+                "data[\"cases\"]"
+              ]
+            },
+            {
+              "kind": "With",
+              "line": 42,
+              "end_line": 49,
+              "expressions": [
+                "self.subTest(name=case[\"name\"])"
+              ]
+            },
+            {
+              "kind": "If",
+              "line": 45,
+              "end_line": 49,
+              "expressions": [
+                "\"error\" in case"
+              ]
+            },
+            {
+              "kind": "With",
+              "line": 46,
+              "end_line": 47,
+              "expressions": [
+                "self.assertRaises(ValueError)"
+              ]
+            }
+          ]
+        },
+        {
+          "class": "NativeIntent",
+          "method": "test_invalid_targets_are_refused",
+          "assertions": [
+            {
+              "kind": "assertRaises",
+              "source": "self.assertRaises(ValueError)",
+              "line": 55,
+              "column": 44,
+              "end_line": 55,
+              "end_column": 73
+            }
+          ],
+          "contexts": [
+            {
+              "kind": "For",
+              "line": 54,
+              "end_line": 57,
+              "expressions": [
+                "value",
+                "(True, False, 0, -1, 1.5, \"1\", None)"
+              ]
+            },
+            {
+              "kind": "With",
+              "line": 55,
+              "end_line": 57,
+              "expressions": [
+                "self.subTest(value=value)",
+                "self.assertRaises(ValueError)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tests/test_ci_coverage.py",
+      "sha256": "0fab32c0c5979cd44744476022f957bf17cc867417600e8ddbe991f41dc5b4c4",
+      "methods": [
+        {
+          "class": "EveryBrowserSuiteIsClaimedByCi",
+          "method": "setUp",
+          "assertions": [],
+          "contexts": [
+            {
+              "kind": "If",
+              "line": 146,
+              "end_line": 147,
+              "expressions": [
+                "not WORKFLOW.is_file()"
+              ]
+            }
+          ]
+        },
+        {
+          "class": "EveryBrowserSuiteIsClaimedByCi",
+          "method": "test_the_scan_finds_the_browser_suites",
+          "assertions": [
+            {
+              "kind": "assertGreaterEqual",
+              "source": "self.assertGreaterEqual(len(_browser_suites()), 2,\n                                \"the browser-suite scan stopped finding them\")",
+              "line": 152,
+              "column": 8,
+              "end_line": 153,
+              "end_column": 78
+            }
+          ],
+          "contexts": []
+        },
+        {
+          "class": "EveryBrowserSuiteIsClaimedByCi",
+          "method": "test_each_one_is_named_in_the_browser_job",
+          "assertions": [
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(missing, [],\n                         f\"browser suite(s) run nowhere in CI: {missing}. Add \"\n                         f\"them to the `Panel browser tests` step in ci.yml.\")",
+              "line": 158,
+              "column": 8,
+              "end_line": 160,
+              "end_column": 78
+            }
+          ],
+          "contexts": []
+        },
+        {
+          "class": "EveryBrowserSuiteIsClaimedByCi",
+          "method": "test_the_matrix_opts_out_explicitly",
+          "assertions": [
+            {
+              "kind": "assertIn",
+              "source": "self.assertIn(\"NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS\", self.workflow)",
+              "line": 170,
+              "column": 8,
+              "end_line": 170,
+              "end_column": 76
+            }
+          ],
+          "contexts": []
+        },
+        {
+          "class": "EveryBrowserSuiteIsClaimedByCi",
+          "method": "test_no_browser_suite_is_run_twice",
+          "assertions": [
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(self.workflow.count(module), 1,\n                             f\"{module} is named more than once in CI\")",
+              "line": 175,
+              "column": 12,
+              "end_line": 176,
+              "end_column": 71
+            }
+          ],
+          "contexts": [
+            {
+              "kind": "For",
+              "line": 174,
+              "end_line": 176,
+              "expressions": [
+                "module",
+                "_browser_suites()"
+              ]
+            }
+          ]
+        },
+        {
+          "class": "EveryNativeWindowsSuiteIsClaimedByCi",
+          "method": "setUp",
+          "assertions": [],
+          "contexts": [
+            {
+              "kind": "If",
+              "line": 185,
+              "end_line": 186,
+              "expressions": [
+                "not WORKFLOW.is_file()"
+              ]
+            }
+          ]
+        },
+        {
+          "class": "EveryNativeWindowsSuiteIsClaimedByCi",
+          "method": "test_the_job_exists",
+          "assertions": [
+            {
+              "kind": "assertTrue",
+              "source": "self.assertTrue(self.step, \"the windows-safety job is gone from ci.yml\")",
+              "line": 190,
+              "column": 8,
+              "end_line": 190,
+              "end_column": 80
+            }
+          ],
+          "contexts": []
+        },
+        {
+          "class": "EveryNativeWindowsSuiteIsClaimedByCi",
+          "method": "test_the_scan_finds_the_marked_suites",
+          "assertions": [
+            {
+              "kind": "assertGreaterEqual",
+              "source": "self.assertGreaterEqual(len(_windows_suites()), 5,\n                                \"the native-Windows marker scan stopped finding them\")",
+              "line": 194,
+              "column": 8,
+              "end_line": 195,
+              "end_column": 86
+            }
+          ],
+          "contexts": []
+        },
+        {
+          "class": "EveryNativeWindowsSuiteIsClaimedByCi",
+          "method": "test_each_marked_suite_is_named_in_the_job",
+          "assertions": [
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(missing, [],\n                         f\"native-Windows suite(s) run nowhere on Windows: {missing}. \"\n                         f\"Add them to the windows-safety step in ci.yml.\")",
+              "line": 202,
+              "column": 8,
+              "end_line": 204,
+              "end_column": 75
+            }
+          ],
+          "contexts": []
+        },
+        {
+          "class": "EveryNativeWindowsSuiteIsClaimedByCi",
+          "method": "test_a_windows_only_skip_needs_the_marker",
+          "assertions": [
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(unmarked, [],\n                         f\"these skip unless on Windows but declare no \"\n                         f\"{WINDOWS_MARKER}, so no CI job runs that branch: {unmarked}\")",
+              "line": 211,
+              "column": 8,
+              "end_line": 213,
+              "end_column": 88
+            }
+          ],
+          "contexts": []
+        },
+        {
+          "class": "EveryNativeWindowsSuiteIsClaimedByCi",
+          "method": "test_every_name_in_the_job_still_claims_windows",
+          "assertions": [
+            {
+              "kind": "assertTrue",
+              "source": "self.assertTrue(named, \"the windows-safety step names no suites\")",
+              "line": 220,
+              "column": 8,
+              "end_line": 220,
+              "end_column": 73
+            },
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(stale, [],\n                         f\"windows-safety names suite(s) that do not declare \"\n                         f\"{WINDOWS_MARKER}: {stale}\")",
+              "line": 222,
+              "column": 8,
+              "end_line": 224,
+              "end_column": 54
+            }
+          ],
+          "contexts": []
+        }
+      ]
+    },
+    {
+      "path": "tests/test_assertion_fixture.py",
+      "source": "class Case:\n def test_unicode(self):\n  value = '\ud83e\ude99'\n  assert value == '\ud83e\ude99', 'preserve Unicode byte columns'\n  for item in (0, 1):\n   with self.subTest(item=item), self.assertRaises(ValueError):\n    self.assertEqual(\n        item, 1\n    )\n  if value:\n   self.fail('explicit failure')\n",
+      "sha256": "4f25d232a94e58cbbea811b762475b173d9d0ef461d3b0484ddceafaacc23612",
+      "methods": [
+        {
+          "class": "Case",
+          "method": "test_unicode",
+          "assertions": [
+            {
+              "kind": "assert",
+              "source": "assert value == '\ud83e\ude99', 'preserve Unicode byte columns'",
+              "line": 4,
+              "column": 2,
+              "end_line": 4,
+              "end_column": 57
+            },
+            {
+              "kind": "fail",
+              "source": "self.fail('explicit failure')",
+              "line": 11,
+              "column": 3,
+              "end_line": 11,
+              "end_column": 32
+            },
+            {
+              "kind": "assertRaises",
+              "source": "self.assertRaises(ValueError)",
+              "line": 6,
+              "column": 33,
+              "end_line": 6,
+              "end_column": 62
+            },
+            {
+              "kind": "assertEqual",
+              "source": "self.assertEqual(\n        item, 1\n    )",
+              "line": 7,
+              "column": 4,
+              "end_line": 9,
+              "end_column": 5
+            }
+          ],
+          "contexts": [
+            {
+              "kind": "For",
+              "line": 5,
+              "end_line": 9,
+              "expressions": [
+                "item",
+                "(0, 1)"
+              ]
+            },
+            {
+              "kind": "If",
+              "line": 10,
+              "end_line": 11,
+              "expressions": [
+                "value"
+              ]
+            },
+            {
+              "kind": "With",
+              "line": 6,
+              "end_line": 9,
+              "expressions": [
+                "self.subTest(item=item)",
+                "self.assertRaises(ValueError)"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,233 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "46985e570f4d9e7ee8c9ae0d326f0517033a3a3822f3b9d594ca07a30a079f47",
+  "cases": [
+    {
+      "text": "## A \u2014 Bitcoin\n ticker: BTC\npremium-id: \n",
+      "have": [],
+      "expected": [
+        [
+          "Bitcoin",
+          "btc"
+        ]
+      ]
+    },
+    {
+      "text": "## A \u2014 Bitcoin\n ticker: BTC\npremium-id: \n",
+      "have": [
+        "btc"
+      ],
+      "expected": []
+    },
+    {
+      "text": "## A---Name\nticker: a\n## B - Other\nticker: b\n",
+      "have": [],
+      "expected": [
+        [
+          "Name",
+          "a"
+        ],
+        [
+          "Other",
+          "b"
+        ]
+      ]
+    },
+    {
+      "text": "## A---Name\nticker: a\n## B - Other\nticker: b\n",
+      "have": [
+        "btc"
+      ],
+      "expected": [
+        [
+          "Name",
+          "a"
+        ],
+        [
+          "Other",
+          "b"
+        ]
+      ]
+    },
+    {
+      "text": "## Name Without Separator\nticker: no\n",
+      "have": [],
+      "expected": []
+    },
+    {
+      "text": "## Name Without Separator\nticker: no\n",
+      "have": [
+        "btc"
+      ],
+      "expected": []
+    },
+    {
+      "text": "## H - Name\n\n  ticker: BTC\n",
+      "have": [],
+      "expected": [
+        [
+          "Name",
+          "btc"
+        ]
+      ]
+    },
+    {
+      "text": "## H - Name\n\n  ticker: BTC\n",
+      "have": [
+        "btc"
+      ],
+      "expected": []
+    },
+    {
+      "text": "### H - Name\nticker: btc\n",
+      "have": [],
+      "expected": [
+        [
+          "Name",
+          "btc"
+        ]
+      ]
+    },
+    {
+      "text": "### H - Name\nticker: btc\n",
+      "have": [
+        "btc"
+      ],
+      "expected": []
+    },
+    {
+      "text": "## H \u2014 A (Token)\r\n\tticker: ABC\r\n",
+      "have": [],
+      "expected": [
+        [
+          "A (Token)",
+          "abc"
+        ]
+      ]
+    },
+    {
+      "text": "## H \u2014 A (Token)\r\n\tticker: ABC\r\n",
+      "have": [
+        "btc"
+      ],
+      "expected": [
+        [
+          "A (Token)",
+          "abc"
+        ]
+      ]
+    },
+    {
+      "text": "## H -\n ticker: x\n",
+      "have": [],
+      "expected": []
+    },
+    {
+      "text": "## H -\n ticker: x\n",
+      "have": [
+        "btc"
+      ],
+      "expected": []
+    },
+    {
+      "text": "## H - Name\nticker: a trailing words\n",
+      "have": [],
+      "expected": [
+        [
+          "Name",
+          "a"
+        ]
+      ]
+    },
+    {
+      "text": "## H - Name\nticker: a trailing words\n",
+      "have": [
+        "btc"
+      ],
+      "expected": [
+        [
+          "Name",
+          "a"
+        ]
+      ]
+    },
+    {
+      "text": "prefix ## H - Name\nticker: a\n",
+      "have": [],
+      "expected": [
+        [
+          "Name",
+          "a"
+        ]
+      ]
+    },
+    {
+      "text": "prefix ## H - Name\nticker: a\n",
+      "have": [
+        "btc"
+      ],
+      "expected": [
+        [
+          "Name",
+          "a"
+        ]
+      ]
+    },
+    {
+      "text": "## H - Name\nticker: \n ## Next \u2014 Second\nticker: b\n",
+      "have": [],
+      "expected": [
+        [
+          "Name",
+          "##"
+        ]
+      ]
+    },
+    {
+      "text": "## H - Name\nticker: \n ## Next \u2014 Second\nticker: b\n",
+      "have": [
+        "btc"
+      ],
+      "expected": [
+        [
+          "Name",
+          "##"
+        ]
+      ]
+    },
+    {
+      "text": "## H - Name\nTICKER: a\n",
+      "have": [],
+      "expected": []
+    },
+    {
+      "text": "## H - Name\nTICKER: a\n",
+      "have": [
+        "btc"
+      ],
+      "expected": []
+    },
+    {
+      "text": "## H - Name\n\u001cticker: a\n",
+      "have": [],
+      "expected": [
+        [
+          "Name",
+          "a"
+        ]
+      ]
+    },
+    {
+      "text": "## H - Name\n\u001cticker: a\n",
+      "have": [
+        "btc"
+      ],
+      "expected": [
+        [
+          "Name",
+          "a"
+        ]
+      ]
+    }
+  ]
+}

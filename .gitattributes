@@ -1,9 +1,6 @@
 # Normalize line endings: keep LF in the repository for text files.
 * text=auto eol=lf
 
-# Windows-only scripts use CRLF on checkout.
-*.ps1 text eol=crlf
-
 # Treat common binary/image formats as binary (no diff/merge mangling).
 *.png binary
 *.webp binary
@@ -11,8 +8,16 @@
 *.jpg binary
 *.jpeg binary
 *.ico binary
+*.tgs binary
+*.webm binary
 
 # Data files
 *.csv text
 *.json text
 *.md text
+
+# Pinned third-party renderer; first-party production code is Rust.
+runtime/vendor/** linguist-vendored -whitespace
+
+# Generated upstream license quotations retain their original text verbatim.
+THIRD_PARTY_NOTICES.md -whitespace

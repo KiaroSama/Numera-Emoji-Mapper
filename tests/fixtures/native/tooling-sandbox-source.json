@@ -1,0 +1,125 @@
+{
+  "baselineRevision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "sourceHash": "a37b7609521a78ebca9a6d0a2d1dae7b70fccce2fa50af8d5a16f2d60dfef2ae",
+  "sourceRuntime": "3.11.9",
+  "template": "# comment=value\nCUSTOM_SETTING=\nGENERAL_BOT_TOKEN=\n",
+  "original": {
+    "PATH": "synthetic",
+    "SYSTEMROOT": "synthetic",
+    "KEEP": "synthetic",
+    "CUSTOM_SETTING": "synthetic",
+    "GENERAL_BOT_TOKEN": "synthetic",
+    "EXPORTED_TOKEN": "synthetic",
+    "MISC_SECRET": "synthetic",
+    "OWNER_ID": "synthetic",
+    "PRIVATE_KEY": "synthetic",
+    "PASSWORD_EXTRA": "synthetic"
+  },
+  "scrubbed": {
+    "PATH": "synthetic",
+    "SYSTEMROOT": "synthetic",
+    "KEEP": "synthetic",
+    "NUMERA_EMOJI_MAPPER_NO_DOTENV": "1"
+  },
+  "arguments": [
+    {
+      "input": [],
+      "port": 9451,
+      "all": false,
+      "with_pack": [],
+      "bot_username": "",
+      "expected": [
+        "--data-dir",
+        "$CLONE",
+        "--port",
+        "9451",
+        "--no-open"
+      ]
+    },
+    {
+      "input": [
+        "--all"
+      ],
+      "port": 9451,
+      "all": true,
+      "with_pack": [],
+      "bot_username": "",
+      "expected": [
+        "--data-dir",
+        "$CLONE",
+        "--port",
+        "9451",
+        "--no-open",
+        "--all"
+      ]
+    },
+    {
+      "input": [
+        "--with-pack",
+        "2",
+        "--with-pack",
+        "3",
+        "--bot-username",
+        "YourEmojiBot"
+      ],
+      "port": 9451,
+      "all": false,
+      "with_pack": [
+        2,
+        3
+      ],
+      "bot_username": "YourEmojiBot",
+      "expected": [
+        "--data-dir",
+        "$CLONE",
+        "--port",
+        "9451",
+        "--no-open",
+        "--with-pack",
+        "2",
+        "--with-pack",
+        "3",
+        "--bot-username",
+        "YourEmojiBot"
+      ]
+    },
+    {
+      "input": [
+        "--port",
+        "8766"
+      ],
+      "port": 8766,
+      "all": false,
+      "with_pack": [],
+      "bot_username": "",
+      "expected": [
+        "--data-dir",
+        "$CLONE",
+        "--port",
+        "8766",
+        "--no-open"
+      ]
+    },
+    {
+      "input": [
+        "--with-pack",
+        "-1"
+      ],
+      "port": 9451,
+      "all": false,
+      "with_pack": [
+        -1
+      ],
+      "bot_username": "",
+      "expected": [
+        "--data-dir",
+        "$CLONE",
+        "--port",
+        "9451",
+        "--no-open",
+        "--with-pack",
+        "-1"
+      ]
+    }
+  ]
+}

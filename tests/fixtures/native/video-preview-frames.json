@@ -1,0 +1,90 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/video_decode.py": "bab9579240a23bb8ee59c1a66e496586ca881398bb4d82e956e2fb6c2b3ff13a",
+    "emojikit/media_bridge.py": "8d7f86244ed498b32381ba78a6321622aa28d9b72c1a1adba9a48c39565dd5b7"
+  },
+  "source": "unchanged original emojikit.media_bridge._render_preview; encoded bytes first required to match video-operations.json",
+  "Pillow": "12.3.0",
+  "libwebp": "1.6.0",
+  "cases": [
+    {
+      "input": "tests/fixtures/native/video-codec/alpha.webm",
+      "still": true,
+      "size": 52,
+      "fps": 15,
+      "bytes": 96,
+      "webp_sha256": "d3620c82d9d3c6de6bfac7b9d0b3685a51bf1a2f70df7c8a1bf91d0a86d0ed1c",
+      "input_sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "expected": {
+        "size": [
+          52,
+          52
+        ],
+        "mode": "RGBA",
+        "loop": 1,
+        "frames": [
+          {
+            "duration_ms": 0,
+            "rgba_sha256": "1ec49d90a4e1c99971acc8e3a2775cef38c3a07506be21fbf6eb3e42fc38ead9"
+          }
+        ]
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-codec/alpha.webm",
+      "still": false,
+      "size": 104,
+      "fps": 15,
+      "bytes": 156,
+      "webp_sha256": "40ba5536e2752704075665ebed5b0ad2176ab418ebe4111c7863dcaa53567f06",
+      "input_sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "expected": {
+        "size": [
+          104,
+          104
+        ],
+        "mode": "RGBA",
+        "loop": 1,
+        "frames": [
+          {
+            "duration_ms": 0,
+            "rgba_sha256": "c2bba8e91d77bf1614c5818ee7ed347d14b73c2f924ddff00cc77f204d032eb4"
+          }
+        ]
+      }
+    },
+    {
+      "input": "tests/fixtures/native/video-fingerprint/fast30.webm",
+      "still": false,
+      "size": 72,
+      "fps": 15,
+      "bytes": 1040,
+      "webp_sha256": "c544d769fcbb149058672bbbd834fa6a2efbeee083c890bc5d10390e7d5978fd",
+      "input_sha256": "9bbe7eb2e975eb1f325a733fba5e5f97918e3423bb19e5e10d25942aff78ef57",
+      "expected": {
+        "size": [
+          72,
+          72
+        ],
+        "mode": "RGBA",
+        "loop": 0,
+        "frames": [
+          {
+            "duration_ms": 268,
+            "rgba_sha256": "5aafff44ebc5f26ef2cd0c7db09f9af1af76e4fea735f303c614c0f43c999b06"
+          },
+          {
+            "duration_ms": 67,
+            "rgba_sha256": "28c027fb9f2d884a54f12db3231475c75a0071cc40d1efb4ae98a8550b5e512f"
+          },
+          {
+            "duration_ms": 67,
+            "rgba_sha256": "2a1dd55bc29af5f31bc4d3471996c8802bd2df54790b86900864263a95e538af"
+          }
+        ]
+      }
+    }
+  ]
+}

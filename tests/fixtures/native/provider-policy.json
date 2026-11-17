@@ -1,0 +1,241 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "coins/_paprika_api.py": "34742583025adaad3c7513ce0031c13d32759e29cfa8076609150a0badeb1acc",
+    "coins/fetch_cmc.py": "74a5a49bc7bbe91d3718d27886ce97f55d3479c3cd78d89a8a711389d1bbe5e9"
+  },
+  "classifications": [
+    {
+      "candidates": [],
+      "name": "Bitcoin",
+      "ticker": "btc",
+      "expected": [
+        null,
+        "no-results"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "id": "a",
+          "name": "Other",
+          "symbol": "BTC"
+        },
+        {
+          "id": "b",
+          "name": "Bitcoin",
+          "symbol": "B"
+        }
+      ],
+      "name": "Bitcoin",
+      "ticker": "btc",
+      "expected": [
+        "b",
+        "name-exact"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "id": "a",
+          "name": "Unknown",
+          "symbol": "AVAX"
+        }
+      ],
+      "name": "Avalanche",
+      "ticker": "avaxc",
+      "expected": [
+        "a",
+        "symbol"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "id": "a",
+          "name": "Bitcoin Token",
+          "symbol": "OTHER"
+        }
+      ],
+      "name": "Bitcoin",
+      "ticker": "btc",
+      "expected": [
+        null,
+        "partial:a"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "id": "a",
+          "name": "Other",
+          "symbol": "X"
+        }
+      ],
+      "name": "Bitcoin",
+      "ticker": "btc",
+      "expected": [
+        null,
+        "no-confident-match(top=a)"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "id": "a",
+          "name": "",
+          "symbol": "X"
+        }
+      ],
+      "name": "",
+      "ticker": "btc",
+      "expected": [
+        "a",
+        "name-exact"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "id": "a",
+          "name": "Different",
+          "symbol": "btc"
+        },
+        {
+          "id": "b",
+          "name": "Different",
+          "symbol": "btc"
+        }
+      ],
+      "name": "Bitcoin",
+      "ticker": "btc",
+      "expected": [
+        "a",
+        "symbol"
+      ]
+    }
+  ],
+  "statuses": [
+    {
+      "provider": "paprika",
+      "status": null,
+      "expected": {
+        "kind": "transient"
+      }
+    },
+    {
+      "provider": "paprika",
+      "status": 200,
+      "expected": {
+        "kind": "payload",
+        "value": {
+          "ok": "payload"
+        }
+      }
+    },
+    {
+      "provider": "paprika",
+      "status": 400,
+      "expected": {
+        "kind": "payload",
+        "value": {
+          "ok": "payload"
+        }
+      }
+    },
+    {
+      "provider": "paprika",
+      "status": 401,
+      "expected": {
+        "kind": "payload",
+        "value": {
+          "ok": "payload"
+        }
+      }
+    },
+    {
+      "provider": "paprika",
+      "status": 402,
+      "expected": {
+        "kind": "quota"
+      }
+    },
+    {
+      "provider": "paprika",
+      "status": 403,
+      "expected": {
+        "kind": "payload",
+        "value": {
+          "ok": "payload"
+        }
+      }
+    },
+    {
+      "provider": "paprika",
+      "status": 404,
+      "expected": {
+        "kind": "payload",
+        "value": {
+          "ok": "payload"
+        }
+      }
+    },
+    {
+      "provider": "cmc",
+      "status": null,
+      "expected": {
+        "kind": "transient"
+      }
+    },
+    {
+      "provider": "cmc",
+      "status": 200,
+      "expected": {
+        "kind": "payload",
+        "value": {
+          "ok": "payload"
+        }
+      }
+    },
+    {
+      "provider": "cmc",
+      "status": 400,
+      "expected": {
+        "kind": "missing"
+      }
+    },
+    {
+      "provider": "cmc",
+      "status": 401,
+      "expected": {
+        "kind": "stop",
+        "message": "CMC_API_KEY rejected by CoinMarketCap (HTTP 401)"
+      }
+    },
+    {
+      "provider": "cmc",
+      "status": 402,
+      "expected": {
+        "kind": "payload",
+        "value": {
+          "ok": "payload"
+        }
+      }
+    },
+    {
+      "provider": "cmc",
+      "status": 403,
+      "expected": {
+        "kind": "stop",
+        "message": "CMC_API_KEY rejected by CoinMarketCap (HTTP 403)"
+      }
+    },
+    {
+      "provider": "cmc",
+      "status": 404,
+      "expected": {
+        "kind": "missing"
+      }
+    }
+  ]
+}

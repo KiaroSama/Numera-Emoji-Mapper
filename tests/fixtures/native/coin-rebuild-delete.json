@@ -1,0 +1,284 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": "17771c6245dedf36d6c66deba99bb6405a624505962f74251f7f5a7f7e4eb54f",
+  "cases": [
+    {
+      "input": {
+        "name": "no old state",
+        "missing": true
+      },
+      "state": {},
+      "expected": {
+        "state": {},
+        "events": [],
+        "output": "",
+        "error": null,
+        "done": true
+      }
+    },
+    {
+      "input": {
+        "name": "all confirmed gone",
+        "statuses": {
+          "old1": "missing",
+          "old2": "missing"
+        }
+      },
+      "state": {},
+      "expected": {
+        "state": {
+          "deleted_old_packs": [
+            "old1",
+            "old2"
+          ]
+        },
+        "events": [
+          [
+            "delete",
+            "old1"
+          ],
+          [
+            "probe",
+            "old1"
+          ],
+          [
+            "save",
+            {
+              "deleted_old_packs": [
+                "old1"
+              ]
+            }
+          ],
+          [
+            "wait",
+            0.5
+          ],
+          [
+            "delete",
+            "old2"
+          ],
+          [
+            "probe",
+            "old2"
+          ],
+          [
+            "save",
+            {
+              "deleted_old_packs": [
+                "old1",
+                "old2"
+              ]
+            }
+          ],
+          [
+            "wait",
+            0.5
+          ]
+        ],
+        "output": "  deleted old pack old1\n  deleted old pack old2\n",
+        "error": null,
+        "done": true
+      }
+    },
+    {
+      "input": {
+        "name": "first gone second survives",
+        "statuses": {
+          "old1": "missing",
+          "old2": "exists"
+        }
+      },
+      "state": {},
+      "expected": {
+        "state": {
+          "deleted_old_packs": [
+            "old1"
+          ]
+        },
+        "events": [
+          [
+            "delete",
+            "old1"
+          ],
+          [
+            "probe",
+            "old1"
+          ],
+          [
+            "save",
+            {
+              "deleted_old_packs": [
+                "old1"
+              ]
+            }
+          ],
+          [
+            "wait",
+            0.5
+          ],
+          [
+            "delete",
+            "old2"
+          ],
+          [
+            "probe",
+            "old2"
+          ],
+          [
+            "wait",
+            0.5
+          ]
+        ],
+        "output": "  deleted old pack old1\n  old pack old2 still exists after delete\n",
+        "error": null,
+        "done": false
+      }
+    },
+    {
+      "input": {
+        "name": "unknown stops later delete",
+        "statuses": {
+          "old1": "unknown",
+          "old2": "missing"
+        }
+      },
+      "state": {},
+      "expected": {
+        "state": {
+          "deleted_old_packs": []
+        },
+        "events": [
+          [
+            "delete",
+            "old1"
+          ],
+          [
+            "probe",
+            "old1"
+          ]
+        ],
+        "output": "",
+        "error": "cannot confirm old pack old1 was deleted",
+        "done": null
+      }
+    },
+    {
+      "input": {
+        "name": "error answer but gone",
+        "statuses": {
+          "old1": "missing",
+          "old2": "missing"
+        },
+        "errors": [
+          "old1"
+        ]
+      },
+      "state": {},
+      "expected": {
+        "state": {
+          "deleted_old_packs": [
+            "old1",
+            "old2"
+          ]
+        },
+        "events": [
+          [
+            "delete",
+            "old1"
+          ],
+          [
+            "probe",
+            "old1"
+          ],
+          [
+            "save",
+            {
+              "deleted_old_packs": [
+                "old1"
+              ]
+            }
+          ],
+          [
+            "wait",
+            0.5
+          ],
+          [
+            "delete",
+            "old2"
+          ],
+          [
+            "probe",
+            "old2"
+          ],
+          [
+            "save",
+            {
+              "deleted_old_packs": [
+                "old1",
+                "old2"
+              ]
+            }
+          ],
+          [
+            "wait",
+            0.5
+          ]
+        ],
+        "output": "  (old pack old1: controlled delete refusal)\n  deleted old pack old1\n  deleted old pack old2\n",
+        "error": null,
+        "done": true
+      }
+    },
+    {
+      "input": {
+        "name": "confirmed completion skips deletion",
+        "statuses": {
+          "old1": "exists",
+          "old2": "missing"
+        },
+        "gone": [
+          "old1"
+        ]
+      },
+      "state": {
+        "deleted_old_packs": [
+          "old1"
+        ]
+      },
+      "expected": {
+        "state": {
+          "deleted_old_packs": [
+            "old1",
+            "old2"
+          ]
+        },
+        "events": [
+          [
+            "delete",
+            "old2"
+          ],
+          [
+            "probe",
+            "old2"
+          ],
+          [
+            "save",
+            {
+              "deleted_old_packs": [
+                "old1",
+                "old2"
+              ]
+            }
+          ],
+          [
+            "wait",
+            0.5
+          ]
+        ],
+        "output": "  deleted old pack old2\n",
+        "error": null,
+        "done": true
+      }
+    }
+  ]
+}

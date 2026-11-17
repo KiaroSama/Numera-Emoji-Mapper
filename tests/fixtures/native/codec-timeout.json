@@ -1,0 +1,92 @@
+{
+  "baseline_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source": "emojikit/cli_env.py::safe_int_env",
+  "source_hash": "9e4c0a045f031bffd23fe5ff9e51a132363e9952a1cdde47d071bfc81234e887",
+  "source_runtime": "CPython3.11.9",
+  "cases": [
+    {
+      "name": "missing",
+      "raw": null,
+      "seconds": 300,
+      "stderr": ""
+    },
+    {
+      "name": "empty",
+      "raw": "",
+      "seconds": 300,
+      "stderr": ""
+    },
+    {
+      "name": "whitespace",
+      "raw": " \t\n",
+      "seconds": 300,
+      "stderr": ""
+    },
+    {
+      "name": "one",
+      "raw": "1",
+      "seconds": 1,
+      "stderr": ""
+    },
+    {
+      "name": "default",
+      "raw": "300",
+      "seconds": 300,
+      "stderr": ""
+    },
+    {
+      "name": "configured",
+      "raw": "71",
+      "seconds": 71,
+      "stderr": ""
+    },
+    {
+      "name": "plus",
+      "raw": "+71",
+      "seconds": 71,
+      "stderr": ""
+    },
+    {
+      "name": "underscore",
+      "raw": "1_2",
+      "seconds": 12,
+      "stderr": ""
+    },
+    {
+      "name": "unicode",
+      "raw": "۱۲",
+      "seconds": 12,
+      "stderr": ""
+    },
+    {
+      "name": "zero",
+      "raw": "0",
+      "seconds": 1,
+      "stderr": "WARNING: EMOJI_FFMPEG_TIMEOUT=0 below 1; using 1.\n"
+    },
+    {
+      "name": "negative",
+      "raw": "-5",
+      "seconds": 1,
+      "stderr": "WARNING: EMOJI_FFMPEG_TIMEOUT=-5 below 1; using 1.\n"
+    },
+    {
+      "name": "invalid",
+      "raw": "nonsense",
+      "seconds": 300,
+      "stderr": "WARNING: EMOJI_FFMPEG_TIMEOUT is not a whole number; using 300.\n"
+    },
+    {
+      "name": "float",
+      "raw": "1.5",
+      "seconds": 300,
+      "stderr": "WARNING: EMOJI_FFMPEG_TIMEOUT is not a whole number; using 300.\n"
+    },
+    {
+      "name": "invalid underscore",
+      "raw": "1__2",
+      "seconds": 300,
+      "stderr": "WARNING: EMOJI_FFMPEG_TIMEOUT is not a whole number; using 300.\n"
+    }
+  ]
+}

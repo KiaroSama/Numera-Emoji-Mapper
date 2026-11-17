@@ -1,0 +1,410 @@
+[
+  {
+    "original": "test_panel_view.SimilarityOrder.test_matches_the_reference_walk",
+    "rust_identity": "baseline_panel_views::view_matches_the_reference_walk",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 13
+  },
+  {
+    "original": "test_panel_view.SimilarityOrder.test_unhashed_items_follow_their_format_group",
+    "rust_identity": "baseline_panel_views::view_unhashed_items_follow_their_format_group",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 35
+  },
+  {
+    "original": "test_panel_view.CopyTheEmojiId.test_only_a_whole_premium_id_label_is_copyable",
+    "rust_identity": "baseline_panel_views::view_only_a_whole_premium_id_label_is_copyable",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 47
+  },
+  {
+    "original": "test_panel_view.CopyTheEmojiId.test_the_view_carries_the_id_for_the_page",
+    "rust_identity": "baseline_panel_views::view_the_view_carries_the_id_for_the_page",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 66
+  },
+  {
+    "original": "test_panel_view.CopyTheEmojiId.test_the_page_stops_the_click_before_the_toggle",
+    "rust_identity": "baseline_panel_views::view_the_page_stops_the_click_before_the_toggle",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 97
+  },
+  {
+    "original": "test_panel_view.CopyTheEmojiId.test_video_plays_without_hover",
+    "rust_identity": "baseline_panel_views::view_video_plays_without_hover",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 112
+  },
+  {
+    "original": "test_panel_view.PublishedEmojiLeaveTheGrid.test_a_half_empty_pack_is_hidden_too_once_it_is_published",
+    "rust_identity": "baseline_panel_views::view_a_half_empty_pack_is_hidden_too_once_it_is_published",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 124
+  },
+  {
+    "original": "test_panel_view.PublishedEmojiLeaveTheGrid.test_no_publish_state_file_is_needed",
+    "rust_identity": "baseline_panel_views::view_no_publish_state_file_is_needed",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 136
+  },
+  {
+    "original": "test_panel_view.PublishedEmojiLeaveTheGrid.test_a_row_with_no_recorded_set_name_still_counts_as_published",
+    "rust_identity": "baseline_panel_views::view_a_row_with_no_recorded_set_name_still_counts_as_published",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 148
+  },
+  {
+    "original": "test_panel_view.PublishedEmojiLeaveTheGrid.test_all_shows_everything",
+    "rust_identity": "baseline_panel_views::view_all_shows_everything",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 155
+  },
+  {
+    "original": "test_panel_view.PublishedEmojiLeaveTheGrid.test_hiding_deletes_nothing",
+    "rust_identity": "baseline_panel_views::view_hiding_deletes_nothing",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 163
+  },
+  {
+    "original": "test_panel_view.OnePackCanBeUnhidden.test_an_index_resolves_through_the_publishers_own_state",
+    "rust_identity": "baseline_panel_views::view_an_index_resolves_through_the_publishers_own_state",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 176
+  },
+  {
+    "original": "test_panel_view.OnePackCanBeUnhidden.test_the_index_travels_with_the_name_onto_the_card",
+    "rust_identity": "baseline_panel_views::view_the_index_travels_with_the_name_onto_the_card",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 184
+  },
+  {
+    "original": "test_panel_view.OnePackCanBeUnhidden.test_every_shown_pack_gets_its_own_live_logo_card",
+    "rust_identity": "baseline_panel_views::view_every_shown_pack_gets_its_own_live_logo_card",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 194
+  },
+  {
+    "original": "test_panel_view.OnePackCanBeUnhidden.test_without_with_pack_the_single_publish_preview_is_unchanged",
+    "rust_identity": "baseline_panel_views::view_without_with_pack_the_single_publish_preview_is_unchanged",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 224
+  },
+  {
+    "original": "test_panel_view.OnePackCanBeUnhidden.test_an_unnamed_pack_tags_nothing",
+    "rust_identity": "baseline_panel_views::view_an_unnamed_pack_tags_nothing",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 239
+  },
+  {
+    "original": "test_panel_view.OnePackCanBeUnhidden.test_only_the_named_pack_comes_back",
+    "rust_identity": "baseline_panel_views::view_only_the_named_pack_comes_back",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 252
+  },
+  {
+    "original": "test_panel_view.OnePackCanBeUnhidden.test_without_the_flag_every_published_pack_stays_hidden",
+    "rust_identity": "baseline_panel_views::view_without_the_flag_every_published_pack_stays_hidden",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 266
+  },
+  {
+    "original": "test_panel_view.OnePackCanBeUnhidden.test_a_row_with_no_recorded_set_is_not_unhidden_by_guesswork",
+    "rust_identity": "baseline_panel_views::view_a_row_with_no_recorded_set_is_not_unhidden_by_guesswork",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 274
+  },
+  {
+    "original": "test_panel_assets.ThePanelScriptsShip.test_every_script_is_a_real_file_inside_the_repo",
+    "rust_identity": "baseline_panel_views::assets_every_script_is_a_real_file_inside_the_repo",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 282
+  },
+  {
+    "original": "test_panel_assets.ThePanelScriptsShip.test_the_page_loads_every_script_in_order_and_versioned",
+    "rust_identity": "baseline_panel_views::assets_the_page_loads_every_script_in_order_and_versioned",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 292
+  },
+  {
+    "original": "test_panel_assets.ThePanelScriptsShip.test_the_version_is_the_scripts_content",
+    "rust_identity": "baseline_panel_views::assets_the_version_is_the_scripts_content",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 308
+  },
+  {
+    "original": "test_panel_assets.ThePanelScriptsShip.test_the_icon_url_is_versioned_by_the_icon_itself",
+    "rust_identity": "baseline_panel_views::assets_the_icon_url_is_versioned_by_the_icon_itself",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 333
+  },
+  {
+    "original": "test_panel_assets.ThePanelScriptsShip.test_the_inline_block_carries_values_not_behaviour",
+    "rust_identity": "baseline_panel_views::assets_the_inline_block_carries_values_not_behaviour",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 353
+  },
+  {
+    "original": "test_panel_assets.TheStaticRouteServesVersionedScripts.test_the_served_page_names_the_current_version",
+    "rust_identity": "baseline_panel_views::assets_the_served_page_names_the_current_version",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 370
+  },
+  {
+    "original": "test_panel_assets.TheStaticRouteServesVersionedScripts.test_the_version_query_reaches_the_file_on_disk",
+    "rust_identity": "baseline_panel_views::assets_the_version_query_reaches_the_file_on_disk",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 384
+  },
+  {
+    "original": "test_panel_save_scope.SaveScope.test_an_ordinary_in_scope_save_still_works",
+    "rust_identity": "baseline_panel_views::scope_an_ordinary_in_scope_save_still_works",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 404
+  },
+  {
+    "original": "test_panel_save_scope.SaveScope.test_an_in_scope_key_can_be_re_included",
+    "rust_identity": "baseline_panel_views::scope_an_in_scope_key_can_be_re_included",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 416
+  },
+  {
+    "original": "test_panel_save_scope.SaveScope.test_a_key_outside_the_scope_keeps_its_exclusion",
+    "rust_identity": "baseline_panel_views::scope_a_key_outside_the_scope_keeps_its_exclusion",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 431
+  },
+  {
+    "original": "test_panel_save_scope.SaveScope.test_a_stale_tab_cannot_re_include_by_omission",
+    "rust_identity": "baseline_panel_views::scope_a_stale_tab_cannot_re_include_by_omission",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 447
+  },
+  {
+    "original": "test_panel_save_scope.SaveScope.test_a_page_that_cannot_say_what_it_saw_is_refused",
+    "rust_identity": "baseline_panel_views::scope_a_page_that_cannot_say_what_it_saw_is_refused",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 467
+  },
+  {
+    "original": "test_panel_save_scope.SaveScope.test_a_malformed_scope_is_refused_the_same_way",
+    "rust_identity": "baseline_panel_views::scope_a_malformed_scope_is_refused_the_same_way",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 481
+  },
+  {
+    "original": "test_panel_save_scope.SaveScope.test_a_stale_scope_is_refused_without_applying_even_its_valid_subset",
+    "rust_identity": "baseline_panel_views::scope_a_stale_scope_is_refused_without_applying_even_its_valid_subset",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 492
+  },
+  {
+    "original": "test_panel_save_scope.SaveScope.test_an_unknown_field_is_still_rejected",
+    "rust_identity": "baseline_panel_views::scope_an_unknown_field_is_still_rejected",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 504
+  },
+  {
+    "original": "test_panel_server.TheBusyPortMessageNamesTheProcess.test_it_finds_the_listener",
+    "rust_identity": "baseline_panel_views::server_it_finds_the_listener",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 513
+  },
+  {
+    "original": "test_panel_server.TheBusyPortMessageNamesTheProcess.test_an_established_connection_is_not_a_listener",
+    "rust_identity": "baseline_panel_views::server_an_established_connection_is_not_a_listener",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 525
+  },
+  {
+    "original": "test_panel_server.TheBusyPortMessageNamesTheProcess.test_a_port_nobody_listens_on_is_none",
+    "rust_identity": "baseline_panel_views::server_a_port_nobody_listens_on_is_none",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 533
+  },
+  {
+    "original": "test_panel_server.TheBusyPortMessageNamesTheProcess.test_it_never_raises",
+    "rust_identity": "baseline_panel_views::server_it_never_raises",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 541
+  },
+  {
+    "original": "test_panel_server.TheSandboxCannotTakeTheRealPanelsPort.test_the_sandbox_derives_its_port_from_the_panel",
+    "rust_identity": "baseline_panel_views::server_the_sandbox_derives_its_port_from_the_panel",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 573
+  },
+  {
+    "original": "test_panel_server.TheSandboxCannotTakeTheRealPanelsPort.test_it_refuses_to_be_told_to_use_it",
+    "rust_identity": "baseline_panel_views::server_it_refuses_to_be_told_to_use_it",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 581
+  },
+  {
+    "original": "test_panel_server.OnlyOnePanelPerPort.test_the_second_instance_reuses_the_live_panel",
+    "rust_identity": "baseline_panel_views::server_the_second_instance_reuses_the_live_panel",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 590
+  },
+  {
+    "original": "test_panel_server.ConnectionsAreReused.test_two_requests_share_one_connection",
+    "rust_identity": "baseline_panel_views::server_two_requests_share_one_connection",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 678
+  },
+  {
+    "original": "test_panel_server.ConnectionsAreReused.test_an_oversized_body_closes_the_connection",
+    "rust_identity": "baseline_panel_views::server_an_oversized_body_closes_the_connection",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 688
+  },
+  {
+    "original": "test_panel_server.ConnectionsAreReused.test_the_page_refuses_framing_and_sniffing",
+    "rust_identity": "baseline_panel_views::server_the_page_refuses_framing_and_sniffing",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 700
+  },
+  {
+    "original": "test_panel_server.ConnectionsAreReused.test_an_empty_answer_keeps_the_connection_usable",
+    "rust_identity": "baseline_panel_views::server_an_empty_answer_keeps_the_connection_usable",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 720
+  },
+  {
+    "original": "test_panel.CatalogUnavailable.test_save_answers_503",
+    "rust_identity": "baseline_panel_views::panel_save_answers_503",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 737
+  },
+  {
+    "original": "test_panel.CatalogUnavailable.test_order_answers_503",
+    "rust_identity": "baseline_panel_views::panel_order_answers_503",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 751
+  },
+  {
+    "original": "test_panel.CatalogUnavailable.test_a_page_served_from_a_busy_catalog_says_so",
+    "rust_identity": "baseline_panel_views::panel_a_page_served_from_a_busy_catalog_says_so",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 765
+  },
+  {
+    "original": "test_panel.SavingFromAFilteredGridKeepsHiddenChoices.test_a_hidden_exclusion_survives_a_save_from_the_filtered_grid",
+    "rust_identity": "baseline_panel_views::panel_a_hidden_exclusion_survives_a_save_from_the_filtered_grid",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 806
+  },
+  {
+    "original": "test_panel.TheMediaMapIsNeverEmpty.test_a_reader_never_misses_a_key_both_maps_hold",
+    "rust_identity": "baseline_panel_views::panel_a_reader_never_misses_a_key_both_maps_hold",
+    "test_file": "runtime/tests/baseline_panel_views.rs",
+    "line": 834
+  },
+  {
+    "original": "test_panel.InertItemJson.test_script_close_is_escaped",
+    "rust_identity": "panel_http::baseline_private_tests::panel_script_close_is_escaped",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 18
+  },
+  {
+    "original": "test_panel.InertItemJson.test_js_line_separators_are_escaped",
+    "rust_identity": "panel_http::baseline_private_tests::panel_js_line_separators_are_escaped",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 26
+  },
+  {
+    "original": "test_panel.InertItemJson.test_roundtrips",
+    "rust_identity": "panel_http::baseline_private_tests::panel_roundtrips",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 33
+  },
+  {
+    "original": "test_panel_server.LoopbackCheck.test_accepts_loopback_forms",
+    "rust_identity": "panel_http::baseline_private_tests::server_accepts_loopback_forms",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 42
+  },
+  {
+    "original": "test_panel_server.LoopbackCheck.test_rejects_foreign_hosts",
+    "rust_identity": "panel_http::baseline_private_tests::server_rejects_foreign_hosts",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 55
+  },
+  {
+    "original": "test_panel_view.BrandLogoPreview.test_logo_shown_first_for_a_listed_bot",
+    "rust_identity": "panel_http::baseline_private_tests::view_logo_shown_first_for_a_listed_bot",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 89
+  },
+  {
+    "original": "test_panel_view.BrandLogoPreview.test_logo_hidden_for_coin_bot",
+    "rust_identity": "panel_http::baseline_private_tests::view_logo_hidden_for_coin_bot",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 103
+  },
+  {
+    "original": "test_panel_view.BrandLogoPreview.test_logo_hidden_when_file_missing",
+    "rust_identity": "panel_http::baseline_private_tests::view_logo_hidden_when_file_missing",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 114
+  },
+  {
+    "original": "test_panel_view.BrandLogoPreview.test_logo_hidden_when_bot_unknown",
+    "rust_identity": "panel_http::baseline_private_tests::view_logo_hidden_when_bot_unknown",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 121
+  },
+  {
+    "original": "test_panel.SaveDuringReorder.test_exclusions_survive_a_concurrent_reorder",
+    "rust_identity": "panel_http::baseline_private_tests::panel_exclusions_survive_a_concurrent_reorder",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 215
+  },
+  {
+    "original": "test_panel.SaveDuringReorder.test_the_page_is_not_served_from_an_emptied_view",
+    "rust_identity": "panel_http::baseline_private_tests::panel_the_page_is_not_served_from_an_emptied_view",
+    "test_file": "runtime/tests/baseline_panel_views_support/http_private_tests.rs",
+    "line": 238
+  },
+  {
+    "original": "test_panel_preview.PreviewResponses.test_sized_motion_and_video_posters_are_real_cached_images",
+    "rust_identity": "panel_preview::baseline_preview_tests::preview_sized_motion_and_video_posters_are_real_cached_images",
+    "test_file": "runtime/tests/baseline_panel_views_support/preview_private_tests.rs",
+    "line": 43
+  },
+  {
+    "original": "test_panel_preview.PreviewResponses.test_a_video_preview_moves_and_keeps_its_alpha",
+    "rust_identity": "panel_preview::baseline_preview_tests::preview_a_video_preview_moves_and_keeps_its_alpha",
+    "test_file": "runtime/tests/baseline_panel_views_support/preview_private_tests.rs",
+    "line": 82
+  },
+  {
+    "original": "test_panel_preview.TheWarmUpRendersBeforeTheScroll.test_it_renders_grid_order_and_a_bad_file_cannot_stop_it",
+    "rust_identity": "panel_preview::baseline_preview_tests::preview_it_renders_grid_order_and_a_bad_file_cannot_stop_it",
+    "test_file": "runtime/tests/baseline_panel_views_support/preview_private_tests.rs",
+    "line": 119
+  },
+  {
+    "original": "test_panel_preview.TheWarmUpRendersBeforeTheScroll.test_statics_are_skipped_except_the_holding_trays_still",
+    "rust_identity": "panel_preview::baseline_preview_tests::preview_statics_are_skipped_except_the_holding_trays_still",
+    "test_file": "runtime/tests/baseline_panel_views_support/preview_private_tests.rs",
+    "line": 138
+  },
+  {
+    "original": "test_panel_preview.TheWarmUpRendersBeforeTheScroll.test_the_tiers_follow_the_frame_rate_cap",
+    "rust_identity": "panel_preview::baseline_preview_tests::preview_the_tiers_follow_the_frame_rate_cap",
+    "test_file": "runtime/tests/baseline_panel_views_support/preview_private_tests.rs",
+    "line": 181
+  },
+  {
+    "original": "test_panel_preview.TheWarmUpRendersBeforeTheScroll.test_a_key_with_a_path_separator_is_refused",
+    "rust_identity": "panel_preview::baseline_preview_tests::preview_a_key_with_a_path_separator_is_refused",
+    "test_file": "runtime/tests/baseline_panel_views_support/preview_private_tests.rs",
+    "line": 221
+  },
+  {
+    "original": "test_panel_preview.TheWarmUpRendersBeforeTheScroll.test_a_set_stop_event_ends_it_without_finishing_the_catalog",
+    "rust_identity": "panel_preview::baseline_preview_tests::preview_a_set_stop_event_ends_it_without_finishing_the_catalog",
+    "test_file": "runtime/tests/baseline_panel_views_support/preview_private_tests.rs",
+    "line": 231
+  }
+]
