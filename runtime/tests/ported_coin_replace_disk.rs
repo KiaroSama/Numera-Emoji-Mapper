@@ -75,6 +75,7 @@ fn durable_recovery_keeps_target_binding_and_clears_only_after_proven_map_promot
                     Err(e) => panic!("replacement fixture: {e}"),
                 }
             };
+            stream.set_nonblocking(false).unwrap();
             stream
                 .set_read_timeout(Some(Duration::from_secs(2)))
                 .unwrap();

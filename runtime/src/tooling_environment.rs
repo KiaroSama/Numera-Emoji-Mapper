@@ -28,7 +28,9 @@ fn linked(metadata: &std::fs::Metadata) -> bool {
 /// Check original path ancestors before canonicalization can hide a junction or link.
 pub fn reject_links(path: &Path, error: &str) -> Result<(), String> {
     let path = absolute(path)?;
-    for ancestor in path.ancestors() {
+    // Inspect each containing directory before its child: inspecting a leaf
+    // first could already traverse an unchecked junction into another tree.
+    for ancestor in path.ancestors().collect::<Vec<_>>().into_iter().rev() {
         match std::fs::symlink_metadata(ancestor) {
             Ok(metadata) if linked(&metadata) => return Err(error.into()),
             Ok(_) => {}
@@ -61,7 +63,7 @@ pub fn physical_root(root: &Path) -> Result<PathBuf, String> {
     Ok(root)
 }
 
-fn canonical_existing_prefix(path: &Path) -> Result<PathBuf, String> {
+pub(crate) fn canonical_existing_prefix(path: &Path) -> Result<PathBuf, String> {
     let mut missing = Vec::new();
     let mut ancestor = path;
     loop {

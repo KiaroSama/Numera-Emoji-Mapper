@@ -4160,7 +4160,7 @@
         "file": "runtime/tests/baseline_units.rs",
         "target": "baseline_units",
         "function": "contracts_publish::test_announce_via_worker_sends_the_fixture_body",
-        "body_sha256": "ea05b33b3bdc2f3747695fedd8fc41801aa09711dbf126e0dd3cf7c2f8a9cf20"
+        "body_sha256": "26063ebc4117bfe3b495b85f30498e2b37ceb88e3d1a77e58f8c914984a7c559"
       }
     },
     {
@@ -10982,7 +10982,7 @@
         "file": "runtime/tests/baseline_cli_status_support/migration_commands.rs",
         "target": "baseline_cli_status",
         "function": "migration_commands::identity_report_preserves_database_and_refuses_missing_media_and_corrupt_evidence",
-        "body_sha256": "81006bc630c916cf27054a8ca2ef49c487636d2c38e5ec41811eb07115db8da2"
+        "body_sha256": "863e819a2b3257cb9cb51380e5d2a33eb31f4a6464709ee5e84b3a0c13afd7e9"
       }
     },
     {
@@ -19336,7 +19336,7 @@
         "file": "runtime/tests/baseline_tooling.rs",
         "target": "baseline_tooling",
         "function": "TheCloneSharesNothingWithTheSource::test_a_media_file_outside_the_source_is_copied_in_not_referenced",
-        "body_sha256": "fde6f15d8a8236ecc912a2ef77a23a10dbe59d15342958d347d6c5bb056d0d47"
+        "body_sha256": "bec5a360ebca6bf76ea641d23603f6f185787a9bed754a36803cf79bd1447f68"
       }
     },
     {
@@ -19516,7 +19516,7 @@
         "file": "runtime/tests/baseline_tooling.rs",
         "target": "baseline_tooling",
         "function": "TheLifetimeLeaseDoesNotBlockThePanelItStarts::test_the_wrapper_lets_the_real_panel_reach_its_catalog",
-        "body_sha256": "b775ff61d37c2bd6e57f992ce35839e7b9f52d79d18b03cf03eb7f069dbe2756"
+        "body_sha256": "dc75fbe548bf7a5ff97e87778814ac0f36fd26094736378a9a00f76d39e52aaf"
       }
     },
     {

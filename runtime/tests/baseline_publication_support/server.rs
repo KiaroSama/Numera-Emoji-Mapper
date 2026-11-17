@@ -342,6 +342,7 @@ impl Bot {
             while !stopped.load(Ordering::SeqCst) {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        stream.set_nonblocking(false).unwrap();
                         let r = request(&mut stream);
                         if let Some((status, body)) = state.lock().unwrap().answer(r) {
                             write!(stream,"HTTP/1.1 {status} OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",body.len()).unwrap();
