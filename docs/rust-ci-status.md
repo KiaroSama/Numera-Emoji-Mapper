@@ -13,6 +13,12 @@ Every push and pull request runs:
 - Worker TypeScript checks, Vitest, dependency advisories and dry-run packaging.
 - Rust security-tool regressions and the Gitleaks scan under its retained policy.
 
+CodeQL default setup should analyze **Rust**, **JavaScript/TypeScript** and
+**Actions**. Deselect **Python** after retiring its sources. GitHub stores this
+language selection in repository settings. After saving a configuration change,
+verify a new analysis against the PR's current head. See GitHub's [configuration
+guide](https://docs.github.com/en/enterprise-cloud@latest/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup).
+
 The Prebuilt packages workflow also runs on pushes and PRs. It builds the native
 executable on both platforms, exercises extracted offline installation and
 uploads ZIP/checksum pairs. Only a version tag can attach those archives to a
