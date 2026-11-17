@@ -12,23 +12,16 @@ static NEXT: AtomicU64 = AtomicU64::new(0);
 
 fn copy_assets(source: &Path, destination: &Path) {
     std::fs::create_dir(destination).unwrap();
-    for entry in std::fs::read_dir(source).unwrap() {
-        let entry = entry.unwrap();
-        let target = destination.join(entry.file_name());
-        let kind = entry.file_type().unwrap();
-        if kind.is_dir() {
-            copy_assets(&entry.path(), &target);
-        } else {
-            assert!(kind.is_file(), "asset fixture must not follow links");
-            std::fs::copy(entry.path(), target).unwrap();
-        }
+    for member in package::RUNTIME_ASSETS {
+        let name = member.strip_prefix("assets/").unwrap();
+        std::fs::copy(source.join(name), destination.join(name)).unwrap();
     }
 }
 
 fn installed_package(project: &Path, scratch: &Path) -> PathBuf {
     let source = scratch.join("package source");
     std::fs::create_dir(&source).unwrap();
-    for name in ["LICENSE", "README.md", ".env.example", "run.sh", "run.ps1"] {
+    for name in ["LICENSE", "README.md", ".env.example"] {
         std::fs::copy(project.join(name), source.join(name)).unwrap();
     }
     copy_assets(&project.join("assets"), &source.join("assets"));
@@ -48,6 +41,7 @@ fn installed_package(project: &Path, scratch: &Path) -> PathBuf {
         .by_index(0)
         .unwrap()
         .name()
+        .unwrap()
         .split('/')
         .next()
         .unwrap()
@@ -377,3 +371,7 @@ fn production_environment_drops_interpreter_selection_without_creating_its_cache
     assert!(!root.join(".cache/pycache").exists());
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[cfg(test)]
+#[path = "support/test_admission.rs"]
+mod test_admission;

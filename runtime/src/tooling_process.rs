@@ -1,4 +1,4 @@
-//! Build/bootstrap children reuse the accepted native containment and cleanup owner.
+//! Bounded native child execution with verified containment and cleanup.
 use crate::{logging::RunLog, process_owner::OwnedProcess, tooling_environment};
 use std::collections::BTreeMap;
 use std::ffi::OsString;

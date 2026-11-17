@@ -13,17 +13,15 @@ fn absolute(path: &Path) -> Result<PathBuf, String> {
 }
 
 fn linked(metadata: &std::fs::Metadata) -> bool {
-    if metadata.file_type().is_symlink() {
-        return true;
-    }
+    let symlink = metadata.file_type().is_symlink();
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;
-        metadata.file_attributes() & 0x400 != 0
+        symlink || metadata.file_attributes() & 0x400 != 0
     }
     #[cfg(not(windows))]
     {
-        false
+        symlink
     }
 }
 
@@ -148,7 +146,7 @@ pub fn environment(
     if build {
         paths.extend([
             ("CARGO_HOME", ".cache/cargo"),
-            ("CARGO_TARGET_DIR", "native/target"),
+            ("CARGO_TARGET_DIR", "runtime/target"),
             ("RUSTUP_HOME", ".cache/rustup"),
             ("CCACHE_DIR", ".cache/ccache"),
             ("SCCACHE_DIR", ".cache/sccache"),

@@ -1,0 +1,17 @@
+{
+  "source_modules": [
+    "tests/test_panel_preview.py",
+    "tests/test_panel_view.py"
+  ],
+  "sources": {
+    "tests/test_panel_preview.py": "b8ccdca30da5cf00e1f66f7ef325b8a1f8b4cf22b0d7ba91531a9e0ae15b07f2",
+    "tests/test_panel_view.py": "d571bf744c60ccc51ebabccab5dcb0333076f096fb5d2ec825bd3829803a1646"
+  },
+  "fixtures": {
+    "preview-motion.tgs": "573468e1aff1866fc3f28dbe11264896ce342a3ef479833ca3ef2729a51b6fb0",
+    "preview-poster.webm": "f22fe1f539099b1763b1592522f2d3476e95dd44944001631967a6f9e08d6d36",
+    "preview-clip.webm": "0bfdacf97e03d0da86750bd9def551325c14862be09a3b422c0aa0f978a215f5",
+    "similarity-inputs.json": "0ecc34791307aa62689eebfcf4c067cc236811e024a88efca4cbcf20ceee102a"
+  },
+  "generation": "Original Python fixture inputs captured during development; no Python is executed by the Rust tests."
+}

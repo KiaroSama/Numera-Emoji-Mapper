@@ -10,12 +10,6 @@ runs:
           cat > .cache/numera-test-network.apparmor <<EOF
         abi <abi/4.0>,
         include <tunables/global>
-        profile numera-test-network "$GITHUB_WORKSPACE/**/numera-emoji" flags=(unconfined) {
-          userns,
-        }
-        profile numera-compat-test-network "$GITHUB_WORKSPACE/**/numera-compat" flags=(unconfined) {
-          userns,
-        }
         profile numera-runtime-test-network "$GITHUB_WORKSPACE/**/numera-runtime-tests" flags=(unconfined) {
           userns,
         }

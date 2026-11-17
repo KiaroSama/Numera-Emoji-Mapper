@@ -3,14 +3,14 @@
 ## Appendix A — Command cheat-sheet
 
 Run commands from the package root. Examples use `.\numera-emoji.exe`; on
-Linux/macOS use `./numera-emoji`. No Python environment is required.
+Linux use `./numera-emoji`. No Python environment is required.
 
 ```powershell
 # --- setup / diagnostics ---
 Copy-Item .env.example .env       # then edit configuration
 .\numera-emoji.exe package-verify
 .\numera-emoji.exe doctor
-.\run.ps1                        # native menu; Linux/macOS: ./run.sh
+.\numera-emoji.exe menu           # Linux: ./numera-emoji menu
 
 # --- single pack ---
 .\numera-emoji.exe make-emoji-pngs --in input\set --out build\set
@@ -32,8 +32,8 @@ Copy-Item .env.example .env       # then edit configuration
 
 # --- coins ---
 .\numera-emoji.exe coin-fetch-logos
-.\numera-emoji.exe make-emoji-pngs --in coins\logos\svg --out coins\logos\emoji
-.\numera-emoji.exe make-emoji-pngs --in coins\logos\png --out coins\logos\emoji
+.\numera-emoji.exe coin-convert
+.\numera-emoji.exe coin-rebuild-loop --help
 .\numera-emoji.exe coin-check-packs
 .\numera-emoji.exe coin-remap-ids --emoji-dir "<coin logo folder>"
 .\numera-emoji.exe coin-remap-ids --emoji-dir "<coin logo folder>" --max-distance 200 --apply
@@ -46,7 +46,8 @@ Copy-Item .env.example .env       # then edit configuration
 .\numera-emoji.exe coin-rebuild all
 
 # --- contributor tests (source checkout/toolchain required) ---
-cargo test --manifest-path runtime/Cargo.toml --locked
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1
 ```
 
 Calibrate remapping without `--apply` before choosing a cutoff. Live publishing,
@@ -101,14 +102,14 @@ DUPLICATE image groups: 0 (extra duplicate stickers: 0)
 ## Appendix C — Conventions for contributors / agents
 
 - Keep code, comments, filenames, logs and documentation in English.
-- Production local Rust belongs in `runtime/` or shared `native/src/` modules;
+- First-party local Rust belongs in `runtime/src/`;
   browser assets belong in `assets/`, Cloudflare code in `worker/`, docs in `docs/`.
 - Extend the existing catalog and identity contracts rather than adding another
   dedup or mapping mechanism.
 - Never commit configuration secrets, operator data or logs.
 - Use native UTC run logs and redaction for application commands.
 - Verify the relevant native tests and real browser behavior when changing UI.
-  Historical oracle tests remain separate developer checks.
+  Preserve independent historical fixtures and test provenance.
 - Keep documentation current and follow the repository's review workflow.
 
 ## Appendix D — Building the next pack: the fast path
@@ -135,9 +136,9 @@ catalog items + the logo = 201, which publishes as TWO sets.** For a single
 pack, include 199. The panel numbers the logo #1 and warns in the header, so
 trust the header, not your own count of the grid.
 
-### Preflight runs automatically
+### Preflight before publishing
 
-Launcher **B3** now runs `--preflight` between the dry run and the upload: every
+The native menu publish flow runs `--preflight` between the dry run and the upload: every
 queued file is offered to Telegram's validator first, and a refusal stops the
 run before a single sticker is published. About a minute for a 200-emoji queue,
 against the 46 it cost to discover the same file mid-publish. Run it by hand

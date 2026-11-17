@@ -5,7 +5,7 @@ the local builder calls so a finished pack is announced **by the bot** in your
 channel.
 
 ```
-local build (Python)  ──POST /publish (bearer)──►  Worker  ──Bot API──►  channel
+local build (Rust)  ──POST /publish (bearer)──►  Worker  ──Bot API──►  channel
                                                      ▲
                                     Telegram ────────┘  POST /tg/general
                                                         POST /tg/coin
@@ -14,20 +14,16 @@ local build (Python)  ──POST /publish (bearer)──►  Worker  ──Bot A
 ## Read this before deploying
 
 **A Telegram bot token can use `getUpdates` (polling) or a webhook — never
-both.** The moment you register a webhook for a token, `emojikit/emoji_bot.py` stops
+both.** The moment you register a webhook for a token, `numera-emoji emoji-bot` stops
 receiving anything on it. That is not a bug and it is not this Worker's choice;
 it is how the Bot API works. Run one or the other per token.
 
-To hand a token back to the local poller:
+To hand a token back to the local poller, use the dedicated administration
+command's webhook deletion mode for the intended bot (see Setup).
 
-```bash
-curl -X POST "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
-```
-
-Nothing else in the project changes: the Python engine still owns creating packs
-and adding stickers, with the verified-retry machinery that keeps an ambiguous
-upload from becoming a duplicate. This Worker only reads updates and sends
-messages.
+The Rust application owns pack creation, uploads and verified recovery of
+ambiguous mutations. This Worker remains TypeScript and SQL; it reads updates
+and sends messages.
 
 ## Routes
 
@@ -60,8 +56,8 @@ the custom emoji cannot be rendered - notification previews, copied-out text,
 older clients - and better there than a column of identical stars. Viewing
 custom emoji does not require Premium; only sending them does.
 
-`emojikit/emoji_bot.py` carries the same behaviour (`parse_id_list`, `answer_typed_ids`)
-so the poller and the Worker do not drift.
+The Rust poller carries the same ID-list parsing and typed-ID reply behavior.
+Shared contract fixtures keep its output aligned with the Worker.
 
 ## Logs
 
@@ -142,23 +138,32 @@ First deploy for a new operator, in order:
    `database_id` into `wrangler.toml`. The id there is the original
    installation's; a database belongs to one account.
 3. `npx wrangler d1 migrations apply numera-emoji-mapper-logs --remote`
-4. `.\scripts\put-secrets.ps1` — the secrets, straight from `.env` (below).
+4. `numera-worker-admin secrets --env-file .env` from the repository root — the
+   secrets from your local configuration (below).
 5. `npx wrangler deploy`
-6. `.\scripts\set-webhooks.ps1 -BaseUrl https://<your-worker>.workers.dev`
+6. `numera-worker-admin webhooks --base-url https://<your-worker>.workers.dev`
+   from the repository root.
 
-```powershell
-cd worker
-npm install
-.\scripts\put-secrets.ps1 -DryRun    # shows which key comes from where
-.\scripts\put-secrets.ps1            # pushes them all from ..\.env
+The administration tool is a dedicated Rust binary, separate from the Worker
+TypeScript runtime. Build it explicitly from a source checkout:
+
+```sh
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bin numera-worker-admin
+runtime/target/release/numera-worker-admin secrets --env-file .env --dry-run
+runtime/target/release/numera-worker-admin secrets --env-file .env
 ```
 
-That script takes every value the Worker needs straight out of `.env` and pipes
-it to `wrangler secret put` **through stdin** — no value is printed, stored in
-shell history, or passed as an argument (arguments are visible in the process
-list). It reports key names and character counts only.
+Run these examples from the repository root; use `.exe` on Windows. Below,
+`numera-worker-admin` denotes that built executable. Install Worker dependencies
+with `npm ci --prefix worker`, then run Wrangler commands from `worker/`.
+Use `secrets --dry-run` to inspect selected key names without launching Wrangler
+or writing generated values. The built command's `--help` lists all options.
 
-It exists because two of these are easy to get wrong by hand:
+The tool sends secret values to `wrangler secret put` through stdin. Values
+must not appear in arguments, shell history or diagnostic output; diagnostics
+identify key names and value lengths only.
+
+Two configuration details require care:
 
 - `ADMIN_USER_IDS` is **composed** from `PACK_OWNER_USER_ID` +
   `BOT_ALLOWED_USER_IDS`. The list fails closed, so a typo means the bots answer
@@ -194,8 +199,9 @@ are ignored rather than silently coerced.
 `BOT_ALLOWED_CHANNEL_IDS` lists the channels whose posts the bots answer. A
 `channel_post` has no sender for `ADMIN_USER_IDS` to check, so without this list
 anyone who made a bot administrator of their own channel could make it message
-every admin. Unset or malformed means **no channel**. `put-secrets.ps1` does not
-push this key; set it by hand with the line above.
+every admin. Unset or malformed means **no channel**. Set this optional Worker
+secret explicitly with `wrangler secret put BOT_ALLOWED_CHANNEL_IDS`; it is
+separate from the composed private-user allowlist.
 
 Create the log database once, then deploy:
 
@@ -207,18 +213,18 @@ npx wrangler deploy
 
 Then point Telegram at it — one webhook per bot:
 
-```powershell
-.\scripts\set-webhooks.ps1 -BaseUrl https://<your-worker>.workers.dev
-.\scripts\set-webhooks.ps1 -Status                    # confirm
-.\scripts\set-webhooks.ps1 -Delete -Only general      # hand a token back
+```sh
+numera-worker-admin webhooks --base-url https://<your-worker>.workers.dev
+numera-worker-admin webhooks --status
+numera-worker-admin webhooks --delete --only general
 ```
 
-The script reads the same `.env` the secrets came from, so the registration and
-the deployed secret cannot drift apart — a mismatch is silent: Telegram accepts
-`setWebhook` happily and every delivery is then rejected 401, which looks
-exactly like a dead bot. It refuses to replace a webhook that already points
-somewhere else unless you pass `-Force`, and it says so when a token stops being
-pollable.
+Run administration commands from the repository root so they use the same local
+configuration as the secret upload; `--env-file PATH` selects it explicitly.
+`--only general` or `--only coin` selects one bot; `--only both` is the default. `--force` explicitly permits replacing a webhook that points elsewhere.
+A matching deployed secret matters: Telegram can accept registration while every
+subsequent delivery fails authentication. Status/delete modes should be reviewed
+before changing an existing polling/webhook setup.
 
 The bots must be **administrators** of both the pack-links channel and the log
 channel to post in them.
@@ -237,13 +243,10 @@ Leave either unset and the old direct path is used, unchanged. Both or neither:
 a URL without a secret is a half-finished setup that would 401 every
 announcement, so it takes the direct path rather than pretending to work.
 
-**All three publishers** go through one `emojikit.announce.announce_packs` —
-`emojikit/build_pack.py` (single pack), `emojikit/build_collection.py` (collector) and
-`coins/rebuild_dedup.py` (coin family). They used to carry three copies of
-"format the link and sendMessage", and when this Worker arrived only the
-collector learned about it, so a coin rebuild kept talking to Telegram from the
-build machine while the owner believed the bot was posting. A test asserts all
-three share the function.
+All three Rust publishers (single pack, collection and coin family) use the
+shared native announcer. Historical implementations had separate copies of the
+routing logic; the retained cross-publisher contract prevents one workflow from
+silently bypassing Worker routing.
 
 The duplicate guard does not move: `state["sent"]` is what stops a re-run
 announcing the same pack twice, and it holds whichever route sent it. A failed
@@ -312,17 +315,18 @@ request that never finishes. `test/publish-input.test.ts` covers each rule.
 
 ```bash
 npm run typecheck     # tsc --noEmit
-npm test              # vitest, no network
+npm test              # 119 Vitest cases, fetch stubbed
 npm run dev           # wrangler dev
 ```
 
 A local Worker needs its secrets too, or its admin list is empty and it answers
-nobody. `.\scripts\put-secrets.ps1 -DevVars` writes the same keys from `.env` to
-`worker\.dev.vars` (git-ignored; the script refuses otherwise) for `npm run dev`
-to read, printing key names only.
+nobody. From the repository root,
+`numera-worker-admin secrets --env-file .env --dev-vars` prepares the same keys
+in git-ignored `worker/.dev.vars` for `npm run dev`, without printing values.
+Confirm this mode in the built administration tool before using the new interface.
 
 The tests stub `fetch`, so nothing in them can reach Telegram — the same rule
-the Python suite enforces, for the same reason: a test once reached live
+the guarded Rust suite enforces, for the same reason: a historical test once reached live
 Telegram and replaced a sticker in a published pack.
 
 ## Errors never carry a credential

@@ -53,7 +53,9 @@ const BUNDLED_NOTICES: &[(&str, &[u8])] = &[
     ),
 ];
 
-const PANEL_ASSETS: &[&str] = &[
+/// Public files needed by the installed panel, gallery and application branding.
+/// Contributor browser tooling is outside this distribution inventory.
+pub const RUNTIME_ASSETS: &[&str] = &[
     "assets/panel.html",
     "assets/logo-128.png",
     "assets/panel-grid.js",
@@ -63,21 +65,19 @@ const PANEL_ASSETS: &[&str] = &[
     "assets/panel-actions.js",
     "assets/panel-holding.js",
     "assets/panel-draft.js",
+    "assets/pack-gallery.css",
+    "assets/pack-gallery.js",
+    "assets/numera-emoji-mapper-logo.png",
+    "assets/numera-emoji-mapper-logo-circle.png",
+    "assets/numera-coin-emoji-mapper-logo.png",
 ];
 
 pub fn platform() -> Result<String, String> {
-    let os = match std::env::consts::OS {
-        "windows" => "windows",
-        "linux" => "linux",
-        "macos" => "macos",
-        _ => return Err("Unsupported package platform or architecture".into()),
-    };
-    let arch = match std::env::consts::ARCH {
-        "x86_64" => "x64",
-        "aarch64" => "arm64",
-        _ => return Err("Unsupported package platform or architecture".into()),
-    };
-    Ok(format!("{os}-{arch}"))
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("linux", "x86_64") => Ok("linux-x64".into()),
+        ("windows", "x86_64") => Ok("windows-x64".into()),
+        _ => Err("Unsupported package platform or architecture".into()),
+    }
 }
 
 fn binary(target: &str) -> &'static str {
@@ -257,6 +257,14 @@ fn member_path(root: &Path, name: &str) -> Result<PathBuf, String> {
     }) {
         return Err("Standalone packages cannot contain Python runtime payloads".into());
     }
+    if name.split('/').any(|part| {
+        let part = part.to_ascii_lowercase();
+        [".sh", ".ps1", ".cmd", ".bat"]
+            .iter()
+            .any(|suffix| part.ends_with(suffix))
+    }) {
+        return Err("Standalone packages use the Rust executable directly; script launchers are not supported".into());
+    }
     let path = root.join(name);
     reject_links(&path)?;
     Ok(path)
@@ -387,16 +395,7 @@ pub fn package(
     revision: &str,
     target: &str,
 ) -> Result<PathBuf, String> {
-    if ![
-        "linux-x64",
-        "linux-arm64",
-        "windows-x64",
-        "windows-arm64",
-        "macos-x64",
-        "macos-arm64",
-    ]
-    .contains(&target)
-    {
+    if !["linux-x64", "windows-x64"].contains(&target) {
         return Err("Unsupported package platform or architecture".into());
     }
     let root = physical(root)?;
@@ -408,6 +407,11 @@ pub fn package(
         == 0
     {
         return Err("Standalone native executable must not be empty".into());
+    }
+    let assets = root.join("assets");
+    reject_links(&assets)?;
+    for entry in std::fs::read_dir(&assets).map_err(|error| error.to_string())? {
+        reject_links(&entry.map_err(|error| error.to_string())?.path())?;
     }
     let output = normalized(output)?;
     if !output.starts_with(&root) {
@@ -429,7 +433,7 @@ pub fn package(
     let stage = stage(&output, "package")?;
     let content = stage.0.join(&stem);
     std::fs::create_dir(&content).map_err(|e| e.to_string())?;
-    for member in ["LICENSE", "README.md", ".env.example", "run.sh", "run.ps1"] {
+    for member in ["LICENSE", "README.md", ".env.example"] {
         copy(&root.join(member), &content.join(member))?;
     }
     for (name, bytes) in BUNDLED_NOTICES {
@@ -444,14 +448,10 @@ pub fn package(
         file.write_all(bytes).map_err(|e| e.to_string())?;
         file.sync_all().map_err(|e| e.to_string())?;
     }
-    let mut assets = Vec::new();
-    collect(&root, &root.join("assets"), &mut assets)?;
-    for member in assets {
-        copy(&root.join(&member), &content.join(&member))?;
-    }
-    for member in PANEL_ASSETS {
-        digest(&content.join(member))
-            .map_err(|_| format!("Required panel asset is missing: {member}"))?;
+    for member in RUNTIME_ASSETS {
+        copy(&root.join(member), &content.join(member)).map_err(|error| {
+            format!("Required runtime asset is missing or unreadable: {member}: {error}")
+        })?;
     }
     copy(executable, &content.join(binary(target)))?;
     #[cfg(unix)]
@@ -489,8 +489,6 @@ pub fn package(
         .collect::<Result<BTreeMap<_, _>, String>>()?;
     let minimum = if target.starts_with("linux-") {
         "Ubuntu 24.04 / glibc 2.39"
-    } else if target.starts_with("macos-") {
-        "macOS 15"
     } else {
         "Windows 10"
     };
@@ -517,7 +515,7 @@ pub fn package(
         .map_err(|e| e.to_string())?;
     let mut archive = zip::ZipWriter::new(file);
     for member in members {
-        let permissions = if member == binary(target) || member == "run.sh" {
+        let permissions = if member == binary(target) {
             0o755
         } else {
             0o644
@@ -603,8 +601,6 @@ pub fn verify(root: &Path) -> Result<Value, String> {
         "LICENSE",
         "README.md",
         ".env.example",
-        "run.sh",
-        "run.ps1",
     ] {
         if !files.contains_key(required) {
             return Err(format!("Package is incomplete: {required}"));
@@ -615,7 +611,7 @@ pub fn verify(root: &Path) -> Result<Value, String> {
             return Err(format!("Package redistribution notice is missing: {name}"));
         }
     }
-    for name in PANEL_ASSETS {
+    for name in RUNTIME_ASSETS {
         if !files.contains_key(*name) {
             return Err(format!("Required panel asset is missing: {name}"));
         }
@@ -812,16 +808,9 @@ mod tests {
     fn package_fixture(root: &Path) {
         std::fs::create_dir_all(root.join("assets")).unwrap();
         let target = platform().unwrap();
-        for member in [
-            binary(&target),
-            "LICENSE",
-            "README.md",
-            ".env.example",
-            "run.sh",
-            "run.ps1",
-        ]
-        .into_iter()
-        .chain(PANEL_ASSETS.iter().copied())
+        for member in [binary(&target), "LICENSE", "README.md", ".env.example"]
+            .into_iter()
+            .chain(RUNTIME_ASSETS.iter().copied())
         {
             std::fs::write(root.join(member), b"installation race fixture\n").unwrap();
         }

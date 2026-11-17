@@ -1,4 +1,4 @@
-//! Launcher workflow, separate from process execution and the retained bootstrap.
+//! Native launcher workflow, separate from bounded process execution.
 use crate::{logging, tooling_environment};
 use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};

@@ -6,11 +6,12 @@
 
 **Build Telegram premium custom-emoji packs from any collection of images.**
 
-[![CI](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml)
+[![Rust CI](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml/badge.svg?branch=codex%2Fcomplete-rust-migration)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml)
+[![Packages](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml/badge.svg?branch=codex%2Fcomplete-rust-migration)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml)
 [![License: GPL-3.0](https://img.shields.io/github/license/KiaroSama/Numera-Emoji-Mapper)](LICENSE)
 [![Runtime: Rust](https://img.shields.io/badge/runtime-Rust-DEA584?logo=rust)](runtime/Cargo.toml)
-[![Rust 1.99+](https://img.shields.io/badge/Rust-1.99%2B-DEA584?logo=rust)](runtime/Cargo.toml)
-[![Builds: Linux, macOS, Windows](https://img.shields.io/badge/builds-Linux%20%7C%20macOS%20%7C%20Windows-0078D6)](.github/workflows/ci.yml)
+[![Rust 1.100.0](https://img.shields.io/badge/Rust-1.100.0-DEA584?logo=rust)](runtime/Cargo.toml)
+[![Builds: Linux x64, Windows x64](https://img.shields.io/badge/builds-Linux%20x64%20%7C%20Windows%20x64-0078D6)](.github/workflows/ci.yml)
 <br>
 [![Backend: Cloudflare Workers](https://img.shields.io/badge/backend-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](worker/README.md)
 [![Telegram Bot API](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
@@ -47,21 +48,20 @@ The production dependency graph and ready-built archives require no Python,
 Python packages, virtual environment or Rust compiler. FFmpeg/FFprobe remain
 external tools for video.
 
-The first-party Rust migration lives on
-[`feature/first-party-rust`](https://github.com/KiaroSama/Numera-Emoji-Mapper/pull/70).
-The production crate is `runtime/`; `native/` retains the PyO3 compatibility and
-historical source-oracle harness under the explicit `numera-compat` developer
-command. Compatibility wheels and Python regression dependencies stay outside
-production downloads. The Cloudflare Worker and browser interface retain their
-TypeScript and JavaScript implementations.
+All first-party application code, contributor commands and backend tests use
+Rust 1.100.0. The browser panel keeps JavaScript/HTML/CSS, and the Cloudflare
+Worker keeps TypeScript. Ready-made native codec dependencies are statically
+linked where appropriate; their source and redistribution notices are retained.
 
-CI builds the standalone runtime and runs its native codec and offline package
-checks on Linux, Windows, Intel macOS and Apple Silicon macOS. It also retains
-the original Python regression matrix, browser suites, Worker checks, native
-Windows checks and historical wheel/venv package lifecycle. The guarded test
-runners schedule cases serially; concurrency and process-death scenarios remain
-inside their existing tests. [Migration and CI status](docs/rust-ci-status.md)
-records verification results and remaining platform gates.
+Every push and pull request builds the application and runs unfiltered Rust
+acceptance on **Linux x64 and Windows x64**. Browser acceptance and Worker checks
+run in separate jobs. macOS, ARM and 32-bit targets are outside this release.
+The original 1,516 discovered application cases have an explicit migration
+inventory; browser cases retain their original browser/source-contract categories.
+See [test ownership](docs/native-test-migration.md) and
+[CI policy](docs/rust-ci-status.md) for the exact gates and platform skips.
+The [upstream refresh](docs/upstream-refresh.md) records the adopted dependency
+versions and renderer and logo-source review.
 
 > 📘 **[Full Guide (0 → 100) — docs/GUIDE.md](docs/GUIDE.md)** — complete
 > reference for every workflow and command, written for humans and AI agents.
@@ -79,7 +79,7 @@ records verification results and remaining platform gates.
 - **Prebuilt packages:** the standalone executable and its bundled assets. No
   Python, virtual environment, Cargo or C++ toolchain is needed to run it.
 - **Package targets:** Windows x64, Linux x64 (Ubuntu 24.04+ / glibc 2.39+),
-  macOS 15+ Intel and Apple Silicon. Each download must pass its hosted native
+  with x86_64 CPUs. Each download must pass its hosted native
   package and media checks. Alpine/musl and other CPU targets are not covered.
 - A Telegram bot from [@BotFather](https://t.me/BotFather), and your numeric
   Telegram user id. Press **Start** on the bot once before publishing.
@@ -103,21 +103,21 @@ records verification results and remaining platform gates.
 ```powershell
 .\numera-emoji.exe package-verify
 .\numera-emoji.exe doctor
-.\run.ps1
+.\numera-emoji.exe menu
 ```
 
-**Linux / macOS:**
+**Linux:**
 
 ```bash
-chmod +x numera-emoji run.sh
+chmod +x numera-emoji
 ./numera-emoji package-verify
 ./numera-emoji doctor
-./run.sh
+./numera-emoji menu
 ```
 
-`run.ps1 -Check` and `run.sh --check` run the native doctor. Both launchers pass
-commands directly to the executable and never install or build prerequisites.
-Use `numera-emoji panel` to open the browser panel, or `--help` for commands.
+`numera-emoji doctor` checks the installed application. Use `numera-emoji menu`
+for the interactive menu, `numera-emoji panel` for the browser panel, or `--help`
+for commands. The executable runs directly; there are no shell launchers.
 Copy `.env.example` to `.env` and fill in your configuration before contacting
 Telegram. Runtime temp/cache files stay in `logs/tmp/` and `.cache/` beside the
 application.
@@ -137,7 +137,7 @@ linked/path traversal refusals apply before installation.
 
 ### Developer source build
 
-Production contributors need Rust 1.99+, CMake and a platform C/C++ linker (MSVC
+Production contributors need the pinned Rust 1.100.0 toolchain, CMake and a platform C/C++ linker (MSVC
 build tools on Windows). Python is unnecessary for this build:
 
 ```bash
@@ -145,18 +145,15 @@ cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
 runtime/target/release/numera-emoji --help
 ```
 
-On Windows, use `runtime\target\release\numera-emoji.exe`. The source launchers
-also find this production build automatically. To package it:
+On Windows, use `runtime\target\release\numera-emoji.exe`. To package it:
 
 ```bash
 runtime/target/release/numera-emoji package-native --out dist --revision YOUR_COMMIT
 ```
 
-The optional compatibility toolkit is a separate development build:
-`cargo build --manifest-path native/Cargo.toml --locked --bins`. It needs Python
-3.11 and the historical requirements for source-oracle and wheel tests; invoke
-its developer commands through `native/target/debug/numera-compat`. It is not
-part of the production archive or runtime dependency graph.
+Contributor commands are also Rust: `numera-dev build`, `check`, `test`,
+`panel-sandbox` and `benchmark-similarity`. They keep temporary files in the
+project, own child process trees and report failures without installing tools.
 
 `.env` keys (see `.env.example`):
 
@@ -177,8 +174,8 @@ a tool that needs one stops and names it. Keep your logo in the git-ignored
 ## Quick start — general emoji pack (new bot)
 
 Run from the extracted package. `./numera-emoji` locates its assets beside the
-executable. `run.ps1` and `run.sh` open the native menu; their check options run
-the native doctor.
+executable. `numera-emoji menu` opens the menu; `numera-emoji doctor` checks
+the installation.
 
 ```powershell
 # Put your source images in a folder, e.g. input/myset/
@@ -286,7 +283,7 @@ premium custom-emoji IDs with tap-to-copy buttons (Telegram `copy_text`):
   from new posts. (Bots cannot read past channel history, only new posts.)
 
 ```powershell
-.\numera-emoji.exe emoji-bot     # or run.ps1 -> C1
+.\numera-emoji.exe emoji-bot     # or choose the bot in numera-emoji menu
 ```
 
 ## Cloudflare Worker (both bots, hosted)
@@ -312,11 +309,13 @@ because both bots share the Worker, the table and the channel.
 Setup, secrets and deployment: [`worker/README.md`](worker/README.md).
 
 ```powershell
+cargo build --manifest-path runtime/Cargo.toml --locked --release --bin numera-worker-admin
+npm ci --prefix worker
+.\runtime\target\release\numera-worker-admin.exe secrets --env-file .env
 cd worker
-npm install
-.\scripts\put-secrets.ps1                       # from .env, nothing printed
 npx wrangler deploy
-.\scripts\set-webhooks.ps1 -BaseUrl https://<your-worker>.workers.dev
+cd ..
+.\runtime\target\release\numera-worker-admin.exe webhooks --base-url https://<your-worker>.workers.dev
 ```
 
 ## Curate panel (pick which emoji go into the pack)
@@ -380,7 +379,7 @@ tokens, labels, media IDs and arbitrary error text are excluded. Log delivery
 is bounded and does not block saving.
 
 ```powershell
-.\numera-emoji.exe panel        # or run.ps1 -> B4
+.\numera-emoji.exe panel        # or choose the panel in numera-emoji menu
 .\numera-emoji.exe panel --preview-fps 12
 # Branding without a Telegram username lookup:
 .\numera-emoji.exe panel --bot-username YourEmojiBot
@@ -390,7 +389,7 @@ B4 reopens an existing panel on the requested port instead of starting a second
 server. Its current session and unsaved work stay active. A different service
 on that port is refused; use another port for a separate panel session.
 
-## Crypto-coin workflow (one component: `coins/`)
+## Crypto-coin workflow
 
 The Rust CLI owns provider and coin-domain workflows, including Telegram
 transport, upload proofs, locks, atomic state, announcements and table rendering.
@@ -437,9 +436,8 @@ Run the installed executable from your package root, for example
 - `coin-write-manifests` — write each pack's ticker/emoji-ID manifest.
 - `coin-check-packs` — audit packs for blank and duplicate stickers.
 
-Coin compatibility/similarity dependencies are installed from
-`requirements-coins.txt`. The retained Python modules support the original
-regression suite; public coin commands use Rust.
+Provider HTTP, logo matching, ticker state and rebuild recovery use the locked
+Rust dependencies. No additional coin-language runtime is installed.
 
 Convert coin logos to 100×100 PNGs (images live in `coins/logos/{svg,png}` →
 `coins/logos/emoji`):
@@ -459,54 +457,21 @@ Then build/rebuild with the coin bot:
 
 ## Project layout
 
-```
-Numera Emoji Mapper/                  # the whole project
-  runtime/                     # standalone Rust application and native media codecs
-    src/                       # production library, CLI, media worker and packaging
-    vendor/rlottie/             # pinned statically linked Lottie renderer
-    tests/                     # Python-free native and extracted-package acceptance
-  native/                      # optional PyO3 compatibility/oracle development harness
-    src/                       # shared pure Rust modules and historical adapters
-    tests/                     # retained contract and platform acceptance
-  emojikit/                    # bounded Python compatibility, not CLI applications
-    media_bridge.py            # retained compatibility IPC for original regressions
-    media.py media_lottie.py    # static/video/Lottie decode, convert, validate, preview
-    video_decode.py            # decoder selection and frame caching
-    identity.py repaint.py     # stable content identity and exact tint operations
-    telegram_api.py announce.py # native-backed coin transport/proof/announcement exports
-    packstate.py pack_rows.py   # native-backed leases, atomic state and table rendering
-    cli_env.py operator_config.py logsetup.py errors.py
-                               # shared coin/codec configuration, logging and errors
-    similarity.py              # required native compute bindings
-    sandbox_clone.py maintenance.py sqlite_snapshot.py
-    state_artifacts.py media_paths.py
-                               # development clone/snapshot/reference support
-  worker/                      # Cloudflare Worker: both bots + /publish (TypeScript)
-    src/                       # auth, telegram, emoji-id extraction, routing
-    test/                      # vitest, fetch stubbed (never reaches Telegram)
-  assets/                      # the project's own images + the panel page and its scripts:
-                               # panel-grid, -motion, -save, -drag, -actions, -holding, -draft
-                               # (.js, in load order) + jsconfig.json/panel-globals.d.ts (tsc)
-  run.ps1 / run.sh              # direct standalone menu/doctor launchers
-  scripts/run-actions.ps1      # historical PowerShell action compatibility fixture
-  scripts/check.ps1            # byte-compile + full unit suite (also used by CI)
-  numera-emoji                  # packaged standalone executable (.exe on Windows)
-  scripts/run-native.ps1       # menu/doctor native boundary (no Cargo)
-  docs/native-backend.md       # runtime boundaries, acceptance and rollback
-  scripts/panel_sandbox.py     # the panel against a throwaway copy of the catalog
-  requirements.txt
-  requirements-dev.txt         # test-only: ruff + playwright (never at runtime)
-  requirements-lint.txt        # the pinned ruff, shared by requirements-dev.txt and CI
-  .env.example                 # configuration template
-  README.md  LICENSE                # CONTRIBUTING/SECURITY live in .github/
-  tests/                       # unit tests + fixtures (see tests/README.md)
-  coins/                       # ONE component: the crypto-coin emoji tool
-    fetch_*.py                 # coin logo fetchers (CoinGecko/Paprika/CMC)
-    build_keywords.py
-    rebuild_dedup.py           # duplicate-proof rebuild + inventory fill
-    check_all_packs.py         # pack integrity audit
-    run_convert.ps1 run_rebuild_loop.ps1
-    keywords.csv               # coin ticker -> keywords (curated input)
+```text
+runtime/src/                 Rust CLI, panel server, catalog, media and process ownership
+runtime/tests/               Rust unit/integration/fault/process/package acceptance
+runtime/vendor/rlottie/      Pinned third-party renderer and original licenses
+assets/                     Browser panel, gallery and public application images
+assets/tests/               Playwright browser and served-source contracts
+worker/src/                 Cloudflare Worker (TypeScript)
+worker/test/                Worker Vitest cases
+coins/                      Coin CSV inputs; generated maps/logos remain local
+tools/ci/                   Rust secret-scan orchestration and regression tests
+tools/test-inventory/       Rust migration identity and discovery checks
+tests/fixtures/             Independent frozen media, contracts and source receipts
+docs/                       Operator and contributor documentation
+.env.example                Configuration template; real .env stays local
+rust-toolchain.toml          Exact supported compiler and check components
 ```
 
 Generated/local-only (gitignored): `logos/` (and `coins/logos/`), `build/`,
@@ -520,59 +485,38 @@ from Telegram by `./numera-emoji coin-rebuild map`.
 
 ## Checks
 
-CI runs on every push and pull request, and supports manual dispatch.
-The full native acceptance step uses Cargo's automatic suite discovery; a new
-integration test does not need adding to a hand-maintained target list. The
-migration checkpoint is a limited diagnostic workflow, not full acceptance.
+CI runs on every push and pull request and supports manual dispatch. It always
+builds release executables for Linux x64 and Windows x64. Cargo discovers all
+backend tests automatically; Playwright discovers every browser spec. The tests
+retain real SQLite, subprocess, lock, interruption, transport and codec scenarios.
 
-Production checks use the dedicated bounded native runner (on Linux, its private
-network namespace requires a host permitting unprivileged user namespaces):
+Run these commands from the repository root:
 
 ```bash
 cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked
+cargo fmt --manifest-path runtime/Cargo.toml --check
+cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
+cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
 ```
 
-The retained compatibility check command byte-compiles and lints the historical
-Python files and runs their full regression suite:
+The native test runner scrubs credentials and owns descendants. Linux additionally
+requires private user/network namespaces; missing isolation fails before tests
+start. See [test admission](docs/native-test-migration.md). Do not exercise test
+scenarios against live Telegram packs.
 
-```powershell
-# once: core, coins, ruff and playwright, then the panel suite's Chromium
-.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-coins.txt -r requirements-dev.txt; .venv\Scripts\python.exe -m playwright install chromium
-.\scripts\check.ps1
-.\scripts\check.ps1 -Tests test_catalog -SkipCompile -SkipLint   # chosen suites only
-.\run.ps1 -Check      # native codec/configuration doctor; no Python environment needed
-.\numera-emoji.exe status   # is the roster/archive current? offline, exit 3 if stale
+Browser and Worker checks keep their existing languages:
+
+```bash
+npm --prefix assets ci
+npm --prefix assets exec -- playwright install chromium
+npm --prefix assets test
+npm --prefix worker ci
+npm --prefix worker run typecheck
+npm --prefix worker test -- --run
 ```
 
-If anything the gate needs is missing, `check.ps1` prints that one install line
-and exits 2.
-
-`tests/test_panel_browser.py` drives the real panel in headless Chromium and
-**raises** rather than skipping when playwright or Chromium is missing — a
-browser test that reports green on a machine with no browser is worse than
-none. `NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS=1` opts out deliberately; CI does that in
-the Python matrix and runs the module in its own job instead.
-
-Lint is `ruff check .` with **no** arguments: `ruff.toml` at the repo root owns
-the rule set, so nothing can diverge between CI and a local run. That set is
-deliberately narrow — ruff's default rules plus `E402`, `BLE001`, `B` and
-`RUF100` — because the source already carried ~120 `# noqa: E402` /
-`# noqa: BLE001` comments written against a linter that was never configured.
-Enabling exactly the codes those comments name is what makes them mean
-something, and `RUF100` fails a `# noqa` that no longer suppresses anything, so
-they cannot rot again.
-
-Running the suite by hand? Use exactly this form:
-
-```powershell
-.venv\Scripts\python.exe -m unittest discover -s tests -t . -p "test_*.py"
-```
-
-`-t .` is not cosmetic. Without it the tests directory becomes the top level,
-modules load as `test_x` instead of `tests.test_x`, and `tests/__init__.py` —
-which scrubs credentials out of the environment and refuses non-loopback sockets
-— never runs. See [`tests/README.md`](tests/README.md).
+FFmpeg and FFprobe must be installed for the required video tests. Browser
+acceptance requires actual Chromium; absent prerequisites are errors.
 
 ## Security
 

@@ -1,25 +1,24 @@
 # Pinned backend source oracles
 
-These twenty Python files are **byte-exact snapshots of `d173116`**, not production
-modules and not hand-written expected implementations. Never edit a snapshot to
-make a Rust mismatch disappear. `tests/backend_source_oracle.py` verifies SHA-256
-for every snapshot before compiling any selected AST definitions. Intent, resume,
-steps and view fixture expectations come exclusively from those definitions.
+This is the historical source-oracle receipt for twenty byte-exact Python
+snapshots from `d173116`. The table below preserves their identities; original
+executable source is available from Git history after first-party source
+retirement. These are provenance records, not runtime modules or installation
+instructions.
 
-## Reproduce fixtures
+Original intent, resume, steps and view expectations were produced from those
+independent source definitions. Never change a pinned source receipt or expected
+fixture merely to hide a Rust mismatch. Current tests consume the independent
+fixtures through Rust; see [test execution](../README.md).
 
-From the repository root, with the project interpreter:
+## Historical fixture generation
 
-```powershell
-.venv\Scripts\python.exe -m tests.backend_oracle          # check all four fixtures
-.venv\Scripts\python.exe -m tests.backend_oracle --write  # explicit regeneration
-```
-
-The check is read-only and fails on source/fixture drift. Regeneration does not
-change snapshots or hashes. Review input changes and generated fixture diffs;
-never edit `expected` or `error` by hand. These commands execute source slices:
-run them only under the project's bounded verification policy. They were not run
-by the generator-authoring agent; final verification belongs to the integrator.
+The retired source generator verified every snapshot's SHA-256 before compiling
+selected AST definitions. Its read-only check rejected source/fixture drift;
+regeneration did not change source hashes. That process is recorded here as
+provenance, not an instruction to recreate an interpreter environment. Any future
+fixture update requires an explicit, independently sourced and reviewed recipe;
+target-derived replacement expectations are not acceptable.
 
 ## Source identity
 

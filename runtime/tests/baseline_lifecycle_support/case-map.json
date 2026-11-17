@@ -1,0 +1,543 @@
+{
+  "source_revision": "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede",
+  "total": 25,
+  "declared": 25,
+  "inherited": 0,
+  "integration_originals": 20,
+  "private_originals": 5,
+  "technical_helpers": 5,
+  "status": "linux_verified_windows_pending",
+  "native_linux_originals": 23,
+  "native_windows_pending": 2,
+  "cases": [
+    {
+      "original_id": "tests.test_build_process_owner.BuildProcessOwner.test_partial_member_inventory_closes_already_pinned_handles",
+      "source_file": "tests/test_build_process_owner.py",
+      "source_method": {
+        "path": "tests/test_build_process_owner.py",
+        "sha256": "c773d3c5bec0573f726e1ecd4ebb6595a0d2d4d56270a69e609d6826a0e6625d",
+        "line": 17,
+        "end_line": 32,
+        "source_segment_sha256": "87cebde3221820b3c649254c82e0eb4bc1fbe3fbdd435ba4c0e3bfa2901adeb1",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "BuildProcessOwner::test_partial_member_inventory_closes_already_pinned_handles",
+      "target_file": "runtime/tests/baseline_lifecycle_support/process_owner_windows_units.rs",
+      "status": "windows_execution_pending",
+      "native_linux_disposition": "ignored_requires_actual_windows_kernel"
+    },
+    {
+      "original_id": "tests.test_build_process_owner.BuildProcessOwner.test_success_reaps_detached_stdio_descendant",
+      "source_file": "tests/test_build_process_owner.py",
+      "source_method": {
+        "path": "tests/test_build_process_owner.py",
+        "sha256": "c773d3c5bec0573f726e1ecd4ebb6595a0d2d4d56270a69e609d6826a0e6625d",
+        "line": 34,
+        "end_line": 69,
+        "source_segment_sha256": "94b8dd18ead1f854755c1bf30106bdad51e367fdfd7a5cab1ec99f91a8ffbcda",
+        "decorators": [
+          "unittest.skipUnless(os.name == 'nt', 'native Windows Job ownership')"
+        ],
+        "external": false
+      },
+      "source_skip": true,
+      "source_skip_reason": "native Windows Job ownership",
+      "inherited": false,
+      "rust_case": "BuildProcessOwner::test_success_reaps_detached_stdio_descendant",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "windows_execution_pending",
+      "native_linux_disposition": "ignored_requires_actual_windows_kernel"
+    },
+    {
+      "original_id": "tests.test_native_install.NativeInstall.test_checkout_extension_keeps_repaired_wheel_libraries",
+      "source_file": "tests/test_native_install.py",
+      "source_method": {
+        "path": "tests/test_native_install.py",
+        "sha256": "70a29c41d8b370b584eac8ce2e0787edd9d73419cd4e59ad15aa00a088afc84d",
+        "line": 94,
+        "end_line": 108,
+        "source_segment_sha256": "485a7803ddc2e6bdedfb77f37f064fa149461a52f1763470a605163dbb48b3e1",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "NativeInstall::test_checkout_extension_keeps_repaired_wheel_libraries",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_native_install.NativeInstall.test_installed_binary_runs_after_source_removed_and_failed_replace_preserves_it",
+      "source_file": "tests/test_native_install.py",
+      "source_method": {
+        "path": "tests/test_native_install.py",
+        "sha256": "70a29c41d8b370b584eac8ce2e0787edd9d73419cd4e59ad15aa00a088afc84d",
+        "line": 110,
+        "end_line": 147,
+        "source_segment_sha256": "caced620bd87b8712cd8839edecbe47e8e59bc093dc3df1d2ab74636b35326f1",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "NativeInstall::test_installed_binary_runs_after_source_removed_and_failed_replace_preserves_it",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_native_install.NativeInstall.test_installed_launcher_probe_and_refusal_work_without_cargo",
+      "source_file": "tests/test_native_install.py",
+      "source_method": {
+        "path": "tests/test_native_install.py",
+        "sha256": "70a29c41d8b370b584eac8ce2e0787edd9d73419cd4e59ad15aa00a088afc84d",
+        "line": 17,
+        "end_line": 51,
+        "source_segment_sha256": "4c0f6a019e0f94e15ab89c5713108079f39121d102b8bdd81f7da72aadc9d375",
+        "decorators": [
+          "unittest.skipUnless(os.name == 'nt', 'PowerShell launcher boundary is Windows-only')"
+        ],
+        "external": false
+      },
+      "source_skip": true,
+      "source_skip_reason": "PowerShell launcher boundary is Windows-only",
+      "inherited": false,
+      "rust_case": "NativeInstall::test_installed_launcher_probe_and_refusal_work_without_cargo",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed",
+      "platform_adaptation": {
+        "kind": "windows_script_to_native_cross_platform",
+        "reason": "Parent-approved actual Rust executable doctor/menu/codec/native-plan boundary has no Windows API requirement; original Windows-only receipt remains immutable."
+      }
+    },
+    {
+      "original_id": "tests.test_native_install.NativeInstall.test_primary_doctor_and_conversion_use_installed_runtime_without_cargo",
+      "source_file": "tests/test_native_install.py",
+      "source_method": {
+        "path": "tests/test_native_install.py",
+        "sha256": "70a29c41d8b370b584eac8ce2e0787edd9d73419cd4e59ad15aa00a088afc84d",
+        "line": 53,
+        "end_line": 92,
+        "source_segment_sha256": "4baa2aaaf7cda0d51cb0ac8c806735678a485b5f20e997f5d673e54cdc17f767",
+        "decorators": [
+          "unittest.skipUnless(os.name == 'nt', 'primary PowerShell launcher is Windows-only')"
+        ],
+        "external": false
+      },
+      "source_skip": true,
+      "source_skip_reason": "primary PowerShell launcher is Windows-only",
+      "inherited": false,
+      "rust_case": "NativeInstall::test_primary_doctor_and_conversion_use_installed_runtime_without_cargo",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed",
+      "platform_adaptation": {
+        "kind": "windows_script_to_native_cross_platform",
+        "reason": "Parent-approved actual Rust executable doctor/menu/codec/native-plan boundary has no Windows API requirement; original Windows-only receipt remains immutable."
+      }
+    },
+    {
+      "original_id": "tests.test_prebuilt_environment.PrebuiltEnvironment.test_existing_installation_refuses_before_writing",
+      "source_file": "tests/test_prebuilt_environment.py",
+      "source_method": {
+        "path": "tests/test_prebuilt_environment.py",
+        "sha256": "325ea859959d4fd5b86036cd2fac7e9efd38638acdad0129f794813af0f90c6c",
+        "line": 15,
+        "end_line": 26,
+        "source_segment_sha256": "2cfb6c3513cb5f0a996a740169357203ea287b877bf0c3f11cc08d182bb431cb",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "PrebuiltEnvironment::test_existing_installation_refuses_before_writing",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_prebuilt_environment.PrebuiltEnvironment.test_linked_cache_refuses_before_using_outside_directory",
+      "source_file": "tests/test_prebuilt_environment.py",
+      "source_method": {
+        "path": "tests/test_prebuilt_environment.py",
+        "sha256": "325ea859959d4fd5b86036cd2fac7e9efd38638acdad0129f794813af0f90c6c",
+        "line": 41,
+        "end_line": 61,
+        "source_segment_sha256": "14dc9def057d77d9c223990476f3e284817793a04728084ea4d813aa0f12198e",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "PrebuiltEnvironment::test_linked_cache_refuses_before_using_outside_directory",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_prebuilt_environment.PrebuiltEnvironment.test_owned_temp_and_caches_override_external_values",
+      "source_file": "tests/test_prebuilt_environment.py",
+      "source_method": {
+        "path": "tests/test_prebuilt_environment.py",
+        "sha256": "325ea859959d4fd5b86036cd2fac7e9efd38638acdad0129f794813af0f90c6c",
+        "line": 28,
+        "end_line": 39,
+        "source_segment_sha256": "b0bfe90f8dd4c16269e4c7fc34f0ef61e03cb9068274200354cb4b31f49ab023",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "PrebuiltEnvironment::test_owned_temp_and_caches_override_external_values",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_a_refused_clone_also_leaves_the_source_database_unchanged",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 52,
+        "end_line": 62,
+        "source_segment_sha256": "25a8fa77a531df77594d6730cac43684af7b7a65b7e9a37196ce0ccc4455205b",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_a_refused_clone_also_leaves_the_source_database_unchanged",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_changed_source_during_copy_is_refused_even_when_length_is_unchanged",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 112,
+        "end_line": 125,
+        "source_segment_sha256": "1ffbfc44bbcc68fcd991c0a2248df0771c8360a36e65814a6094ec0891080456",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_changed_source_during_copy_is_refused_even_when_length_is_unchanged",
+      "target_file": "runtime/tests/baseline_lifecycle_support/sandbox_units.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_cloning_does_not_migrate_or_change_source_journal_mode",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 33,
+        "end_line": 50,
+        "source_segment_sha256": "5bd23b779c6ef93810943442fdce0db3553c5ee1dda582bc311bc7212e7a54e0",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_cloning_does_not_migrate_or_change_source_journal_mode",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_data_relative_path_is_not_shadowed_by_a_project_relative_file",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 79,
+        "end_line": 93,
+        "source_segment_sha256": "602879d89276b46c410ebaaf750f41ad42eef93974afeb4b9fee80e0b6e0f646",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_data_relative_path_is_not_shadowed_by_a_project_relative_file",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_marker_is_rechecked_after_acquiring_the_sweep_lease",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 188,
+        "end_line": 201,
+        "source_segment_sha256": "d8ffa8a022b3f748092580177e39b8fb84ddfabdb14e3cc24f92659edcb2f9f4",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_marker_is_rechecked_after_acquiring_the_sweep_lease",
+      "target_file": "runtime/tests/baseline_lifecycle_support/sandbox_units.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_old_marker_protocol_is_left_alone_not_mistaken_for_abandonment",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 178,
+        "end_line": 186,
+        "source_segment_sha256": "fae275384c5753477b4e995cc1cb382e7b8ffe0b89c7ba44a30e218922098c86",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_old_marker_protocol_is_left_alone_not_mistaken_for_abandonment",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_panel_exception_cleans_owned_data_and_restores_environment",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 312,
+        "end_line": 322,
+        "source_segment_sha256": "b6d15c2f7a6d85bbf7a249d3d75e556a59c7c176cebc007f4d563e874e1b3adc",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_panel_exception_cleans_owned_data_and_restores_environment",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_portable_names_do_not_alias_distinct_catalog_keys",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 127,
+        "end_line": 133,
+        "source_segment_sha256": "9b78a2ba8153276ca08c8464d53aed933b4ac067b0dd5537caacdc3ffd0b1da8",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_portable_names_do_not_alias_distinct_catalog_keys",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_process_death_releases_construction_lease_for_safe_reclamation",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 203,
+        "end_line": 233,
+        "source_segment_sha256": "275e47adbe5a93ef90c4a1917ac5180420ae90d18141a00363d61746f6a2b05d",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_process_death_releases_construction_lease_for_safe_reclamation",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_project_relative_path_is_not_shadowed_by_a_source_relative_file",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 64,
+        "end_line": 77,
+        "source_segment_sha256": "f9e166ea90f9ce2aeb223c49c740a8ada908b0a43b0550be65ad049d7fa9f09f",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_project_relative_path_is_not_shadowed_by_a_source_relative_file",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_real_wrapper_http_save_changes_only_the_owned_clone",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 236,
+        "end_line": 310,
+        "source_segment_sha256": "9f3e7d0b624b515ac86e83ca5962b4b12c8658e45024950a8bc55b7b3848af33",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_real_wrapper_http_save_changes_only_the_owned_clone",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_same_length_copy_corruption_is_refused_and_removed",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 95,
+        "end_line": 110,
+        "source_segment_sha256": "fe8ff225900942cce97267b5e6cfc61491f0e5801c12b62bfd3882bdc1c53621",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_same_length_copy_corruption_is_refused_and_removed",
+      "target_file": "runtime/tests/baseline_lifecycle_support/sandbox_units.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_sweep_cannot_claim_a_published_marker_before_clone_returns",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 135,
+        "end_line": 148,
+        "source_segment_sha256": "2226d2314306cadddf52f792e553892f2693da610f989b00e54bee551e20768f",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_sweep_cannot_claim_a_published_marker_before_clone_returns",
+      "target_file": "runtime/tests/baseline_lifecycle_support/sandbox_units.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_sandbox_lifecycle.CloneBoundaries.test_wrapper_keeps_ownership_from_marker_through_complete_cleanup",
+      "source_file": "tests/test_sandbox_lifecycle.py",
+      "source_method": {
+        "path": "tests/test_sandbox_lifecycle.py",
+        "sha256": "877e4c7f7aeaa20119a287deb6df1381c943f46b188369dd84798f89f99ce73a",
+        "line": 150,
+        "end_line": 176,
+        "source_segment_sha256": "619337371d942a10eab40cdca26efbc9fb443d45964029bfd4606dd90335581e",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "CloneBoundaries::test_wrapper_keeps_ownership_from_marker_through_complete_cleanup",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_suite_guard.DirectRunsRefuse.test_no_test_module_starts_unittest_from_its_main_block",
+      "source_file": "tests/test_suite_guard.py",
+      "source_method": {
+        "path": "tests/test_suite_guard.py",
+        "sha256": "c5189bc02309306ff7facf507f4e31dbb8ce1596943e75735af3f0fd04e1be69",
+        "line": 43,
+        "end_line": 51,
+        "source_segment_sha256": "c0aa9e377b895234513237e9f7bf5737e73f86645cc7ad76dce9fcac7dca1293",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "DirectRunsRefuse::test_no_test_module_starts_unittest_from_its_main_block",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    },
+    {
+      "original_id": "tests.test_suite_guard.DotenvDetector.test_an_imported_unittest_counts_as_a_test_run_and_nothing_else_does",
+      "source_file": "tests/test_suite_guard.py",
+      "source_method": {
+        "path": "tests/test_suite_guard.py",
+        "sha256": "c5189bc02309306ff7facf507f4e31dbb8ce1596943e75735af3f0fd04e1be69",
+        "line": 66,
+        "end_line": 69,
+        "source_segment_sha256": "0177b134cdfeb7c8a9094879cbe6fc53526e88ab13041f1ec0a9bf57a96b665e",
+        "decorators": [],
+        "external": false
+      },
+      "source_skip": false,
+      "source_skip_reason": "",
+      "inherited": false,
+      "rust_case": "DotenvDetector::test_an_imported_unittest_counts_as_a_test_run_and_nothing_else_does",
+      "target_file": "runtime/tests/baseline_lifecycle.rs",
+      "status": "linux_verified",
+      "native_linux_disposition": "executed_passed"
+    }
+  ],
+  "verification": {
+    "linux_original_ids_passed": 23,
+    "technical_helpers_passed": 5,
+    "windows_kernel_ids_pending": 2,
+    "integration_log": ".ai/research/lifecycle25-integration-green.log",
+    "private_log": ".ai/research/lifecycle25-private-units.log",
+    "clippy_log": ".ai/research/lifecycle25-clippy.log",
+    "direct_red_log": ".ai/research/lifecycle25-direct-actual-red.log",
+    "direct_green_log": ".ai/research/lifecycle25-direct-green.log",
+    "controller_red_log": ".ai/research/lifecycle25-controller-actual-red.log",
+    "controller_green_log": ".ai/research/lifecycle25-controller-green.log",
+    "explicit_release_guard": "pending final consolidated release bootstrap; parent owns proof",
+    "bare_test_admission": "direct compiled-test refusal verified; parent owns final bare Cargo route proof",
+    "normal_cargo_run": "global runner removed after parent actual application red/green; no global default runner"
+  }
+}

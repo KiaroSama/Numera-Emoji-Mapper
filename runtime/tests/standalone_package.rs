@@ -27,21 +27,29 @@ impl Drop for Scratch {
 fn fixture(path: &Path) {
     std::fs::create_dir_all(path.join("assets")).unwrap();
     let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-    for member in ["LICENSE", "README.md", ".env.example", "run.sh", "run.ps1"] {
+    for member in ["LICENSE", "README.md", ".env.example"] {
         std::fs::copy(project.join(member), path.join(member)).unwrap();
     }
     fn assets(source: &Path, destination: &Path) {
         std::fs::create_dir_all(destination).unwrap();
-        for entry in std::fs::read_dir(source).unwrap() {
-            let entry = entry.unwrap();
-            if entry.file_type().unwrap().is_dir() {
-                assets(&entry.path(), &destination.join(entry.file_name()));
-            } else {
-                std::fs::copy(entry.path(), destination.join(entry.file_name())).unwrap();
-            }
+        for member in package::RUNTIME_ASSETS {
+            let name = member.strip_prefix("assets/").unwrap();
+            std::fs::copy(source.join(name), destination.join(name)).unwrap();
         }
     }
     assets(&project.join("assets"), &path.join("assets"));
+    for member in [
+        "assets/tests/do-not-ship.txt",
+        "assets/node_modules/do-not-ship.txt",
+    ] {
+        let destination = path.join(member);
+        std::fs::create_dir_all(destination.parent().unwrap()).unwrap();
+        std::fs::write(
+            destination,
+            b"contributor tooling must stay outside operator archives",
+        )
+        .unwrap();
+    }
 }
 
 fn extract(archive: &Path, destination: &Path) -> PathBuf {
@@ -50,6 +58,7 @@ fn extract(archive: &Path, destination: &Path) -> PathBuf {
         .by_index(0)
         .unwrap()
         .name()
+        .unwrap()
         .split('/')
         .next()
         .unwrap()
@@ -112,6 +121,16 @@ fn extracted_installed_runtime_converts_offline_without_python_or_build_sources(
     assert_eq!(metadata["runtime"], "rust");
     assert!(metadata.get("python").is_none());
     assert!(metadata.get("wheel").is_none());
+    for name in metadata["files"].as_object().unwrap().keys() {
+        assert!(
+            !name.starts_with("assets/tests/") && !name.starts_with("assets/node_modules/"),
+            "operator archive contains contributor tooling: {name}"
+        );
+        assert!(
+            !matches!(name.as_str(), "run.sh" | "run.ps1"),
+            "operator entry point must be the Rust executable: {name}"
+        );
+    }
     assert!(metadata["files"].get("THIRD_PARTY_NOTICES.md").is_some());
     for member in [
         "NUMERA-SOURCE.md",
@@ -179,70 +198,9 @@ fn extracted_installed_runtime_converts_offline_without_python_or_build_sources(
         String::from_utf8_lossy(&doctor.stderr)
     );
     assert!(String::from_utf8_lossy(&doctor.stdout).contains("Environment check complete"));
-    #[cfg(unix)]
-    {
-        let doctor = offline(
-            &destination.join("run.sh"),
-            &scratch.0,
-            &empty_path,
-            &["--check"],
-        );
-        assert!(
-            doctor.status.success(),
-            "{}",
-            String::from_utf8_lossy(&doctor.stderr)
-        );
-        let status = offline(
-            &destination.join("run.sh"),
-            &scratch.0,
-            &empty_path,
-            &["status"],
-        );
-        assert_eq!(status.status.code(), Some(3));
-    }
-    #[cfg(windows)]
-    {
-        // Preserve the original actual PowerShell launcher/doctor acceptance
-        // type on schema2, independently of the schema1 Python compatibility lane.
-        let powershell =
-            PathBuf::from(std::env::var_os("SystemRoot").expect("Windows system root"))
-                .join("System32/WindowsPowerShell/v1.0/powershell.exe");
-        let launcher =
-            numera_runtime::migration_bundle::resolved(&destination.join("run.ps1")).unwrap();
-        let checked = offline(
-            &powershell,
-            &scratch.0,
-            &empty_path,
-            &[
-                "-NoLogo",
-                "-NoProfile",
-                "-NonInteractive",
-                "-File",
-                launcher.to_str().unwrap(),
-                "-NoRelaunch",
-                "-Check",
-            ],
-        );
-        assert_eq!(
-            checked.status.code(),
-            Some(0),
-            "stdout={} stderr={}",
-            String::from_utf8_lossy(&checked.stdout),
-            String::from_utf8_lossy(&checked.stderr)
-        );
-        assert!(
-            String::from_utf8_lossy(&checked.stdout).contains("Environment check complete"),
-            "PowerShell doctor omitted its completion message: stdout_len={} stdout_prefix={:02x?} stdout={:?} stderr_len={} stderr_prefix={:02x?} stderr={:?}",
-            checked.stdout.len(),
-            &checked.stdout[..checked.stdout.len().min(128)],
-            String::from_utf8_lossy(&checked.stdout),
-            checked.stderr.len(),
-            &checked.stderr[..checked.stderr.len().min(128)],
-            String::from_utf8_lossy(&checked.stderr)
-        );
-        assert!(!destination.join(".venv").exists());
-        assert_eq!(std::fs::read_dir(&empty_path).unwrap().count(), 0);
-    }
+    let status = offline(&executable, &scratch.0, &empty_path, &["status"]);
+    assert_eq!(status.status.code(), Some(3));
+    assert_eq!(std::fs::read_dir(&empty_path).unwrap().count(), 0);
     let input = scratch.0.join("input");
     let output = scratch.0.join("output");
     std::fs::create_dir(&input).unwrap();
@@ -281,6 +239,27 @@ fn extracted_installed_runtime_converts_offline_without_python_or_build_sources(
 
 #[test]
 fn hashes_inventory_paths_and_exclusive_install_preserve_existing_bytes() {
+    // Unsupported targets must fail before admitting any input or creating output.
+    let absent =
+        std::env::temp_dir().join(format!("numera-unsupported-target-{}", std::process::id()));
+    assert!(!absent.exists());
+    for target in [
+        "linux-x86",
+        "windows-x86",
+        "linux-arm64",
+        "windows-arm64",
+        "macos-x64",
+        "macos-arm64",
+        "freebsd-x64",
+        "",
+    ] {
+        assert_eq!(
+            package::package(&absent, &absent, None, &absent, "fixture", target).unwrap_err(),
+            "Unsupported package platform or architecture",
+            "target {target:?} must be refused before filesystem access"
+        );
+    }
+    assert!(!absent.exists());
     let scratch = Scratch::new();
     let root = scratch.0.join("source");
     fixture(&root);
@@ -369,6 +348,15 @@ fn standalone_inventory_refuses_unlisted_python_and_linked_inputs() {
     std::fs::write(extracted.join("payload.py"), b"must not execute").unwrap();
     assert!(package::verify(&extracted).unwrap_err().contains("Python"));
     std::fs::remove_file(extracted.join("payload.py")).unwrap();
+    for member in ["run.sh", "run.ps1", "run.cmd", "run.bat"] {
+        std::fs::write(extracted.join(member), b"script must not execute").unwrap();
+        assert!(
+            package::verify(&extracted)
+                .unwrap_err()
+                .contains("script launchers")
+        );
+        std::fs::remove_file(extracted.join(member)).unwrap();
+    }
     let notice = extracted.join("licenses/rlottie/licenses/COPYING.MIT");
     std::fs::remove_file(&notice).unwrap();
     assert!(
@@ -556,3 +544,7 @@ fn windows_dos_cli_paths_and_verbatim_aliases_share_confinement_rules() {
     assert_eq!(installed, destination.join("numera-emoji.exe"));
     assert!(package::verify(&destination).is_ok());
 }
+
+#[cfg(test)]
+#[path = "support/test_admission.rs"]
+mod test_admission;

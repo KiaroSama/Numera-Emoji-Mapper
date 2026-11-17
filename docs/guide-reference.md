@@ -23,9 +23,8 @@
 | `… exists but its first sticker is not <x>.png; refusing to adopt` | A set of that name exists but this run did not create it (leftover family, or someone else's). Existence is not identity. | Rename the family, or delete the stale set, then re-run. |
 | `position N could not be examined …` from `build-collection` | A live sticker could not be downloaded or hashed, so the publisher cannot tell whether it is one of ours. Guessing "not ours" is what publishes a second copy. | Usually transient — re-run. If it repeats on **video or animated** sets, ffmpeg is off PATH: content hashing needs it, and without it every such sticker is unexaminable. Install ffmpeg (see [§3 Setup](guide-start.md#3-setup-one-time)). |
 | `Bad Request: wrong file type` on an **animated** item | Telegram's **uploader** refuses a subtract mask (`masksProperties[].mode == "s"`); its **player** renders one happily. So a sticker can be live in a published pack for years and still be refused when you upload the same bytes -- proven by downloading one from a live pack and sending it straight back untouched. Add masks (`"a"`) are fine. Nothing local can see it: the file is valid gzip, valid Lottie, 512x512, in-spec fps and duration. | `validate_tgs` now refuses it at ingest and names the layer, so this should no longer reach a publish. If it does, the publisher records it as a **skip** with the reason rather than retrying it on every future run. The only repair is re-exporting the animation without that mask, which changes the artwork -- an owner decision, never automatic. |
-| CI red on push | A native, compatibility, browser, package or Worker check failed. | `gh run view <id> --log-failed`; reproduce the failing job's exact command. For standalone code start with `cargo test --manifest-path runtime/Cargo.toml --locked`. |
-| A Python/NumPy import error appears during ordinary operation | A historical helper or compatibility environment was launched instead of the standalone application. | Use the root `numera-emoji` executable. Native coin remapping needs no NumPy or Python installation. |
-| `SuiteIsHermetic ... the hermetic guard was NOT active` in optional compatibility tests | The historical suite was started without `-t .`, so its credential/network guard never ran. | Use that harness's documented test command or the exact command in the failure. This is a developer-test issue, not a production dependency. |
+| CI red on push | A Rust, browser, package, inventory or Worker check failed. | `gh run view <id> --log-failed`; reproduce the failing job's exact command. Use the guarded Rust commands in [tests/README.md](../tests/README.md); do not bypass the runner. |
+| A Python/NumPy import error appears during ordinary operation | A retired helper was launched instead of the standalone application. | Use the root `numera-emoji` executable. Native coin remapping needs no NumPy or Python installation. |
 
 ---
 
@@ -145,7 +144,9 @@ added, counts as the first of those 200).
 
 ## 27. History of real bugs fixed (and the guards that prevent them)
 
-These were found with real data; the guards must not regress.
+These are historical records found with real data. Implementation filenames and
+Python/library names below describe the fix at that checkpoint, not current
+installation commands. The corresponding native guards must not regress.
 
 1. **Scrambled ticker→id map** — position-based mapping shifted by skipped
    uploads. Fix: content-based `remap_ids.py`; builds now record actual upload

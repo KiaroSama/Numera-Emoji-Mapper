@@ -1,5 +1,10 @@
 # Remaining application reference and consumer closure
 
+Historical provenance record. The source paths, executable references and pending
+acceptance statements below describe the dated feature013 checkpoint. They are
+not current installation instructions; use the Rust workflow in
+[tests/README.md](../README.md).
+
 Feature013 T051 source-only cohort, 2026-10-10. This extends the previously
 reviewed catalog/migration/panel cohorts. These are adapted executable references,
 not immutable oracles, production fallbacks or permission for production removal.

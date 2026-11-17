@@ -64,22 +64,20 @@ pub fn metadata_operation(path: &Path, operation: &str) -> Result<Value, CodecEr
 }
 
 fn regular_source(path: &Path) -> bool {
-    if !path.is_absolute()
-        || !std::fs::symlink_metadata(path)
-            .is_ok_and(|metadata| metadata.is_file() && !metadata.file_type().is_symlink())
-    {
-        return false;
-    }
+    let regular = path.is_absolute()
+        && std::fs::symlink_metadata(path)
+            .is_ok_and(|metadata| metadata.is_file() && !metadata.file_type().is_symlink());
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;
-        if !std::fs::symlink_metadata(path)
-            .is_ok_and(|metadata| metadata.file_attributes() & 0x400 == 0)
-        {
-            return false;
-        }
+        regular
+            && std::fs::symlink_metadata(path)
+                .is_ok_and(|metadata| metadata.file_attributes() & 0x400 == 0)
     }
-    true
+    #[cfg(not(windows))]
+    {
+        regular
+    }
 }
 fn identity_source(path: &Path) -> Result<(), CodecError> {
     if !regular_source(path) {
@@ -129,12 +127,22 @@ pub fn remap_signature(bytes: &[u8]) -> Result<Vec<u8>, String> {
         .map_err(|_| "cannot decode remap source image".into())
 }
 pub fn audit_image(bytes: &[u8]) -> Result<(String, bool), String> {
+    audit_image_with_blank(bytes, raster::is_blank)
+}
+fn audit_image_with_blank(
+    bytes: &[u8],
+    blank: impl FnOnce(&RgbaImage) -> bool,
+) -> Result<(String, bool), String> {
     let source = raster::decode(bytes).map_err(|_| "cannot decode coin audit image")?;
     Ok((
         raster::audit_signature(&source.rgba).map_err(|_| "cannot decode coin audit image")?,
-        raster::is_blank(&source.rgba),
+        blank(&source.rgba),
     ))
 }
+
+#[cfg(test)]
+#[path = "baseline_cli_audit_tests.rs"]
+mod baseline_cli_audit_tests;
 pub fn provider_dhash(bytes: &[u8]) -> Result<u64, String> {
     raster::decode(bytes)
         .and_then(|r| raster::dhash(&r.rgba))

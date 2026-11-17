@@ -1,0 +1,25 @@
+{
+  "recipe": "tests/test_plan_apply.py Family._image Python Random(seed), RGBA100 cells; tests/test_pack_manifest.py EveryFormatGetsAThumbnail._art with original tests/_media_fixtures.py make_png/encode_vp9 recipe. Generated once with original Pillow, Python stdlib random and ffmpeg; test runtime uses only Rust.",
+  "files_sha256": {
+    "family-10.png": "751c5919246fcaeb40b66285c86ec0b0b99e795bb3fb29d53a020ac1e05faa7c",
+    "family-2.png": "50b148d00ba1e30fa5395d5fd2e30f415391f1ce51a5738306e38c0a15891bf6",
+    "family-5.png": "2e2a4a5ee6bf3557198db27f514b528ebfc9ed833a28fb05da1b4abd503c8114",
+    "family-1.png": "10315388b1464e703cfe604c66ef064b629bb1adf256d66e778027bf07d3f2f6",
+    "family-6.png": "f6e29bb2907b1e5cdb3d01e02579eb4beec84eb035a136775eb91c5885d25e5d",
+    "family-12.png": "cf1f4c535b234f5afc9ab3115e8c12261fcd3815f980766b020391c229fcf7fd",
+    "family-14.png": "66c005abc6846c5e33a4992460afd7879d63a6aace6337adf46959fbbee1a300",
+    "family-999.png": "398a2594e0db9873f637f67395100eb1b96aee55d93215725b0c2c5ab25ad5c3",
+    "gallery-video.webm": "6b871b54468df8831367799c3e00be913b1e4ed8f71eecf9290ee68948b1cd63",
+    "family-16.png": "d384abc302bffb6ee6fabdafff1ee9d85de90933ccd6348c956136971f4154d2",
+    "family-8.png": "944d03a2969810c1b8a51e327573bfe370ad43c05308eea5aacfed186e39ac73",
+    "family-13.png": "b11e092abbeeeb2adae4c6bbda8d70c911f119e4ffb6202016c8f6c5be03a293",
+    "family-3.png": "66074973215c8f0903031ec149a345d4f033ad95ef0a82db451dd83852f4ea7f",
+    "family-15.png": "00e5d0196f12c32e949ab389dc490924d296674ac1671f272dcf0106fe65872f",
+    "family-18.png": "10a4e88140ab4ff73bbe00a9b357864dbb3c9f3c8052910e2bf62daf234218c4",
+    "family-11.png": "76d11cda1b31d4614f5a45bbb15a0bdfe076f31ee87a76d3b89aeea1721a9fbd",
+    "family-4.png": "530f666dcd07012ebe6c60364ac42193d5832ccea985d031144d2ee243aa9c02",
+    "family-7.png": "a50be5d73bb9dd123af130eea0e5635ca42c5df4987fb258653cb469d4ae7de6",
+    "family-17.png": "23c0baad9d9c451a9e19d435d22754cf9e654138c5fd82e8f138758a1b394d5c",
+    "family-9.png": "2a902e8ccb21d51e5db334148fa1e7a2c3bd31dc85fc84d0aec92563d9bbc993"
+  }
+}

@@ -4,7 +4,7 @@
 
 Every entry point, every flag, with defaults and examples. Native examples run
 from the project root with `.\numera-emoji.exe` on Windows or
-`./numera-emoji` on macOS/Linux. Coin commands in
+`./numera-emoji` on Linux. Coin commands in
 [§12.8](guide-cli-panel-coin.md#128-coins-commands) use the same standalone
 executable. No Python environment is required.
 
@@ -121,16 +121,12 @@ duplicates** (the same real entry repeated inside one file) separately from
 cross-file duplicates. The run reports
 `unique_ids / new / dedup / failed / missing`; `missing` counts IDs Telegram
 could no longer resolve. Each row keeps its origin in `keywords`
-(`premium-id:<n>`). Original extraction/dedup assertions are retained in
-`tests/test_fetch_emoji_ids.py` (example lines, trailing labels, bullets,
-within-file and cross-file duplicates, bare-ID lists). The migration branch
-adds native counterparts in `native/tests/emoji_ids.rs`, including duplicate
-counts, stable first-seen ties, skipped-prose diagnostics and malformed UTF-8
-refusal. The branch also routes `--tint` through the existing shared parser:
-`#RRGGBB` and `RRGGBB` are accepted and stored as uppercase `tint:#RRGGBB`.
-These native tests, command diagnostics and tint normalization remain unexecuted
-and are not installed; malformed UTF-8 is deliberately refused, not silently
-replaced according to the historical file-reader contract.
+(`premium-id:<n>`). The Rust pack/ID regression cohort retains example-line,
+trailing-label, bullet, duplicate and bare-ID cases against the actual parser
+and real files. `--tint` uses the shared native parser: `#RRGGBB` and `RRGGBB`
+are accepted and recorded as uppercase `tint:#RRGGBB`. Malformed UTF-8 is refused;
+it is not silently replaced. See [test inventories](../tests/README.md) for
+original identities and execution boundaries.
 
 Example — pull only the emoji referenced by four bot inventory files:
 
@@ -354,7 +350,7 @@ header: ↑ Top, ↓ Bottom, the four-way backdrop cycle and the animation switc
 What is absent is everything that writes — no `draggable`, no tick, no selection,
 no save, no form field at all.
 
-**It gates its media like the emojikit.panel.** Every animated card inlines a still as
+**It gates its media like the curate panel.** Every animated card inlines a still as
 well as the animation, starts frozen, and only what is on screen is swapped to
 the moving version; scrolling freezes everything until 180 ms after it settles,
 and `Animation: Off` freezes it permanently. Thumbnails are 88px at 9fps — fps
@@ -443,8 +439,8 @@ run it after anything that changes a full pack, and `--sync` to catch up.
 .\numera-emoji.exe status
 ```
 
-Offline and read-only: runs the roster check (`pack_manifest --check`) and the
-archive check (`pack_archive --check`), and counts the included catalog emoji
+Offline and read-only: runs the roster check (`pack-manifest --check`) and the
+archive check (`pack-archive --check`), and counts the included catalog emoji
 not yet published to `COLLECTION_PACK_BASE`. One line per item, each with the
 command that fixes it. Exit 0 when nothing is stale, 3 when something is;
 emoji waiting to be published are a to-do, not staleness. An archive whose

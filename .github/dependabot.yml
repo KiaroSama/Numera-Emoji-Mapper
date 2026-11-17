@@ -1,17 +1,27 @@
 version: 2
 updates:
-  # Python runtime dependencies
-  - package-ecosystem: "pip"
-    directory: "/"
+  # Standalone application and Rust contributor tools.
+  - package-ecosystem: "cargo"
+    directories:
+      - "/runtime"
+      - "/tools/ci"
+      - "/tools/test-inventory"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
 
-  # The Cloudflare Worker's own npm tree (typescript, vitest, wrangler).
-  # A separate entry because it lives in /worker with its own lockfile; the
-  # "/" pip entry never saw it.
+  # Browser acceptance has its own locked npm tree.
+  - package-ecosystem: "npm"
+    directory: "/assets"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+
+  # The Worker's npm tree is independent of browser tooling.
   - package-ecosystem: "npm"
     directory: "/worker"
     schedule:
@@ -20,14 +30,6 @@ updates:
     labels:
       - "dependencies"
       - "worker"
-
-  # Required native computation crate
-  - package-ecosystem: "cargo"
-    directory: "/native"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "dependencies"
 
   # GitHub Actions used in workflows
   - package-ecosystem: "github-actions"

@@ -171,10 +171,10 @@ destination bytes and catalog bindings remain intact for deliberate recovery.
 <a id="14-emojikit-library-api"></a>
 ## 14. Native local library API
 
-The standalone crate exposes the media worker and shared Rust responsibilities.
-The old `emojikit` API remains only in optional developer/reference material.
-Applications use the native command/worker contracts below; operators do not
-need to import a Python package.
+The standalone crate exposes the media worker and local Rust modules under
+`runtime/src/`. Applications use the native command/worker contracts below;
+operators do not import a language extension. Historical anchor names are kept
+so existing guide links continue to work.
 
 <a id="141-emojikitmedia"></a>
 ### 14.1 Native media operations
@@ -229,7 +229,7 @@ alpha/opacity stops. Video tint is refused.
 ### 14.5 Native catalog
 
 Rust owns schema, queries, dedup decisions and durable writes through shared
-`native/src/catalog.rs`. Persistent rows, signed hashes, inclusion/order and
+`runtime/src/catalog.rs`. Persistent rows, signed hashes, inclusion/order and
 per-family publications remain unchanged (§13). Independent historical fixtures
 remain available for parity and recovery verification.
 

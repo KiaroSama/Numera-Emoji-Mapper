@@ -1,7 +1,5 @@
 // Compile the pinned renderer into release artifacts; no runtime toolchain or Python is used.
 fn main() {
-    println!("cargo:rustc-check-cfg=cfg(numera_native_runtime)");
-    println!("cargo:rustc-cfg=numera_native_runtime");
     println!("cargo:rerun-if-changed=vendor/rlottie");
     let target = std::env::var("TARGET").expect("Cargo target");
     let mut config = cmake::Config::new("vendor/rlottie");
@@ -32,9 +30,7 @@ fn main() {
         );
     }
     println!("cargo:rustc-link-lib=static=rlottie");
-    if target.contains("apple") {
-        println!("cargo:rustc-link-lib=c++");
-    } else if target.contains("msvc") {
+    if target.contains("msvc") {
         println!("cargo:rustc-link-lib=Shlwapi");
     } else {
         println!("cargo:rustc-link-lib=stdc++");

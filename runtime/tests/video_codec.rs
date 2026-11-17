@@ -444,3 +444,7 @@ fn native_previews_vp9_conversion_and_remux_publish_complete_outputs() {
             .starts_with(".video-output")
     }));
 }
+
+#[cfg(test)]
+#[path = "support/test_admission.rs"]
+mod test_admission;

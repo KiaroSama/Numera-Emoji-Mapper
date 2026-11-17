@@ -2,7 +2,7 @@
 name = "numera-emoji-runtime"
 version = "2.0.0"
 edition = "2024"
-rust-version = "1.99"
+rust-version = "1.100"
 default-run = "numera-emoji"
 license = "GPL-3.0-or-later"
 
@@ -18,21 +18,30 @@ path = "src/main.rs"
 name = "numera-runtime-tests"
 path = "src/test_main.rs"
 
+[[bin]]
+name = "numera-dev"
+path = "src/developer_main.rs"
+
+[[bin]]
+name = "numera-worker-admin"
+path = "src/worker_admin_main.rs"
+
 [dependencies]
-serde_json = { version = "=1.0.151", features = ["preserve_order", "arbitrary_precision"] }
-rusqlite = { version = "=0.40.2", features = ["bundled", "backup"] }
+tempfile = "=3.27.0"
+serde_json = { version = "=1.0.154", features = ["preserve_order", "arbitrary_precision"] }
+rusqlite = { version = "=0.43.0", features = ["bundled", "backup"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 csv = "=1.4.0"
 base64 = "=0.23.1"
-zip = { version = "=8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+zip = { version = "=9.6.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 reqwest = { version = "=0.13.5", default-features = false, features = ["blocking", "form", "json", "multipart", "rustls"] }
 axum = "=0.8.9"
 chrono = { version = "=0.4.45", default-features = false, features = ["clock", "std"] }
 sha1 = "=0.11.0"
-sha2 = "=0.11.0"
+sha2 = "=0.11.1"
 percent-encoding = "=2.3.2"
 getrandom = "=0.4.3"
-tokio = { version = "=1.53.2", features = ["rt-multi-thread", "net", "signal", "time", "sync", "process"] }
+tokio = { version = "=1.54.1", features = ["rt-multi-thread", "net", "signal", "time", "sync", "process"] }
 image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico", "tiff"] }
 libwebp-sys = { version = "=0.14.4", default-features = false, features = ["std"] }
 mozjpeg = { version = "=0.10.13", default-features = false }
@@ -43,14 +52,18 @@ ryu = "=1.0.23"
 [build-dependencies]
 cmake = "=0.1.58"
 
+[dev-dependencies]
+ctor = { version = "=1.0.14", default-features = false, features = ["proc_macro"] }
+syn = { version = "=3.0.10", features = ["full", "visit"] }
+
 [target.'cfg(unix)'.dependencies]
 libc = "=0.2.191"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "=0.61.2", features = ["Win32_Storage_FileSystem", "Win32_System_IO", "Win32_Foundation", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_Security", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Com"] }
+windows-sys = { version = "=0.61.2", features = ["Win32_Storage_FileSystem", "Win32_System_IO", "Win32_Foundation", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Environment", "Win32_System_Console", "Win32_Security", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Com"] }
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(numera_native_runtime)"] }
+[target.'cfg(windows)'.dev-dependencies]
+junction = { version = "=2.1.0", default-features = false }
 
 [profile.release]
 lto = "thin"
