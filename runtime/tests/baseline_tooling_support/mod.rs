@@ -705,6 +705,38 @@ impl Live {
             .collect::<Vec<_>>()
             .join("\n")
     }
+    pub fn ready_for_catalog(&self, deadline: Instant) {
+        // A live HTTP listener is not an initial catalog-refresh barrier.
+        // Wait inside the same readiness budget for the actual child to finish
+        // its startup writer phase before this separate parent writer opens.
+        loop {
+            let listening = get(&format!("{}/api/ping", self.url)).map(|v| v.0) == Some(200);
+            let catalog_ready = listening
+                && std::fs::read_dir(self.root.join("logs"))
+                    .unwrap()
+                    .map(|entry| entry.unwrap().path())
+                    .filter(|path| {
+                        path.file_name()
+                            .and_then(|name| name.to_str())
+                            .is_some_and(|name| name.starts_with("numera-emoji_"))
+                    })
+                    .any(|path| {
+                        let marker = b"[preview] warm-up rendered=";
+                        std::fs::read(path)
+                            .unwrap()
+                            .windows(marker.len())
+                            .any(|window| window == marker)
+                    });
+            if listening && catalog_ready {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "panel did not complete its initial catalog phase"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
     pub fn ready(&mut self) {
         let deadline = Instant::now() + Duration::from_secs(15);
         while get(&format!("{}/api/ping", self.url)).map(|v| v.0) != Some(200) {

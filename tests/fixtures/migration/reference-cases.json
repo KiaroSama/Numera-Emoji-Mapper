@@ -19516,7 +19516,7 @@
         "file": "runtime/tests/baseline_tooling.rs",
         "target": "baseline_tooling",
         "function": "TheLifetimeLeaseDoesNotBlockThePanelItStarts::test_the_wrapper_lets_the_real_panel_reach_its_catalog",
-        "body_sha256": "dc75fbe548bf7a5ff97e87778814ac0f36fd26094736378a9a00f76d39e52aaf"
+        "body_sha256": "6108c6cc814c93b6f653d749cd0e1c6c654485736da2b33f1b6f77d069183414"
       }
     },
     {
@@ -27442,7 +27442,7 @@
         "file": "runtime/tests/baseline_lifecycle.rs",
         "target": "baseline_lifecycle",
         "function": "CloneBoundaries::test_wrapper_keeps_ownership_from_marker_through_complete_cleanup",
-        "body_sha256": "aca2cd02aa64bc4697687b93244ccd04a845d5bdfca6e06272f77b3c20bab03d"
+        "body_sha256": "cd45b04d7a7acdfb3fcb18d0a39c714801ce08cb9ea8bb4bdc397c6495e88e99"
       }
     },
     {
