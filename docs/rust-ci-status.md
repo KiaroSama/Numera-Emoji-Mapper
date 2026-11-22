@@ -20,10 +20,17 @@ language selection in repository settings. After saving a configuration change,
 verify a new analysis against the PR's current head. See GitHub's [configuration
 guide](https://docs.github.com/en/enterprise-cloud@latest/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup).
 
-The Prebuilt packages workflow also runs on pushes and PRs. It builds the native
-executable on both platforms, exercises extracted offline installation and
-uploads ZIP/checksum pairs. Only a version tag can attach those archives to a
-release. The manual Rust checkpoint is diagnostic, not a replacement for CI.
+The Prebuilt packages workflow runs on pushes, PRs, and version tags across all
+four 64-bit targets (`linux-x64`, `linux-arm64`, `windows-x64`, `windows-arm64`).
+It builds the native executables, verifies embedded logos (`verify-binary`),
+exercises extracted offline installation, and uploads ZIP/checksum pairs. On
+`main` pushes and `v*` tags, the `signing` job runs inside the protected
+`numera-signing` GitHub environment to apply Windows Authenticode signatures
+with RFC 3161 timestamps, sign every archive with the pinned RSA-3072 publisher
+key (`docs/SIGNING.md`), and verify tamper rejection. Only a version tag runs
+the `publish` job to sign `SHA256SUMS`, attest build provenance via
+`actions/attest-build-provenance@v4`, and attach the verified release assets.
+The manual Rust checkpoint is diagnostic, not a replacement for CI.
 
 CI compiles the unfiltered Rust tests in `runtime/target/ci-tests` using release
 settings with LTO disabled and 16 codegen units. This avoids repeating link-time
