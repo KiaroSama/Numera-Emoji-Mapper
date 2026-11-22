@@ -1,4 +1,4 @@
-// Ported from native/tests/ticker_keywords.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/ticker_keywords.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: 789971093a740e106d4ca905ca2f2bfdeafd637a560255f218c4bae102fddbfe.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

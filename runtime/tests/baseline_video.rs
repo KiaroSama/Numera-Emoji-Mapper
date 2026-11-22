@@ -600,7 +600,7 @@ mod test_native_preview_codec {
                     .unwrap();
             assert_eq!(
                 manifest["source_revision"],
-                "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede"
+                "45a96f9de70da8429b83c047e0626b6ed6694b20"
             );
             assert_eq!(manifest["dependencies"]["Pillow"], "12.3.0");
             assert_eq!(manifest["dependencies"]["rlottie-python"], "1.3.8");

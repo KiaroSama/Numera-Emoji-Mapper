@@ -2,7 +2,7 @@
 
 This Rust tool checks the structural migration inventory. It does not execute product tests or prove their behavioral assertions. Runtime, browser, fault-process and platform CI remain separate requirements.
 
-The public source manifest is `tests/fixtures/migration/reference-cases.json`. Its1516 identities were collected with the original `unittest.defaultTestLoader`, including26 inherited executions, at reference `a32dbab6e3e694f1fac9656997fa2edb6e3b2ede`. The actual main revision `9c3cbb43305b0e507085003d4a33806e4a60b677` has1515; the reference adds `tests.test_pack_locks_exclusion.JournalRecordsAreComplete.test_separate_child_journals_keep_overlapping_owners_visible`.
+The public source manifest is `tests/fixtures/migration/reference-cases.json`. Its1516 identities were collected with the original `unittest.defaultTestLoader`, including26 inherited executions, at reference `45a96f9de70da8429b83c047e0626b6ed6694b20`. The actual main revision `9c3cbb43305b0e507085003d4a33806e4a60b677` has1515; the reference adds `tests.test_pack_locks_exclusion.JournalRecordsAreComplete.test_separate_child_journals_keep_overlapping_owners_visible`.
 
 The manifest pins each original identity, defining class, inheritance, source-file SHA256, method-source SHA256, test category and genuine platform skip. The sorted original ID digest and immutable source receipt digest are pinned in the Rust tool. Updating target wiring cannot silently replace originals or change the84 browser,13 browser-performance,59 served-source contract and1360 backend boundaries.
 

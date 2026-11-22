@@ -1,4 +1,4 @@
-// Ported from native/tests/coin_manifest_cli.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/coin_manifest_cli.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: efe8b741b27f72a7239ec69ea163aa504b089fe8b5442f23c4f4238a3c350f5a.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

@@ -1,4 +1,4 @@
-// Ported from native/tests/coin_rebuild_links.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/coin_rebuild_links.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: 59ce6a6cc2099145a431553029d3e47d9cb2f4edb86d49071e77ff7a89a0ef68.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

@@ -1,4 +1,4 @@
-// Ported from native/tests/emoji_ids.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/emoji_ids.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: 518175bec6e31d4cb2afe30d33a626f0f026620e3c7e0615507e2fd9cc9ccb20.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

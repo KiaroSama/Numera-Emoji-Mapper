@@ -20,7 +20,7 @@ pub fn noise(key: &str) -> Vec<u8> {
     let provenance: Value = serde_json::from_str(include_str!("fixtures/provenance.json")).unwrap();
     assert_eq!(
         provenance["baseline_revision"],
-        "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede"
+        "45a96f9de70da8429b83c047e0626b6ed6694b20"
     );
     assert_eq!(provenance["Pillow"], "12.3.0");
     let row = provenance["cases"]

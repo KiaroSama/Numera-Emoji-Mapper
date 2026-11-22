@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-pub const REVISION: &str = "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede";
+pub const REVISION: &str = "45a96f9de70da8429b83c047e0626b6ed6694b20";
 pub const ORIGINAL_COUNT: usize = 1516;
 pub const ID_SHA256: &str = "29f47d2d5eddc9b0e7b3d952190440aa216879a4a45723c45cfac85341c1db63";
 // Pins the immutable source receipts, inherited identities and original type boundaries.
