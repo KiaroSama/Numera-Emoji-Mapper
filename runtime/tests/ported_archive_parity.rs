@@ -1,4 +1,4 @@
-// Ported from native/tests/archive_parity.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/archive_parity.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: 47bcd0d12088df6624db1f50bea3008f613b86442c7418731d6db8afdf066bde.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

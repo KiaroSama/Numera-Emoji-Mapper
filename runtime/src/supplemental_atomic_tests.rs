@@ -1,6 +1,6 @@
 //! Pinned original failure/overlap assertions against the same production writer.
 // Retained supplemental native regression module; does not add original unittest IDs.
-// Source: native/src/atomic_tests.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Source: native/src/atomic_tests.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Source SHA256: 66f87369f921d604faf61cbaa06c8e053219a7d28e3d2961533b074da7f4a6b5.
 use crate::atomic::{write_bytes_with, write_json};
 use serde_json::{Value, json};

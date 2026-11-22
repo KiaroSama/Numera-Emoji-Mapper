@@ -1,4 +1,4 @@
-// Ported from native/tests/lease_transfer.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/lease_transfer.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: f2604863b3f149538374b4b5b2bab198d8872d7de2079ce6203515866beab5ca.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

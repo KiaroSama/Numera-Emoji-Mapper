@@ -1,4 +1,4 @@
-// Ported from native/tests/codec_worker.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/codec_worker.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: c357b7423490dc0ed1cd73233f670da6c42ca3fec64ebe25900573d33cd8df20.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

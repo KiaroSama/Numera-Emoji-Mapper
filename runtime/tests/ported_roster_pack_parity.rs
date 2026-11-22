@@ -1,4 +1,4 @@
-// Ported from native/tests/roster_pack_parity.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/roster_pack_parity.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: 39843b2a1707b9b02b060fa599ada181aa00243595846eed05a65bbf662ff763.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

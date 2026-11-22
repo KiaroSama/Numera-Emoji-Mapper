@@ -1,4 +1,4 @@
-// Ported from native/tests/catalog_paths.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/catalog_paths.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: 1f8d3e7534c6f302e2efc9168c5f1ca75903805727d936455adbc8d5280c0ec7.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

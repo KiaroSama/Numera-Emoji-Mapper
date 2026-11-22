@@ -1,4 +1,4 @@
-// Ported from native/tests/browser_open.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/browser_open.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: 8eb011358ce9857dcc087504feec86c64dbe84197f1dd9349bd32c16269fa128.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

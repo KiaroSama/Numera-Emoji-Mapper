@@ -1,4 +1,4 @@
-// Ported from native/tests/coin_provider_policy.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/coin_provider_policy.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: ebc371d4a0cec272987a7f3227c825a19ba573e374a0b9c5356042c7f947eedd.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

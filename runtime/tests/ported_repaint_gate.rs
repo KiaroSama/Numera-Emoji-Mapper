@@ -1,4 +1,4 @@
-// Ported from native/tests/repaint_gate.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/repaint_gate.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: 5bc9ee6bfe3a99e4c893e25389d4d42604678e8225176ff16bb4493b538fc2d7.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

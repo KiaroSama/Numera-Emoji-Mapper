@@ -2,7 +2,7 @@
 
 The migration baseline is actual unittest discovery at
 `feature/first-party-rust` revision
-`a32dbab6e3e694f1fac9656997fa2edb6e3b2ede`: **1,516 unique application IDs**.
+`45a96f9de70da8429b83c047e0626b6ed6694b20`: **1,516 unique application IDs**.
 Main revision `9c3cbb43305b0e507085003d4a33806e4a60b677` collected 1,515.
 The reference adds one overlapping-owner journal case. Discovery includes 26
 inherited cases; declaration counts alone do not describe the executed suite.
@@ -86,7 +86,7 @@ checkout. If a shallow clone or a later squash merge omitted that commit, fetch
 it before entering the isolated test environment:
 
 ```bash
-git fetch --no-tags --depth=1 https://github.com/KiaroSama/Numera-Emoji-Mapper.git a32dbab6e3e694f1fac9656997fa2edb6e3b2ede
+git fetch --no-tags --depth=1 https://github.com/KiaroSama/Numera-Emoji-Mapper.git 45a96f9de70da8429b83c047e0626b6ed6694b20
 ```
 
 CI checks the object's availability and fetches it only when missing. Frozen JSON

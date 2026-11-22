@@ -1,5 +1,5 @@
 {
-  "source_revision": "a32dbab6e3e694f1fac9656997fa2edb6e3b2ede",
+  "source_revision": "45a96f9de70da8429b83c047e0626b6ed6694b20",
   "source_sha256": {
     "tests/test_native_preview_codec.py": "8f8d5d1cdf52be2f2e65359eb11bc1f8e4878ccebfff4fa64090e24050420ead",
     "tests/reference/panel_preview.py": "832548b52fdc4862ca02d8e7d4af9eae84751ef590f333c67f1dd483e9d26024",

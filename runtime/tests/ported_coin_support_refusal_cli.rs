@@ -1,4 +1,4 @@
-// Ported from native/tests/coin_support_refusal_cli.rs at a32dbab6e3e694f1fac9656997fa2edb6e3b2ede.
+// Ported from native/tests/coin_support_refusal_cli.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
 // Original source SHA256: 7daf21c8533fb839404b3f61213f4f182546ce0c634b7fb46b16ddf07b486abe.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;
