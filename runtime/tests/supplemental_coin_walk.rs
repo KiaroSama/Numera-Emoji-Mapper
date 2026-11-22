@@ -148,6 +148,7 @@ fn full_recorded_pack_continues_from_its_actual_index() {
 fn maximum_pack_index_refuses_creation_without_saving_an_intent() {
     let root = tempfile::tempdir().unwrap();
     let (plan, mut state, mut io) = fixture(&[u64::MAX], 200, root.path().join("state.json"));
+    let state_before = state.clone();
     let before = std::fs::read(&io.path).unwrap();
     let result = walk(&plan, &mut state, &options(), &mut io);
     assert!(
@@ -157,6 +158,10 @@ fn maximum_pack_index_refuses_creation_without_saving_an_intent() {
         "{result:?}"
     );
     assert!(io.mutations.is_empty());
+    assert_eq!(
+        state, state_before,
+        "refusal must not advance the next cursor"
+    );
     assert_eq!(std::fs::read(&io.path).unwrap(), before);
 }
 
