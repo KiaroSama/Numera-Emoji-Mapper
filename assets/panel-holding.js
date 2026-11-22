@@ -120,14 +120,23 @@ const holdCards=document.getElementById('holdCards');
 const holdCount=document.getElementById('holdCount');
 let holdDragKeys=null;
 
-function assignedPacks(){
-  const starts=packStarts().starts, result=new Map();
+function assignedPacks(items=ITEMS){
+  const starts=packStartsFor(items).starts, result=new Map();
   let run=0;
-  for(let i=0;i<ITEMS.length;i++){
+  for(let i=0;i<items.length;i++){
     while(run+1<starts.length&&starts[run+1].index<=i)run++;
-    result.set(ITEMS[i].key,ITEMS[i].pack ?? starts[run]?.pack ?? 'new:'+run);
+    result.set(items[i].key,items[i].pack ?? starts[run]?.pack ?? 'new:'+run);
   }
   return result;
+}
+function countsByPack(items,assignments=assignedPacks(items)){
+  const counts=new Map();
+  for(const it of items){
+    if(!it.included||it.isLogo)continue;
+    const pack=assignments.get(it.key);
+    counts.set(pack,(counts.get(pack)||0)+1);
+  }
+  return counts;
 }
 
 function originFor(it){
@@ -327,43 +336,52 @@ holdCards.addEventListener('click',e=>{
 });
 
 function canUnhold(keys,atDrop=false){
-  const counts=new Map(), assignments=assignedPacks();
-  const moving=atDrop?new Set(keys):new Set();
-  const logos=ITEMS.filter(x=>x.isLogo);
-  for(const it of ITEMS){
-    if(!it.included||it.isLogo)continue;
-    // A grid drag vacates its own slots before occupying the destination.
-    if(moving.has(it.key))continue;
-    const pack=assignments.get(it.key);
-    counts.set(pack,(counts.get(pack)||0)+1);
-  }
-  for(const key of keys){
-    const it=ITEMS.find(x=>x.key===key);
-    if(!it||it.isLogo||(!atDrop&&it.included))continue;
-    // At a DROP the destination is the run the card was dragged into, which is
-    // the whole point of the gesture. Reading `assignments` here instead asked
-    // whether the emoji's OWN pack had room -- so moving one out of a full pack
-    // into a roomy one was refused, and moving into a full one was allowed.
-    // The aimed pack answers it now, for the same reason the stamp uses it: at
-    // a boundary the resting place names the pack above, not the one aimed at.
-    // When NOTHING was aimed at, a grid card keeps its assignment and a held
-    // card falls back to its resting place. `undefined` is tested rather
-    // than `??` because `null` is a real answer (a run with no number yet).
-    const destination=atDrop
-      ? (aimedPack!==undefined?aimedPack:it.included?assignments.get(key):runPackAt(ITEMS.indexOf(it),moving))
-      : null;
-    const origin=atDrop?{pack:destination??assignments.get(key)}
-                       :holdOrigins.get(key)||{pack:assignments.get(key)};
-    const count=(counts.get(origin.pack)||0)+1;
+  const moving=new Set(keys);
+  // Count the state acceptDrop will commit. Old stamps in the drag preview can
+  // temporarily assign an unstamped neighbour to the wrong run. A grid drag
+  // can also carry held picks without activating them; only a tray drop does.
+  const items=atDrop?ITEMS.map(it=>moving.has(it.key)&&!it.isLogo?{
+    ...it, pack:aimedPack===undefined?it.pack:aimedPack,
+    included:it.included||!!holdDragKeys?.has(it.key)
+  }:it):ITEMS;
+  const assignments=assignedPacks(items), counts=countsByPack(items,assignments);
+  const logos=items.filter(x=>x.isLogo);
+  const fits=(pack,count)=>{
     // The global brand logo ships in every pack; a live logo reserves its own.
-    const logoSlot=logos.some(x=>x.pack==null||x.pack===origin.pack)?1:0;
+    const logoSlot=logos.some(x=>x.pack==null||x.pack===pack)?1:0;
     if(count+logoSlot>PER_SET){
-      const label=typeof origin.pack==='number'?'Pack '+origin.pack:'That pack';
+      const label=typeof pack==='number'?'Pack '+pack:'That pack';
       toast(atDrop
         ? `${label} is full (${PER_SET}/${PER_SET}). Hold one of its emoji first, then bring this one in.`
         : `${label} is full (${PER_SET}/${PER_SET}). Its original place is occupied; hold or move another emoji before Unhold.`);
       return false;
     }
+    return true;
+  };
+  if(atDrop){
+    let beforeCounts=new Map();
+    if(dragSnap){
+      const byKey=new Map(ITEMS.map(it=>[it.key,it]));
+      const packs=new Map(dragSnap.packs), included=new Set(dragSnap.included);
+      const before=dragSnap.order.map(key=>byKey.get(key)).filter(Boolean).map(it=>({
+        ...it, pack:packs.get(it.key), included:included.has(it.key)
+      }));
+      beforeCounts=countsByPack(before);
+    }
+    // Moving a boundary can change a neighbour's inferred pack on either side.
+    // Check every growing pack against the original drag state. Existing
+    // overflow from bulk inclusion may be rearranged or reduced, never worsened.
+    for(const [pack,count] of counts){
+      if(count>(beforeCounts.get(pack)||0)&&!fits(pack,count))return false;
+    }
+    return true;
+  }
+  for(const key of keys){
+    const it=items.find(x=>x.key===key);
+    if(!it||it.isLogo||it.included)continue;
+    const origin=holdOrigins.get(key)||{pack:assignments.get(key)};
+    const count=(counts.get(origin.pack)||0)+1;
+    if(!fits(origin.pack,count))return false;
     counts.set(origin.pack,count);
   }
   return true;
