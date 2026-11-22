@@ -8,6 +8,37 @@ use std::collections::BTreeMap;
 use std::io::Read;
 use std::time::Duration;
 
+#[derive(serde::Deserialize)]
+struct WorkerAcknowledgment {
+    ok: bool,
+    message_ids: Vec<u64>,
+}
+
+fn worker_acknowledgment(bytes: &[u8]) -> serde_json::Result<WorkerAcknowledgment> {
+    struct ObjectVisitor;
+    impl<'de> serde::de::Visitor<'de> for ObjectVisitor {
+        type Value = WorkerAcknowledgment;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("a Worker acknowledgment object")
+        }
+
+        fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            serde::Deserialize::deserialize(serde::de::value::MapAccessDeserializer::new(map))
+        }
+    }
+    // Decode typed fields from the wire, before Value's arbitrary-precision
+    // representation can turn object-shaped identifiers into numbers. Requiring
+    // a map also excludes Serde's positional-array form for a struct.
+    let mut parser = serde_json::Deserializer::from_slice(bytes);
+    let acknowledgment = serde::Deserializer::deserialize_map(&mut parser, ObjectVisitor)?;
+    parser.end()?;
+    Ok(acknowledgment)
+}
+
 pub fn worker(
     config: &Config,
     packs: &[Value],
@@ -77,18 +108,16 @@ pub fn worker(
             "worker announcement response exceeds the acknowledgment limit; outcome unknown".into(),
         );
     }
-    let acknowledgment: Value = serde_json::from_slice(&bytes)
-        .map_err(|_| "worker announcement response is not JSON; outcome unknown")?;
+    let acknowledgment = worker_acknowledgment(&bytes)
+        .map_err(|_| "worker announcement response has no valid acknowledgment; outcome unknown")?;
     // Match the Worker's exact integer range. Telegram may return zero for a
     // scheduled message, and a single request can produce several messages.
-    let valid_ids = acknowledgment["message_ids"].as_array().is_some_and(|ids| {
-        !ids.is_empty()
-            && ids.iter().all(|id| {
-                id.as_u64()
-                    .is_some_and(|number| number <= 9_007_199_254_740_991)
-            })
-    });
-    if acknowledgment["ok"] != true || !valid_ids {
+    let valid_ids = !acknowledgment.message_ids.is_empty()
+        && acknowledgment
+            .message_ids
+            .iter()
+            .all(|id| *id <= 9_007_199_254_740_991);
+    if !acknowledgment.ok || !valid_ids {
         return Err(
             "worker announcement response has no valid acknowledgment; outcome unknown".into(),
         );
