@@ -7,7 +7,7 @@ const ELF_MACHINE_X64: u16 = 62;
 const ELF_MACHINE_ARM64: u16 = 183;
 const RT_ICON: u32 = 3;
 const RT_GROUP_ICON: u32 = 14;
-const LINUX_LOGO_SECTION: &[u8] = b".rodata.numera_logo";
+const LINUX_LOGO_SECTION: &[u8] = b".numera_logo";
 
 fn u16_le(bytes: &[u8], offset: usize) -> Result<u16, String> {
     let slice = bytes
@@ -136,7 +136,7 @@ fn verify_elf(bytes: &[u8], expected_machine: u16, expected_logo: &[u8]) -> Resu
             return Ok(());
         }
     }
-    Err("Linux executable is missing .rodata.numera_logo embedded logo section".into())
+    Err("Linux executable is missing .numera_logo embedded logo section".into())
 }
 
 pub fn verify_binary_artifact(
