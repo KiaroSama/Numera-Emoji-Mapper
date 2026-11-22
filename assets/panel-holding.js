@@ -10,7 +10,7 @@ let savedSnapshot = null, pendingSaveSnapshot = null;
 function snapshot(){
   return {order: ITEMS.map(x=>x.key), included: ITEMS.filter(x=>x.included).map(x=>x.key),
     packs: ITEMS.filter(x=>x.pack!=null).map(x=>[x.key,x.pack]),
-    picked: [...picked], selMode, lastPick, lastIdx, holds: [...holdOrigins],
+    picked: [...picked], selMode, lastPick, lastHeldPick, lastIdx, holds: [...holdOrigins],
     zoom, anim: ANIM_ON, animAll: ANIM_ALL, videoReal: VIDEO_REAL, bg: BGS.find(x=>document.body.classList.contains('bg-'+x)) || 'checker'};
 }
 function remember(snap){
@@ -46,15 +46,17 @@ function applySnapshot(snap, persist=true){
     for(const [k,v] of snap.holds || []) holdOrigins.set(k,v);
     clearPicked();
     for(const k of snap.picked || []) markPicked(k,true);
-    selMode=!!snap.selMode; lastPick=snap.lastPick; lastIdx=snap.lastIdx;
+    selMode=!!snap.selMode; lastPick=snap.lastPick; lastHeldPick=snap.lastHeldPick ?? null; lastIdx=snap.lastIdx;
     document.body.classList.toggle('selmode',selMode);
     document.getElementById('selmode').setAttribute('aria-pressed',String(selMode));
     paintSelLabel();
     ANIM_ON=snap.anim; prefs.set('animOn',ANIM_ON?'1':'0');
     if('animAll' in snap) setAnimAll(snap.animAll);
     if('videoReal' in snap) setVideoReal(snap.videoReal);
+    // Zoom must read rows for the restored inclusion/order, not a now-held anchor.
+    relayout();
     setZoom(snap.zoom); applyBg(snap.bg);
-    relayout(); updateCount(); applyAnim(); markSelDirty();
+    updateCount(); applyAnim(); markSelDirty();
     if(persist && before !== ITEMS.filter(x=>!x.isLogo).map(x=>x.key).join('\0')) saveOrder();
     updateHistoryButtons();
   }finally{ restoring=false; }
@@ -315,6 +317,7 @@ holdCards.addEventListener('click',e=>{
   const card=e.target.closest('.hcard'); if(!card)return;
   const order=heldOrder(), i=order.indexOf(card.dataset.key);
   if(i<0)return;
+  remember();
   const anchor=order.indexOf(lastHeldPick);
   const on=!picked.has(order[i]);
   const [a,b]=e.shiftKey&&anchor>=0?[Math.min(anchor,i),Math.max(anchor,i)]:[i,i];
@@ -325,30 +328,36 @@ holdCards.addEventListener('click',e=>{
 
 function canUnhold(keys,atDrop=false){
   const counts=new Map(), assignments=assignedPacks();
+  const moving=atDrop?new Set(keys):new Set();
+  const logos=ITEMS.filter(x=>x.isLogo);
   for(const it of ITEMS){
-    if(!it.included && !it.isLogo)continue;
+    if(!it.included||it.isLogo)continue;
+    // A grid drag vacates its own slots before occupying the destination.
+    if(moving.has(it.key))continue;
     const pack=assignments.get(it.key);
     counts.set(pack,(counts.get(pack)||0)+1);
   }
   for(const key of keys){
     const it=ITEMS.find(x=>x.key===key);
-    if(!it||it.isLogo||it.included)continue;
+    if(!it||it.isLogo||(!atDrop&&it.included))continue;
     // At a DROP the destination is the run the card was dragged into, which is
     // the whole point of the gesture. Reading `assignments` here instead asked
     // whether the emoji's OWN pack had room -- so moving one out of a full pack
     // into a roomy one was refused, and moving into a full one was allowed.
     // The aimed pack answers it now, for the same reason the stamp uses it: at
     // a boundary the resting place names the pack above, not the one aimed at.
-    // Only when NOTHING was aimed at does capacity fall back to the resting
-    // place -- the guard must keep asking, and `undefined` is tested rather
+    // When NOTHING was aimed at, a grid card keeps its assignment and a held
+    // card falls back to its resting place. `undefined` is tested rather
     // than `??` because `null` is a real answer (a run with no number yet).
     const destination=atDrop
-      ? (aimedPack!==undefined?aimedPack:runPackAt(ITEMS.indexOf(it),new Set(keys)))
+      ? (aimedPack!==undefined?aimedPack:it.included?assignments.get(key):runPackAt(ITEMS.indexOf(it),moving))
       : null;
     const origin=atDrop?{pack:destination??assignments.get(key)}
                        :holdOrigins.get(key)||{pack:assignments.get(key)};
     const count=(counts.get(origin.pack)||0)+1;
-    if(count>PER_SET){
+    // The global brand logo ships in every pack; a live logo reserves its own.
+    const logoSlot=logos.some(x=>x.pack==null||x.pack===origin.pack)?1:0;
+    if(count+logoSlot>PER_SET){
       const label=typeof origin.pack==='number'?'Pack '+origin.pack:'That pack';
       toast(atDrop
         ? `${label} is full (${PER_SET}/${PER_SET}). Hold one of its emoji first, then bring this one in.`
@@ -458,7 +467,7 @@ function runPackAt(index,ignore){
  *  tray is for: park one, then bring the replacement in. */
 function acceptDrop(){
   const keys=[...(holdDragKeys||carried)];
-  if(holdDragKeys&&!canUnhold(keys,true))return false;
+  if(!canUnhold(keys,true))return false;
   for(const k of keys){
     const it=ITEMS.find(x=>x.key===k);
     if(!it||it.isLogo)continue;

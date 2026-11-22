@@ -153,9 +153,18 @@ test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_
     {name: "a picked group is refused atomically when one slot remains", destinationSize: 199, group: true, samePack: false, accepted: false},
     {name: "one grid card fills the last free slot", destinationSize: 199, group: false, samePack: false, accepted: true},
     {name: "reordering inside a full pack does not consume a new slot", destinationSize: 200, group: false, samePack: true, accepted: true},
+    {name: "the global logo reserves a slot in every destination", destinationSize: 199, group: false, samePack: false, accepted: false, logo: "global"},
+    {name: "a global logo leaves 199 ordinary slots in the destination", destinationSize: 198, group: false, samePack: false, accepted: true, logo: "global"},
+    {name: "an explicit destination logo is counted once", destinationSize: 198, group: false, samePack: false, accepted: true, logo: "per-pack"},
   ]) {
     await test.step(scenario.name, async () => {
-      const items = synth(scenario.destinationSize + 2, {packs: [1, 1, ...Array(scenario.destinationSize).fill(2)]});
+      const items = synth(scenario.destinationSize + 2, {logo: !!scenario.logo,
+        packs: [1, 1, ...Array(scenario.destinationSize).fill(2)]});
+      const ordinary = items.filter(item => !item.isLogo);
+      if (scenario.logo === "per-pack") {
+        items[0].pack = 1;
+        items.splice(3, 0, {...items[0], key: "__logo_pack_2__", pack: 2});
+      }
       const gridPage = await open(panel, items, {clock: true});
       await gridPage.evaluate("setZoom(0.4)");
       if (scenario.group) {
@@ -164,15 +173,16 @@ test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_
         await gridPage.locator("#grid .card .thumb").nth(1).click();
       }
       const before = await gridPage.evaluate("snapshot()");
-      const source = scenario.samePack ? 2 : 0;
-      const target = scenario.samePack ? 4 : 2;
-      await gridPage.locator(`#grid .card[data-key="${items[source].key}"]`)
-        .dragTo(gridPage.locator(`#grid .card[data-key="${items[target].key}"]`));
-      const destination = await gridPage.evaluate("ITEMS.filter(item => item.included && item.pack === 2).length");
-      assert.equal(destination, scenario.accepted && !scenario.samePack ? 200 : scenario.destinationSize,
+      const source = ordinary[scenario.samePack ? 2 : 0].key;
+      const target = ordinary[scenario.samePack ? 4 : 2].key;
+      await gridPage.locator(`#grid .card[data-key="${source}"]`)
+        .dragTo(gridPage.locator(`#grid .card[data-key="${target}"]`));
+      const destination = await gridPage.evaluate("ITEMS.filter(item => !item.isLogo && item.included && item.pack === 2).length");
+      const capacity = scenario.logo ? 199 : 200;
+      assert.equal(destination, scenario.accepted && !scenario.samePack ? capacity : scenario.destinationSize,
         "a drop must never overfill its destination");
       if (scenario.accepted) {
-        assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).pack, items[source].key), 2);
+        assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).pack, source), 2);
         assert.notDeepEqual(await gridPage.evaluate("snapshot()"), before);
       } else {
         assert.deepEqual(await gridPage.evaluate("snapshot()"), before,
@@ -194,6 +204,14 @@ test("test_panel_curation.CurationControls.test_unhold_all_refuses_a_full_origin
   assert.ok((await page.locator("#toast").innerText()).includes("Pack 1 is full (200/200)"));
   (await page.locator("#holdCards .hcard button").last().click());
   assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1);
+
+  await test.step("a global logo also reserves space when unholding into a later pack", async () => {
+    const branded = await open(panel, synth(201, {logo: true,
+      packs: [1, ...Array(200).fill(2)], excluded: [1]}));
+    await branded.click("#unholdAll");
+    assert.equal(await branded.locator("#holdCards .hcard").count(), 1);
+    assert.ok((await branded.locator("#toast").innerText()).includes("Pack 2 is full (200/200)"));
+  });
 });
 
 test("test_panel_curation.CurationControls.test_reset_uses_the_submitted_save_and_is_itself_undoable", async ({ panel }) => {
