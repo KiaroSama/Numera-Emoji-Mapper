@@ -170,7 +170,8 @@ function holdRunsFor(items){
     const refs={first:group.members[0]?.key??null,last:group.members.at(-1)?.key??null,
       before,after:after[i]};
     for(const it of items.slice(group.start,group.end)){
-      out.set(it.key,{...refs,slot});
+      out.set(it.key,{...refs,slot,pack:group.pack,previous:group.members[slot-1]?.key??null,
+        next:group.members[slot+(it.included||it.isLogo?1:0)]?.key??null});
       if(it.included||it.isLogo)slot++;
     }
     before=group.members.at(-1)?.key??before;
@@ -185,7 +186,12 @@ function readHoldRuns(raw){
     const run=entry[1];
     if(!run||typeof run!=='object'||!Number.isSafeInteger(run.slot)||run.slot<0)continue;
     if(!['first','last','before','after'].every(key=>run[key]===null||typeof run[key]==='string'))continue;
-    out.set(entry[0],{first:run.first,last:run.last,before:run.before,after:run.after,slot:run.slot});
+    const pack=run.pack;
+    const validPack=pack===null||(Number.isSafeInteger(pack)&&pack>=0)||
+      (typeof pack==='string'&&/^new:(0|[1-9][0-9]*)$/.test(pack)&&Number.isSafeInteger(Number(pack.slice(4))));
+    const placement=validPack&&['previous','next'].every(key=>run[key]===null||typeof run[key]==='string')
+      ?{pack,previous:run.previous,next:run.next}:{};
+    out.set(entry[0],{first:run.first,last:run.last,before:run.before,after:run.after,slot:run.slot,...placement});
   }
   return out;
 }
@@ -404,29 +410,74 @@ function projectUnhold(items,keys,origins,runs=new Map()){
     .map(it=>({it:byKey.get(it.key),origin:origins.get(it.key)||originFor(it,items),run:runs.get(it.key)}))
     .sort((a,b)=>a.origin.index-b.origin.index);
   for(const {it,origin,run} of restoringItems){
-    const refs=run||{...fallback.get(it.key),slot:origin.slot};
+    const inferred=fallback.get(it.key);
+    // Legacy drafts have no saved neighbour proof. Keep their original slot
+    // semantics instead of mistaking the current layout for captured history.
+    const refs=run||{first:inferred.first,last:inferred.last,before:inferred.before,
+      after:inferred.after,slot:origin.slot};
+    const pack=refs.pack===undefined?origin.pack:refs.pack;
     const marker=projected.indexOf(it);
     projected.splice(marker,1);
-    const groups=holdingRunGroups(projected);
     const indexOf=key=>key===it.key?-1:projected.findIndex(x=>x.key===key);
+    const sameRun=saved=>saved&&saved.pack===pack&&
+      ['first','last','before','after'].every(field=>saved[field]===refs[field]);
+    // Neighbours and placement pack were captured together, unlike the public
+    // sequential bulk origins. A held marker can itself have moved: follow its
+    // original links within this run until a live neighbour proves the place.
+    const anchor=side=>{
+      const seen=new Set([it.key]),reverse=side==='previous'?'next':'previous';
+      let from=it.key,key=refs[side];
+      while(typeof key==='string'&&!seen.has(key)){
+        seen.add(key);
+        const item=byKey.get(key);
+        if(!item)return -1;
+        if(item.included||item.isLogo)return item.pack==null||item.pack===pack?projected.indexOf(item):-1;
+        const saved=runs.get(key);
+        if(!sameRun(saved)||saved[reverse]!==from)return -1;
+        from=key;key=saved[side];
+      }
+      return -1;
+    };
+    const previous=anchor('previous'),next=anchor('next');
+    if((previous>=0||next>=0)&&(previous<0||next<0||previous<next)){
+      projected.splice(next>=0?next:previous+1,0,it);it.included=true;continue;
+    }
+    // An edit can reverse the original neighbours (for example moving the
+    // preceding card to the end). Keep the established current-slot fallback.
+    const groups=holdingRunGroups(projected);
     const before=indexOf(refs.before),after=indexOf(refs.after);
     let group=null;
     for(const key of [refs.first,refs.last]){
       const index=indexOf(key);
       if(index<0||!projected[index].included)continue;
       const candidate=groups.find(g=>g.start<=index&&index<g.end);
-      if(candidate?.pack===origin.pack){group=candidate;break;}
+      if(candidate?.pack===pack){group=candidate;break;}
     }
     // The saved extent remains meaningful when all its stamps are held and
     // current runs merge or split. A surviving member is the fallback when a
     // boundary disappeared; a moved held marker is never the primary anchor.
     let lo=refs.before===null?0:before>=0?before+1:group?group.start:Math.min(marker,projected.length);
     let hi=refs.after===null?projected.length:after>=0?after:group?group.end:lo;
+    const extent=(refs.before===null||before>=0)&&(refs.after===null||after>=0)&&lo<=hi;
+    if(previous<0&&next<0&&extent){
+      // With no live member, an unmoved held peer can still prove the gap.
+      // Require reciprocal original links and intact exterior fences; a held
+      // marker dragged outside its saved run is not placement evidence.
+      const peer=side=>{
+        const key=refs[side],index=indexOf(key),saved=runs.get(key);
+        const reverse=side==='previous'?'next':'previous';
+        return index>=lo&&index<hi&&!projected[index].included&&sameRun(saved)&&saved[reverse]===it.key?index:-1;
+      };
+      const left=peer('previous'),right=peer('next');
+      if((left>=0||right>=0)&&(left<0||right<0||left<right)){
+        projected.splice(right>=0?right:left+1,0,it);it.included=true;continue;
+      }
+    }
     if(lo>hi){lo=group?group.start:Math.min(marker,projected.length);hi=group?group.end:lo;}
     const members=projected.slice(lo,hi).filter(x=>(x.included||x.isLogo)&&
-      (x.pack==null||x.pack===origin.pack));
-    const next=members[refs.slot],previous=members.at(-1);
-    const at=next?projected.indexOf(next):previous?projected.indexOf(previous)+1:lo;
+      (x.pack==null||x.pack===pack));
+    const following=members[refs.slot],last=members.at(-1);
+    const at=following?projected.indexOf(following):last?projected.indexOf(last)+1:lo;
     projected.splice(at,0,it);it.included=true;
   }
   return projected;
