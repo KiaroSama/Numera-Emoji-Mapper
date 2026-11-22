@@ -1,7 +1,7 @@
 //! Upload/readback effects shared by both builders without imposing catalog storage.
 use crate::{
     media_adapter::{MediaAdapter, MediaCodec},
-    telegram::{ApiError, SetState, Telegram, input_sticker, upload, usable_fuids},
+    telegram::{ApiError, SetState, Telegram, input_sticker, upload},
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -96,7 +96,7 @@ impl<M: MediaCodec> UploadEffect<'_, M> {
         } else {
             self.live(name).map_err(ApiError::Ambiguous)?
         };
-        let identities = usable_fuids(&before);
+        let identities = complete_identities(&before);
         let mut data = BTreeMap::from([
             ("user_id".into(), user.to_string()),
             ("name".into(), name.into()),
@@ -125,13 +125,16 @@ impl<M: MediaCodec> UploadEffect<'_, M> {
             let Some(live) = pack["stickers"].as_array() else {
                 return Ok(None);
             };
+            let Some(now) = complete_identities(live) else {
+                return Ok(None);
+            };
             if title.is_some() {
                 if live.len() != 1 {
                     return Ok(None);
                 }
                 return Ok(self.same(&live[0], &path, fmt).unwrap_or(None));
             }
-            let (Some(old), Some(now)) = (&identities, usable_fuids(live)) else {
+            let Some(old) = &identities else {
                 return Ok(None);
             };
             if old == &now {
@@ -142,11 +145,7 @@ impl<M: MediaCodec> UploadEffect<'_, M> {
             }
             let new = live
                 .iter()
-                .filter(|s| {
-                    s["file_unique_id"]
-                        .as_str()
-                        .is_some_and(|id| !old.contains(id))
-                })
+                .filter(|sticker| !old.contains(&crate::reconcile::identity(sticker)))
                 .collect::<Vec<_>>();
             if new.len() != 1 {
                 return Ok(None);
@@ -157,8 +156,7 @@ impl<M: MediaCodec> UploadEffect<'_, M> {
         // An answered request still needs identity proof. Do not route a failed
         // confirmation into the unanswered-transport recovery that can attribute a tail.
         let after = self.live(name).map_err(ApiError::Unproven)?;
-        let (Some(old), Some(now)) = (complete_identities(&before), complete_identities(&after))
-        else {
+        let (Some(old), Some(now)) = (&identities, complete_identities(&after)) else {
             return Err(ApiError::Unproven(
                 "live snapshots have incomplete or duplicate sticker identities".into(),
             ));
