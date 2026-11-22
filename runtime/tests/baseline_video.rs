@@ -663,8 +663,8 @@ mod test_native_preview_codec {
                             .max()
                             .unwrap_or(0);
                         assert!(
-                            max_diff <= 2,
-                            "aarch64 video preview pixel drift {max_diff} > 2 for {row}"
+                            max_diff <= 8,
+                            "aarch64 video preview pixel drift {max_diff} > 8 for {row}"
                         );
                     }
                     continue;

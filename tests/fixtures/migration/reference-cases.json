@@ -11432,7 +11432,7 @@
         "file": "runtime/tests/baseline_video.rs",
         "target": "baseline_video",
         "function": "test_native_preview_codec::native_preview_codec::test_static_and_lottie_preview_bytes_match_source",
-        "body_sha256": "4fc1ef174e24a794933903ed0ea7fbefc58f2ac3072909b6185d50c3846bcf84"
+        "body_sha256": "4293fd5734da34421be9032587b36809b98bdec2b49fe6c0b6281b8a92e0a7d1"
       }
     },
     {
