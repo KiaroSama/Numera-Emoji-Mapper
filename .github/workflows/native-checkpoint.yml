@@ -2,16 +2,28 @@ name: Rust checkpoint
 
 on:
   workflow_dispatch:
+    inputs:
+      validation_scope:
+        description: Diagnostic scope; full acceptance remains required on the same revision.
+        type: choice
+        required: true
+        default: full
+        options:
+          - full
+          - mutation-regressions
+          - panel-browser
+          - announcement-regressions
 
 permissions:
   contents: read
 
 concurrency:
-  group: rust-checkpoint-${{ github.ref }}
+  group: rust-checkpoint-${{ github.ref }}-${{ inputs.validation_scope || 'full' }}
   cancel-in-progress: true
 
 jobs:
   checkpoint:
+    if: ${{ inputs.validation_scope == 'full' || inputs.validation_scope == '' }}
     name: Rust checkpoint (${{ matrix.platform }})
     strategy:
       fail-fast: false
@@ -69,3 +81,91 @@ jobs:
           name: rust-checkpoint-diagnostics-${{ matrix.platform }}
           path: logs/**
           if-no-files-found: warn
+
+  focused:
+    name: Focused checkpoint (${{ inputs.validation_scope }}, Linux x64)
+    if: ${{ inputs.validation_scope == 'mutation-regressions' || inputs.validation_scope == 'panel-browser' || inputs.validation_scope == 'announcement-regressions' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      NUMERA_SOURCE_REVISION: ${{ github.sha }}
+      NUMERA_VALIDATION_SCOPE: ${{ inputs.validation_scope }}
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_RELEASE_LTO: "false"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Record and verify tested source revision and scope
+        run: |
+          mkdir -p logs/checkpoint
+          git rev-parse HEAD > logs/checkpoint/source-revision.log
+          test "$(cat logs/checkpoint/source-revision.log)" = "$NUMERA_SOURCE_REVISION"
+          printf '%s\n' "$NUMERA_VALIDATION_SCOPE" > logs/checkpoint/validation-scope.log
+      - name: Select supported Rust compiler
+        run: |
+          rustup default 1.100.0
+          rustc -vV | tee logs/checkpoint/rustc.log
+          test "$(awk '/^host: / {print $2}' logs/checkpoint/rustc.log)" = x86_64-unknown-linux-gnu
+      - name: Install external media tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Build fresh standalone executables for focused diagnostics
+        run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins 2>&1 | tee logs/checkpoint/runtime-build.log
+      - name: Permit private test namespaces
+        uses: ./.github/actions/test-network
+      - name: Guarded mutation regressions
+        if: inputs.validation_scope == 'mutation-regressions'
+        run: |
+          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
+            --test supplemental_telegram_mutation --test supplemental_plan_remove \
+            --test supplemental_coin_recovery --test supplemental_coin_walk --test supplemental_sync_order \
+            -- --test-threads=1 2>&1 | tee logs/checkpoint/mutation-regressions.log
+      - name: Guarded announcement regressions
+        if: inputs.validation_scope == 'announcement-regressions'
+        run: |
+          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
+            --test supplemental_announce_ack -- --test-threads=1 2>&1 | tee logs/checkpoint/announcement-regressions.log
+      - uses: actions/setup-node@v7
+        if: inputs.validation_scope == 'panel-browser'
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: assets/package-lock.json
+      - name: Install locked browser tooling
+        if: inputs.validation_scope == 'panel-browser'
+        working-directory: assets
+        run: npm ci
+      - name: Install Chromium
+        if: inputs.validation_scope == 'panel-browser'
+        working-directory: assets
+        run: npx playwright install --with-deps chromium
+      - name: Record complete browser test discovery
+        if: inputs.validation_scope == 'panel-browser'
+        working-directory: assets
+        run: npx playwright test --list --reporter=json > ../logs/checkpoint/browser-inventory.json
+      - name: Verify original browser and source-contract identities
+        if: inputs.validation_scope == 'panel-browser'
+        run: |
+          cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- \
+            --mode all --playwright-list logs/checkpoint/browser-inventory.json \
+            --output logs/checkpoint/panel-inventory-check.json
+      - name: Complete panel browser and source-contract suite
+        if: inputs.validation_scope == 'panel-browser'
+        working-directory: assets
+        env:
+          NUMERA_BROWSER_BINARY: ${{ github.workspace }}/runtime/target/release/numera-emoji
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/logs/checkpoint/browser-results.json
+        run: npm test -- --reporter=line,json
+      - name: Preserve focused checkpoint diagnostics and revision
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-checkpoint-diagnostics-${{ inputs.validation_scope }}-linux-x64
+          path: logs/**
+          if-no-files-found: warn
+          retention-days: 7
