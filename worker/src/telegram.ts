@@ -19,6 +19,10 @@ const DEFAULT_API = "https://api.telegram.org";
  */
 export const TEXT_LIMIT = 4096;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 export class BotApiError extends Error {
   constructor(readonly method: string, readonly description: string,
               readonly code?: number) {
@@ -59,17 +63,23 @@ export class Telegram {
       throw new BotApiError(method, `transport failure: ${redact(String(
         err instanceof Error ? err.message : err))}`, 0);
     }
-    let body: { ok?: boolean; result?: T; description?: string; error_code?: number };
+    let body: unknown;
     try {
       body = await res.json();
     } catch {
       throw new BotApiError(method, `non-JSON response (HTTP ${res.status})`, res.status);
     }
-    if (!res.ok || body.ok !== true) {
+    if (!isRecord(body) || typeof body.ok !== "boolean"
+        || (body.ok && !("result" in body))) {
+      throw new BotApiError(method, `invalid response (HTTP ${res.status})`, res.status);
+    }
+    if (!res.ok || !body.ok) {
       // Telegram's own description is upstream text: redacted too, because it
       // can quote back something we sent it.
-      throw new BotApiError(method, redact(body.description ?? `HTTP ${res.status}`),
-                            body.error_code ?? res.status);
+      const description = typeof body.description === "string" ? body.description : `HTTP ${res.status}`;
+      const code = typeof body.error_code === "number" && Number.isSafeInteger(body.error_code)
+        ? body.error_code : res.status;
+      throw new BotApiError(method, redact(description), code);
     }
     return body.result as T;
   }
@@ -86,14 +96,19 @@ export class Telegram {
    *
    * Telegram caps one call at 200 ids; callers chunk.
    */
-  getCustomEmojiStickers(ids: string[]): Promise<TgCustomEmojiSticker[]> {
-    return this.call<TgCustomEmojiSticker[]>("getCustomEmojiStickers",
-                                             { custom_emoji_ids: ids });
+  async getCustomEmojiStickers(ids: string[]): Promise<TgCustomEmojiSticker[]> {
+    const result = await this.call("getCustomEmojiStickers", { custom_emoji_ids: ids });
+    if (!Array.isArray(result) || !result.every(sticker => isRecord(sticker)
+        && typeof sticker.custom_emoji_id === "string"
+        && (sticker.emoji === undefined || typeof sticker.emoji === "string"))) {
+      throw new BotApiError("getCustomEmojiStickers", "invalid getCustomEmojiStickers result");
+    }
+    return result as TgCustomEmojiSticker[];
   }
 
-  sendMessage(chatId: number | string, text: string,
-              opts: Record<string, unknown> = {}): Promise<TgSentMessage> {
-    return this.call<TgSentMessage>("sendMessage", {
+  async sendMessage(chatId: number | string, text: string,
+                    opts: Record<string, unknown> = {}): Promise<TgSentMessage> {
+    const result = await this.call("sendMessage", {
       chat_id: chatId,
       text,
       // Long id lists are the point of this bot; a link preview per message
@@ -101,6 +116,15 @@ export class Telegram {
       disable_web_page_preview: true,
       ...opts,
     });
+    // A TypeScript cast cannot prove a message was sent. An absent identifier
+    // used to become null in /publish's successful message_ids response.
+    // Zero remains valid for messages Telegram has scheduled for delivery.
+    if (!isRecord(result) || typeof result.message_id !== "number"
+        || !Number.isSafeInteger(result.message_id) || result.message_id < 0
+        || !isRecord(result.chat) || !Number.isSafeInteger(result.chat.id)) {
+      throw new BotApiError("sendMessage", "invalid sendMessage result");
+    }
+    return result as unknown as TgSentMessage;
   }
 }
 

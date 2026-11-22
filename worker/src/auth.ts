@@ -39,9 +39,10 @@ export function verifyWebhook(request: Request, expected: string | undefined): b
 export function verifyBearer(request: Request, expected: string | undefined): boolean {
   if (!expected) return false;
   const header = request.headers.get("Authorization") ?? "";
-  const prefix = "Bearer ";
-  if (!header.startsWith(prefix)) return false;
-  return timingSafeEqual(header.slice(prefix.length), expected);
+  // HTTP auth schemes are case-insensitive and use one or more spaces. Only
+  // the scheme is normalized: the credential still has to match exactly.
+  const prefix = /^Bearer +/i.exec(header);
+  return prefix !== null && timingSafeEqual(header.slice(prefix[0].length), expected);
 }
 
 /**
