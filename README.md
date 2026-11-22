@@ -88,12 +88,12 @@ Prebuilt 64-bit packages ship for four targets: `windows-x64`, `windows-arm64`,
 1. Open [Releases](https://github.com/KiaroSama/Numera-Emoji-Mapper/releases) (or
    the artifacts on a successful [Prebuilt packages run](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml))
    and download the matching `numera-emoji-mapper-<version>-<platform>.zip` plus
-   `SHA256SUMS`, `SHA256SUMS.asc`, and `KEYS.asc`. A source ZIP is not a ready-built
-   application.
-2. Verify the detached GPG signature (`gpg --import KEYS.asc && gpg --verify SHA256SUMS.asc SHA256SUMS`),
+   its `.sha256` and `.sig` files, `SHA256SUMS`, `SHA256SUMS.sig`, and
+   `publisher-key.pem`. A source ZIP is not a ready-built application.
+2. Verify `SHA256SUMS.sig` and the archive `.sig` with OpenSSL (`openssl dgst -sha256 -verify publisher-key.pem -signature SHA256SUMS.sig SHA256SUMS`),
    the archive SHA-256 checksum, GitHub build provenance attestation (`gh attestation verify`),
-   and on Windows the executable's Authenticode signature (`Get-AuthenticodeSignature .\numera-emoji.exe`),
-   then extract the archive into its own directory.
+   and on Windows the executable's Authenticode signature (`Get-AuthenticodeSignature .\numera-emoji.exe`;
+   see [docs/SIGNING.md](docs/SIGNING.md)), then extract the archive into its own directory.
 3. Run the executable directly. The extracted directory is already runnable;
    there is no dependency installation step.
 
