@@ -1,6 +1,6 @@
 // Faithful real-browser scenarios; original class/method identity is retained.
 import assert from "node:assert/strict";
-import { test, synth } from "./browser-fixture.js";
+import { test, expect, synth } from "./browser-fixture.js";
 test.use({ catalogSize: 4 });
 test.skip(process.env.NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS === '1', 'Explicit browser opt-out');
 
@@ -48,6 +48,26 @@ test("test_panel_curation.CurationControls.test_shift_hold_unhold_and_history_re
   assert.deepEqual((await page.locator("#holdCards .hcard").count()), 4);
   (await page.locator("#holdCards .hcard button").first().click());
   assert.deepEqual((await page.locator("#holdCards .hcard").count()), 3);
+
+  await test.step("tray picks have their own undo entry and restore the Shift anchor", async () => {
+    const items = synth(5, {excluded: [0, 1, 2, 3]});
+    const trayPage = await open(panel, items);
+    await trayPage.click("#selmode");
+    const tray = trayPage.locator("#holdCards .hcard");
+    const beforePick = await trayPage.evaluate("snapshot()");
+    await tray.nth(1).locator("img").click();
+    const selected = await trayPage.evaluate("snapshot()");
+    await trayPage.click("#undo");
+    assert.deepEqual(await trayPage.evaluate("snapshot()"), beforePick,
+      "Undo must reverse the tray pick, not leave selection mode or unhold cards");
+    await trayPage.click("#redo");
+    assert.deepEqual(await trayPage.evaluate("snapshot()"), selected);
+    await tray.nth(0).locator("img").click();
+    await trayPage.click("#undo");
+    await tray.nth(3).locator("img").click({modifiers: ["Shift"]});
+    assert.deepEqual(await trayPage.evaluate("heldPicked()"), items.slice(1, 4).map(item => item.key),
+      "Undo must restore the previous tray anchor before the next Shift click");
+  });
 });
 
 test("test_panel_curation.CurationControls.test_several_held_emoji_are_picked_and_come_back_in_one_gesture", async ({ panel }) => {
@@ -127,6 +147,43 @@ test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_
   assert.deepEqual(refused["pack"], 1, "a refused drop must not re-stamp it");
   assert.ok(refused["said"].includes(`Pack ${refused["into"]} is full (200/200)`));
   assert.ok(refused["said"].includes("Hold one of its emoji first"));
+
+  for (const scenario of [
+    {name: "one grid card cannot enter a full pack", destinationSize: 200, group: false, samePack: false, accepted: false},
+    {name: "a picked group is refused atomically when one slot remains", destinationSize: 199, group: true, samePack: false, accepted: false},
+    {name: "one grid card fills the last free slot", destinationSize: 199, group: false, samePack: false, accepted: true},
+    {name: "reordering inside a full pack does not consume a new slot", destinationSize: 200, group: false, samePack: true, accepted: true},
+  ]) {
+    await test.step(scenario.name, async () => {
+      const items = synth(scenario.destinationSize + 2, {packs: [1, 1, ...Array(scenario.destinationSize).fill(2)]});
+      const gridPage = await open(panel, items, {clock: true});
+      await gridPage.evaluate("setZoom(0.4)");
+      if (scenario.group) {
+        await gridPage.click("#selmode");
+        await gridPage.locator("#grid .card .thumb").nth(0).click();
+        await gridPage.locator("#grid .card .thumb").nth(1).click();
+      }
+      const before = await gridPage.evaluate("snapshot()");
+      const source = scenario.samePack ? 2 : 0;
+      const target = scenario.samePack ? 4 : 2;
+      await gridPage.locator(`#grid .card[data-key="${items[source].key}"]`)
+        .dragTo(gridPage.locator(`#grid .card[data-key="${items[target].key}"]`));
+      const destination = await gridPage.evaluate("ITEMS.filter(item => item.included && item.pack === 2).length");
+      assert.equal(destination, scenario.accepted && !scenario.samePack ? 200 : scenario.destinationSize,
+        "a drop must never overfill its destination");
+      if (scenario.accepted) {
+        assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).pack, items[source].key), 2);
+        assert.notDeepEqual(await gridPage.evaluate("snapshot()"), before);
+      } else {
+        assert.deepEqual(await gridPage.evaluate("snapshot()"), before,
+          "a rejected drag must restore the complete pre-drag state");
+        assert.ok((await gridPage.locator("#toast").innerText()).includes("Hold one of its emoji first"));
+        await gridPage.clock.runFor(500);
+        assert.deepEqual(await gridPage.evaluate("__sent('/api/order')"), [],
+          "a refused drag must not enqueue an order");
+      }
+    });
+  }
 });
 
 test("test_panel_curation.CurationControls.test_unhold_all_refuses_a_full_original_pack_without_partial_changes", async ({ panel }) => {
@@ -162,6 +219,20 @@ test("test_panel_curation.CurationControls.test_reset_uses_the_submitted_save_an
   assert.deepEqual((await page.evaluate("snapshot()")), edited);
   (await page.click("#redo"));
   assert.deepEqual((await page.evaluate("snapshot()")), expected);
+
+  await test.step("Reset reprojects held cards before restoring a different zoom", async () => {
+    const resetPage = await open(panel, synth(6, {excluded: [0]}));
+    const checkpoint = await resetPage.evaluate("snapshot()");
+    await resetPage.click("#unholdAll");
+    await resetPage.locator("#zoomReset").fill("50%");
+    await resetPage.locator("#zoomReset").press("Enter");
+    await resetPage.click("#resetAll");
+    assert.deepEqual(await resetPage.evaluate("snapshot()"), checkpoint);
+    assert.deepEqual(panel.errors, [], "Reset must not look up a row for the card it just held");
+    await resetPage.click("#undo");
+    assert.equal(await resetPage.evaluate("ITEMS[0].included"), true);
+    assert.equal(await resetPage.evaluate("zoom"), 0.5);
+  });
 });
 
 test("test_panel_curation.CurationControls.test_hold_save_and_reload_use_the_real_server_and_catalog", async ({ panel }) => {
@@ -177,6 +248,23 @@ test("test_panel_curation.CurationControls.test_hold_save_and_reload_use_the_rea
   (await page.reload({waitUntil: "load"}));
   assert.deepEqual((await page.locator("#holdCards .hcard").count()), 1);
   assert.deepEqual((await page.locator(`#grid .card[data-key="${held_key}"]`).count()), 0);
+
+  await test.step("explicit Save persists an imported order and reload retains it", async () => {
+    await page.evaluate("window.__net.passthrough=true");
+    const reversed = [...panel.dbOrder()].reverse();
+    const draft = await page.evaluate("snapshot()");
+    draft.order = reversed;
+    await Import(panel, page, {version: 1, snapshot: draft});
+    await expect.poll(() => page.evaluate("ITEMS.filter(item => !item.isLogo).map(item => item.key)"))
+      .toEqual(reversed);
+    await page.click("#save");
+    await expect.poll(() => panel.dbOrder(), {timeout: 5000}).toEqual(reversed);
+    await page.waitForFunction("pendingOrder === null && pendingSel === null");
+    assert.equal(await page.evaluate("__unload()"), false);
+    await page.reload({waitUntil: "load"});
+    assert.deepEqual(await page.evaluate("ITEMS.filter(item => !item.isLogo).map(item => item.key)"), reversed);
+    assert.deepEqual(panel.excludedInDb(), new Set([held_key]));
+  });
 });
 
 test("test_panel_curation.CurationControls.test_native_drag_history_and_unhold_restore_the_original_slot", async ({ panel }) => {
@@ -346,6 +434,9 @@ test("test_panel_curation.AnExportedDraftComesBack.test_a_draft_is_applied_witho
   (await page.waitForFunction("ITEMS[0].key !== %s".replace("%s", JSON.stringify(before[0]))));
   assert.deepEqual((await page.evaluate("ITEMS.map(x => x.key)")), [...before].reverse());
   assert.equal((await page.evaluate("pendingOrder")) ?? null, null, "an import must not post by itself");
+  assert.ok(await page.evaluate("__unload()"), "an imported order must remain protected before explicit Save");
+  assert.ok(await page.evaluate("document.getElementById('save').classList.contains('dirty')"),
+    "the Save control must show the unsaved imported arrangement");
   assert.ok((await page.evaluate("document.getElementById('toast').textContent")).includes("1 not in this catalog"));
   (await page.click("#undo"));
   assert.deepEqual((await page.evaluate("ITEMS.map(x => x.key)")), before);
