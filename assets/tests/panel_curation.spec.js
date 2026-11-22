@@ -526,6 +526,38 @@ test("test_panel_curation.CurationControls.test_hold_save_and_reload_use_the_rea
   });
 });
 
+// Exhaust every four-card stamp layout and nonempty held subset. The expected
+// round trip is the captured original model, independent of placement helpers.
+function unholdRunMatrix(){
+  const base=snapshot(), ordinary=ITEMS.filter(item=>!item.isLogo).map(item=>item.key);
+  const bad=[];let cases=0, failures=0;
+  for(let layout=0;layout<81;layout++){
+    let value=layout;
+    const packs=base.packs.filter(([key])=>!ordinary.includes(key));
+    for(const key of ordinary){
+      const stamp=value%3;value=Math.floor(value/3);
+      if(stamp)packs.push([key,stamp]);
+    }
+    for(let subset=1;subset<16;subset++){
+      applySnapshot({...base,packs,holds:[],runs:[]},false);
+      past=[];future=[];pastTopSig=null;updateHistoryButtons();
+      const before=JSON.stringify(snapshot());
+      const keys=ordinary.filter((key,index)=>subset&(1<<index));
+      holdKeys(new Set(keys));
+      const held=JSON.stringify(snapshot());
+      const accepted=unholdKeys(keys), after=JSON.stringify(snapshot());
+      let reason=!accepted?'refused':after!==before?'round trip':null;
+      if(accepted){
+        undo();if(JSON.stringify(snapshot())!==held)reason=reason||'Undo';
+        redo();if(JSON.stringify(snapshot())!==after)reason=reason||'Redo';
+      }
+      cases++;
+      if(reason){failures++;if(bad.length<10)bad.push({layout,subset,reason});}
+    }
+  }
+  return {cases,failures,bad};
+}
+
 test("test_panel_curation.CurationControls.test_native_drag_history_and_unhold_restore_the_original_slot", async ({ panel }) => {
   let items = synth(6, {packs: Array(6).fill(1)});
   let page = (await open(panel, items));
@@ -540,6 +572,113 @@ test("test_panel_curation.CurationControls.test_native_drag_history_and_unhold_r
   (await page.click("#redo"));
   (await page.locator("#holdCards .hcard button").click());
   assert.deepEqual((await page.locator("#grid .card").nth(1).getAttribute("data-key")), items[1]["key"]);
+
+  await test.step("Unhold stays in the later run of a repeated pack", async () => {
+    const model=synth(4,{packs:[1,2,1,1]});
+    const runPage=await open(panel,model,{clock:true});
+    const before=await runPage.evaluate("snapshot()");
+    await runPage.click("#selmode");
+    await runPage.locator(`#grid .card[data-key="${model[2].key}"] .thumb`).click();
+    await runPage.click("#toHold");
+    await runPage.locator("#holdCards .hcard button").click();
+    assert.deepEqual(await runPage.evaluate("ITEMS.map(item=>item.key)"),before.order);
+    assert.deepEqual(await runPage.evaluate("ITEMS.filter(item=>item.included).map(item=>item.key)"),before.included);
+    assert.deepEqual(await runPage.evaluate("ITEMS.filter(item=>item.pack!=null).map(item=>[item.key,item.pack])"),before.packs);
+  });
+
+  for(const logo of ["none","global","explicit"]){
+    await test.step(`all four-card Hold/Unhold layouts and subsets: logo=${logo}`,async()=>{
+      const model=synth(4,{logo:logo!=="none"});
+      if(logo==="explicit")model[0].pack=1;
+      const matrixPage=await open(panel,model,{clock:true});
+      const started=Date.now();
+      const result=await matrixPage.evaluate(unholdRunMatrix);
+      console.info(`${new Date().toISOString()} [INFO] Unhold run matrix ${JSON.stringify({logo,...result,wall_ms:Date.now()-started})}`);
+      assert.equal(result.cases,1215);
+      assert.equal(result.failures,0,JSON.stringify(result.bad));
+    });
+  }
+
+  await test.step("a moved held marker retains its run through draft import and Reset",async()=>{
+    const model=synth(7,{packs:[1,1,2,1,1,3,3]});
+    const runPage=await open(panel,model,{clock:true});
+    const key=model[3].key;
+    await runPage.evaluate(key=>holdKeys(new Set([key])),key);
+    await runPage.click("#save");
+    await runPage.waitForFunction("__sent('/api/save').length===1");
+    await runPage.evaluate("__settle(0,200)");
+    await runPage.clock.runFor(50);
+    const saved=await runPage.evaluate("snapshot()");
+    await runPage.click("#selmode");
+    await runPage.locator(`#grid .card[data-key="${model[0].key}"] .thumb`).click();
+    await runPage.locator(`#holdCards .hcard[data-key="${key}"] img`).click();
+    await runPage.locator(`#grid .card[data-key="${model[0].key}"]`)
+      .dragTo(runPage.locator(`#grid .card[data-key="${model[5].key}"]`));
+    const moved=await runPage.evaluate("snapshot()");
+    const expected=moved.order.filter(item=>item!==key);
+    expected.splice(expected.indexOf(model[4].key),0,key);
+    await runPage.evaluate(text=>importDraft(text),JSON.stringify({version:1,snapshot:moved}));
+    const imported=await runPage.evaluate("snapshot()");
+    await runPage.locator(`#holdCards .hcard[data-key="${key}"] button`).click();
+    assert.deepEqual(await runPage.evaluate("ITEMS.map(item=>item.key)"),expected,
+      "the moved held marker must return before the surviving member of its original run");
+    const restored=await runPage.evaluate("snapshot()");
+    await runPage.click("#undo");
+    assert.deepEqual(await runPage.evaluate("snapshot()"),imported);
+    await runPage.click("#redo");
+    assert.deepEqual(await runPage.evaluate("snapshot()"),restored);
+    await runPage.click("#resetAll");
+    assert.deepEqual(await runPage.evaluate("snapshot()"),saved);
+    await runPage.locator(`#holdCards .hcard[data-key="${key}"] button`).click();
+    assert.deepEqual(await runPage.evaluate("ITEMS.map(item=>item.key)"),model.map(item=>item.key));
+  });
+
+  for(const missing of ["head","all members"]){
+    await test.step(`a draft restores a run with missing ${missing} anchors`,async()=>{
+      const original=synth(6,{packs:[1,2,1,1,1,3]});
+      const heldIndex=missing==="head"?3:2;
+      const absent=missing==="head"?[2]:[3,4];
+      const model=original.filter((item,index)=>!absent.includes(index))
+        .map(item=>({...item,included:item.key!==original[heldIndex].key}));
+      const runPage=await open(panel,model,{clock:true});
+      const draft=await runPage.evaluate("snapshot()");
+      draft.order=original.map(item=>item.key);
+      draft.included=original.filter((item,index)=>index!==heldIndex).map(item=>item.key);
+      draft.packs=original.map(item=>[item.key,item.pack]);
+      draft.holds=[[original[heldIndex].key,{index:heldIndex,pack:1,slot:heldIndex-2,anchor:original[2].key}]];
+      draft.runs=[[original[heldIndex].key,{first:original[2].key,last:original[4].key,
+        before:original[1].key,after:original[5].key,slot:heldIndex-2}]];
+      await runPage.evaluate(text=>importDraft(text),JSON.stringify({version:1,snapshot:draft}));
+      const before=await runPage.evaluate("snapshot()");
+      await runPage.locator("#holdCards .hcard button").click();
+      const expected=missing==="head"?[0,1,4,3,5]:[0,1,2,5];
+      assert.deepEqual(await runPage.evaluate("ITEMS.map(item=>item.key)"),expected.map(index=>original[index].key));
+      const after=await runPage.evaluate("snapshot()");
+      await runPage.click("#undo");
+      assert.deepEqual(await runPage.evaluate("snapshot()"),before);
+      await runPage.click("#redo");
+      assert.deepEqual(await runPage.evaluate("snapshot()"),after);
+    });
+  }
+
+  await test.step("legacy drafts and bulk inclusion keep run metadata coherent",async()=>{
+    const model=synth(4,{logo:true,packs:[1,2,1,1]});
+    const runPage=await open(panel,model,{clock:true});
+    const before=await runPage.evaluate("snapshot()");
+    await runPage.click("#none");
+    await runPage.click("#unholdAll");
+    assert.deepEqual(await runPage.evaluate("snapshot()"),before);
+    await runPage.click("#none");
+    await runPage.click("#all");
+    assert.deepEqual(await runPage.evaluate("snapshot()"),before);
+    const key=model[3].key;
+    await runPage.evaluate(key=>holdKeys(new Set([key])),key);
+    const legacy=await runPage.evaluate("snapshot()");
+    delete legacy.runs;
+    await runPage.evaluate(text=>importDraft(text),JSON.stringify({version:1,snapshot:legacy}));
+    await runPage.locator("#holdCards .hcard button").click();
+    assert.deepEqual(await runPage.evaluate("ITEMS.map(item=>item.key)"),model.map(item=>item.key));
+  });
 });
 
 async function held(panel, page, count = 5) {
@@ -707,6 +846,107 @@ test("test_panel_curation.AnExportedDraftComesBack.test_an_unknown_version_is_re
   (await Import(panel, page, {"version": 2, "snapshot": {"order": [...before].reverse()}}));
   (await page.waitForFunction("document.getElementById('toast').textContent.includes('Not a draft')"));
   assert.deepEqual((await page.evaluate("ITEMS.map(x => x.key)")), before);
+
+  const model=synth(3,{excluded:[0]}),k0=model[0].key,k1=model[1].key;
+  for(const [name,field,value] of [
+    ["numeric included","included",1],
+    ["object included","included",{}],
+    ["non-string included member","included",[k1,1]],
+    ["object packs","packs",{}],
+    ["null pack entry","packs",[null]],
+    ["object pack number","packs",[[k1,{}]]],
+    ["string holds","holds","bad"],
+    ["null hold entry","holds",[null]],
+    ["scalar hold record","holds",[[k0,1]]],
+    ["string hold slot","holds",[[k0,{index:0,pack:1,slot:"0",anchor:k0}]]],
+    ["negative hold index","holds",[[k0,{index:-1,pack:1,slot:0,anchor:k0}]]],
+    ["unsupported hold pack","holds",[[k0,{index:0,pack:"unsupported",slot:0,anchor:k0}]]],
+  ]){
+    await test.step(`malformed ${name} is refused atomically`,async()=>{
+      const draftPage=await open(panel,model,{clock:true});
+      await draftPage.click("#bg");
+      await draftPage.click("#undo");
+      const state=await draftPage.evaluate("snapshot()");
+      const history=await draftPage.evaluate("[past,future]");
+      const draft={version:1,snapshot:{...state,[field]:value}};
+      await Import(panel,draftPage,draft);
+      await draftPage.waitForFunction("document.getElementById('toast').textContent.includes('Not a draft')");
+      assert.deepEqual(await draftPage.evaluate("snapshot()"),state);
+      assert.deepEqual(await draftPage.evaluate("[past,future]"),history);
+      assert.equal(await draftPage.locator("#draftFile").inputValue(),"");
+      assert.deepEqual(panel.errors,[]);
+      await draftPage.clock.runFor(500);
+      assert.deepEqual(await draftPage.evaluate("__sent('/api/order')"),[]);
+      assert.deepEqual(await draftPage.evaluate("__sent('/api/save')"),[]);
+    });
+  }
+
+  for(const optional of ["exported","omitted","null"]){
+    await test.step(`valid ${optional} optional draft fields remain supported`,async()=>{
+      const draftPage=await open(panel,model,{clock:true});
+      const state=await draftPage.evaluate("snapshot()");
+      const data=optional==="exported"?state:{order:state.order};
+      if(optional==="null")Object.assign(data,{included:null,packs:null,holds:null});
+      await Import(panel,draftPage,{version:1,snapshot:data});
+      await draftPage.waitForFunction("document.getElementById('toast').textContent.startsWith('Imported:')");
+      assert.equal(await draftPage.locator("#draftFile").inputValue(),"");
+      if(optional==="exported"){
+        assert.equal(state.holds[0][1].pack,"new:0","generated automatic pack identities remain valid");
+        assert.deepEqual(await draftPage.evaluate("snapshot()"),state);
+      }
+      else assert.deepEqual(await draftPage.evaluate("ITEMS.filter(item=>item.included).map(item=>item.key)"),[]);
+      await draftPage.clock.runFor(500);
+      assert.deepEqual(await draftPage.evaluate("__sent('/api/order')"),[]);
+      assert.deepEqual(await draftPage.evaluate("__sent('/api/save')"),[]);
+    });
+  }
+
+  await test.step("valid drafts reconcile vanished and newly added catalog keys",async()=>{
+    const draftPage=await open(panel,model,{clock:true});
+    const state=await draftPage.evaluate("snapshot()");
+    const draft={...state,order:[model[2].key,"x:gone",k0],included:[model[2].key,"x:gone"]};
+    await Import(panel,draftPage,{version:1,snapshot:draft});
+    await draftPage.waitForFunction("document.getElementById('toast').textContent.startsWith('Imported:')");
+    assert.deepEqual(await draftPage.evaluate("ITEMS.map(item=>item.key)"),[model[2].key,k0,k1]);
+    assert.deepEqual(await draftPage.evaluate("ITEMS.filter(item=>item.included).map(item=>item.key)"),[model[2].key,k1]);
+    await draftPage.clock.runFor(500);
+    assert.deepEqual(await draftPage.evaluate("__sent('/api/order')"),[]);
+    assert.deepEqual(await draftPage.evaluate("__sent('/api/save')"),[]);
+    await draftPage.click("#undo");
+    assert.deepEqual(await draftPage.evaluate("snapshot()"),state);
+  });
+
+  await test.step("duplicate draft keys retain the existing last-occurrence order",async()=>{
+    const draftPage=await open(panel,model,{clock:true});
+    const state=await draftPage.evaluate("snapshot()");
+    const draft={...state,order:[model[2].key,k0,model[2].key]};
+    await Import(panel,draftPage,{version:1,snapshot:draft});
+    await draftPage.waitForFunction("document.getElementById('toast').textContent.startsWith('Imported:')");
+    assert.deepEqual(await draftPage.evaluate("ITEMS.map(item=>item.key)"),[k0,model[2].key,k1]);
+    assert.equal(await draftPage.evaluate("new Set(ITEMS.map(item=>item.key)).size"),3);
+    await draftPage.clock.runFor(500);
+    assert.deepEqual(await draftPage.evaluate("__sent('/api/order')"),[]);
+    assert.deepEqual(await draftPage.evaluate("__sent('/api/save')"),[]);
+    await draftPage.click("#undo");
+    assert.deepEqual(await draftPage.evaluate("snapshot()"),state);
+  });
+
+  for(const hint of ["non-list","invalid entry","mixed entries"]){
+    await test.step(`optional run hints safely sanitize ${hint}`,async()=>{
+      const draftPage=await open(panel,model,{clock:true});
+      const state=await draftPage.evaluate("snapshot()");
+      const runs=hint==="non-list"?"bad":hint==="invalid entry"?[[k0,{slot:"0"}]]:
+        [...state.runs,null,[k1,1]];
+      await Import(panel,draftPage,{version:1,snapshot:{...state,runs}});
+      await draftPage.waitForFunction("document.getElementById('toast').textContent.startsWith('Imported:')");
+      assert.deepEqual(await draftPage.evaluate("snapshot()"),{...state,runs:hint==="mixed entries"?state.runs:[]});
+      assert.equal(await draftPage.locator("#draftFile").inputValue(),"");
+      assert.deepEqual(panel.errors,[]);
+      await draftPage.clock.runFor(500);
+      assert.deepEqual(await draftPage.evaluate("__sent('/api/order')"),[]);
+      assert.deepEqual(await draftPage.evaluate("__sent('/api/save')"),[]);
+    });
+  }
 });
 
 async function holdFirst(panel, page) {
