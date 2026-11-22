@@ -512,6 +512,29 @@ fn signing_and_publication_require_complete_ci_and_secret_acceptance() {
 }
 
 #[test]
+fn release_acceptance_rejects_status_overrides_in_valid_job_conditions() {
+    let release = include_str!("../../.github/workflows/release.yml");
+    let release_condition = "    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))";
+    let publish_condition = "    if: startsWith(github.ref, 'refs/tags/v')";
+    for original in [release_condition, publish_condition] {
+        assert!(release.contains(original));
+        for replacement in [
+            "    if: ${{ !cancelled() }}",
+            "    if: ${{ failure() }}",
+            "    if: >-\n      ${{ always() }}",
+        ] {
+            // Replace the existing condition, producing a valid YAML job rather
+            // than an invalid duplicate-key fixture that GitHub already refuses.
+            let changed = release.replace(original, replacement);
+            assert!(
+                release_acceptance(&changed).is_err(),
+                "release condition accepted an unsafe status override: {replacement}"
+            );
+        }
+    }
+}
+
+#[test]
 fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_python() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let workflow = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).unwrap();
