@@ -4160,7 +4160,7 @@
         "file": "runtime/tests/baseline_units.rs",
         "target": "baseline_units",
         "function": "contracts_publish::test_announce_via_worker_sends_the_fixture_body",
-        "body_sha256": "26063ebc4117bfe3b495b85f30498e2b37ceb88e3d1a77e58f8c914984a7c559"
+        "body_sha256": "5d87eb8fbd9307c70df662ed2d2dc3adfcd2457eb771cdc007712bf70163a6c1"
       }
     },
     {
@@ -10557,7 +10557,7 @@
         "file": "runtime/tests/baseline_cli_status_support/contracts.rs",
         "target": "baseline_cli_status",
         "function": "contracts::direct_cards_list_worker_refusal_and_timeout_contract",
-        "body_sha256": "099ab7d3bd35ee2d34fed627281e71c485783971806adb2da2f96c43b6c92361"
+        "body_sha256": "9fd3af28edff22a123e8ec554c1a6e448351dbc6fc4c0ba0b407be5e83fc4f90"
       }
     },
     {

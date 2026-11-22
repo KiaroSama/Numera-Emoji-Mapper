@@ -57,7 +57,7 @@ fn server(
                 .unwrap()
                 .workers
                 .push(serde_json::from_slice(&r.body).unwrap());
-            return Reply::json(json!({"ok":true}));
+            return Reply::json(json!({"ok":true,"message_ids":[1]}));
         }
         if r.verb == "GET" {
             return Reply::Bytes(

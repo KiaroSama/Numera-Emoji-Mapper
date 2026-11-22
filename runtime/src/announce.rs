@@ -5,6 +5,7 @@ use crate::{
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
+use std::io::Read;
 use std::time::Duration;
 
 pub fn worker(
@@ -62,6 +63,35 @@ pub fn worker(
             "worker announce failed (HTTP {})",
             response.status().as_u16()
         ));
+    }
+    // HTTP success alone cannot authorize a durable sent milestone. Bound the
+    // acknowledgment before parsing and never expose upstream response text.
+    const MAX_ACK_BYTES: usize = 64 * 1024;
+    let mut bytes = Vec::new();
+    response
+        .take(MAX_ACK_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "worker announcement response could not be read; outcome unknown")?;
+    if bytes.len() > MAX_ACK_BYTES {
+        return Err(
+            "worker announcement response exceeds the acknowledgment limit; outcome unknown".into(),
+        );
+    }
+    let acknowledgment: Value = serde_json::from_slice(&bytes)
+        .map_err(|_| "worker announcement response is not JSON; outcome unknown")?;
+    // Match the Worker's exact integer range. Telegram may return zero for a
+    // scheduled message, and a single request can produce several messages.
+    let valid_ids = acknowledgment["message_ids"].as_array().is_some_and(|ids| {
+        !ids.is_empty()
+            && ids.iter().all(|id| {
+                id.as_u64()
+                    .is_some_and(|number| number <= 9_007_199_254_740_991)
+            })
+    });
+    if acknowledgment["ok"] != true || !valid_ids {
+        return Err(
+            "worker announcement response has no valid acknowledgment; outcome unknown".into(),
+        );
     }
     Ok(())
 }
