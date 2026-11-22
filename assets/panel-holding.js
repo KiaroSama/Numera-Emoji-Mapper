@@ -5,12 +5,13 @@ const HISTORY_MAX = 100;
 let past = [], future = [], restoring = false;
 let pastTopSig = null;   // JSON of past's last entry: compared, never re-serialised
 const holdOrigins = new Map();
+const holdRuns = new Map();
 let savedSnapshot = null, pendingSaveSnapshot = null;
 
 function snapshot(){
   return {order: ITEMS.map(x=>x.key), included: ITEMS.filter(x=>x.included).map(x=>x.key),
     packs: ITEMS.filter(x=>x.pack!=null).map(x=>[x.key,x.pack]),
-    picked: [...picked], selMode, lastPick, lastHeldPick, lastIdx, holds: [...holdOrigins],
+    picked: [...picked], selMode, lastPick, lastHeldPick, lastIdx, holds: [...holdOrigins], runs: [...holdRuns],
     zoom, anim: ANIM_ON, animAll: ANIM_ALL, videoReal: VIDEO_REAL, bg: BGS.find(x=>document.body.classList.contains('bg-'+x)) || 'checker'};
 }
 function remember(snap){
@@ -44,6 +45,9 @@ function applySnapshot(snap, persist=true){
     }
     holdOrigins.clear();
     for(const [k,v] of snap.holds || []) holdOrigins.set(k,v);
+    holdRuns.clear();
+    const held=new Set(ITEMS.filter(it=>!it.isLogo&&!it.included).map(it=>it.key));
+    for(const [key,run] of readHoldRuns(snap.runs))if(held.has(key))holdRuns.set(key,run);
     clearPicked();
     for(const k of snap.picked || []) markPicked(k,true);
     selMode=!!snap.selMode; lastPick=snap.lastPick; lastHeldPick=snap.lastHeldPick ?? null; lastIdx=snap.lastIdx;
@@ -139,6 +143,53 @@ function countsByPack(items,assignments=assignedPacks(items)){
   return counts;
 }
 
+// Run identity is separate from the public origin records: one pack can have
+// several runs, and an automatic run does not include the preceding global logo.
+function holdingRunGroups(items){
+  const starts=packStartsFor(items).starts;
+  const bounds=[0,...starts.map(run=>run.index).filter(index=>index>0),items.length];
+  const groups=[];let run=-1;
+  for(let i=0;i+1<bounds.length;i++){
+    const start=bounds[i],end=bounds[i+1];
+    if(start===end)continue;
+    while(run+1<starts.length&&starts[run+1].index<=start)run++;
+    groups.push({start,end,pack:starts[run]?.pack??'new:'+Math.max(0,run),
+      members:items.slice(start,end).filter(it=>it.included||it.isLogo)});
+  }
+  return groups;
+}
+function holdRunsFor(items){
+  const groups=holdingRunGroups(items),out=new Map();
+  const after=new Array(groups.length);let next=null;
+  for(let i=groups.length-1;i>=0;i--){
+    after[i]=next;next=groups[i].members[0]?.key??next;
+  }
+  let before=null;
+  for(let i=0;i<groups.length;i++){
+    const group=groups[i];let slot=0;
+    const refs={first:group.members[0]?.key??null,last:group.members.at(-1)?.key??null,
+      before,after:after[i]};
+    for(const it of items.slice(group.start,group.end)){
+      out.set(it.key,{...refs,slot});
+      if(it.included||it.isLogo)slot++;
+    }
+    before=group.members.at(-1)?.key??before;
+  }
+  return out;
+}
+function readHoldRuns(raw){
+  const out=new Map();
+  if(!Array.isArray(raw))return out;
+  for(const entry of raw){
+    if(!Array.isArray(entry)||entry.length!==2||typeof entry[0]!=='string')continue;
+    const run=entry[1];
+    if(!run||typeof run!=='object'||!Number.isSafeInteger(run.slot)||run.slot<0)continue;
+    if(!['first','last','before','after'].every(key=>run[key]===null||typeof run[key]==='string'))continue;
+    out.set(entry[0],{first:run.first,last:run.last,before:run.before,after:run.after,slot:run.slot});
+  }
+  return out;
+}
+
 function originFor(it,items=ITEMS){
   const index=items.indexOf(it);
   let pack=it.pack ?? null;
@@ -183,6 +234,7 @@ function setIncludedMany(pairs){
   const on=new Map();
   for(const [it,v] of pairs) if(!it.isLogo && it.included!==v) on.set(it,v);
   if(!on.size) return;
+  const runs=holdRunsFor(ITEMS);
   const logo=ITEMS.find(x=>x.isLogo), capacity=PER_SET-(logo?1:0);
   let members=ITEMS.filter(x=>x.pack!=null&&x.included).length;
   const M={n:0,last:null,cur:undefined,slot:0}, C={n:0,last:null,inPack:0,slot:0};
@@ -203,7 +255,8 @@ function setIncludedMany(pairs){
       holdOrigins.set(it.key,{index:i,
         pack:it.pack ?? (r ? (r.pack ?? 'new:'+(s.n-1)) : 'new:0'),
         slot:r?(r.index===i?0:s.slot):before, anchor:ITEMS[r?r.index:0]?.key});
-    } else if(on.has(it)) holdOrigins.delete(it.key);
+      holdRuns.set(it.key,runs.get(it.key));
+    } else if(on.has(it)){holdOrigins.delete(it.key);holdRuns.delete(it.key);}
     if(on.has(it)){
       if(it.pack!=null) members+=next?1:-1;
       it.included=next; setCard(it);
@@ -213,10 +266,12 @@ function setIncludedMany(pairs){
   }
 }
 
-function setIncluded(it,on){
+function setIncluded(it,on,origin=null,run=null){
   if(it.isLogo || it.included===on) return;
-  if(!on) holdOrigins.set(it.key,originFor(it));
-  else holdOrigins.delete(it.key);
+  if(!on){
+    holdOrigins.set(it.key,origin||originFor(it));
+    holdRuns.set(it.key,run||holdRunsFor(ITEMS).get(it.key));
+  }else{holdOrigins.delete(it.key);holdRuns.delete(it.key);}
   it.included=on; setCard(it);
 }
 
@@ -338,22 +393,40 @@ holdCards.addEventListener('click',e=>{
 // Project the complete gesture without changing live items or their origins.
 // Inserting a stamp can switch automatic runs to membership, including cards
 // that were not held; validation and commit must use this same final placement.
-function projectUnhold(items,keys,origins){
+function projectUnhold(items,keys,origins,runs=new Map()){
   const projected=items.map(it=>({...it}));
   const byKey=new Map(projected.map(it=>[it.key,it]));
   const originalByKey=new Map(items.map(it=>[it.key,it]));
+  const restoring=new Set(keys);
+  const fallback=holdRunsFor(items.map(it=>restoring.has(it.key)?{...it,included:true}:it));
   const restoringItems=keys.map(key=>originalByKey.get(key))
     .filter(it=>it&&!it.isLogo&&!it.included)
-    .map(it=>({it:byKey.get(it.key),origin:origins.get(it.key)||originFor(it,items)}))
+    .map(it=>({it:byKey.get(it.key),origin:origins.get(it.key)||originFor(it,items),run:runs.get(it.key)}))
     .sort((a,b)=>a.origin.index-b.origin.index);
-  for(const {it,origin} of restoringItems){
-    projected.splice(projected.indexOf(it),1);
-    const assignments=assignedPacks(projected);
-    const samePack=projected.filter(x=>(x.included||x.isLogo)&&assignments.get(x.key)===origin.pack);
-    const next=samePack[origin.slot], previous=samePack[samePack.length-1];
-    const anchor=projected.findIndex(x=>x.key===origin.anchor);
-    const at=next?projected.indexOf(next):previous?projected.indexOf(previous)+1
-      :anchor>=0?anchor+1:Math.min(origin.index,projected.length);
+  for(const {it,origin,run} of restoringItems){
+    const refs=run||{...fallback.get(it.key),slot:origin.slot};
+    const marker=projected.indexOf(it);
+    projected.splice(marker,1);
+    const groups=holdingRunGroups(projected);
+    const indexOf=key=>key===it.key?-1:projected.findIndex(x=>x.key===key);
+    const before=indexOf(refs.before),after=indexOf(refs.after);
+    let group=null;
+    for(const key of [refs.first,refs.last]){
+      const index=indexOf(key);
+      if(index<0||!projected[index].included)continue;
+      const candidate=groups.find(g=>g.start<=index&&index<g.end);
+      if(candidate?.pack===origin.pack){group=candidate;break;}
+    }
+    // The saved extent remains meaningful when all its stamps are held and
+    // current runs merge or split. A surviving member is the fallback when a
+    // boundary disappeared; a moved held marker is never the primary anchor.
+    let lo=refs.before===null?0:before>=0?before+1:group?group.start:Math.min(marker,projected.length);
+    let hi=refs.after===null?projected.length:after>=0?after:group?group.end:lo;
+    if(lo>hi){lo=group?group.start:Math.min(marker,projected.length);hi=group?group.end:lo;}
+    const members=projected.slice(lo,hi).filter(x=>(x.included||x.isLogo)&&
+      (x.pack==null||x.pack===origin.pack));
+    const next=members[refs.slot],previous=members.at(-1);
+    const at=next?projected.indexOf(next):previous?projected.indexOf(previous)+1:lo;
     projected.splice(at,0,it);it.included=true;
   }
   return projected;
@@ -367,7 +440,7 @@ function canUnhold(keys,atDrop=false,projected=null){
   const items=projected||(atDrop?ITEMS.map(it=>moving.has(it.key)&&!it.isLogo&&(it.included||holdDragKeys?.has(it.key))?{
     ...it, pack:aimedPack===undefined?it.pack:aimedPack,
     included:it.included||!!holdDragKeys?.has(it.key)
-  }:it):projectUnhold(ITEMS,keys,holdOrigins));
+  }:it):projectUnhold(ITEMS,keys,holdOrigins,holdRuns));
   const counts=countsByPack(items);
   const logos=items.filter(x=>x.isLogo);
   const fits=(pack,count)=>{
@@ -404,7 +477,7 @@ function canUnhold(keys,atDrop=false,projected=null){
 function unholdKeys(keys){
   keys=keys.filter(k=>ITEMS.some(x=>x.key===k&&!x.isLogo&&!x.included));
   if(!keys.length)return false;
-  const projected=projectUnhold(ITEMS,keys,holdOrigins);
+  const projected=projectUnhold(ITEMS,keys,holdOrigins,holdRuns);
   if(!canUnhold(keys,false,projected))return false;
   remember();
   // Preserve the original item objects captured by mounted card handlers.
@@ -419,7 +492,8 @@ function holdKeys(keys,snap){
   if(!items.length)return;
   remember(snap);
   const origins=originsFor(items);
-  for(const it of items){setIncluded(it,false);holdOrigins.set(it.key,origins.get(it.key));}
+  const runs=holdRunsFor(ITEMS);
+  for(const it of items)setIncluded(it,false,origins.get(it.key),runs.get(it.key));
   clearPicked();relayout();updateCount();markSelDirty();
 }
 document.getElementById('toHold').onclick=()=>{
@@ -511,7 +585,10 @@ function acceptDrop(){
 }
 holdCards.addEventListener('dragend',()=>{holdDragKeys=null;});
 
-for(const it of ITEMS)if(!it.included&&!it.isLogo)holdOrigins.set(it.key,originFor(it));
+const initialHoldRuns=holdRunsFor(ITEMS.map(it=>({...it,included:true})));
+for(const it of ITEMS)if(!it.included&&!it.isLogo){
+  holdOrigins.set(it.key,originFor(it));holdRuns.set(it.key,initialHoldRuns.get(it.key));
+}
 renderHolding();
 savedSnapshot=snapshot();
 
