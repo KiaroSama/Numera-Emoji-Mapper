@@ -12,22 +12,31 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     let mut help = false;
     let mut i = 0;
     while i < args.len() {
-        match args[i].as_str() {
-            "--help" | "-h" => help = true,
+        let raw = args[i].as_str();
+        let (option, inline) = match raw.split_once('=') {
+            Some((k, v)) if k.starts_with("--") => (k, Some(v)),
+            _ => (raw, None),
+        };
+        match option {
+            "--help" | "-h" if inline.is_none() => help = true,
             "--out-dir" | "--state" | "--map" | "--token-env" => {
-                let option = &args[i];
-                i += 1;
-                let value = args
-                    .get(i)
-                    .ok_or_else(|| format!("{option} requires a value"))?;
-                match option.as_str() {
+                let value = match inline {
+                    Some(v) => v,
+                    None => {
+                        i += 1;
+                        args.get(i)
+                            .map(String::as_str)
+                            .ok_or_else(|| format!("{option} requires a value"))?
+                    }
+                };
+                match option {
                     "--out-dir" => directory = config.path(value),
                     "--state" => state = config.path(value),
                     "--map" => mapping = config.path(value),
-                    _ => token_key.clone_from(value),
+                    _ => token_key = value.to_owned(),
                 }
             }
-            value => return Err(format!("unknown coin-write-manifests option: {value}")),
+            _ => return Err(format!("unknown coin-write-manifests option: {raw}")),
         }
         i += 1;
     }

@@ -62,11 +62,15 @@ fn scan_items(
                     source_line: function.span().start().line,
                     body_sha256: digest(function.block.to_token_stream().to_string().as_bytes()),
                     source_linux: mask.0
-                        && admitted(&function.attrs, Platform::Linux, context)
-                        && test_enabled(&function.attrs, Platform::Linux, context),
+                        && admitted(&function.attrs, Platform::LinuxX64, context)
+                        && test_enabled(&function.attrs, Platform::LinuxX64, context)
+                        && admitted(&function.attrs, Platform::LinuxArm64, context)
+                        && test_enabled(&function.attrs, Platform::LinuxArm64, context),
                     source_windows: mask.1
-                        && admitted(&function.attrs, Platform::Windows, context)
-                        && test_enabled(&function.attrs, Platform::Windows, context),
+                        && admitted(&function.attrs, Platform::WindowsX64, context)
+                        && test_enabled(&function.attrs, Platform::WindowsX64, context)
+                        && admitted(&function.attrs, Platform::WindowsArm64, context)
+                        && test_enabled(&function.attrs, Platform::WindowsArm64, context),
                     source_macos: mask.2
                         && admitted(&function.attrs, Platform::Macos, context)
                         && test_enabled(&function.attrs, Platform::Macos, context),
@@ -85,8 +89,12 @@ fn scan_items(
                         file,
                         &name,
                         (
-                            mask.0 && admitted(&module.attrs, Platform::Linux, context),
-                            mask.1 && admitted(&module.attrs, Platform::Windows, context),
+                            mask.0
+                                && admitted(&module.attrs, Platform::LinuxX64, context)
+                                && admitted(&module.attrs, Platform::LinuxArm64, context),
+                            mask.1
+                                && admitted(&module.attrs, Platform::WindowsX64, context)
+                                && admitted(&module.attrs, Platform::WindowsArm64, context),
                             mask.2 && admitted(&module.attrs, Platform::Macos, context),
                         ),
                         out,
@@ -200,8 +208,10 @@ pub fn check(root: &Path, inventory: &Inventory, retirements: &Retirements) -> R
                 &relative,
                 &[],
                 (
-                    admitted(&file.attrs, Platform::Linux, &inventory.ci_context),
-                    admitted(&file.attrs, Platform::Windows, &inventory.ci_context),
+                    admitted(&file.attrs, Platform::LinuxX64, &inventory.ci_context)
+                        && admitted(&file.attrs, Platform::LinuxArm64, &inventory.ci_context),
+                    admitted(&file.attrs, Platform::WindowsX64, &inventory.ci_context)
+                        && admitted(&file.attrs, Platform::WindowsArm64, &inventory.ci_context),
                     admitted(&file.attrs, Platform::Macos, &inventory.ci_context),
                 ),
                 &mut report.declarations,

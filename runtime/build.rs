@@ -1,9 +1,13 @@
-// Compile the pinned renderer into release artifacts; no runtime toolchain or Python is used.
+// Compile the pinned renderer and embed approved Windows binary icon/metadata; no Python is used.
 fn msvc_compiler_metadata(target: &str) {
     if !target.ends_with("-windows-msvc") {
         return;
     }
-    assert_eq!(target, "x86_64-pc-windows-msvc", "supported MSVC target");
+    let arch = match target {
+        "x86_64-pc-windows-msvc" => "x86_64",
+        "aarch64-pc-windows-msvc" => "aarch64",
+        _ => panic!("unsupported MSVC target: {target}"),
+    };
     struct DiscoveryEnvironment;
     impl find_msvc_tools::EnvGetter for DiscoveryEnvironment {
         fn get_env(&self, name: &'static str) -> Option<find_msvc_tools::Env> {
@@ -19,7 +23,7 @@ fn msvc_compiler_metadata(target: &str) {
             std::env::var_os(name).map(find_msvc_tools::Env::Owned)
         }
     }
-    let tool = find_msvc_tools::find_tool_with_env("x86_64", "link.exe", &DiscoveryEnvironment)
+    let tool = find_msvc_tools::find_tool_with_env(arch, "link.exe", &DiscoveryEnvironment)
         .expect("installed MSVC linker and Windows SDK are required");
     let linker = tool.path();
     assert!(
@@ -62,6 +66,38 @@ fn msvc_compiler_metadata(target: &str) {
     }
 }
 
+#[cfg(windows)]
+fn embed_windows_resources(target: &str) {
+    if !target.contains("windows") {
+        return;
+    }
+    let icon = std::path::Path::new("../assets/numera-emoji-mapper.ico");
+    println!("cargo:rerun-if-changed={}", icon.display());
+    assert!(
+        icon.is_file(),
+        "approved Windows icon assets/numera-emoji-mapper.ico is missing"
+    );
+    let mut res = winresource::WindowsResource::new();
+    res.set_icon(icon.to_str().expect("UTF-8 icon path"))
+        .set("ProductName", "Numera Emoji Mapper")
+        .set(
+            "FileDescription",
+            "Numera Emoji Mapper: Telegram custom-emoji pack toolkit",
+        )
+        .set("CompanyName", "KiaroSama")
+        .set("LegalCopyright", "KiaroSama (GPL-3.0-or-later)")
+        .set_version_info(
+            winresource::VersionInfo::PRODUCTVERSION,
+            0x0003_0000_0000_0000,
+        )
+        .set_version_info(winresource::VersionInfo::FILEVERSION, 0x0003_0000_0000_0000);
+    res.compile()
+        .expect("compile Windows PE icon and version resources");
+}
+
+#[cfg(not(windows))]
+fn embed_windows_resources(_target: &str) {}
+
 fn main() {
     // Test fixtures need the actual compiler after the runner removes Rustup's
     // user configuration. Resolve Cargo's compiler before entering isolation.
@@ -88,6 +124,7 @@ fn main() {
     println!("cargo:rerun-if-changed=vendor/rlottie");
     let target = std::env::var("TARGET").expect("Cargo target");
     msvc_compiler_metadata(&target);
+    embed_windows_resources(&target);
     let mut config = cmake::Config::new("vendor/rlottie");
     config
         .define("BUILD_SHARED_LIBS", "OFF")

@@ -2,10 +2,19 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 pub fn load(path: &Path) -> Result<BTreeMap<String, String>, String> {
-    if !path.is_file() {
+    let resolved = if path.is_file() {
+        path.to_path_buf()
+    } else if let Some(seed) = path
+        .parent()
+        .and_then(Path::parent)
+        .map(|root| root.join("assets").join("coins-keywords-seed.csv"))
+        .filter(|p| p.is_file())
+    {
+        seed
+    } else {
         return Ok(BTreeMap::new());
-    }
-    let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    };
+    let file = std::fs::File::open(resolved).map_err(|e| e.to_string())?;
     let mut reader = csv::ReaderBuilder::new().flexible(true).from_reader(file);
     let headers = reader.headers().map_err(|e| e.to_string())?;
     let ticker = headers

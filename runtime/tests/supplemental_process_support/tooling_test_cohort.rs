@@ -1,7 +1,7 @@
 //! A real dedicated runner must reclaim an orphan even after it creates another Linux session.
 #![cfg(all(
     target_os = "linux",
-    target_arch = "x86_64",
+    any(target_arch = "x86_64", target_arch = "aarch64"),
     target_env = "gnu",
     target_pointer_width = "64"
 ))]
@@ -12,24 +12,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-// The supported package ABI is GNU Linux x86_64; no signal mutation occurs outside
-// the exact-selected fixture process, which has one libtest worker and no children.
-#[repr(C)]
-#[derive(Default)]
-struct SignalAction {
-    handler: usize,
-    mask: [u64; 16],
-    flags: i32,
-    restorer: usize,
-}
-const _: () = {
-    assert!(std::mem::size_of::<SignalAction>() == 152);
-    assert!(std::mem::offset_of!(SignalAction, flags) == 136);
-    assert!(std::mem::offset_of!(SignalAction, restorer) == 144);
-};
-
+// Supported Linux package ABIs are GNU Linux 64-bit (x86_64, aarch64); no signal mutation
+// occurs outside the exact-selected fixture process, which has one libtest worker and no children.
 unsafe extern "C" {
-    fn sigaction(signal: i32, action: *const SignalAction, previous: *mut SignalAction) -> i32;
     fn setsid() -> i32;
     fn pidfd_open(pid: i32, flags: u32) -> i32;
     fn pidfd_send_signal(fd: i32, signal: i32, info: *const std::ffi::c_void, flags: u32) -> i32;
@@ -116,11 +101,14 @@ fn record(pid: u32) -> Result<Option<(u32, u64)>, String> {
     Ok(Some((session, birth)))
 }
 
-struct RestoreSignal(SignalAction);
+struct RestoreSignal(libc::sigaction);
 impl Drop for RestoreSignal {
     fn drop(&mut self) {
         // SAFETY: exact prior action, restored inside the same isolated fixture process.
-        assert_eq!(unsafe { sigaction(17, &self.0, std::ptr::null_mut()) }, 0);
+        assert_eq!(
+            unsafe { libc::sigaction(libc::SIGCHLD, &self.0, std::ptr::null_mut()) },
+            0
+        );
     }
 }
 
@@ -129,19 +117,29 @@ fn no_child_wait_fixture() {
     if !selected("cohort::no_child_wait_fixture") {
         return;
     }
-    let action = SignalAction {
-        flags: 2,
-        ..Default::default()
-    };
-    let mut previous = SignalAction::default();
+    let mut action = std::mem::MaybeUninit::<libc::sigaction>::zeroed();
+    // SAFETY: zeroed libc::sigaction is valid before setting sa_flags and sa_sigaction.
+    let mut action = unsafe { action.assume_init() };
+    action.sa_sigaction = libc::SIG_DFL;
+    action.sa_flags = libc::SA_NOCLDWAIT;
+    let mut previous = std::mem::MaybeUninit::<libc::sigaction>::zeroed();
     // SAFETY: supported ABI, initialized action/output; fixture has no other child owner.
-    assert_eq!(unsafe { sigaction(17, &action, &mut previous) }, 0);
-    let restore = RestoreSignal(previous);
-    let mut observed = SignalAction::default();
+    assert_eq!(
+        unsafe { libc::sigaction(libc::SIGCHLD, &action, previous.as_mut_ptr()) },
+        0
+    );
+    // SAFETY: libc::sigaction returned 0, initializing `previous`.
+    let restore = RestoreSignal(unsafe { previous.assume_init() });
+    let mut observed = std::mem::MaybeUninit::<libc::sigaction>::zeroed();
     // SAFETY: query only into a live correctly sized action.
-    assert_eq!(unsafe { sigaction(17, std::ptr::null(), &mut observed) }, 0);
-    assert_eq!(observed.handler, 0);
-    assert_ne!(observed.flags & 2, 0);
+    assert_eq!(
+        unsafe { libc::sigaction(libc::SIGCHLD, std::ptr::null(), observed.as_mut_ptr()) },
+        0
+    );
+    // SAFETY: libc::sigaction returned 0, initializing `observed`.
+    let observed = unsafe { observed.assume_init() };
+    assert_eq!(observed.sa_sigaction, libc::SIG_DFL);
+    assert_ne!(observed.sa_flags & libc::SA_NOCLDWAIT, 0);
     let root = std::env::current_dir().unwrap();
     let missing = root.join("must-not-spawn");
     assert_eq!(

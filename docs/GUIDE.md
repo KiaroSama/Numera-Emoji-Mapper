@@ -1,4 +1,4 @@
-# Numera Emoji Mapper — Complete Guide (0 → 100)
+# Numera Emoji Mapper: Complete Guide (0 to 100)
 
 The local application runs from the standalone Rust executable in the package
 root: `.\numera-emoji.exe` on Windows or `./numera-emoji` on Linux.
@@ -30,8 +30,9 @@ All first-party local application, contributor and administration tools are Rust
 under `runtime/`. Historical ADRs and audit reports describe their recorded
 checkpoints, including the retired Python/PyO3 implementation; they are not
 current installation instructions. See [backend ownership](native-backend.md)
-and [test evidence](native-test-migration.md). Supported packages are Linux x64
-and Windows x64. Final-source CI results must be checked for the exact revision;
+and [test evidence](native-test-migration.md). Supported packages are four 64-bit
+targets: Linux x64, Linux arm64, Windows x64, and Windows arm64 (no macOS or 32-bit
+builds). Final-source CI results must be checked for the exact revision;
 these guides do not certify an untested build.
 
 Tokens, configuration, collections and recovery journals remain local. Use isolated

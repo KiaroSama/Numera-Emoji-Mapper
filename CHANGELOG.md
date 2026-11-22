@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-11-22
+
+### Breaking
+- Replaced the Python runtime, PowerShell/shell launchers, and PyO3 bridge with a standalone Rust 1.100.0 (edition 2024) application (`numera-emoji`).
+- Kept the local curation web panel in browser JavaScript (`assets/`) and the Cloudflare Worker in TypeScript (`worker/`).
+- Standardized prebuilt release packages on four 64-bit targets: Windows x64, Windows arm64, Linux x64, and Linux arm64 (macOS and 32-bit targets removed).
+
+### Added
+- Embedded the approved project logo into every compiled binary across all four targets (Windows PE icon and version resources via `winresource`, Linux `.rodata.numera_logo` ELF section plus `.desktop` entry and hicolor icon) with byte-level `verify-binary` checks in CI and release workflows.
+- Added `SHA256SUMS` and GitHub Artifact Attestation provenance in `release.yml`, alongside Windows Authenticode and owner GPG release signing.
+- Seeded `coins/keywords.csv` inside standalone packages (`assets/coins-keywords-seed.csv`) with automatic directory bootstrap and `--flag=VALUE` CLI option parity.
+- Split oversized Rust modules under the 800-line ceiling while preserving all 1,516 original test identities.
+
+### Fixed
+- Resolved CodeQL alert `#1` (`js/incomplete-multi-character-sanitization`) in `worker/test/publish-input.test.ts` with a single-pass length counter.
+- Updated `process_owner_descendants` and Linux test isolation to use `libc::sigaction` across both `x86_64` and `aarch64` GNU Linux hosts.
+
 ## [Unreleased]
 
 ### Breaking
@@ -55,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`numera-emoji plan-apply`** applies the Curate panel's saved pack
   plan to the live packs: dry run by default, `--apply` removes the outgoing
   half of each move, adds arrivals and new emoji through the verified publisher
-  path, then reorders — at most 20 Telegram changes per run, resumable, with
+  path, then reorders (at most 20 Telegram changes per run, resumable, with
   every delete journalled and confirmed. A held emoji that is still live stays.
   A Telegram flood wait longer than `--max-wait` (default 300 s) ends the run with
   exit 3 instead of stalling it.

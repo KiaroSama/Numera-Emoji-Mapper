@@ -34,10 +34,10 @@ pub mod developer;
 pub mod tooling_sandbox;
 
 #[cfg(not(all(
-    target_arch = "x86_64",
+    any(target_arch = "x86_64", target_arch = "aarch64"),
     any(target_os = "linux", target_os = "windows")
 )))]
-compile_error!("Numera supports x86_64 Linux and Windows only");
+compile_error!("Numera supports 64-bit Linux and Windows (x86_64, aarch64) only");
 
 #[cfg(test)]
 mod baseline_atomic_tests;

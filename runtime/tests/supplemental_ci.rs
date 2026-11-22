@@ -293,7 +293,11 @@ fn secret_scan_triage_cannot_hide_future_matches_or_disclose_values() {
         required_step_run(scanner, "Scan Git history with the verified Gitleaks CLI").unwrap(),
         "cargo run --manifest-path tools/ci/Cargo.toml --locked --bin gitleaks"
     );
-    let implementation = std::fs::read_to_string(root.join("tools/ci/src/lib.rs")).unwrap();
+    let implementation = format!(
+        "{}\n{}",
+        std::fs::read_to_string(root.join("tools/ci/src/lib.rs")).unwrap(),
+        std::fs::read_to_string(root.join("tools/ci/src/tests.rs")).unwrap()
+    );
     for case in [
         "exact_reviewed_identities_only",
         "malformed_or_incomplete_metadata_cannot_claim_reviewed_identity",
@@ -421,7 +425,7 @@ fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_pyt
         .split_once("\n  worker:")
         .unwrap()
         .0;
-    for platform in ["linux-x64", "windows-x64"] {
+    for platform in ["linux-x64", "linux-arm64", "windows-x64", "windows-arm64"] {
         assert!(production.contains(&format!("platform: {platform}")));
     }
     let platforms = production
@@ -430,7 +434,12 @@ fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_pyt
         .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(
         platforms,
-        std::collections::BTreeSet::from(["linux-x64", "windows-x64"])
+        std::collections::BTreeSet::from([
+            "linux-arm64",
+            "linux-x64",
+            "windows-arm64",
+            "windows-x64",
+        ])
     );
     assert!(!production.contains("platform: linux-x86"));
     assert!(!production.contains("platform: windows-x86"));
@@ -504,14 +513,19 @@ fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_pyt
         .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(
         platforms,
-        std::collections::BTreeSet::from(["linux-x64", "windows-x64"])
+        std::collections::BTreeSet::from([
+            "linux-arm64",
+            "linux-x64",
+            "windows-arm64",
+            "windows-x64",
+        ])
     );
     assert!(!package.contains("platform: linux-x86"));
     assert!(!package.contains("platform: windows-x86"));
     assert!(!package.contains("setup-python"));
     assert!(!package.contains("maturin"));
     assert!(!package.contains(".venv"));
-    for platform in ["linux-x64", "windows-x64"] {
+    for platform in ["linux-x64", "linux-arm64", "windows-x64", "windows-arm64"] {
         assert!(package.contains(&format!("platform: {platform}")));
     }
     assert!(

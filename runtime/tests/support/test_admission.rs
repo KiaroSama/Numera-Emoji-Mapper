@@ -2,8 +2,11 @@
 //! No Rust runtime, logger, configuration or allocator is required here.
 #![allow(unsafe_code)]
 
-#[cfg(not(all(target_arch = "x86_64", any(target_os = "linux", windows))))]
-compile_error!("Native test admission supports Linux/Windows x64 only");
+#[cfg(not(all(
+    any(target_arch = "x86_64", target_arch = "aarch64"),
+    any(target_os = "linux", windows)
+)))]
+compile_error!("Native test admission supports 64-bit Linux/Windows (x64, arm64) only");
 
 #[ctor::ctor(unsafe)]
 fn admit_before_main() {

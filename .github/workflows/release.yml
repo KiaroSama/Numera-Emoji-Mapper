@@ -25,8 +25,16 @@ jobs:
         include:
           - os: windows-2025
             platform: windows-x64
+            triple: x86_64-pc-windows-msvc
+          - os: windows-11-arm
+            platform: windows-arm64
+            triple: aarch64-pc-windows-msvc
           - os: ubuntu-24.04
             platform: linux-x64
+            triple: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+            triple: aarch64-unknown-linux-gnu
     runs-on: ${{ matrix.os }}
     env:
       CARGO_BUILD_JOBS: "2"
@@ -44,9 +52,23 @@ jobs:
           git rev-parse HEAD > logs/checkpoint/source-revision.log
           test "$(cat logs/checkpoint/source-revision.log)" = "$NUMERA_SOURCE_REVISION"
       - name: Select supported Rust toolchain
-        run: rustup default 1.100.0
+        shell: bash
+        run: |
+          rustup default 1.100.0
+          host="$(rustc -vV | awk '/^host: / {print $2}')"
+          test "$host" = "${{ matrix.triple }}"
       - name: Build standalone production runtime
         run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+      - name: Verify embedded logo and target architecture on built binaries
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then suffix=.exe; else suffix=; fi
+          for bin in numera-emoji numera-dev numera-runtime-tests numera-worker-admin; do
+            "runtime/target/release/numera-emoji$suffix" verify-binary \
+              --executable "runtime/target/release/${bin}${suffix}" \
+              --target "${{ matrix.platform }}" \
+              --logo assets/numera-emoji-mapper-logo-circle.png
+          done
       - name: Permit private runtime test namespaces
         if: runner.os == 'Linux'
         uses: ./.github/actions/test-network
@@ -92,15 +114,43 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify tag matches Cargo version
+        shell: bash
+        run: |
+          cargo_version="$(awk -F '"' '/^version = / {print $2; exit}' runtime/Cargo.toml)"
+          test "$GITHUB_REF_NAME" = "v${cargo_version}"
       - uses: actions/download-artifact@v8
         with:
           pattern: numera-emoji-mapper-*
           path: dist
           merge-multiple: true
+      - name: Verify all four 64-bit archives and generate SHA256SUMS
+        shell: bash
+        run: |
+          cd dist
+          count="$(ls -1 numera-emoji-mapper-*.zip | wc -l | tr -d ' ')"
+          test "$count" -eq 4
+          for target in linux-x64 linux-arm64 windows-x64 windows-arm64; do
+            test -f "numera-emoji-mapper-${GITHUB_REF_NAME#v}-${target}.zip"
+            test -f "numera-emoji-mapper-${GITHUB_REF_NAME#v}-${target}.zip.sha256"
+          done
+          sha256sum numera-emoji-mapper-*.zip > SHA256SUMS
+      - name: Attest build provenance for release archives
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.zip
+            dist/SHA256SUMS
       - name: Attach verified packages to the versioned release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/*.zip dist/*.sha256 --repo "$GITHUB_REPOSITORY"
+          gh release upload "$GITHUB_REF_NAME" dist/*.zip dist/*.sha256 dist/SHA256SUMS --clobber --repo "$GITHUB_REPOSITORY"

@@ -1,30 +1,24 @@
 <div align="center">
 
-<img src="assets/numera-emoji-mapper-logo-circle.png" alt="Numera Emoji Mapper" width="420">
+<img src="assets/numera-emoji-mapper-logo-circle.png" alt="Numera Emoji Mapper" width="240">
 
 # Numera Emoji Mapper
 
 **Build Telegram premium custom-emoji packs from any collection of images.**
 
-[![Rust CI](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml/badge.svg?branch=codex%2Fcomplete-rust-migration)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml)
-[![Packages](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml/badge.svg?branch=codex%2Fcomplete-rust-migration)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml)
-[![License: GPL-3.0](https://img.shields.io/github/license/KiaroSama/Numera-Emoji-Mapper)](LICENSE)
-[![Runtime: Rust](https://img.shields.io/badge/runtime-Rust-DEA584?logo=rust)](runtime/Cargo.toml)
-[![Rust 1.100.0](https://img.shields.io/badge/Rust-1.100.0-DEA584?logo=rust)](runtime/Cargo.toml)
-[![Builds: Linux x64, Windows x64](https://img.shields.io/badge/builds-Linux%20x64%20%7C%20Windows%20x64-0078D6)](.github/workflows/ci.yml)
-<br>
-[![Backend: Cloudflare Workers](https://img.shields.io/badge/backend-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](worker/README.md)
-[![Telegram Bot API](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
-[![Docs: GUIDE](https://img.shields.io/badge/docs-GUIDE-blue)](docs/GUIDE.md)
-[![Last commit](https://img.shields.io/github/last-commit/KiaroSama/Numera-Emoji-Mapper)](https://github.com/KiaroSama/Numera-Emoji-Mapper/commits/main)
-<br>
-[![Commit activity](https://img.shields.io/github/commit-activity/m/KiaroSama/Numera-Emoji-Mapper)](https://github.com/KiaroSama/Numera-Emoji-Mapper/commits/main)
-[![Top language](https://img.shields.io/github/languages/top/KiaroSama/Numera-Emoji-Mapper)](https://github.com/KiaroSama/Numera-Emoji-Mapper)
-[![Repo size](https://img.shields.io/github/repo-size/KiaroSama/Numera-Emoji-Mapper)](https://github.com/KiaroSama/Numera-Emoji-Mapper)
-[![Native media codecs](https://img.shields.io/badge/media-native%20codecs-007808)](runtime/Cargo.toml)
-[![FFmpeg for video emoji](https://img.shields.io/badge/FFmpeg-video%20emoji-007808?logo=ffmpeg&logoColor=white)](docs/GUIDE.md)
-[![SQLite catalog](https://img.shields.io/badge/SQLite-catalog-003B57?logo=sqlite&logoColor=white)](docs/GUIDE.md)
-[![Worker in TypeScript](https://img.shields.io/badge/Worker-TypeScript-3178C6?logo=typescript&logoColor=white)](worker/README.md)
+[![GitHub Actions CI workflow on main](https://img.shields.io/badge/CI-GitHub%20Actions-16a34a)](.github/workflows/ci.yml)
+[![GNU General Public License v3.0 or later](https://img.shields.io/badge/license-GPL--3.0--or--later-2563eb)](LICENSE)
+[![Release v3.0.0 standalone Rust packages](https://img.shields.io/badge/release-v3.0.0-ea580c)](CHANGELOG.md)
+[![1516 preserved test identities across Rust and browser suites](https://img.shields.io/badge/tests-1516%20cases-0d9488)](tests/fixtures/migration/reference-cases.json)
+[![Rust 1.100.0 toolchain measured via rustc](https://img.shields.io/badge/Rust-1.100.0-8b5cf6)](rust-toolchain.toml)
+[![Runs on Linux x64, Linux arm64, Windows x64, and Windows arm64](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%2064--bit-0891b2)](.github/workflows/release.yml)
+[![Prebuilt signed standalone archives](https://img.shields.io/badge/install-Prebuilt%20ZIP-4f46e5)](.github/workflows/release.yml)
+[![Complete operator guide in docs/GUIDE.md](https://img.shields.io/badge/docs-GUIDE-0284c7)](docs/GUIDE.md)
+[![Measured tracked repository tree size](https://img.shields.io/badge/repo%20size-15.6%20MB-ca8a04)](README.md)
+[![Native Rust media codecs with embedded logo verification](https://img.shields.io/badge/media-native%20codecs-15803d)](runtime/Cargo.toml)
+[![FFmpeg and FFprobe for video custom emoji](https://img.shields.io/badge/video-FFmpeg-b45309)](docs/GUIDE.md)
+[![SQLite local catalog with WAL backup](https://img.shields.io/badge/catalog-SQLite-334155)](runtime/Cargo.toml)
+[![Cloudflare Worker announcement service in TypeScript](https://img.shields.io/badge/worker-Cloudflare%20TypeScript-c2410c)](worker/README.md)
 [![Support donations](https://img.shields.io/badge/Support-donations-d04a9a)](#donate)
 
 </div>
@@ -63,14 +57,14 @@ See [test ownership](docs/native-test-migration.md) and
 The [upstream refresh](docs/upstream-refresh.md) records the adopted dependency
 versions and renderer and logo-source review.
 
-> 📘 **[Full Guide (0 → 100) — docs/GUIDE.md](docs/GUIDE.md)** — complete
+> **[Full Guide (0 to 100): docs/GUIDE.md](docs/GUIDE.md)**: complete
 > reference for every workflow and command, written for humans and AI agents.
 
 ## How it works
 
-1. **Prepare PNGs** — `make-emoji-pngs` converts your images (SVG, PNG, JPG,
+1. **Prepare PNGs:** `make-emoji-pngs` converts your images (SVG, PNG, JPG,
    WEBP, GIF) into transparent 100×100 PNGs.
-2. **Build the pack** — `build-pack` uploads those PNGs into Telegram
+2. **Build the pack:** `build-pack` uploads those PNGs into Telegram
    custom-emoji sets (max 200 per set), naming them `<base><n>_by_<botusername>`
    and sending you each finished pack's `https://t.me/addemoji/...` link.
 
@@ -88,13 +82,18 @@ versions and renderer and logo-source review.
 
 ## Install a ready-built package
 
-1. Open [Releases](https://github.com/KiaroSama/Numera-Emoji-Mapper/releases), or
-   the artifacts on a successful [Prebuilt packages run](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml),
+Prebuilt 64-bit packages ship for four targets: `windows-x64`, `windows-arm64`,
+`linux-x64`, and `linux-arm64` (no macOS or 32-bit builds).
+
+1. Open [Releases](https://github.com/KiaroSama/Numera-Emoji-Mapper/releases) (or
+   the artifacts on a successful [Prebuilt packages run](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/release.yml))
    and download the matching `numera-emoji-mapper-<version>-<platform>.zip` plus
-   its `.zip.sha256`. GitHub CI artifacts require sign-in. A source ZIP is not
-   a ready-built application.
-2. Verify the archive checksum and extract it into its own directory. SHA256
-   checks detect changed bytes; they do not authenticate the publisher.
+   `SHA256SUMS`, `SHA256SUMS.asc`, and `KEYS.asc`. A source ZIP is not a ready-built
+   application.
+2. Verify the detached GPG signature (`gpg --import KEYS.asc && gpg --verify SHA256SUMS.asc SHA256SUMS`),
+   the archive SHA-256 checksum, GitHub build provenance attestation (`gh attestation verify`),
+   and on Windows the executable's Authenticode signature (`Get-AuthenticodeSignature .\numera-emoji.exe`),
+   then extract the archive into its own directory.
 3. Run the executable directly. The extracted directory is already runnable;
    there is no dependency installation step.
 
@@ -164,14 +163,14 @@ GENERAL_BOT_TOKEN=<general bot token>      # @YourEmojiBot
 CMC_API_KEY=<optional CoinMarketCap key>
 ```
 
-Your own identities — which bots lead their packs with your brand logo, the
-logo itself, your pack bases and coin pack title — are `.env` keys too
+Your own identities (which bots lead their packs with your brand logo, the
+logo itself, your pack bases and coin pack title) are `.env` keys too
 (`BRAND_LOGO_BOTS`, `BRAND_LOGO_PATH`, `COLLECTION_PACK_BASE`, `COIN_PACK_BASE`,
 `COIN_PACK_TITLE`, …). The repository names no operator, so none has a default:
 a tool that needs one stops and names it. Keep your logo in the git-ignored
 `private/` folder.
 
-## Quick start — general emoji pack (new bot)
+## Quick start: general emoji pack (new bot)
 
 Run from the extracted package. `./numera-emoji` locates its assets beside the
 executable. `numera-emoji menu` opens the menu; `numera-emoji doctor` checks
@@ -208,10 +207,10 @@ interrupted or flood-limited run continues without recreating existing sets.
 The collector workflow downloads emoji from existing Telegram packs (and/or
 builds them from scratch from your own files), deduplicates everything into a
 persistent catalog, and republishes them into new packs with your own name and
-labels. It supports all three custom-emoji formats — **static** (PNG/WEBP),
-**animated** (`.tgs` Lottie) and **video** (`.webm` VP9).
+labels. It supports all three custom-emoji formats: **static** (PNG/WEBP),
+**animated** (`.tgs` Lottie), and **video** (`.webm` VP9).
 
-### Animated vs. video — and how detection works
+### Animated vs. video, and how detection works
 
 | | Animated (`.tgs`) | Video (`.webm`) |
 |---|---|---|
@@ -223,27 +222,27 @@ labels. It supports all three custom-emoji formats — **static** (PNG/WEBP),
 Detection is automatic: from the Bot API a sticker's `is_animated` / `is_video`
 flags decide the format; downloaded files are also verified by magic bytes
 (`1F 8B`→tgs, `1A 45 DF A3`→webm, PNG/RIFF-WEBP→static). A GIF or video **cannot**
-become an *animated* emoji (those are vector-only) — it becomes a *video* emoji.
+become an *animated* emoji (those are vector-only); it becomes a *video* emoji.
 
 ### Duplicate-proof by design
 
 The old delete-and-rebuild churn is gone. The catalog (`collection/catalog.db`)
 deduplicates at **ingest** time, not after publishing:
 
-1. **`file_unique_id` pre-check** — a sticker already ingested is never
+1. **`file_unique_id` pre-check:** a sticker already ingested is never
    downloaded again. Publishing also records the uploaded copies'
    `file_unique_id`s, so re-fetching your **own** published packs downloads
    nothing.
-2. **Normalized content hash** — identical media from different packs collapse
+2. **Normalized content hash:** identical media from different packs collapse
    into one entry (their emoji/keywords/sources merge).
-3. **Perceptual hash (dHash)** — near-identical logos merge within a threshold
+3. **Perceptual hash (dHash):** near-identical logos merge within a threshold
    (opt-in via `--phash-threshold`; off by default so distinct look-alikes
    survive).
-4. **Idempotent publish** — uploaded items are tracked per item; before
+4. **Idempotent publish:** uploaded items are tracked per item; before
    uploading, the live set is reconciled and any applied-but-unrecorded sticker
    is attributed back to its catalog item, so interruptions can never create
    duplicates.
-5. **Verified network retries** — a timeout after Telegram already processed an
+5. **Verified network retries:** a timeout after Telegram already processed an
    `addStickerToSet` is detected against the live set and never re-sent, so the
    same emoji can't land in a pack twice.
 
@@ -268,8 +267,8 @@ Sets are named `<base>s<n>_by_<bot>` (static), `<base>v<n>_by_<bot>` (video) and
 `<base>a<n>_by_<bot>` (animated). All working data lives under `collection/`
 (gitignored).
 
-> Re-publishing other people's emoji under a new name may raise ownership /
-> copyright concerns — only collect content you have the right to use.
+> Re-publishing other people's emoji under a new name may raise ownership or
+> copyright concerns; only collect content you have the right to use.
 
 ## Numera Emoji Mapper bot (premium-emoji ID extractor)
 
@@ -288,13 +287,13 @@ premium custom-emoji IDs with tap-to-copy buttons (Telegram `copy_text`):
 
 ## Cloudflare Worker (both bots, hosted)
 
-`worker/` runs the same bot behaviour on Cloudflare instead of your machine —
-both bots in one Worker, each on its own path (`/tg/general`, `/tg/coin`) with
+`worker/` runs the same bot behaviour on Cloudflare instead of your machine.
+Both bots share one Worker, each on its own path (`/tg/general`, `/tg/coin`) with
 its own webhook secret, answering only the ids in `ADMIN_USER_IDS`. It also
 exposes `POST /publish`, so a finished pack is announced **by the bot** in your
 channel rather than by this machine: set `WORKER_PUBLISH_URL` and
-`WORKER_PUBLISH_SECRET` in `.env` and **all three publishers** — `build-pack`,
-`build-collection` and `coin-rebuild` — route their links through
+`WORKER_PUBLISH_SECRET` in `.env` and all three publishers (`build-pack`,
+`build-collection`, and `coin-rebuild`) route their links through
 it. Leave either unset and the existing direct path is used, unchanged.
 
 It keeps its own log: a D1 table of warnings, errors and publishes, capped at the
@@ -302,7 +301,7 @@ newest 5 000 rows, plus an errors-only Telegram channel; routine lines go to
 Workers Logs only, so a message to a bot costs no D1 write. Every line starts with the bot that wrote it,
 because both bots share the Worker, the table and the channel.
 
-> **A Telegram bot token can use `getUpdates` (polling) or a webhook — never
+> **A Telegram bot token can use `getUpdates` (polling) or a webhook, never
 > both.** Registering a webhook for a token stops `emoji-bot` receiving
 > anything on it; `deleteWebhook` hands it back. Run one or the other per token.
 
@@ -323,10 +322,10 @@ cd ..
 The native `panel` command opens a local dark neon-blue web panel showing every emoji in the
 catalog as a large labelled card. All cards are selected by default; click one
 to toggle it (deselected = excluded from the next publish), Shift+click for a
-range, **drag** to set the publish order — each card shows its position,
+range, **drag** to set the publish order (each card shows its position,
 and dragging to the top or bottom edge scrolls the page so you can move an
-item across the whole catalog in one go. **Click the `premium-id:` label
-to copy that id** to the clipboard — it does not toggle the card. Visually similar emoji start out next
+item across the whole catalog in one go). **Click the `premium-id:` label
+to copy that id** to the clipboard without toggling the card. Visually similar emoji start out next
 to each other so look-alikes are quick to deselect. Click **Save**, then
 `build-collection` only publishes the included items, and
 `plan-apply` shows (and with `--apply` makes) the moves between
@@ -335,7 +334,7 @@ packs the saved layout asks for, at most 20 Telegram changes per run.
 **The grid is virtual**: only the rows near the viewport exist in the page,
 whatever the catalog holds, so a thousand cards scroll and drag like a
 hundred. **Zoom** with the `−` / `100%` / `+` buttons, Ctrl+wheel or
-Ctrl+plus/minus (Ctrl+0 resets) — out to fit more emoji per screen, in to
+Ctrl+plus/minus (Ctrl+0 resets): zoom out to fit more emoji per screen, in to
 inspect one; below 75 % the text under each thumbnail is dropped so the rows
 pack tighter. The level is remembered across reloads.
 
@@ -362,8 +361,8 @@ many were kept, not in this catalog, and new.
 light animated WebP previews by default; the **Real video** switch brings back
 `<video>` players, which are never created or torn down mid-scroll. A scroll
 freezes only the cards that were playing and thaws them once it settles.
-Previews come in two tiers — 104 px at up to 15 fps, and below 75 % zoom 72 px
-at up to 10 fps — and a background warm-up renders exactly those for animated
+Previews come in two tiers (104 px at up to 15 fps, and below 75 % zoom 72 px
+at up to 10 fps), and a background warm-up renders exactly those for animated
 and video cards (plus the holding tray's still) at start-up. The server renders
 up to max(2, min(6, CPU count − 2)) uncached previews at once. Switching
 **Animation** off holds every card on its first frame. The source media and
@@ -394,7 +393,7 @@ on that port is refused; use another port for a separate panel session.
 The Rust CLI owns provider and coin-domain workflows, including Telegram
 transport, upload proofs, locks, atomic state, announcements and table rendering.
 The generic `build-pack` command also supports the coin bot (`TELEGRAM_BOT_TOKEN`).
-Coin data, images and retained compatibility modules live under `coins/`.
+Coin data, logos, and the tracked seed `keywords.csv` live under `coins/` (bundled in standalone packages as `assets/coins-keywords-seed.csv`).
 The executable includes `coin-alias-map`, `coin-enhance-map` and
 `coin-build-keywords`, `coin-fetch-logos [pages]`, `coin-fetch-paprika` and
 `coin-fetch-cmc`, with `--coin-dir DIR` for isolated coin data work. Provider
@@ -424,17 +423,17 @@ The historical source-retirement ledger remains a separate review gate in
 Run the installed executable from your package root, for example
 `./numera-emoji coin-rebuild map` (`.exe` on Windows):
 
-- `coin-fetch-logos` — download CoinGecko logos and write `coins/keywords.csv`.
-- `coin-fetch-paprika` / `coin-fetch-cmc` — fill missing logos from the other providers.
+- `coin-fetch-logos`: download CoinGecko logos and write `coins/keywords.csv`.
+- `coin-fetch-paprika` / `coin-fetch-cmc`: fill missing logos from the other providers.
   Unanswered lookups remain unknown and uncached; partial runs exit 3.
   `coin-fetch-paprika --retry-unmatched` retries older unmatched searches.
-- `coin-build-keywords` — rebuild the CSV while preserving earlier resolved names.
-- `coin-rebuild [all|build|map|links]` — rebuild packs, identifiers and link messages.
-- `coin-remap-ids` — reconstruct `ticker_to_id.json` from image content.
-- `coin-enhance-map` / `coin-alias-map` — preserve chain-variant aliases.
-- `coin-verify-logos` — review official art and repair only explicitly selected tickers.
-- `coin-write-manifests` — write each pack's ticker/emoji-ID manifest.
-- `coin-check-packs` — audit packs for blank and duplicate stickers.
+- `coin-build-keywords`: rebuild the CSV while preserving earlier resolved names.
+- `coin-rebuild [all|build|map|links]`: rebuild packs, identifiers and link messages.
+- `coin-remap-ids`: reconstruct `ticker_to_id.json` from image content.
+- `coin-enhance-map` / `coin-alias-map`: preserve chain-variant aliases.
+- `coin-verify-logos`: review official art and repair only explicitly selected tickers.
+- `coin-write-manifests`: write each pack's ticker/emoji-ID manifest.
+- `coin-check-packs`: audit packs for blank and duplicate stickers.
 
 Provider HTTP, logo matching, ticker state and rebuild recovery use the locked
 Rust dependencies. No additional coin-language runtime is installed.

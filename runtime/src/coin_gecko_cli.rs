@@ -39,6 +39,14 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         );
         return Ok(0);
     }
+    if !directory.exists()
+        && let Some(parent) = directory.parent()
+        && parent.exists()
+    {
+        crate::coin_provider_stage::physical(parent)?;
+        std::fs::create_dir_all(&directory)
+            .map_err(|e| format!("cannot create coin directory: {e}"))?;
+    }
     crate::coin_provider_stage::physical(&directory)?;
     let delay = crate::coin_http::page_delay(config.value("COIN_PAGE_DELAY"))?;
     let client = ProviderHttp::new(Duration::from_secs(30))?;

@@ -113,8 +113,10 @@ fn ci_context(root: &Path) -> Result<TestContext, String> {
 }
 #[derive(Clone, Copy)]
 pub(crate) enum Platform {
-    Linux,
-    Windows,
+    LinuxX64,
+    LinuxArm64,
+    WindowsX64,
+    WindowsArm64,
     Macos,
 }
 #[derive(Default)]
@@ -163,8 +165,14 @@ fn predicate(meta: &Meta, platform: Platform, context: &TestContext) -> Option<b
         Meta::Path(p) => match p.to_token_stream().to_string().as_str() {
             "test" => Some(true),
             "debug_assertions" => Some(context.debug_assertions),
-            "unix" => Some(!matches!(platform, Platform::Windows)),
-            "windows" => Some(matches!(platform, Platform::Windows)),
+            "unix" => Some(!matches!(
+                platform,
+                Platform::WindowsX64 | Platform::WindowsArm64
+            )),
+            "windows" => Some(matches!(
+                platform,
+                Platform::WindowsX64 | Platform::WindowsArm64
+            )),
             "doc" | "doctest" | "miri" => Some(false),
             _ => None,
         },
@@ -172,26 +180,29 @@ fn predicate(meta: &Meta, platform: Platform, context: &TestContext) -> Option<b
             let name = string(meta)?;
             let expected = match p.path.to_token_stream().to_string().as_str() {
                 "target_os" => match platform {
-                    Platform::Linux => "linux",
-                    Platform::Windows => "windows",
+                    Platform::LinuxX64 | Platform::LinuxArm64 => "linux",
+                    Platform::WindowsX64 | Platform::WindowsArm64 => "windows",
                     Platform::Macos => "macos",
                 },
-                "target_arch" => "x86_64",
+                "target_arch" => match platform {
+                    Platform::LinuxX64 | Platform::WindowsX64 | Platform::Macos => "x86_64",
+                    Platform::LinuxArm64 | Platform::WindowsArm64 => "aarch64",
+                },
                 "target_family" => {
-                    if matches!(platform, Platform::Windows) {
+                    if matches!(platform, Platform::WindowsX64 | Platform::WindowsArm64) {
                         "windows"
                     } else {
                         "unix"
                     }
                 }
                 "target_env" => match platform {
-                    Platform::Linux => "gnu",
-                    Platform::Windows => "msvc",
+                    Platform::LinuxX64 | Platform::LinuxArm64 => "gnu",
+                    Platform::WindowsX64 | Platform::WindowsArm64 => "msvc",
                     Platform::Macos => "",
                 },
                 "target_vendor" => match platform {
-                    Platform::Linux => "unknown",
-                    Platform::Windows => "pc",
+                    Platform::LinuxX64 | Platform::LinuxArm64 => "unknown",
+                    Platform::WindowsX64 | Platform::WindowsArm64 => "pc",
                     Platform::Macos => "apple",
                 },
                 "target_pointer_width" => "64",
@@ -378,8 +389,12 @@ impl Parser {
         match syn::parse_file(&text) {
             Ok(file) => {
                 let mask = (
-                    mask.0 && admitted(&file.attrs, Platform::Linux, &self.output.ci_context),
-                    mask.1 && admitted(&file.attrs, Platform::Windows, &self.output.ci_context),
+                    mask.0
+                        && admitted(&file.attrs, Platform::LinuxX64, &self.output.ci_context)
+                        && admitted(&file.attrs, Platform::LinuxArm64, &self.output.ci_context),
+                    mask.1
+                        && admitted(&file.attrs, Platform::WindowsX64, &self.output.ci_context)
+                        && admitted(&file.attrs, Platform::WindowsArm64, &self.output.ci_context),
                 );
                 let parent = canonical.parent().unwrap();
                 let directory =
@@ -419,11 +434,15 @@ impl Parser {
             match item {
                 syn::Item::Fn(f) if f.attrs.iter().any(test_attribute) => {
                     let linux = mask.0
-                        && admitted(&f.attrs, Platform::Linux, &self.output.ci_context)
-                        && test_enabled(&f.attrs, Platform::Linux, &self.output.ci_context);
+                        && admitted(&f.attrs, Platform::LinuxX64, &self.output.ci_context)
+                        && test_enabled(&f.attrs, Platform::LinuxX64, &self.output.ci_context)
+                        && admitted(&f.attrs, Platform::LinuxArm64, &self.output.ci_context)
+                        && test_enabled(&f.attrs, Platform::LinuxArm64, &self.output.ci_context);
                     let windows = mask.1
-                        && admitted(&f.attrs, Platform::Windows, &self.output.ci_context)
-                        && test_enabled(&f.attrs, Platform::Windows, &self.output.ci_context);
+                        && admitted(&f.attrs, Platform::WindowsX64, &self.output.ci_context)
+                        && test_enabled(&f.attrs, Platform::WindowsX64, &self.output.ci_context)
+                        && admitted(&f.attrs, Platform::WindowsArm64, &self.output.ci_context)
+                        && test_enabled(&f.attrs, Platform::WindowsArm64, &self.output.ci_context);
                     if linux || windows {
                         let mut identity = ns.clone();
                         identity.push(f.sig.ident.to_string());
@@ -444,14 +463,20 @@ impl Parser {
                             windows,
                             ignore_linux: ignored(
                                 &f.attrs,
-                                Platform::Linux,
+                                Platform::LinuxX64,
                                 &self.output.ci_context,
-                            ),
+                            )
+                            .or_else(|| {
+                                ignored(&f.attrs, Platform::LinuxArm64, &self.output.ci_context)
+                            }),
                             ignore_windows: ignored(
                                 &f.attrs,
-                                Platform::Windows,
+                                Platform::WindowsX64,
                                 &self.output.ci_context,
-                            ),
+                            )
+                            .or_else(|| {
+                                ignored(&f.attrs, Platform::WindowsArm64, &self.output.ci_context)
+                            }),
                             assertions: facts.assertions,
                             calls: facts.calls,
                             original_claims: {
@@ -472,9 +497,24 @@ impl Parser {
                 }
                 syn::Item::Mod(module) => {
                     let mask = (
-                        mask.0 && admitted(&module.attrs, Platform::Linux, &self.output.ci_context),
+                        mask.0
+                            && admitted(&module.attrs, Platform::LinuxX64, &self.output.ci_context)
+                            && admitted(
+                                &module.attrs,
+                                Platform::LinuxArm64,
+                                &self.output.ci_context,
+                            ),
                         mask.1
-                            && admitted(&module.attrs, Platform::Windows, &self.output.ci_context),
+                            && admitted(
+                                &module.attrs,
+                                Platform::WindowsX64,
+                                &self.output.ci_context,
+                            )
+                            && admitted(
+                                &module.attrs,
+                                Platform::WindowsArm64,
+                                &self.output.ci_context,
+                            ),
                     );
                     if mask.0 || mask.1 {
                         let mut child = ns.clone();

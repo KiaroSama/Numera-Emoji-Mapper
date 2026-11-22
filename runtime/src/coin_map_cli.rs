@@ -8,9 +8,21 @@ fn universal(text: &str) -> String {
     text.replace("\r\n", "\n").replace('\r', "\n")
 }
 fn rows(path: &Path) -> Result<Vec<Value>, String> {
+    let resolved = if path.is_file() {
+        path.to_path_buf()
+    } else if let Some(seed) = path
+        .parent()
+        .and_then(Path::parent)
+        .map(|root| root.join("assets").join("coins-keywords-seed.csv"))
+        .filter(|p| p.is_file())
+    {
+        seed
+    } else {
+        path.to_path_buf()
+    };
     let mut reader = csv::ReaderBuilder::new()
         .flexible(true)
-        .from_path(path)
+        .from_path(resolved)
         .map_err(|_| "cannot read coin keyword CSV")?;
     let headers = reader
         .headers()

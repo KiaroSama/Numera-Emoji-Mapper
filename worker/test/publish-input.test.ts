@@ -75,9 +75,11 @@ const PACKS = [OK_PACK];
  * lt/gt before amp, or `&amp;lt;` would wrongly collapse to `<`.
  */
 function parsedLength(html: string): number {
-  return html.replace(/<[^>]*>/g, "")
-             .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
-             .length;
+  let length = html.length;
+  for (const [token] of html.matchAll(/<\/?b>|&(?:amp|lt|gt);/g)) {
+    length -= token.length - (token[0] === "&" ? 1 : 0);
+  }
+  return length;
 }
 
 /** Everything one message must satisfy before it is worth sending. */
