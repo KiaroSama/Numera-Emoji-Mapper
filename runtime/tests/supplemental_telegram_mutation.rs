@@ -147,3 +147,141 @@ fn stable_membership_still_permits_a_verified_append() {
     );
     assert_eq!(waits, [Duration::from_secs(2)]);
 }
+
+#[derive(Clone)]
+struct Images;
+impl numera_runtime::media_adapter::MediaCodec for Images {
+    fn with_scratch(&self, _: std::path::PathBuf) -> Self {
+        self.clone()
+    }
+    async fn call(&self, request: Value) -> Result<Value, String> {
+        assert_eq!(request["operation"], "same_image");
+        Ok(json!(numera_runtime::codec_image::same_image(
+            std::path::Path::new(request["source"].as_str().unwrap()),
+            std::path::Path::new(request["other"].as_str().unwrap()),
+        )))
+    }
+}
+
+fn answered_upload(after: Value, creating: bool) -> (Result<Value, ApiError>, Vec<String>) {
+    let scratch = tempfile::tempdir().unwrap();
+    let source = scratch.path().join("ours.png");
+    image::RgbaImage::from_pixel(8, 8, image::Rgba([200, 30, 30, 255]))
+        .save(&source)
+        .unwrap();
+    let bytes = std::fs::read(&source).unwrap();
+    let mut probes = 0;
+    let bot = http::Bot::new(move |request| match request.method.as_str() {
+        "getStickerSet" => {
+            probes += 1;
+            http::ok(if probes == 1 && !creating {
+                members(&["old-a", "old-b"])
+            } else {
+                after.clone()
+            })
+        }
+        "addStickerToSet" | "createNewStickerSet" => {
+            assert_eq!(request.files["file0"], bytes);
+            http::ok(json!(true))
+        }
+        "getFile" => {
+            assert_eq!(request.form["file_id"], "ours");
+            http::ok(json!({"file_path":"ours"}))
+        }
+        "GET ours" => http::Response(bytes.clone()),
+        method => panic!("unexpected fixture method {method}"),
+    });
+    let telegram = bot.telegram();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let effect = numera_runtime::upload_effect::UploadEffect {
+        tg: &telegram,
+        media: &Images,
+        data: scratch.path(),
+        runtime: &runtime,
+    };
+    let result = effect.mutate(
+        &json!({"file_path":source,"fmt":"static","emojis":["😀"],"keywords":[]}),
+        "owned_fixture",
+        creating.then_some("Owned fixture"),
+        1,
+        false,
+    );
+    (result, bot.methods())
+}
+
+#[test]
+fn answered_upload_rejects_a_replacement_even_when_its_image_matches() {
+    let (result, methods) = answered_upload(members(&["old-a", "ours"]), false);
+    assert!(matches!(result, Err(ApiError::Unproven(_))), "{result:?}");
+    assert_eq!(
+        methods,
+        ["getStickerSet", "addStickerToSet", "getStickerSet"]
+    );
+}
+
+#[test]
+fn answered_upload_requires_complete_distinct_readback_identities() {
+    for field in ["file_unique_id", "custom_emoji_id"] {
+        for invalid in [
+            Value::Null,
+            json!(""),
+            json!(123),
+            members(&["old-a"])["stickers"][0][field].clone(),
+        ] {
+            let mut after = members(&["old-a", "old-b", "ours"]);
+            after["stickers"][2][field] = invalid;
+            let (result, methods) = answered_upload(after, false);
+            assert!(
+                matches!(result, Err(ApiError::Unproven(_))),
+                "{field}: {result:?}"
+            );
+            assert_eq!(
+                methods,
+                ["getStickerSet", "addStickerToSet", "getStickerSet"]
+            );
+        }
+    }
+}
+
+#[test]
+fn answered_upload_accepts_a_verified_append_and_new_set() {
+    for creating in [false, true] {
+        let after = if creating {
+            members(&["ours"])
+        } else {
+            members(&["old-a", "old-b", "ours"])
+        };
+        let (result, methods) = answered_upload(after.clone(), creating);
+        let result = result.unwrap();
+        assert_eq!(
+            result["sticker"],
+            after["stickers"]
+                .as_array()
+                .unwrap()
+                .last()
+                .unwrap()
+                .clone()
+        );
+        assert_eq!(result["live"], after["stickers"].as_array().unwrap().len());
+        let expected = if creating {
+            vec![
+                "createNewStickerSet",
+                "getStickerSet",
+                "getFile",
+                "GET ours",
+            ]
+        } else {
+            vec![
+                "getStickerSet",
+                "addStickerToSet",
+                "getStickerSet",
+                "getFile",
+                "GET ours",
+            ]
+        };
+        assert_eq!(methods, expected);
+    }
+}
