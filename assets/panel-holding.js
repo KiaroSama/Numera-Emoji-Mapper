@@ -139,19 +139,19 @@ function countsByPack(items,assignments=assignedPacks(items)){
   return counts;
 }
 
-function originFor(it){
-  const index=ITEMS.indexOf(it);
+function originFor(it,items=ITEMS){
+  const index=items.indexOf(it);
   let pack=it.pack ?? null;
   if(pack===null){
-    const starts=packStarts().starts;
+    const starts=packStartsFor(items).starts;
     const run=starts.filter(s=>s.index<=index).pop();
     pack=run ? (run.pack ?? 'new:'+starts.indexOf(run)) : 'new:0';
   }
-  const starts=packStarts().starts;
+  const starts=packStartsFor(items).starts;
   const run=starts.filter(s=>s.index<=index).pop();
   const start=run?run.index:0;
-  return {index,pack,slot:ITEMS.slice(start,index).filter(x=>x.included||x.isLogo).length,
-          anchor:ITEMS[start]?.key};
+  return {index,pack,slot:items.slice(start,index).filter(x=>x.included||x.isLogo).length,
+          anchor:items[start]?.key};
 }
 // Every item's origin as the ONE current state gives it (holdKeys: the picks
 // leave together, so none of them sees the others gone). One packStarts() for
@@ -335,16 +335,40 @@ holdCards.addEventListener('click',e=>{
   paintSelLabel();
 });
 
-function canUnhold(keys,atDrop=false){
+// Project the complete gesture without changing live items or their origins.
+// Inserting a stamp can switch automatic runs to membership, including cards
+// that were not held; validation and commit must use this same final placement.
+function projectUnhold(items,keys,origins){
+  const projected=items.map(it=>({...it}));
+  const byKey=new Map(projected.map(it=>[it.key,it]));
+  const originalByKey=new Map(items.map(it=>[it.key,it]));
+  const restoringItems=keys.map(key=>originalByKey.get(key))
+    .filter(it=>it&&!it.isLogo&&!it.included)
+    .map(it=>({it:byKey.get(it.key),origin:origins.get(it.key)||originFor(it,items)}))
+    .sort((a,b)=>a.origin.index-b.origin.index);
+  for(const {it,origin} of restoringItems){
+    projected.splice(projected.indexOf(it),1);
+    const assignments=assignedPacks(projected);
+    const samePack=projected.filter(x=>(x.included||x.isLogo)&&assignments.get(x.key)===origin.pack);
+    const next=samePack[origin.slot], previous=samePack[samePack.length-1];
+    const anchor=projected.findIndex(x=>x.key===origin.anchor);
+    const at=next?projected.indexOf(next):previous?projected.indexOf(previous)+1
+      :anchor>=0?anchor+1:Math.min(origin.index,projected.length);
+    projected.splice(at,0,it);it.included=true;
+  }
+  return projected;
+}
+
+function canUnhold(keys,atDrop=false,projected=null){
   const moving=new Set(keys);
   // Count the state acceptDrop will commit. Old stamps in the drag preview can
   // temporarily assign an unstamped neighbour to the wrong run. A grid drag
   // can also carry held picks without activating them; only a tray drop does.
-  const items=atDrop?ITEMS.map(it=>moving.has(it.key)&&!it.isLogo&&(it.included||holdDragKeys?.has(it.key))?{
+  const items=projected||(atDrop?ITEMS.map(it=>moving.has(it.key)&&!it.isLogo&&(it.included||holdDragKeys?.has(it.key))?{
     ...it, pack:aimedPack===undefined?it.pack:aimedPack,
     included:it.included||!!holdDragKeys?.has(it.key)
-  }:it):ITEMS;
-  const assignments=assignedPacks(items), counts=countsByPack(items,assignments);
+  }:it):projectUnhold(ITEMS,keys,holdOrigins));
+  const counts=countsByPack(items);
   const logos=items.filter(x=>x.isLogo);
   const fits=(pack,count)=>{
     // The global brand logo ships in every pack; a live logo reserves its own.
@@ -358,8 +382,9 @@ function canUnhold(keys,atDrop=false){
     }
     return true;
   };
+  let beforeCounts=countsByPack(ITEMS);
   if(atDrop){
-    let beforeCounts=new Map();
+    beforeCounts=new Map();
     if(dragSnap){
       const byKey=new Map(ITEMS.map(it=>[it.key,it]));
       const packs=new Map(dragSnap.packs), included=new Set(dragSnap.included);
@@ -368,42 +393,23 @@ function canUnhold(keys,atDrop=false){
       }));
       beforeCounts=countsByPack(before);
     }
-    // Moving a boundary can change a neighbour's inferred pack on either side.
-    // Check every growing pack against the original drag state. Existing
-    // overflow from bulk inclusion may be rearranged or reduced, never worsened.
-    for(const [pack,count] of counts){
-      if(count>(beforeCounts.get(pack)||0)&&!fits(pack,count))return false;
-    }
-    return true;
   }
-  for(const key of keys){
-    const it=items.find(x=>x.key===key);
-    if(!it||it.isLogo||it.included)continue;
-    const origin=holdOrigins.get(key)||{pack:assignments.get(key)};
-    const count=(counts.get(origin.pack)||0)+1;
-    if(!fits(origin.pack,count))return false;
-    counts.set(origin.pack,count);
+  // Restoring or moving a boundary can change a neighbour's inferred pack on
+  // either side. Existing overflow may stay unchanged or shrink, never grow.
+  for(const [pack,count] of counts){
+    if(count>(beforeCounts.get(pack)||0)&&!fits(pack,count))return false;
   }
   return true;
 }
 function unholdKeys(keys){
   keys=keys.filter(k=>ITEMS.some(x=>x.key===k&&!x.isLogo&&!x.included));
-  if(!keys.length||!canUnhold(keys))return false;
+  if(!keys.length)return false;
+  const projected=projectUnhold(ITEMS,keys,holdOrigins);
+  if(!canUnhold(keys,false,projected))return false;
   remember();
-  const restoringItems=keys.map(k=>ITEMS.find(x=>x.key===k))
-    .map(it=>({it,origin:holdOrigins.get(it.key)||originFor(it)}))
-    .sort((a,b)=>a.origin.index-b.origin.index);
-  for(const {it,origin} of restoringItems){
-    ITEMS.splice(ITEMS.indexOf(it),1);
-    const assignments=assignedPacks();
-    const samePack=ITEMS.filter(x=>(x.included||x.isLogo)&&assignments.get(x.key)===origin.pack);
-    const next=samePack[origin.slot];
-    const previous=samePack[samePack.length-1];
-    const anchor=ITEMS.findIndex(x=>x.key===origin.anchor);
-    const at=next?ITEMS.indexOf(next):previous?ITEMS.indexOf(previous)+1
-      :anchor>=0?anchor+1:Math.min(origin.index,ITEMS.length);
-    ITEMS.splice(at,0,it);setIncluded(it,true);
-  }
+  // Preserve the original item objects captured by mounted card handlers.
+  applyOrder(projected.map(it=>it.key));
+  for(const key of keys)setIncluded(ITEMS.find(it=>it.key===key),true);
   relayout();updateCount();markSelDirty();saveOrder();return true;
 }
 document.getElementById('unholdAll').onclick=()=>unholdKeys(ITEMS.filter(x=>!x.included&&!x.isLogo).map(x=>x.key));
