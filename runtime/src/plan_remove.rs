@@ -5,14 +5,27 @@ use crate::{
     telegram::{ApiError, SetState, Telegram},
 };
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 fn live(tg: &Telegram, name: &str) -> Result<Vec<Value>, String> {
     match tg.probe(name) {
-        (SetState::Exists, Some(pack)) => pack["stickers"]
-            .as_array()
-            .cloned()
-            .ok_or("live set has no stickers".into()),
+        (SetState::Exists, Some(pack)) => {
+            let stickers = pack["stickers"]
+                .as_array()
+                .cloned()
+                .ok_or("live set has no stickers")?;
+            let mut ids = BTreeSet::new();
+            for sticker in &stickers {
+                let id = sticker["custom_emoji_id"]
+                    .as_str()
+                    .filter(|id| !id.is_empty())
+                    .ok_or("live identity incomplete; removal intent retained")?;
+                if !ids.insert(id) {
+                    return Err("live identity duplicated; removal intent retained".into());
+                }
+            }
+            Ok(stickers)
+        }
         (SetState::Missing, _) => Err("recorded set no longer exists on Telegram".into()),
         _ => Err("live state unknown; removal intent retained".into()),
     }
@@ -132,12 +145,11 @@ pub fn remove(
     let path = data.join(format!("plan_apply_{base}.json"));
     atomic::write_json(&path, journal).map_err(|e| e.to_string())?;
     let gone = || -> crate::telegram::Result<Option<bool>> {
-        match tg.probe(&name) {
-            (SetState::Exists, Some(pack)) => Ok(pack["stickers"]
-                .as_array()
-                .map(|s| s.iter().all(|s| s["custom_emoji_id"] != cid))),
-            _ => Ok(None),
-        }
+        Ok(live(tg, &name).ok().map(|stickers| {
+            stickers
+                .iter()
+                .all(|sticker| sticker["custom_emoji_id"] != cid)
+        }))
     };
     match tg.call(
         "deleteStickerFromSet",

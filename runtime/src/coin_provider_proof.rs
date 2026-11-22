@@ -17,6 +17,9 @@ where
         SetState::Missing => return Ok(None),
         SetState::Exists => {}
     }
+    if stickers.len() < before {
+        return Err("provider live set is smaller than the recorded count; intent retained".into());
+    }
     let mut hits = Vec::new();
     for sticker in stickers.iter().skip(before) {
         let got = hash(sticker)

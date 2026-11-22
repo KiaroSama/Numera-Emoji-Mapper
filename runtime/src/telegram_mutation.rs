@@ -92,6 +92,9 @@ where
             let (Some(old), Some(now)) = (&before, usable_fuids(&stickers)) else {
                 return Ok(None);
             };
+            if !old.is_subset(&now) {
+                return Ok(None);
+            }
             let new = now.difference(old).collect::<Vec<_>>();
             if new.is_empty() {
                 return Ok(Some(false));
@@ -119,24 +122,32 @@ where
             "addStickerToSet applied after retry but live state is unknown or missing".into(),
         )
     })?;
-    if let (Some(old), Some(now)) = (&before, usable_fuids(&stickers)) {
-        let mut found = false;
-        for sticker in &stickers {
-            if sticker["file_unique_id"]
-                .as_str()
-                .is_some_and(|id| now.contains(id) && !old.contains(id))
-                && compare(tg, sticker, source, fmt)? == Some(true)
-            {
-                found = true;
-                break;
-            }
+    let (Some(old), Some(now)) = (&before, usable_fuids(&stickers)) else {
+        return Err(ApiError::Ambiguous(
+            "addStickerToSet readback has incomplete or duplicate identities; count cannot be trusted"
+                .into(),
+        ));
+    };
+    if !old.is_subset(&now) {
+        return Err(ApiError::Ambiguous(
+            "addStickerToSet readback lost earlier members; count cannot be trusted".into(),
+        ));
+    }
+    let mut found = false;
+    for sticker in &stickers {
+        if sticker["file_unique_id"]
+            .as_str()
+            .is_some_and(|id| now.contains(id) && !old.contains(id))
+            && compare(tg, sticker, source, fmt)? == Some(true)
+        {
+            found = true;
+            break;
         }
-        if !found {
-            return Err(ApiError::Ambiguous(
-                "addStickerToSet readback does not prove our source; count cannot be trusted"
-                    .into(),
-            ));
-        }
+    }
+    if !found {
+        return Err(ApiError::Ambiguous(
+            "addStickerToSet readback does not prove our source; count cannot be trusted".into(),
+        ));
     }
     Ok(json!(stickers.len()))
 }
