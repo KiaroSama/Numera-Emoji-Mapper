@@ -42,13 +42,14 @@ The manual Rust checkpoint is diagnostic, not a replacement for CI.
 The **Rust checkpoint** workflow accepts a `validation_scope` choice when
 dispatched against a branch or tag. Its default, **`full`**, retains the existing
 four-platform release build, formatting, lint, and unfiltered isolated Rust
-test commands. Three focused choices provide earlier Linux x64 evidence:
+test commands. Four focused choices provide earlier Linux x64 evidence:
 
 | Scope | Executed coverage |
 | --- | --- |
 | `mutation-regressions` | The complete `supplemental_telegram_mutation`, `supplemental_plan_remove`, `supplemental_coin_recovery`, `supplemental_coin_walk`, and `supplemental_sync_order` Cargo test targets. |
 | `panel-browser` | All 156 Playwright browser, performance, and source-contract cases, using a freshly built Rust server, locked npm dependencies, Chromium, actual discovery, and the original-case inventory check. |
 | `announcement-regressions` | The complete `supplemental_announce_ack` Cargo test target. |
+| `ci-regressions` | The complete `supplemental_ci` Cargo test target, including release dependency and condition-policy regressions. |
 
 Focused runs build all standalone executables with Rust 1.100.0 in release
 mode, with LTO disabled and 16 codegen units to shorten diagnostic compilation.
@@ -75,6 +76,12 @@ Signed main/tag builds repeat the acceptance suites inside the release workflow
 so GitHub enforces their dependency before granting access to the signing
 environment. PR and feature-branch package builds keep the existing lightweight
 package-only path and still run the ordinary CI and Gitleaks workflows.
+
+The release-policy regression requires the reviewed single-line main/tag and
+publication conditions. It rejects status-function overrides and multiline
+continuations that suppress GitHub's implicit success dependency check, as well
+as `continue-on-error`. Deliberate condition changes require updating that
+reviewed policy alongside the workflow.
 
 CI compiles the unfiltered Rust tests in `runtime/target/ci-tests` using release
 settings with LTO disabled and 16 codegen units. This avoids repeating link-time
