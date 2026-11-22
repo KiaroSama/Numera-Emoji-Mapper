@@ -141,14 +141,15 @@ pub fn walk<I: BuildIo>(
     let sets = state["sets"]
         .as_array()
         .ok_or("rebuild state has no sets")?;
-    let mut index = sets.len() as u64;
+    let mut index = sets.last().map_or(Ok(0), |last| {
+        last["index"].as_u64().ok_or("invalid rebuild set index")
+    })?;
     let mut name = String::new();
     let mut count = 0u64;
     if let Some(last) = sets
         .last()
         .filter(|s| s["live"].as_u64().is_some_and(|n| n < 200))
     {
-        index = last["index"].as_u64().ok_or("invalid rebuild set index")?;
         name = last["name"]
             .as_str()
             .ok_or("rebuild set has no name")?
@@ -176,10 +177,10 @@ pub fn walk<I: BuildIo>(
             io.save(state)?;
             continue;
         }
-        state["cursor"] = json!(position + 1);
         let mut mutation = Mutation::Answered;
         let mut placed = false;
         if count != 0 {
+            state["cursor"] = json!(position + 1);
             marker(state, key, "add", &name, index, count, io)?;
             mutation = io.mutate(&state["in_flight"], keywords);
             match &mutation {
@@ -192,6 +193,7 @@ pub fn walk<I: BuildIo>(
         if should_create {
             index = index.checked_add(1).ok_or("rebuild set index overflow")?;
             name = format!("{}{index}_by_{}", options.base, options.bot);
+            state["cursor"] = json!(position + 1);
             marker(state, key, "create", &name, index, 0, io)?;
             mutation = io.mutate(&state["in_flight"], keywords);
             if matches!(mutation, Mutation::Answered) {

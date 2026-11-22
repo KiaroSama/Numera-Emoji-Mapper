@@ -53,7 +53,16 @@ pub fn sync(
     if live.len() < pinned {
         return Err("live set no longer holds its pinned logo".into());
     }
-    let items = cat.all(None)?;
+    let mut items = cat.all(None)?;
+    let publication_ids = cat.publication_ids(name)?;
+    for item in &mut items {
+        if let Some(id) = item["content_key"]
+            .as_str()
+            .and_then(|key| publication_ids.get(key))
+        {
+            item["custom_emoji_id"] = json!(id);
+        }
+    }
     let known = items
         .iter()
         .filter_map(|item| item["custom_emoji_id"].as_str())

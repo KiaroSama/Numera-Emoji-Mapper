@@ -9,6 +9,23 @@ use std::path::{Path, PathBuf};
 fn text<'a>(v: &'a Value, key: &str) -> Result<&'a str, String> {
     v[key].as_str().ok_or_else(|| format!("missing {key}"))
 }
+fn complete_identities(stickers: &[Value]) -> Option<BTreeSet<(String, String)>> {
+    let mut fuids = BTreeSet::new();
+    let mut cids = BTreeSet::new();
+    let mut identities = BTreeSet::new();
+    for sticker in stickers {
+        let identity = crate::reconcile::identity(sticker);
+        if identity.0.is_empty()
+            || identity.1.is_empty()
+            || !fuids.insert(identity.0.clone())
+            || !cids.insert(identity.1.clone())
+        {
+            return None;
+        }
+        identities.insert(identity);
+    }
+    Some(identities)
+}
 pub struct UploadEffect<'a, M = MediaAdapter> {
     pub tg: &'a Telegram,
     pub media: &'a M,
@@ -140,16 +157,20 @@ impl<M: MediaCodec> UploadEffect<'_, M> {
         // An answered request still needs identity proof. Do not route a failed
         // confirmation into the unanswered-transport recovery that can attribute a tail.
         let after = self.live(name).map_err(ApiError::Unproven)?;
-        let old = before
-            .iter()
-            .map(crate::reconcile::identity)
-            .collect::<BTreeSet<_>>();
+        let (Some(old), Some(now)) = (complete_identities(&before), complete_identities(&after))
+        else {
+            return Err(ApiError::Unproven(
+                "live snapshots have incomplete or duplicate sticker identities".into(),
+            ));
+        };
+        if !old.is_subset(&now) {
+            return Err(ApiError::Unproven(
+                "live readback lost earlier sticker identities".into(),
+            ));
+        }
         let new = after
             .iter()
-            .filter(|s| {
-                let id = crate::reconcile::identity(s);
-                (!id.0.is_empty() || !id.1.is_empty()) && !old.contains(&id)
-            })
+            .filter(|sticker| !old.contains(&crate::reconcile::identity(sticker)))
             .collect::<Vec<_>>();
         if new.len() != 1 {
             return Err(ApiError::Unproven(
