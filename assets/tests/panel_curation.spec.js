@@ -207,7 +207,8 @@ test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_
         packs: [1, 1, ...Array(scenario.numbered).fill(2)]});
       const ordinary = items.filter(item => !item.isLogo);
       const source = ordinary[0].key, tail = ordinary.at(-1).key;
-      const gridPage = await open(panel, items, {clock: true});
+      // Both ends of this capacity gesture must be in the mounted grid window.
+      const gridPage = await open(panel, items, {clock: true, viewport: {width: 1200, height: 1800}});
       await gridPage.evaluate("setZoom(0.4)");
       const before = await gridPage.evaluate("snapshot()");
       await gridPage.locator(`#grid .card[data-key="${source}"]`)
@@ -236,7 +237,7 @@ test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_
       const items = synth(preceding + 4, {
         packs: [...Array(preceding).fill(1), 2, undefined, 3, 3]});
       const source = items[preceding].key, tail = items[preceding + 1].key;
-      const gridPage = await open(panel, items, {clock: true});
+      const gridPage = await open(panel, items, {clock: true, viewport: {width: 1200, height: 1800}});
       await gridPage.evaluate("setZoom(0.4)");
       const before = await gridPage.evaluate("snapshot()");
       await gridPage.locator(`#grid .card[data-key="${source}"]`)
@@ -263,7 +264,7 @@ test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_
   ]) {
     await test.step(scenario.name, async () => {
       const items = synth(scenario.packs.length, {packs: scenario.packs});
-      const gridPage = await open(panel, items, {clock: true});
+      const gridPage = await open(panel, items, {clock: true, viewport: {width: 1200, height: 1800}});
       await gridPage.evaluate("setZoom(0.4)");
       const before = await gridPage.evaluate("snapshot()");
       await gridPage.locator(`#grid .card[data-key="${items[scenario.from].key}"]`)
@@ -353,6 +354,104 @@ test("test_panel_curation.CurationControls.test_unhold_all_refuses_a_full_origin
     await branded.click("#unholdAll");
     assert.equal(await branded.locator("#holdCards .hcard").count(), 1);
     assert.ok((await branded.locator("#toast").innerText()).includes("Pack 2 is full (200/200)"));
+  });
+
+  for (const scenario of [
+    {name: "a held stamp must not merge two automatic packs", heldPacks: [1], included: 400, accepted: false},
+    {name: "one stamp cannot turn 200 candidates into 201 members", heldPacks: [1], included: 200, accepted: false},
+    {name: "one stamp fills the 200th ordinary slot", heldPacks: [1], included: 199, accepted: true, counts: [[1, 200]]},
+    {name: "the global logo reserves its slot after Unhold changes run mode", heldPacks: [1], included: 199, logo: "global", accepted: false},
+    {name: "a global logo permits 199 ordinary members", heldPacks: [1], included: 198, logo: "global", accepted: true, counts: [[1, 199]]},
+    {name: "an explicit logo reserves its stamped slot", heldPacks: [1], included: 199, logo: "explicit", accepted: false},
+    {name: "an explicit logo permits 199 ordinary members", heldPacks: [1], included: 198, logo: "explicit", accepted: true, counts: [[1, 199]]},
+    {name: "two restored stamps must reject their combined overflow", heldPacks: [1, 1], included: 199, accepted: false},
+    {name: "two restored stamps fill two remaining slots", heldPacks: [1, 1], included: 198, accepted: true, counts: [[1, 200]]},
+    {name: "distinct restored boundaries retain separate capacity", heldPacks: [1, 2], included: 199, accepted: true, counts: [[1, 1], [2, 200]]},
+    {name: "all restored boundaries are validated atomically", heldPacks: [1, 2], included: 200, accepted: false},
+    {name: "an unstamped Unhold still splits automatic packs", heldPacks: [undefined], included: 200, accepted: true, counts: [["new:0", 200], ["new:1", 1]]},
+    {name: "automatic splitting also reserves a global logo", heldPacks: [undefined], included: 199, logo: "global", accepted: true, counts: [["new:0", 199], ["new:1", 1]]},
+  ]) {
+    await test.step(scenario.name, async () => {
+      const heldCount = scenario.heldPacks.length;
+      const model = synth(scenario.included + heldCount, {logo: !!scenario.logo,
+        packs: scenario.heldPacks, excluded: Array.from({length: heldCount}, (_, index) => index)});
+      if (scenario.logo === "explicit") model[0].pack = 1;
+      const unholdPage = await open(panel, model, {clock: true});
+      await unholdPage.click("#bg");
+      await unholdPage.click("#undo");
+      const before = await unholdPage.evaluate("snapshot()");
+      const history = await unholdPage.evaluate("[past.length, future.length]");
+      const runs = await unholdPage.evaluate("packStarts().starts.map(run => run.pack)");
+      if (heldCount === 1) await unholdPage.locator("#holdCards .hcard button").click();
+      else await unholdPage.click("#unholdAll");
+      if (!scenario.accepted) {
+        assert.deepEqual(await unholdPage.evaluate("snapshot()"), before,
+          "a rejected Unhold must preserve order, membership, origins, selection and view state");
+        assert.deepEqual(await unholdPage.evaluate("[past.length, future.length]"), history,
+          "a rejected Unhold must preserve both Undo and Redo history");
+        assert.ok((await unholdPage.locator("#toast").innerText()).includes("is full (200/200)"));
+        await unholdPage.clock.runFor(500);
+        assert.deepEqual(await unholdPage.evaluate("__sent('/api/order')"), []);
+      } else {
+        assert.equal(await unholdPage.locator("#holdCards .hcard").count(), 0);
+        assert.deepEqual(await unholdPage.evaluate(() => {
+          const assignments = assignedPacks(), counts = new Map();
+          for (const item of ITEMS.filter(item => !item.isLogo && item.included)) {
+            const pack = assignments.get(item.key);
+            counts.set(pack, (counts.get(pack) || 0) + 1);
+          }
+          return [...counts];
+        }), scenario.counts);
+        const after = await unholdPage.evaluate("snapshot()");
+        await unholdPage.click("#undo");
+        assert.deepEqual(await unholdPage.evaluate("snapshot()"), before);
+        assert.deepEqual(await unholdPage.evaluate("packStarts().starts.map(run => run.pack)"), runs,
+          "Undo must restore automatic or stamped runs together with inclusion");
+        await unholdPage.click("#redo");
+        assert.deepEqual(await unholdPage.evaluate("snapshot()"), after);
+      }
+    });
+  }
+
+  for (const grow of [false, true]) {
+    await test.step(`Unhold with an existing overflow: grows=${grow}`, async () => {
+      const model = synth(204, {packs: [...Array(201).fill(1), grow ? 1 : 2, 2, 2], excluded: [201]});
+      const unholdPage = await open(panel, model, {clock: true});
+      const before = await unholdPage.evaluate("snapshot()");
+      const history = await unholdPage.evaluate("[past.length, future.length]");
+      await unholdPage.click("#unholdAll");
+      assert.equal(await unholdPage.evaluate("ITEMS.filter(item => item.included && item.pack === 1).length"), 201);
+      if (grow) {
+        assert.deepEqual(await unholdPage.evaluate("snapshot()"), before);
+        assert.deepEqual(await unholdPage.evaluate("[past.length, future.length]"), history);
+        await unholdPage.clock.runFor(500);
+        assert.deepEqual(await unholdPage.evaluate("__sent('/api/order')"), []);
+      } else {
+        assert.equal(await unholdPage.evaluate("ITEMS.filter(item => item.included && item.pack === 2).length"), 3);
+        const after = await unholdPage.evaluate("snapshot()");
+        await unholdPage.click("#undo");
+        assert.deepEqual(await unholdPage.evaluate("snapshot()"), before);
+        await unholdPage.click("#redo");
+        assert.deepEqual(await unholdPage.evaluate("snapshot()"), after);
+      }
+    });
+  }
+
+  await test.step("restoring a held boundary can reduce an existing overflow", async () => {
+    const model = synth(202, {packs: [1, ...Array(100), 2]});
+    const unholdPage = await open(panel, model, {clock: true});
+    const boundary = model[101].key;
+    const original = await unholdPage.evaluate("snapshot()");
+    await unholdPage.evaluate(key => holdKeys(new Set([key])), boundary);
+    assert.equal(await unholdPage.evaluate("ITEMS.filter(item => item.included && assignedPacks().get(item.key) === 1).length"), 201);
+    const held = await unholdPage.evaluate("snapshot()");
+    await unholdPage.locator("#holdCards .hcard button").click();
+    assert.deepEqual(await unholdPage.evaluate("snapshot()"), original,
+      "the same restored placement used for capacity validation must be committed");
+    await unholdPage.click("#undo");
+    assert.deepEqual(await unholdPage.evaluate("snapshot()"), held);
+    await unholdPage.click("#redo");
+    assert.deepEqual(await unholdPage.evaluate("snapshot()"), original);
   });
 });
 
