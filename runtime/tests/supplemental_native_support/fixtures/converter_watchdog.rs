@@ -5,6 +5,25 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+fn publish_marker(output: &Path, sequence: u64, pause_after_open: bool) {
+    let staged = output.join(".svg_cur.next");
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&staged)
+        .unwrap();
+    let contents = format!("source-{sequence}.svg");
+    if pause_after_open {
+        // A kill at this cutpoint must preserve the last complete published marker.
+        super::persist(&output.join("marker-update-opened"), contents.as_bytes());
+        super::hold();
+    }
+    file.write_all(contents.as_bytes()).unwrap();
+    file.sync_all().unwrap();
+    drop(file);
+    std::fs::rename(staged, output.join(".svg_cur")).unwrap();
+}
+
 pub fn run(args: &[String], variant: &str) {
     assert_eq!(args.len(), 5);
     assert_eq!(args[0], "make-emoji-pngs");
@@ -30,7 +49,7 @@ pub fn run(args: &[String], variant: &str) {
         );
         std::process::exit(3);
     }
-    assert!(matches!(variant, "idle" | "wall"));
+    assert!(matches!(variant, "idle" | "wall" | "wall-staged"));
     let ready = root.join("descendant-ready");
     let mut command = Command::new(std::env::current_exe().unwrap());
     command
@@ -54,6 +73,10 @@ pub fn run(args: &[String], variant: &str) {
         );
         std::thread::sleep(Duration::from_millis(10));
     }
+    if variant != "idle" {
+        // Readiness acknowledges a complete marker before any interruptible update.
+        publish_marker(&output, 0, false);
+    }
     super::persist(
         &root.join("ready"),
         format!("{}\n{}", std::process::id(), child.id()).as_bytes(),
@@ -62,10 +85,10 @@ pub fn run(args: &[String], variant: &str) {
         super::hold();
     }
     // Marker changes model useful progress only; no timing delay stands in for readiness.
-    let mut sequence = 0_u64;
+    let mut sequence = 1_u64;
     let deadline = Instant::now() + Duration::from_secs(8);
     while Instant::now() < deadline {
-        std::fs::write(output.join(".svg_cur"), format!("source-{sequence}.svg")).unwrap();
+        publish_marker(&output, sequence, variant == "wall-staged" && sequence == 2);
         sequence += 1;
         std::thread::sleep(Duration::from_millis(10));
     }
