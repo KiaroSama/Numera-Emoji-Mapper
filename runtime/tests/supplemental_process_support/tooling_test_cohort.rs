@@ -117,7 +117,7 @@ fn no_child_wait_fixture() {
     if !selected("cohort::no_child_wait_fixture") {
         return;
     }
-    let mut action = std::mem::MaybeUninit::<libc::sigaction>::zeroed();
+    let action = std::mem::MaybeUninit::<libc::sigaction>::zeroed();
     // SAFETY: zeroed libc::sigaction is valid before setting sa_flags and sa_sigaction.
     let mut action = unsafe { action.assume_init() };
     action.sa_sigaction = libc::SIG_DFL;
