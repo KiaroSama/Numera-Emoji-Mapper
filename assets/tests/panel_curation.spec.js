@@ -151,6 +151,7 @@ test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_
   for (const scenario of [
     {name: "one grid card cannot enter a full pack", destinationSize: 200, group: false, samePack: false, accepted: false},
     {name: "a picked group is refused atomically when one slot remains", destinationSize: 199, group: true, samePack: false, accepted: false},
+    {name: "a picked group fills two remaining slots", destinationSize: 198, group: true, samePack: false, accepted: true},
     {name: "one grid card fills the last free slot", destinationSize: 199, group: false, samePack: false, accepted: true},
     {name: "reordering inside a full pack does not consume a new slot", destinationSize: 200, group: false, samePack: true, accepted: true},
     {name: "the global logo reserves a slot in every destination", destinationSize: 199, group: false, samePack: false, accepted: false, logo: "global"},
@@ -191,6 +192,131 @@ test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_
         await gridPage.clock.runFor(500);
         assert.deepEqual(await gridPage.evaluate("__sent('/api/order')"), [],
           "a refused drag must not enqueue an order");
+      }
+    });
+  }
+
+  for (const scenario of [
+    {numbered: 199, logo: false, accepted: false},
+    {numbered: 198, logo: false, accepted: true},
+    {numbered: 198, logo: true, accepted: false},
+    {numbered: 197, logo: true, accepted: true},
+  ]) {
+    await test.step(`final membership counts an unstamped tail: numbered=${scenario.numbered}, logo=${scenario.logo}`, async () => {
+      const items = synth(scenario.numbered + 3, {logo: scenario.logo,
+        packs: [1, 1, ...Array(scenario.numbered).fill(2)]});
+      const ordinary = items.filter(item => !item.isLogo);
+      const source = ordinary[0].key, tail = ordinary.at(-1).key;
+      const gridPage = await open(panel, items, {clock: true});
+      await gridPage.evaluate("setZoom(0.4)");
+      const before = await gridPage.evaluate("snapshot()");
+      await gridPage.locator(`#grid .card[data-key="${source}"]`)
+        .dragTo(gridPage.locator(`#grid .card[data-key="${tail}"]`), {targetPosition: {x: 2, y: 2}});
+      const destination = await gridPage.evaluate(() => {
+        const assignments = assignedPacks();
+        return ITEMS.filter(item => !item.isLogo && item.included && assignments.get(item.key) === 2).length;
+      });
+      assert.equal(destination, scenario.numbered + 1 + Number(scenario.accepted),
+        "the unnumbered tail must be counted in the run it joins after the drop is stamped");
+      if (scenario.accepted) {
+        assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).pack, source), 2);
+        assert.equal(await gridPage.evaluate(key => assignedPacks().get(key), tail), 2);
+        assert.notDeepEqual(await gridPage.evaluate("snapshot()"), before);
+      } else {
+        assert.deepEqual(await gridPage.evaluate("snapshot()"), before);
+        assert.ok((await gridPage.locator("#toast").innerText()).includes("Hold one of its emoji first"));
+        await gridPage.clock.runFor(500);
+        assert.deepEqual(await gridPage.evaluate("__sent('/api/order')"), []);
+      }
+    });
+  }
+
+  for (const preceding of [200, 199]) {
+    await test.step(`vacating a pack boundary retains the preceding pack's capacity: preceding=${preceding}`, async () => {
+      const items = synth(preceding + 4, {
+        packs: [...Array(preceding).fill(1), 2, undefined, 3, 3]});
+      const source = items[preceding].key, tail = items[preceding + 1].key;
+      const gridPage = await open(panel, items, {clock: true});
+      await gridPage.evaluate("setZoom(0.4)");
+      const before = await gridPage.evaluate("snapshot()");
+      await gridPage.locator(`#grid .card[data-key="${source}"]`)
+        .dragTo(gridPage.locator(`#grid .card[data-key="${items.at(-1).key}"]`));
+      if (preceding === 200) {
+        assert.deepEqual(await gridPage.evaluate("snapshot()"), before,
+          "removing a boundary must not overflow the source side through an unstamped neighbor");
+        assert.ok((await gridPage.locator("#toast").innerText()).includes("Pack 1 is full"));
+        await gridPage.clock.runFor(500);
+        assert.deepEqual(await gridPage.evaluate("__sent('/api/order')"), []);
+      } else {
+        assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).pack, source), 3);
+        assert.equal(await gridPage.evaluate(key => assignedPacks().get(key), tail), 1);
+        assert.equal(await gridPage.evaluate("ITEMS.filter(item => item.included && assignedPacks().get(item.key) === 1).length"), 200);
+      }
+    });
+  }
+
+  for (const scenario of [
+    {name: "reduce existing overflow", packs: [...Array(201).fill(1), 2, 2], from: 0, to: 201, accepted: true},
+    {name: "reorder existing overflow", packs: [...Array(201).fill(1), 2, 2], from: 0, to: 2, accepted: true},
+    {name: "leave unrelated overflow unchanged", packs: [...Array(201).fill(1), 2, 2, 3], from: 201, to: 203, accepted: true},
+    {name: "refuse worsening existing overflow", packs: [1, 1, ...Array(201).fill(2)], from: 0, to: 2, accepted: false},
+  ]) {
+    await test.step(scenario.name, async () => {
+      const items = synth(scenario.packs.length, {packs: scenario.packs});
+      const gridPage = await open(panel, items, {clock: true});
+      await gridPage.evaluate("setZoom(0.4)");
+      const before = await gridPage.evaluate("snapshot()");
+      await gridPage.locator(`#grid .card[data-key="${items[scenario.from].key}"]`)
+        .dragTo(gridPage.locator(`#grid .card[data-key="${items[scenario.to].key}"]`));
+      if (scenario.accepted) {
+        assert.notDeepEqual(await gridPage.evaluate("snapshot()"), before);
+        assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).pack, items[scenario.from].key), scenario.packs[scenario.to]);
+        if (scenario.from === 0 && scenario.to === 201) {
+          assert.equal(await gridPage.evaluate("ITEMS.filter(item => item.included && item.pack === 1).length"), 200);
+        }
+      } else {
+        assert.deepEqual(await gridPage.evaluate("snapshot()"), before);
+        await gridPage.clock.runFor(500);
+        assert.deepEqual(await gridPage.evaluate("__sent('/api/order')"), []);
+      }
+    });
+  }
+
+  await test.step("a held pick does not consume capacity during a grid-origin drop", async () => {
+    const items = synth(202, {packs: [1, 1, 1, ...Array(199).fill(2)], excluded: [1]});
+    const gridPage = await open(panel, items, {clock: true});
+    await gridPage.evaluate("setZoom(0.4)");
+    await gridPage.click("#selmode");
+    await gridPage.locator(`#grid .card[data-key="${items[0].key}"] .thumb`).click();
+    await gridPage.locator(`#holdCards .hcard[data-key="${items[1].key}"] img`).click();
+    await gridPage.locator(`#grid .card[data-key="${items[0].key}"]`)
+      .dragTo(gridPage.locator(`#grid .card[data-key="${items[3].key}"]`));
+    assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).pack, items[0].key), 2);
+    assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).included, items[1].key), false);
+    assert.equal(await gridPage.locator("#holdCards .hcard").count(), 1);
+    assert.equal(await gridPage.evaluate("ITEMS.filter(item => item.included && item.pack === 2).length"), 200);
+  });
+
+  for (const destinationSize of [199, 198]) {
+    await test.step(`a tray-origin group activates both carried cards: destination=${destinationSize}`, async () => {
+      const items = synth(destinationSize + 3, {packs: [1, 1, 1, ...Array(destinationSize).fill(2)], excluded: [0, 1]});
+      const trayPage = await open(panel, items, {clock: true});
+      await trayPage.evaluate("setZoom(0.4)");
+      await trayPage.click("#selmode");
+      await trayPage.locator("#holdCards .hcard img").nth(0).click();
+      await trayPage.locator("#holdCards .hcard img").nth(1).click();
+      const before = await trayPage.evaluate("snapshot()");
+      await trayPage.locator(`#holdCards .hcard[data-key="${items[0].key}"]`)
+        .dragTo(trayPage.locator(`#grid .card[data-key="${items[3].key}"]`));
+      if (destinationSize === 199) {
+        assert.deepEqual(await trayPage.evaluate("snapshot()"), before,
+          "the entire tray group must stay held when only one slot is available");
+        assert.equal(await trayPage.locator("#holdCards .hcard").count(), 2);
+        await trayPage.clock.runFor(500);
+        assert.deepEqual(await trayPage.evaluate("__sent('/api/order')"), []);
+      } else {
+        assert.equal(await trayPage.locator("#holdCards .hcard").count(), 0);
+        assert.equal(await trayPage.evaluate("ITEMS.filter(item => item.included && item.pack === 2).length"), 200);
       }
     });
   }
