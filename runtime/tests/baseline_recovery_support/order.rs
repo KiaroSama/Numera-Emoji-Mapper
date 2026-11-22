@@ -185,16 +185,41 @@ pub fn sources() -> BTreeMap<String, String> {
             };
             Some(runtime.join("src").join(path.value()))
         });
-        let path = explicit.unwrap_or_else(|| runtime.join("src").join(format!("{name}.rs")));
+        let path = explicit.unwrap_or_else(|| {
+            let flat = runtime.join("src").join(format!("{name}.rs"));
+            if flat.is_file() {
+                flat
+            } else {
+                runtime.join("src").join(&name).join("mod.rs")
+            }
+        });
         assert!(
             path.is_file(),
             "compiled production module absent: {}",
             path.display()
         );
+        let is_dir_module = path.file_name().is_some_and(|file| file == "mod.rs");
         assert!(
-            out.insert(name, std::fs::read_to_string(path).unwrap())
+            out.insert(name.clone(), std::fs::read_to_string(&path).unwrap())
                 .is_none()
         );
+        if is_dir_module && let Some(dir) = path.parent() {
+            for entry in std::fs::read_dir(dir).unwrap() {
+                let child = entry.unwrap().path();
+                if child.extension().is_some_and(|ext| ext == "rs")
+                    && child.file_name().is_some_and(|file| file != "mod.rs")
+                {
+                    let stem = child.file_stem().unwrap().to_str().unwrap();
+                    assert!(
+                        out.insert(
+                            format!("{name}/{stem}"),
+                            std::fs::read_to_string(&child).unwrap()
+                        )
+                        .is_none()
+                    );
+                }
+            }
+        }
     }
     out
 }

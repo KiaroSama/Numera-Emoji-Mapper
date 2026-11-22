@@ -23,7 +23,7 @@ mod transport {
         let server = Server::new(vec![fault("getMe"), fault("getMe")]);
         // Capture actual native console output as well as the durable log; run_child asserts both streams.
         run_child(
-            "transport::test_network_retry_output_is_redacted",
+            "transport_contracts::transport::test_network_retry_output_is_redacted",
             &root,
             &server.base,
             "redaction",

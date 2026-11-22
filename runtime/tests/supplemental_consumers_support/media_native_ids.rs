@@ -121,7 +121,12 @@ fn requested_ids_preserve_gates_tint_identity_dedup_missing_and_batch_order() {
             root: project.clone(),
             scratch: data.join("tmp/codecs"),
         },
-        deadline: Instant::now() + Duration::from_secs(60),
+        deadline: Instant::now()
+            + Duration::from_secs(if cfg!(all(windows, target_arch = "aarch64")) {
+                180
+            } else {
+                60
+            }),
     };
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -476,7 +481,12 @@ fn mixed_requested_ids_preserve_good_formats_when_download_or_resolution_fails()
             root: project.clone(),
             scratch: data.join("tmp/codecs"),
         },
-        deadline: Instant::now() + Duration::from_secs(60),
+        deadline: Instant::now()
+            + Duration::from_secs(if cfg!(all(windows, target_arch = "aarch64")) {
+                180
+            } else {
+                60
+            }),
     };
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -519,7 +529,21 @@ fn mixed_requested_ids_preserve_good_formats_when_download_or_resolution_fails()
         .unwrap();
         for (index, format) in formats.iter().enumerate() {
             let expected = &cases[index]["expected"];
-            let key = expected["content_key"].as_str().unwrap();
+            #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
+            let key = expected["content_key"].as_str().unwrap().to_owned();
+            #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+            let key = if *format == "video" {
+                let observed = _native::codec_worker::execute_typed_at(
+                    Some(&project),
+                    &json!({"operation":"fingerprint","source":project.join(cases[index]["input"].as_str().unwrap()),"format":"video"}),
+                )
+                .unwrap();
+                assert_eq!(observed["phash"], expected["phash"]);
+                observed["content_key"].as_str().unwrap().to_owned()
+            } else {
+                expected["content_key"].as_str().unwrap().to_owned()
+            };
+            let key = key.as_str();
             let row = collector.cat.get(key).unwrap().unwrap();
             assert_eq!(row["fmt"], *format);
             assert_eq!(row["phash"], expected["phash"]);

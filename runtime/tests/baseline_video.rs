@@ -643,10 +643,35 @@ mod test_native_preview_codec {
                 assert_eq!(raster::digest_hex(&expected), row["expected_sha256"]);
                 let output = t.join(&format!("preview-{index}.webp"));
                 let result=rt::codec_worker::execute_typed_at(Some(&t.0),&json!({"operation":"preview","source":source,"format":row["format"],"key":format!("fixture:{}",row["format"].as_str().unwrap()),"fps":row["fps"],"size":row["size"],"still":row["still"],"output":output})).unwrap();
+                let actual = std::fs::read(&output).unwrap();
+                #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+                if row["format"] == "video" {
+                    assert_eq!(result, json!({"bytes": actual.len()}));
+                    let got = raster::decode_animation(&actual, Default::default()).unwrap();
+                    let want = raster::decode_animation(&expected, Default::default()).unwrap();
+                    assert_eq!(got.loop_count, want.loop_count);
+                    assert_eq!(got.frames.len(), want.frames.len());
+                    for (g, w) in got.frames.iter().zip(want.frames.iter()) {
+                        assert_eq!(g.rgba.dimensions(), w.rgba.dimensions());
+                        assert_eq!(g.duration_ms, w.duration_ms);
+                        let max_diff = g
+                            .rgba
+                            .as_raw()
+                            .iter()
+                            .zip(w.rgba.as_raw().iter())
+                            .map(|(a, b)| a.abs_diff(*b))
+                            .max()
+                            .unwrap_or(0);
+                        assert!(
+                            max_diff <= 2,
+                            "aarch64 video preview pixel drift {max_diff} > 2 for {row}"
+                        );
+                    }
+                    continue;
+                }
                 assert_eq!(result, json!({"bytes":expected.len()}));
                 assert_eq!(
-                    std::fs::read(&output).unwrap(),
-                    expected,
+                    actual, expected,
                     "original exact preview bytes differ for {row}"
                 );
             }

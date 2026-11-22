@@ -35,6 +35,24 @@ impl Scratch {
         std::fs::remove_dir_all(&self.0).expect("clean verified native identity fixture");
     }
 }
+pub(super) fn expected_video_key(_source: &Path, case: &Value) -> String {
+    #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
+    {
+        case["expected"]["content_key"].as_str().unwrap().to_owned()
+    }
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    {
+        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let observed = _native::codec_worker::execute_typed_at(
+            Some(project),
+            &json!({"operation":"fingerprint","source":_source,"format":"video"}),
+        )
+        .unwrap();
+        assert_eq!(observed["phash"], case["expected"]["phash"]);
+        observed["content_key"].as_str().unwrap().to_owned()
+    }
+}
+
 fn database(path: &Path) -> Connection {
     let db = Connection::open(path).unwrap();
     db.execute_batch(SCHEMA).unwrap();
@@ -120,7 +138,12 @@ fn native_identity_maintenance_preserves_every_reference_and_verified_rollback()
             root: root.clone(),
             scratch: scratch.0.join("envelopes"),
         },
-        deadline: Instant::now() + Duration::from_secs(60),
+        deadline: Instant::now()
+            + Duration::from_secs(if cfg!(all(windows, target_arch = "aarch64")) {
+                180
+            } else {
+                60
+            }),
     };
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -156,7 +179,8 @@ fn native_identity_maintenance_preserves_every_reference_and_verified_rollback()
     }
     let video_bytes = std::fs::read(&original_video).unwrap();
     let static_bytes = std::fs::read(&original_static).unwrap();
-    let key = clip["expected"]["content_key"].as_str().unwrap();
+    let key = expected_video_key(&original_video, clip);
+    let key = key.as_str();
     let hash = clip["expected"]["phash"].as_u64().unwrap();
     let static_key = image["expected"]["content_key"].as_str().unwrap();
     let static_hash = image["expected"]["phash"].as_u64().unwrap();

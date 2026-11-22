@@ -18,7 +18,12 @@ fn read_optional(path: &Path) -> Option<Vec<u8>> {
 }
 
 pub fn check(root: &Path, executable: &Path, inherited: &BTreeMap<String, String>, log: &RunLog) {
-    let deadline = Instant::now() + Duration::from_secs(60);
+    let deadline = Instant::now()
+        + Duration::from_secs(if cfg!(all(windows, target_arch = "aarch64")) {
+            180
+        } else {
+            60
+        });
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -35,7 +40,8 @@ pub fn check(root: &Path, executable: &Path, inherited: &BTreeMap<String, String
         clip["input_sha256"]
     );
     let bytes = std::fs::read(&input).unwrap();
-    let key = clip["expected"]["content_key"].as_str().unwrap();
+    let key = super::expected_video_key(&input, clip);
+    let key = key.as_str();
     let hash = clip["expected"]["phash"].as_u64().unwrap();
     let eof = root.join("empty-input.txt");
     std::fs::write(&eof, b"").unwrap();

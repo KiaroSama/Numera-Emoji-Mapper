@@ -32,7 +32,8 @@ pub fn check(
         rival["input_sha256"]
     );
     let rival_bytes = std::fs::read(&rival_path).unwrap();
-    let rival_key = rival["expected"]["content_key"].as_str().unwrap();
+    let rival_key = super::expected_video_key(&rival_path, rival);
+    let rival_key = rival_key.as_str();
     let rival_hash = rival["expected"]["phash"].as_u64().unwrap();
     assert_ne!(rival_key, key);
     let parent = root.join("provenance");

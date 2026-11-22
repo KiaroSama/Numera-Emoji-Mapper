@@ -135,6 +135,16 @@ fn actual_runner_scrubs_before_config_preserves_paths_and_parent_environment() {
         let allowed = allowed.into_iter().chain(["LIB"]).collect::<Vec<_>>();
         #[cfg(all(windows, target_env = "msvc"))]
         assert_eq!(environment["LIB"], env!("NUMERA_BASELINE_MSVC_LIB"));
+        // Windows 11 ARM64 kernel loader injects PROCESSOR_ARCHITECTURE=ARM64 even after env_clear.
+        #[cfg(all(windows, target_arch = "aarch64"))]
+        let allowed = allowed
+            .into_iter()
+            .chain(["PROCESSOR_ARCHITECTURE"])
+            .collect::<Vec<_>>();
+        #[cfg(all(windows, target_arch = "aarch64"))]
+        if let Some(arch) = environment.get("PROCESSOR_ARCHITECTURE") {
+            assert_eq!(arch, "ARM64");
+        }
         // The Linux process owner injects this exact marker after env_clear;
         // Windows uses Job handles and injects no equivalent environment key.
         #[cfg(target_os = "linux")]
