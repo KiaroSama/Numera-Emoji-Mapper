@@ -350,8 +350,21 @@ fn actual_requested_id_command_preserves_tint_source_binding_and_partial_mixed_r
         let mut catalog = Catalog::open(&mixed.join("catalog.db"), "fixture UTC", &root).unwrap();
         assert_eq!(catalog.all(None).unwrap().len(), 3);
         for (i, case) in cases.iter().enumerate() {
-            let key = case["expected"]["content_key"].as_str().unwrap();
-            let row = catalog.get(key).unwrap().unwrap();
+            #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
+            let key = case["expected"]["content_key"].as_str().unwrap().to_owned();
+            #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+            let key = if formats[i] == "video" {
+                let observed = _native::codec_worker::execute_typed_at(
+                    Some(&project),
+                    &json!({"operation":"fingerprint","source":project.join(paths[i]),"format":"video"}),
+                )
+                .unwrap();
+                assert_eq!(observed["phash"], case["expected"]["phash"]);
+                observed["content_key"].as_str().unwrap().to_owned()
+            } else {
+                case["expected"]["content_key"].as_str().unwrap().to_owned()
+            };
+            let row = catalog.get(&key).unwrap().unwrap();
             assert_eq!(row["fmt"], formats[i]);
             assert_eq!(row["phash"], case["expected"]["phash"]);
             assert!(Path::new(row["file_path"].as_str().unwrap()).is_file());

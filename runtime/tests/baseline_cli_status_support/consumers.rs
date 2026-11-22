@@ -92,7 +92,14 @@ fn production_modules() -> BTreeMap<String, std::path::PathBuf> {
                         }
                     })
                     .unwrap_or_else(|| {
-                        Path::new("runtime/src").join(format!("{}.rs", module.ident))
+                        let flat = Path::new("runtime/src").join(format!("{}.rs", module.ident));
+                        if project().join(&flat).is_file() {
+                            flat
+                        } else {
+                            Path::new("runtime/src")
+                                .join(module.ident.to_string())
+                                .join("mod.rs")
+                        }
                     });
                 Some((module.ident.to_string(), project().join(source)))
             } else {

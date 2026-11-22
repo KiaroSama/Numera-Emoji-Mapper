@@ -282,6 +282,16 @@ mod tests {
         {
             std::fs::write(root.join(member), b"installation race fixture\n").unwrap();
         }
+        if target.starts_with("linux-") {
+            for linux_asset in [
+                "numera-emoji-mapper.desktop",
+                "share/icons/hicolor/512x512/apps/numera-emoji-mapper.png",
+            ] {
+                let path = root.join(linux_asset);
+                std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                std::fs::write(path, b"installation race fixture\n").unwrap();
+            }
+        }
         for (name, bytes) in BUNDLED_NOTICES {
             let path = root.join(name);
             std::fs::create_dir_all(path.parent().unwrap()).unwrap();

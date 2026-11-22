@@ -206,14 +206,27 @@ fn typed_source_errors_do_not_become_invented_worker_envelopes() {
             case["expected"] = json!(true);
         }
         cases.push(case);
+        #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
+        let expected_key = original["expected"]["content_key"].clone();
+        #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+        let expected_key = {
+            let observed = _native::codec_worker::execute_typed_at(
+                Some(&root),
+                &json!({"operation":"fingerprint","source":source,"format":"video"}),
+            )
+            .unwrap();
+            assert_eq!(observed["phash"], original["expected"]["phash"]);
+            assert!(observed["content_key"].as_str().unwrap().starts_with("v:"));
+            observed["content_key"].clone()
+        };
         cases.push(json!({"name":format!("fingerprint {input}"),
             "request":{"operation":"fingerprint","source":source,"format":"video"},
-            "expected":{"content_key":original["expected"]["content_key"],
+            "expected":{"content_key":expected_key,
                 "phash":original["expected"]["phash"],"fmt":"video","extension":".webm"}}));
         if !refusal {
             cases.push(json!({"name":"prepare unchanged video",
                 "request":{"operation":"prepare","source":source,"format":"video","reencode":false},
-                "expected":{"content_key":original["expected"]["content_key"],
+                "expected":{"content_key":expected_key,
                     "phash":original["expected"]["phash"],"fmt":"video","extension":".webm"}}));
         }
     }

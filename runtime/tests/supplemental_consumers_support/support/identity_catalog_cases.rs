@@ -93,7 +93,7 @@ pub fn check(
             .unwrap();
         catalog.uploaded(&json!({"content_key":old[i],"base":"audit","set_name":"audit1","custom_emoji_id":format!("CID{i}")}), "fixture").unwrap();
         catalog.record_seen(&format!("FUID{i}"), &old[i]).unwrap();
-        fresh.push(case["expected"]["content_key"].as_str().unwrap().to_owned());
+        fresh.push(super::expected_video_key(&source, case));
         originals.push((source, path, bytes));
     }
     assert_eq!(fresh.len(), 3);

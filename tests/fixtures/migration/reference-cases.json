@@ -11432,7 +11432,7 @@
         "file": "runtime/tests/baseline_video.rs",
         "target": "baseline_video",
         "function": "test_native_preview_codec::native_preview_codec::test_static_and_lottie_preview_bytes_match_source",
-        "body_sha256": "f7808068724758b93de71a3072058081e68ce2ae69e3c3cda828c61619c3f74a"
+        "body_sha256": "4fc1ef174e24a794933903ed0ea7fbefc58f2ac3072909b6185d50c3846bcf84"
       }
     },
     {
@@ -28642,7 +28642,7 @@
         "file": "runtime/tests/baseline_telegram_support/transport_contracts.rs",
         "target": "baseline_telegram",
         "function": "transport_contracts::transport::test_network_retry_output_is_redacted",
-        "body_sha256": "f2f5cbccda820f605d2ad8ca16de32fbe7682df2a265218c61f4a6ac1c6b86d9"
+        "body_sha256": "fa5147e5808f4cf363907c8685b2ec5deb2df3e720d00468f51da339390a2385"
       }
     },
     {

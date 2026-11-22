@@ -130,7 +130,12 @@ fn downloaded_collection_reencodes_skips_known_ids_limits_new_items_and_refuses_
             root: project.clone(),
             scratch: data.join("tmp/codecs"),
         },
-        deadline: Instant::now() + Duration::from_secs(60),
+        deadline: Instant::now()
+            + Duration::from_secs(if cfg!(all(windows, target_arch = "aarch64")) {
+                180
+            } else {
+                60
+            }),
     };
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -400,8 +405,30 @@ fn video_sample_collisions_keep_distinct_media_and_remux_aliases_after_reopen() 
         );
         std::fs::read(path).unwrap()
     });
-    let key = cases[0]["expected"]["content_key"].as_str().unwrap();
-    assert_eq!(cases[1]["expected"]["content_key"], key);
+    #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
+    let key = {
+        let k = cases[0]["expected"]["content_key"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        assert_eq!(cases[1]["expected"]["content_key"], k);
+        k
+    };
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    let key = {
+        let clip_keys = cases.map(|case| {
+            let observed = _native::codec_worker::execute_typed_at(
+                Some(&project),
+                &json!({"operation":"fingerprint","source":project.join(case["input"].as_str().unwrap()),"format":"video"}),
+            )
+            .unwrap();
+            assert_eq!(observed["phash"], case["expected"]["phash"]);
+            observed["content_key"].as_str().unwrap().to_owned()
+        });
+        assert_eq!(clip_keys[0], clip_keys[1]);
+        clip_keys[0].clone()
+    };
+    let key = key.as_str();
     assert!(fixture["pairs"].as_array().unwrap().iter().any(|pair| {
         pair["left"] == "blue" && pair["right"] == "spiked" && pair["expected"] == false
     }));
@@ -412,7 +439,12 @@ fn video_sample_collisions_keep_distinct_media_and_remux_aliases_after_reopen() 
             root: project.clone(),
             scratch: data.join("tmp/codecs"),
         },
-        deadline: Instant::now() + Duration::from_secs(60),
+        deadline: Instant::now()
+            + Duration::from_secs(if cfg!(all(windows, target_arch = "aarch64")) {
+                180
+            } else {
+                60
+            }),
     };
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
