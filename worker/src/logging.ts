@@ -102,14 +102,19 @@ const EVICT_EVERY = 250;
  */
 const DETAIL_LIMIT = 2000;
 
+/** Keep a UTF-16 length cap from leaving half of an astral character behind. */
+function clampText(text: string, max: number): string {
+  return text.slice(0, /[\uD800-\uDBFF]/.test(text[max - 1]) ? max - 1 : max);
+}
+
 export function redact(s: string, env?: Partial<Env>): string {
   // Secrecy lives in `redact.ts` -- one redactor, so a rule added for the HTTP
   // response body also protects the log line. What stays here is the LENGTH
   // cap, which is a storage-budget concern and nothing to do with credentials.
   const out = sanitise(s, env);
-  return out.length > DETAIL_LIMIT
-    ? `${out.slice(0, DETAIL_LIMIT)}… (+${out.length - DETAIL_LIMIT} chars)`
-    : out;
+  if (out.length <= DETAIL_LIMIT) return out;
+  const head = clampText(out, DETAIL_LIMIT);
+  return `${head}… (+${out.length - head.length} chars)`;
 }
 
 const LEVEL_EMOJI: Record<LogLevel, string> = { INFO: "ℹ️", WARNING: "⚠️", ERROR: "❌" };
@@ -155,11 +160,15 @@ export function formatLine(e: LogEntry, atMs: number = Date.now(),
   // anything that happens to look like a token. Optional because the shape
   // rules stand on their own wherever a caller has no env to hand.
   if (e.detail) lines.push(redact(e.detail, env));
-  lines.push(utcStamp(atMs));
-  if (suppressed > 0) lines.push(`(+${suppressed} suppressed by rate limit)`);
+  // Reserve the diagnostic footer before shortening the detail. Truncating
+  // the complete line hid both its timestamp and the carried drop count.
+  let footer = utcStamp(atMs);
+  if (suppressed > 0) footer += `\n(+${suppressed} suppressed by rate limit)`;
   const text = lines.join("\n");
-  return text.length > MAX_CHANNEL_CHARS
-    ? `${text.slice(0, MAX_CHANNEL_CHARS - 1)}…` : text;
+  const available = MAX_CHANNEL_CHARS - footer.length - 1;
+  const content = text.length > available
+    ? `${clampText(text, available - 1)}…` : text;
+  return `${content}\n${footer}`;
 }
 
 /**
@@ -238,7 +247,8 @@ export function log(env: Env, e: LogEntry): Promise<void> {
         // Redacted like every other sink. A D1 or channel failure reports the
         // request it was making, and this is the LAST place a credential could
         // still slip out -- an error path nobody reads until it matters.
-        console.error(`[${e.bot}] ERROR log-sink`, errText(r.reason, env));
+        console.error(formatLine({ bot: e.bot, level: "ERROR", event: "log-sink",
+                                   detail: errText(r.reason, env) }, Date.now(), 0, env));
       }
     }
   });

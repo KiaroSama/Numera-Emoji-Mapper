@@ -11,6 +11,7 @@
 import { escapeHtml, Telegram, TEXT_LIMIT } from "./telegram";
 import { extractCustomEmojiIds, parseIdList } from "./emoji";
 import { isAdmin } from "./auth";
+import { normalizeChatId } from "./logging";
 import type { PublishRequest, TgMessage, TgUpdate } from "./types";
 
 const DENIED_TEXT =
@@ -166,7 +167,11 @@ export async function handleUpdate(tg: Telegram, update: TgUpdate,
     // it writes two more rows about a message we just wrote, and if channel
     // handling ever grows a path that logs an ERROR, that is a feedback loop
     // fed by its own output. Found by watching real traffic, not by reasoning.
-    if (logChatId && String(post.chat.id) === logChatId.trim()) return LOG_ECHO;
+    const logChat = normalizeChatId(logChatId);
+    if (logChat && (String(post.chat.id) === logChat
+        || (post.chat.username && logChat.toLowerCase() === `@${post.chat.username.toLowerCase()}`))) {
+      return LOG_ECHO;
+    }
     // A channel post has no sender to authorise, so the channel itself must be
     // listed. Answering ANY channel let whoever made the bot an admin of their
     // own channel push messages, with a title they chose, to every operator

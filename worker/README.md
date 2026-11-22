@@ -37,6 +37,11 @@ and sends messages.
 Each bot has its **own** path and its **own** webhook secret. One shared secret
 would mean a leak from either bot could forge updates for the other.
 
+The `/publish` Bearer scheme follows HTTP authentication syntax: scheme names
+are case-insensitive and permit one or more separating spaces. The secret itself
+must match exactly. An authentication failure returns a `WWW-Authenticate: Bearer`
+challenge with its 401 response.
+
 ## The two directions
 
 Send the bot **premium emoji** and it replies with their ids. Send it **ids**
@@ -82,6 +87,10 @@ memory — and the dropped count rides on the next message that gets through, so
 a burst is visible instead of silently swallowed. That budget is per isolate,
 not global: it bounds one isolate handling a burst of redeliveries, not a fleet.
 
+Long details are shortened without splitting emoji. The UTC timestamp and any
+suppressed count remain visible even when the line reaches its length cap. A
+failed log sink also writes a timestamped, redacted diagnostic to the console.
+
 `LOG_CHAT_ID` accepts a channel id copied bare out of the Telegram UI
 (`4211401345`) and adds the `-100` prefix the Bot API needs. Without that, the
 failure is a bare "chat not found" far away from the setting that caused it.
@@ -92,6 +101,10 @@ wrote another row about a message we had just written. Not a loop today — a
 plain-text log line carries no custom emoji, so the handler returns before
 sending — but it becomes one the moment channel handling grows a path that logs
 an ERROR.
+
+Echo detection uses the same numeric channel-ID normalization as outgoing logs.
+When `LOG_CHAT_ID` is a username, it matches the incoming chat's username without
+case sensitivity.
 
 **D1** stores **warnings, errors and publishes only** — the routine
 `update N: …` line of every handled message, 91% of the old rows, goes to
@@ -315,7 +328,7 @@ request that never finishes. `test/publish-input.test.ts` covers each rule.
 
 ```bash
 npm run typecheck     # tsc --noEmit
-npm test              # 119 Vitest cases, fetch stubbed
+npm test              # Vitest suite, fetch stubbed
 npm run dev           # wrangler dev
 ```
 
@@ -328,6 +341,11 @@ Confirm this mode in the built administration tool before using the new interfac
 The tests stub `fetch`, so nothing in them can reach Telegram — the same rule
 the guarded Rust suite enforces, for the same reason: a historical test once reached live
 Telegram and replaced a sticker in a published pack.
+
+The SQLite migration tests also cover upgrading populated legacy logs, delayed
+evictions completing out of order, and recovery at the next eviction boundary
+after a failed delete. They exercise the real migration SQL and logging path
+against a local in-memory database.
 
 ## Errors never carry a credential
 
@@ -365,6 +383,11 @@ publish and an ordinary refusal still read normally.
 - **Webhook handlers return 200 even when handling fails.** Telegram redelivers
   any non-2xx, and every action here is a `sendMessage`, so a redelivery after a
   partial success posts the same reply twice. Failures are logged instead.
+- **Bot API success results are checked before use.** A malformed `sendMessage`
+  result makes `/publish` return 502 instead of reporting an announcement with
+  missing message IDs. A malformed emoji lookup is logged as a failure instead
+  of telling the user that their IDs are unknown. Neither path retries the API
+  call internally.
 - **A stranger gets one reply in private and silence in a group** — answering in
   groups would make the bot a spam vector.
 - **`custom_emoji_id` is shape-checked** before it reaches the HTML that

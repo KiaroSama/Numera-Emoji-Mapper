@@ -101,7 +101,7 @@ async function onWebhook(request: Request, env: Env, ctx: ExecutionContext,
 async function onPublish(request: Request, env: Env,
                          ctx: ExecutionContext): Promise<Response> {
   if (!verifyBearer(request, env.PUBLISH_SECRET)) {
-    return new Response("unauthorized", { status: 401 });
+    return new Response("unauthorized", { status: 401, headers: { "WWW-Authenticate": "Bearer" } });
   }
   let raw: unknown;
   try {
