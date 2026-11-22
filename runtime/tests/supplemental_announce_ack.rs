@@ -151,6 +151,28 @@ fn worker_requires_nonempty_complete_message_identifiers() {
 }
 
 #[test]
+fn worker_rejects_object_shaped_message_identifiers() {
+    refused(vec![
+        (
+            "object identifier",
+            br#"{"ok":true,"message_ids":[{"$serde_json::private::Number":"1"}]}"#.to_vec(),
+        ),
+        (
+            "mixed numeric and object identifiers",
+            br#"{"ok":true,"message_ids":[0,{"$serde_json::private::Number":"1"}]}"#.to_vec(),
+        ),
+    ]);
+}
+
+#[test]
+fn worker_requires_an_object_acknowledgment_envelope() {
+    refused(vec![
+        ("tuple envelope", br#"[true,[1]]"#.to_vec()),
+        ("extended tuple envelope", br#"[true,[1],"extra"]"#.to_vec()),
+    ]);
+}
+
+#[test]
 fn worker_refuses_non_json_and_empty_success_responses() {
     refused(vec![
         ("empty body", vec![]),
