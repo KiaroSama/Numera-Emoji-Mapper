@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standardized prebuilt release packages on four 64-bit targets: Windows x64, Windows arm64, Linux x64, and Linux arm64 (macOS and 32-bit targets removed).
 
 ### Added
-- Embedded the approved project logo into every compiled binary across all four targets (Windows PE icon and version resources via `winresource`, Linux `.rodata.numera_logo` ELF section plus `.desktop` entry and hicolor icon) with byte-level `verify-binary` checks in CI and release workflows.
+- Embedded the approved project logo into every compiled binary across all four targets (Windows PE icon and version resources via `winresource`, Linux `.numera_logo` ELF section plus `.desktop` entry and hicolor icon) with byte-level `verify-binary` checks in CI and release workflows.
 - Added `SHA256SUMS` and GitHub Artifact Attestation provenance in `release.yml`, alongside Windows Authenticode and owner GPG release signing.
 - Seeded `coins/keywords.csv` inside standalone packages (`assets/coins-keywords-seed.csv`) with automatic directory bootstrap and `--flag=VALUE` CLI option parity.
 - Split oversized Rust modules under the 800-line ceiling while preserving all 1,516 original test identities.

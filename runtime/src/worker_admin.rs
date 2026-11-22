@@ -226,6 +226,19 @@ fn admin_ids(env: &Environment) -> (String, String, usize, usize) {
         rejected,
     )
 }
+fn diagnostic_key_label(name: &str) -> &'static str {
+    match name {
+        "GENERAL_BOT_TOKEN" => "GENERAL_BOT_TOKEN",
+        "COIN_BOT_TOKEN" => "COIN_BOT_TOKEN",
+        "PACK_LINKS_CHAT_ID" => "PACK_LINKS_CHAT_ID",
+        "LOG_CHAT_ID" => "LOG_CHAT_ID",
+        "ADMIN_USER_IDS" => "ADMIN_USER_IDS",
+        "PUBLISH_SECRET" => "PUBLISH_SECRET",
+        "GENERAL_WEBHOOK_SECRET" => "GENERAL_WEBHOOK_SECRET",
+        "COIN_WEBHOOK_SECRET" => "COIN_WEBHOOK_SECRET",
+        _ => "[redacted]",
+    }
+}
 fn secret_plan(env: &Environment, report: &mut impl FnMut(&str)) -> Result<Vec<Secret>, String> {
     let (admins, admin_source, _, rejected) = admin_ids(env);
     if rejected > 0 {
@@ -289,7 +302,7 @@ fn secret_plan(env: &Environment, report: &mut impl FnMut(&str)) -> Result<Vec<S
     let missing = plan
         .iter()
         .filter(|s| s.value.is_empty() && !s.generated)
-        .map(|s| s.name)
+        .map(|s| diagnostic_key_label(s.name))
         .collect::<Vec<_>>();
     if !missing.is_empty() {
         return Err(format!(
@@ -404,7 +417,7 @@ fn put_secret(root: &Path, secret: &Secret, settings: &Settings) -> Result<(), S
     if !owned_status(root, command, &child)? {
         return Err(format!(
             "Wrangler secret put {} failed; generated environment values were not persisted",
-            secret.name
+            diagnostic_key_label(secret.name)
         ));
     }
     Ok(())
