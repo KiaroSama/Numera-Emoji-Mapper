@@ -95,6 +95,19 @@ const REVIEWED: &[(&str, &str, u64, &str)] = &[
         238,
         "9750fc780ce9d9ae2e418375db96e01e37ed1546",
     ),
+    // Public SPKI key SHA-256 digest for the pinned release publisher certificate.
+    (
+        "generic-api-key",
+        "docs/SIGNING.md",
+        14,
+        "39730102c5a85ff9f73cd05c0ef5a7bbf5d7568c",
+    ),
+    (
+        "generic-api-key",
+        "docs/signing/publisher.json",
+        8,
+        "39730102c5a85ff9f73cd05c0ef5a7bbf5d7568c",
+    ),
 ];
 
 /// Discard secret-bearing fields at deserialization. Invalid metadata fails closed.
