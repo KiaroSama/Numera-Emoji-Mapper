@@ -37,6 +37,36 @@ the `publish` job to sign `SHA256SUMS`, attest build provenance via
 `actions/attest-build-provenance@v4`, and attach the verified release assets.
 The manual Rust checkpoint is diagnostic, not a replacement for CI.
 
+## Manual checkpoint scopes
+
+The **Rust checkpoint** workflow accepts a `validation_scope` choice when
+dispatched against a branch or tag. Its default, **`full`**, retains the existing
+four-platform release build, formatting, lint, and unfiltered isolated Rust
+test commands. Three focused choices provide earlier Linux x64 evidence:
+
+| Scope | Executed coverage |
+| --- | --- |
+| `mutation-regressions` | The complete `supplemental_telegram_mutation`, `supplemental_plan_remove`, `supplemental_coin_recovery`, `supplemental_coin_walk`, and `supplemental_sync_order` Cargo test targets. |
+| `panel-browser` | All 156 Playwright browser, performance, and source-contract cases, using a freshly built Rust server, locked npm dependencies, Chromium, actual discovery, and the original-case inventory check. |
+| `announcement-regressions` | The complete `supplemental_announce_ack` Cargo test target. |
+
+Focused runs build all standalone executables with Rust 1.100.0 in release
+mode, with LTO disabled and 16 codegen units to shorten diagnostic compilation.
+The runtime choices retain `.cargo/runtime-tests.toml`, the native isolation
+runner, private-network setup, and `--no-fail-fast`; they do not disable guards
+or substitute a listing for execution. A selected branch must contain its
+requested supplemental targets; missing targets fail visibly.
+
+Every focused run verifies and records the checked-out source SHA and selected
+scope before building, and uploads diagnostics even after failure. Concurrency
+is separate for each branch and scope, so a focused run cannot cancel the full
+checkpoint or another focused scope. These Linux results supplement the full
+exact-head CI and release gates; they do not replace any platform, package,
+browser, Worker, or signing requirement, and their faster binaries are not
+distribution artifacts.
+
+## Acceptance and distribution builds
+
 The reusable acceptance calls deliberately have separate concurrency groups
 from ordinary push/PR checks. Neither invocation can cancel the other. Ordinary
 checks remain visible on every latest pushed commit; signing cannot rely on a
