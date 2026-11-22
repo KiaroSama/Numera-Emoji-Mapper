@@ -289,12 +289,28 @@ test("test_panel_curation.CurationControls.test_a_full_destination_pack_refuses_
     await gridPage.click("#selmode");
     await gridPage.locator(`#grid .card[data-key="${items[0].key}"] .thumb`).click();
     await gridPage.locator(`#holdCards .hcard[data-key="${items[1].key}"] img`).click();
+    const beforeDrag = await gridPage.evaluate("snapshot()");
     await gridPage.locator(`#grid .card[data-key="${items[0].key}"]`)
       .dragTo(gridPage.locator(`#grid .card[data-key="${items[3].key}"]`));
     assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).pack, items[0].key), 2);
     assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).included, items[1].key), false);
     assert.equal(await gridPage.locator("#holdCards .hcard").count(), 1);
     assert.equal(await gridPage.evaluate("ITEMS.filter(item => item.included && item.pack === 2).length"), 200);
+    const afterDrop = await gridPage.evaluate("snapshot()");
+    await gridPage.locator(`#holdCards .hcard[data-key="${items[1].key}"] button`).click();
+    assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).pack, items[1].key), 1,
+      "a grid drag must preserve the held card's original pack for its later Unhold");
+    assert.equal(await gridPage.evaluate(key => ITEMS.find(item => item.key === key).included, items[1].key), true);
+    assert.equal(await gridPage.evaluate("ITEMS.filter(item => item.included && item.pack === 2).length"), 200);
+    const afterUnhold = await gridPage.evaluate("snapshot()");
+    await gridPage.click("#undo");
+    assert.deepEqual(await gridPage.evaluate("snapshot()"), afterDrop);
+    await gridPage.click("#undo");
+    assert.deepEqual(await gridPage.evaluate("snapshot()"), beforeDrag);
+    await gridPage.click("#redo");
+    assert.deepEqual(await gridPage.evaluate("snapshot()"), afterDrop);
+    await gridPage.click("#redo");
+    assert.deepEqual(await gridPage.evaluate("snapshot()"), afterUnhold);
   });
 
   for (const destinationSize of [199, 198]) {

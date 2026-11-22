@@ -340,7 +340,7 @@ function canUnhold(keys,atDrop=false){
   // Count the state acceptDrop will commit. Old stamps in the drag preview can
   // temporarily assign an unstamped neighbour to the wrong run. A grid drag
   // can also carry held picks without activating them; only a tray drop does.
-  const items=atDrop?ITEMS.map(it=>moving.has(it.key)&&!it.isLogo?{
+  const items=atDrop?ITEMS.map(it=>moving.has(it.key)&&!it.isLogo&&(it.included||holdDragKeys?.has(it.key))?{
     ...it, pack:aimedPack===undefined?it.pack:aimedPack,
     included:it.included||!!holdDragKeys?.has(it.key)
   }:it):ITEMS;
@@ -488,7 +488,8 @@ function acceptDrop(){
   if(!canUnhold(keys,true))return false;
   for(const k of keys){
     const it=ITEMS.find(x=>x.key===k);
-    if(!it||it.isLogo)continue;
+    // A held grid pick keeps its origin for Unhold; only a tray drop moves it.
+    if(!it||it.isLogo||(!it.included&&!holdDragKeys?.has(k)))continue;
     // A number is the destination; `null` is a run with no number yet, and the
     // emoji must join it by LOSING its own -- carrying an old number there is
     // what cut a false run inside a pack that has not been published. Nothing
