@@ -469,11 +469,32 @@ fn release_acceptance(workflow: &str) -> Result<(), &'static str> {
         if block.iter().filter(|line| **line == property).count() != 1 {
             return Err("release job lost its required acceptance dependency");
         }
-        if block.iter().any(|line| {
-            line.trim_start().starts_with("continue-on-error:")
-                || line.starts_with("    if:") && line.contains("always()")
-        }) {
+        if block
+            .iter()
+            .any(|line| line.trim_start().starts_with("continue-on-error:"))
+        {
             return Err("release acceptance failures must block signing and publication");
+        }
+        // Pin the reviewed conditions: any explicit status function suppresses
+        // GitHub's implicit success() dependency check. A partial token scan
+        // cannot safely validate folded or continued YAML expressions.
+        let expected_condition = if name == "publish" {
+            "    if: startsWith(github.ref, 'refs/tags/v')"
+        } else {
+            "    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))"
+        };
+        let mut conditions = block
+            .iter()
+            .enumerate()
+            .filter(|(_, line)| line.starts_with("    if:"));
+        let (index, condition) = conditions.next().ok_or("missing release job condition")?;
+        let has_continuation = block
+            .iter()
+            .skip(index + 1)
+            .find(|line| !line.trim().is_empty() && !line.trim_start().starts_with('#'))
+            .is_some_and(|line| line.starts_with("     "));
+        if *condition != expected_condition || conditions.next().is_some() || has_continuation {
+            return Err("release jobs require the reviewed single-line success-gated condition");
         }
         if field == "uses" && !block.contains(&"      release_acceptance: true") {
             return Err("reused workflow must enforce release acceptance");
@@ -519,13 +540,14 @@ fn release_acceptance_rejects_status_overrides_in_valid_job_conditions() {
     for original in [release_condition, publish_condition] {
         assert!(release.contains(original));
         for replacement in [
-            "    if: ${{ !cancelled() }}",
-            "    if: ${{ failure() }}",
-            "    if: >-\n      ${{ always() }}",
+            "    if: ${{ !cancelled() }}".to_owned(),
+            "    if: ${{ failure() }}".to_owned(),
+            "    if: >-\n      ${{ always() }}".to_owned(),
+            format!("{original}\n      || always()"),
         ] {
             // Replace the existing condition, producing a valid YAML job rather
             // than an invalid duplicate-key fixture that GitHub already refuses.
-            let changed = release.replace(original, replacement);
+            let changed = release.replace(original, &replacement);
             assert!(
                 release_acceptance(&changed).is_err(),
                 "release condition accepted an unsafe status override: {replacement}"
