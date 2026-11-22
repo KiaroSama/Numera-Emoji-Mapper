@@ -178,17 +178,21 @@ jobs:
             pfx_win="$(cygpath -w "$pfx")"
             exe_win="$(cygpath -w "$exe")"
             "$st" sign //fd SHA256 //f "$pfx_win" //p "$NUMERA_SIGNING_PASSWORD" //tr http://timestamp.digicert.com //td SHA256 "$exe_win"
-            verify_out="$("$st" verify //pa //v "$exe_win" 2>&1 || true)"
-            printf '%s\n' "$verify_out" | grep -qi "SHA1 hash: $thumb"
-            printf '%s\n' "$verify_out" | grep -qi "timestamped"
-            if printf '%s\n' "$verify_out" | grep -qi "did not verify"; then
-              echo "Authenticode verification failed" >&2
+            "$st" verify //pa //v "$exe_win" > "$work/verify.txt" 2>&1 || true
+            grep -qi "SHA1 hash: $thumb" "$work/verify.txt"
+            grep -qi "The signature is timestamped:" "$work/verify.txt"
+            if grep -qiE "did not verify|File not valid|No signature found" "$work/verify.txt"; then
+              cat "$work/verify.txt" >&2
               exit 1
             fi
             cp "$exe" "$work/tampered.exe"
             printf 'X' >> "$work/tampered.exe"
-            tamper_out="$("$st" verify //pa //v "$(cygpath -w "$work/tampered.exe")" 2>&1 || true)"
-            printf '%s\n' "$tamper_out" | grep -qi "did not verify"
+            "$st" verify //pa //v "$(cygpath -w "$work/tampered.exe")" > "$work/tamper.txt" 2>&1 || true
+            grep -qiE "did not verify|File not valid|No signature found" "$work/tamper.txt"
+            if grep -qi "SHA1 hash: $thumb" "$work/tamper.txt"; then
+              echo "Tamper rejection failed for $exe" >&2
+              exit 1
+            fi
           else
             exe="bin/numera-emoji"
             chmod +x "$exe"
