@@ -13,8 +13,9 @@
 [![Rust 1.100.0 toolchain measured via rustc](https://img.shields.io/badge/Rust-1.100.0-8b5cf6)](rust-toolchain.toml)
 [![Runs on Linux x64, Linux arm64, Windows x64, and Windows arm64](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%2064--bit-0891b2)](.github/workflows/release.yml)
 [![Prebuilt signed standalone archives](https://img.shields.io/badge/install-Prebuilt%20ZIP-4f46e5)](.github/workflows/release.yml)
+[![Signed with pinned RSA-3072 publisher key and Windows Authenticode](https://img.shields.io/badge/signing-RSA--3072%20%7C%20Authenticode-7c3aed)](docs/SIGNING.md)
 [![Complete operator guide in docs/GUIDE.md](https://img.shields.io/badge/docs-GUIDE-0284c7)](docs/GUIDE.md)
-[![Measured tracked repository tree size](https://img.shields.io/badge/repo%20size-15.6%20MB-ca8a04)](README.md)
+[![Measured tracked repository tree size](https://img.shields.io/badge/repo%20size-15.7%20MB-ca8a04)](README.md)
 [![Native Rust media codecs with embedded logo verification](https://img.shields.io/badge/media-native%20codecs-15803d)](runtime/Cargo.toml)
 [![FFmpeg and FFprobe for video custom emoji](https://img.shields.io/badge/video-FFmpeg-b45309)](docs/GUIDE.md)
 [![SQLite local catalog with WAL backup](https://img.shields.io/badge/catalog-SQLite-334155)](runtime/Cargo.toml)
@@ -468,7 +469,8 @@ coins/                      Coin CSV inputs; generated maps/logos remain local
 tools/ci/                   Rust secret-scan orchestration and regression tests
 tools/test-inventory/       Rust migration identity and discovery checks
 tests/fixtures/             Independent frozen media, contracts and source receipts
-docs/                       Operator and contributor documentation
+docs/                       Operator, contributor, and release signing documentation
+docs/signing/               Public publisher certificate and verification metadata
 .env.example                Configuration template; real .env stays local
 rust-toolchain.toml          Exact supported compiler and check components
 ```
@@ -520,8 +522,9 @@ acceptance requires actual Chromium; absent prerequisites are errors.
 ## Security
 
 Tokens and the owner id live only in `.env` (never committed) and are read at
-runtime. See [SECURITY.md](.github/SECURITY.md). Revoke a leaked token via @BotFather
-and update `.env`.
+runtime. See [SECURITY.md](.github/SECURITY.md) for reporting policy and
+[docs/SIGNING.md](docs/SIGNING.md) for release signature verification. Revoke a
+leaked token via @BotFather and update `.env`.
 
 ## License
 

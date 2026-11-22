@@ -12,6 +12,7 @@ packaged assets, libraries and configuration template.
 4. [Curate panel, saved intent and execution (§20)](guide-panel.md)
 5. [Troubleshooting, glossary, security and bug history (§21–28)](guide-reference.md)
 6. [Command cheat-sheet and worked workflows (Appendices A–D)](guide-workflows.md)
+7. [Publisher signatures and release verification](SIGNING.md)
 
 Start with `numera-emoji doctor`, then `numera-emoji menu` or a command's
 `--help`. The Rust executable provides both diagnostics and the interactive menu;
