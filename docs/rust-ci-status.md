@@ -25,12 +25,26 @@ four 64-bit targets (`linux-x64`, `linux-arm64`, `windows-x64`, `windows-arm64`)
 It builds the native executables, verifies embedded logos (`verify-binary`),
 exercises extracted offline installation, and uploads ZIP/checksum pairs. On
 `main` pushes and `v*` tags, the `signing` job runs inside the protected
-`numera-signing` GitHub environment to apply Windows Authenticode signatures
+`numera-signing` GitHub environment only after the package matrix, the complete
+reusable CI workflow, and the complete reusable Gitleaks workflow succeed for
+the same triggering revision. A failure, cancellation or missing acceptance
+job prevents signing and, transitively, publication. The release Gitleaks
+invocation explicitly scans tag pushes instead of inheriting the standalone
+workflow's non-default-branch push skip. The signing job applies Windows Authenticode signatures
 with RFC 3161 timestamps, sign every archive with the pinned RSA-3072 publisher
 key (`docs/SIGNING.md`), and verify tamper rejection. Only a version tag runs
 the `publish` job to sign `SHA256SUMS`, attest build provenance via
 `actions/attest-build-provenance@v4`, and attach the verified release assets.
 The manual Rust checkpoint is diagnostic, not a replacement for CI.
+
+The reusable acceptance calls deliberately have separate concurrency groups
+from ordinary push/PR checks. Neither invocation can cancel the other. Ordinary
+checks remain visible on every latest pushed commit; signing cannot rely on a
+green result from an earlier commit or a separately triggered manual run.
+Signed main/tag builds repeat the acceptance suites inside the release workflow
+so GitHub enforces their dependency before granting access to the signing
+environment. PR and feature-branch package builds keep the existing lightweight
+package-only path and still run the ordinary CI and Gitleaks workflows.
 
 CI compiles the unfiltered Rust tests in `runtime/target/ci-tests` using release
 settings with LTO disabled and 16 codegen units. This avoids repeating link-time

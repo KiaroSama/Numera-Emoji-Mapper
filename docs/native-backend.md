@@ -62,7 +62,7 @@ Linux test execution retains private network namespaces and descendant custody.
 ## Install a package
 
 Download a matching artifact from **Prebuilt packages**, or a published release,
-and extract it into a new folder. Packages support Linux x64 and Windows x64.
+and extract it into a new folder. Packages support Linux and Windows on x64 and arm64.
 They contain the application, public assets, native
 manifest, license and sample configuration. Schema2 packages contain
 no Python wheels, interpreter or virtual environment.

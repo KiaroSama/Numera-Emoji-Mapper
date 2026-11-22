@@ -5,6 +5,12 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_acceptance:
+        description: Require the complete secret scan before signing a release revision.
+        type: boolean
+        default: false
   schedule:
     - cron: '21 4 * * 4'
 
@@ -15,7 +21,7 @@ env:
   NUMERA_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
-  group: gitleaks-${{ github.workflow }}-${{ github.ref }}
+  group: gitleaks-${{ inputs.release_acceptance && 'release' || 'standalone' }}-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -65,7 +71,7 @@ jobs:
   gitleaks:
     name: Gitleaks secret scan
     needs: security-tool-tests
-    if: github.event_name != 'push' || github.ref_name == github.event.repository.default_branch
+    if: inputs.release_acceptance || github.event_name != 'push' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:

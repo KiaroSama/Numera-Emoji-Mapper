@@ -31,7 +31,7 @@ Rules:
 
 ## Supported application platforms
 
-The application supports Linux x64 and Windows x64. The local application and
+The application supports Linux and Windows on x64 and arm64. The local application and
 its administration/contributor tools are Rust; the browser panel and Worker
 retain their own JavaScript/TypeScript security boundaries. Keep package
 integrity checks, loopback/Origin/token checks, webhook authentication and owned
