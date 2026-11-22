@@ -95,18 +95,19 @@ const REVIEWED: &[(&str, &str, u64, &str)] = &[
         238,
         "9750fc780ce9d9ae2e418375db96e01e37ed1546",
     ),
-    // Public SPKI key SHA-256 digest for the pinned release publisher certificate.
+    // SHA-256 digest of telegram_api.py in the retired Python migration oracle.
     (
         "generic-api-key",
-        "docs/SIGNING.md",
-        14,
-        "39730102c5a85ff9f73cd05c0ef5a7bbf5d7568c",
+        "tests/backend_source_oracle.py",
+        30,
+        "9d3c78d2aaa48466f3f943b94b6973faae9916a0",
     ),
+    // Exact original redaction-preservation fixture (Python predecessor of baseline_observability.rs).
     (
         "generic-api-key",
-        "docs/signing/publisher.json",
-        8,
-        "39730102c5a85ff9f73cd05c0ef5a7bbf5d7568c",
+        "tests/test_logsetup.py",
+        45,
+        "c7e8393f134760995ebbeac6434fb8c9415cdf07",
     ),
 ];
 
