@@ -13,6 +13,7 @@ on:
           - mutation-regressions
           - panel-browser
           - announcement-regressions
+          - ci-regressions
 
 permissions:
   contents: read
@@ -84,7 +85,7 @@ jobs:
 
   focused:
     name: Focused checkpoint (${{ inputs.validation_scope }}, Linux x64)
-    if: ${{ inputs.validation_scope == 'mutation-regressions' || inputs.validation_scope == 'panel-browser' || inputs.validation_scope == 'announcement-regressions' }}
+    if: ${{ inputs.validation_scope == 'mutation-regressions' || inputs.validation_scope == 'panel-browser' || inputs.validation_scope == 'announcement-regressions' || inputs.validation_scope == 'ci-regressions' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     defaults:
@@ -130,6 +131,11 @@ jobs:
         run: |
           cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
             --test supplemental_announce_ack -- --test-threads=1 2>&1 | tee logs/checkpoint/announcement-regressions.log
+      - name: Guarded CI policy regressions
+        if: inputs.validation_scope == 'ci-regressions'
+        run: |
+          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
+            --test supplemental_ci -- --test-threads=1 2>&1 | tee logs/checkpoint/ci-regressions.log
       - uses: actions/setup-node@v7
         if: inputs.validation_scope == 'panel-browser'
         with:
