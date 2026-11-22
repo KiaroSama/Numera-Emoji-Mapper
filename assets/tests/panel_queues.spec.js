@@ -75,6 +75,24 @@ test("test_panel_queues.UnsavedSelectionIsProtected.test_an_edit_made_DURING_a_s
   assert.deepEqual(((await page.evaluate("window.__excluded()"))).length, 2);
   assert.ok((await page.evaluate("window.__dirty()")), "an older acknowledgement cleared newer unsaved work");
   assert.ok((await page.evaluate("window.__unload()")));
+
+  await test.step("an older order acknowledgement leaves a newer imported draft unsaved", async () => {
+    const importedPage = await open(panel, synth(6), {clock: true});
+    await importedPage.evaluate("__reorder(0,3)");
+    await importedPage.clock.runFor(450);
+    await importedPage.evaluate(() => {
+      const draft = snapshot();
+      draft.order.reverse();
+      importDraft(JSON.stringify({version: 1, snapshot: draft}));
+      __settle(0, 200);
+    });
+    await importedPage.clock.runFor(20);
+    assert.equal(await importedPage.evaluate("pendingOrder"), null);
+    assert.ok(await importedPage.evaluate("__unload() && __dirtyShown()"),
+      "retiring an old order must not clear the newer imported arrangement");
+    assert.equal((await sent(importedPage, "/api/order")).length, 1,
+      "a draft still waits for explicit Save");
+  });
 });
 
 test("test_panel_queues.UnsavedSelectionIsProtected.test_saving_the_newer_state_finally_clears_it", async ({ panel }) => {
@@ -89,6 +107,31 @@ test("test_panel_queues.UnsavedSelectionIsProtected.test_saving_the_newer_state_
   (await page.evaluate("window.__settle(1, 200)"));
   (await page.waitForFunction("window.__dirty() === false"));
   assert.ok(!(await page.evaluate("window.__unload()")));
+
+  await test.step("Save supersedes an in-flight order when the import restores the original order", async () => {
+    const importedPage = await open(panel, synth(6), {clock: true});
+    const original = await importedPage.evaluate("snapshot()");
+    await importedPage.evaluate("__reorder(0,3)");
+    await importedPage.clock.runFor(450);
+    await importedPage.evaluate(draft => {
+      importDraft(JSON.stringify({version: 1, snapshot: draft}));
+      __save();
+      __settle(1, 200);
+    }, original);
+    await importedPage.clock.runFor(20);
+    assert.ok(await importedPage.evaluate("__unload() && __dirtyShown()"));
+    assert.ok((await importedPage.locator("#toast").innerText()).includes("still unsaved"),
+      "a selection acknowledgement must not claim the in-flight arrangement is saved");
+    await importedPage.evaluate("__settle(0,200)");
+    await importedPage.clock.runFor(20);
+    const requests = await sent(importedPage, "/api/order");
+    assert.equal(requests.length, 2);
+    assert.deepEqual(requests[1].body.order, original.order,
+      "the older in-flight order must be followed by the explicitly saved import");
+    await importedPage.evaluate("__settle(2,200)");
+    await importedPage.clock.runFor(20);
+    assert.ok(!(await importedPage.evaluate("__unload() || __dirtyShown()")));
+  });
 });
 
 test("test_panel_queues.UnsavedSelectionIsProtected.test_undoing_back_to_the_acknowledged_state_is_clean_again", async ({ panel }) => {
