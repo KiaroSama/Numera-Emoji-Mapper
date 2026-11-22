@@ -12,7 +12,24 @@ concurrency:
 
 jobs:
   checkpoint:
-    runs-on: ubuntu-24.04
+    name: Rust checkpoint (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+            triple: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+            triple: aarch64-unknown-linux-gnu
+          - os: windows-2025
+            platform: windows-x64
+            triple: x86_64-pc-windows-msvc
+          - os: windows-11-arm
+            platform: windows-arm64
+            triple: aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -20,16 +37,22 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Select supported Rust compiler
+        shell: bash
         run: |
           rustup default 1.100.0
           rustup component add rustfmt clippy --toolchain 1.100.0
+          host="$(rustc -vV | awk '/^host: / {print $2}')"
+          test "$host" = "${{ matrix.triple }}"
       - name: Install external media tools
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Build every standalone executable
         run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
       - name: Permit private test namespaces
+        if: runner.os == 'Linux'
         uses: ./.github/actions/test-network
       - name: Rust formatting and lint
+        shell: bash
         run: |
           cargo fmt --manifest-path runtime/Cargo.toml --check
           cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
@@ -43,6 +66,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rust-checkpoint-diagnostics
+          name: rust-checkpoint-diagnostics-${{ matrix.platform }}
           path: logs/**
           if-no-files-found: warn

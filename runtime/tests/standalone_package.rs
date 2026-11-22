@@ -246,8 +246,6 @@ fn hashes_inventory_paths_and_exclusive_install_preserve_existing_bytes() {
     for target in [
         "linux-x86",
         "windows-x86",
-        "linux-arm64",
-        "windows-arm64",
         "macos-x64",
         "macos-arm64",
         "freebsd-x64",

@@ -2,7 +2,8 @@
 
 The installed entry point is `numera-emoji.exe` on Windows or `numera-emoji` on
 Linux. Keep it beside the package's assets, licenses, manifest and configuration
-template. Only Linux x64 and Windows x64 packages are supported.
+template. Supported prebuilt packages cover four 64-bit targets: Linux x64,
+Linux arm64, Windows x64, and Windows arm64 (no macOS or 32-bit builds).
 
 ```powershell
 .\numera-emoji.exe menu

@@ -23,7 +23,7 @@ This software is based in part on the work of the Independent JPEG Group.
 ## Rust package inventory
 
 Generated with cargo-about 0.9.3 from the committed `runtime/Cargo.lock` for
-Linux x86_64 and Windows x86_64. This union includes normal and build
+Linux x86_64/aarch64 and Windows x86_64/aarch64 (plus `winresource 0.1.34` and its build-time TOML parser crates). This union includes normal and build
 dependencies and procedural macros; test-only dependencies are excluded.
 Original SPDX expressions remain in this table. A chosen license text satisfies
 an upstream alternative without changing the declared expression.
@@ -178,6 +178,7 @@ cargo about generate --manifest-path runtime/Cargo.toml --locked --config runtim
 | [serde_derive 1.0.229](https://crates.io/crates/serde_derive/1.0.229) | MIT OR Apache-2.0 |
 | [serde_json 1.0.154](https://crates.io/crates/serde_json/1.0.154) | MIT OR Apache-2.0 |
 | [serde_path_to_error 0.1.20](https://crates.io/crates/serde_path_to_error/0.1.20) | MIT OR Apache-2.0 |
+| [serde_spanned 1.1.3](https://crates.io/crates/serde_spanned/1.1.3) | MIT OR Apache-2.0 |
 | [serde_urlencoded 0.7.1](https://crates.io/crates/serde_urlencoded/0.7.1) | MIT OR Apache-2.0 |
 | [sha1 0.11.0](https://crates.io/crates/sha1/0.11.0) | MIT OR Apache-2.0 |
 | [sha2 0.11.1](https://crates.io/crates/sha2/0.11.1) | MIT OR Apache-2.0 |
@@ -208,6 +209,10 @@ cargo about generate --manifest-path runtime/Cargo.toml --locked --config runtim
 | [tokio 1.54.1](https://crates.io/crates/tokio/1.54.1) | MIT |
 | [tokio-macros 2.7.2](https://crates.io/crates/tokio-macros/2.7.2) | MIT |
 | [tokio-rustls 0.26.6](https://crates.io/crates/tokio-rustls/0.26.6) | MIT OR Apache-2.0 |
+| [toml 1.2.2+spec-1.1.0](https://crates.io/crates/toml/1.2.2+spec-1.1.0) | MIT OR Apache-2.0 |
+| [toml_datetime 1.1.3+spec-1.1.0](https://crates.io/crates/toml_datetime/1.1.3+spec-1.1.0) | MIT OR Apache-2.0 |
+| [toml_parser 1.1.6+spec-1.1.0](https://crates.io/crates/toml_parser/1.1.6+spec-1.1.0) | MIT OR Apache-2.0 |
+| [toml_writer 1.2.0+spec-1.1.0](https://crates.io/crates/toml_writer/1.2.0+spec-1.1.0) | MIT OR Apache-2.0 |
 | [tower 0.5.3](https://crates.io/crates/tower/0.5.3) | MIT |
 | [tower-http 0.6.11](https://crates.io/crates/tower-http/0.6.11) | MIT |
 | [tower-layer 0.3.3](https://crates.io/crates/tower-layer/0.3.3) | MIT |
@@ -238,6 +243,8 @@ cargo about generate --manifest-path runtime/Cargo.toml --locked --config runtim
 | [windows-result 0.4.1](https://crates.io/crates/windows-result/0.4.1) | MIT OR Apache-2.0 |
 | [windows-strings 0.5.1](https://crates.io/crates/windows-strings/0.5.1) | MIT OR Apache-2.0 |
 | [windows-sys 0.61.2](https://crates.io/crates/windows-sys/0.61.2) | MIT OR Apache-2.0 |
+| [winnow 1.0.5](https://crates.io/crates/winnow/1.0.5) | MIT |
+| [winresource 0.1.34](https://crates.io/crates/winresource/0.1.34) | MIT |
 | [writeable 0.6.4](https://crates.io/crates/writeable/0.6.4) | Unicode-3.0 |
 | [xmlwriter 0.1.0](https://crates.io/crates/xmlwriter/0.1.0) | MIT |
 | [yoke 0.8.4](https://crates.io/crates/yoke/0.8.4) | Unicode-3.0 |

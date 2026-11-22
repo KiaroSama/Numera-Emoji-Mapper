@@ -1,6 +1,6 @@
 [package]
 name = "numera-emoji-runtime"
-version = "2.0.0"
+version = "3.0.0"
 edition = "2024"
 rust-version = "1.100"
 default-run = "numera-emoji"
@@ -52,6 +52,9 @@ ryu = "=1.0.23"
 [build-dependencies]
 cmake = "=0.1.58"
 find-msvc-tools = "=0.1.15"
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "=0.1.34"
 
 [dev-dependencies]
 ctor = { version = "=1.0.14", default-features = false, features = ["proc_macro"] }

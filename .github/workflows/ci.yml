@@ -30,8 +30,16 @@ jobs:
         include:
           - os: ubuntu-24.04
             platform: linux-x64
+            triple: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+            triple: aarch64-unknown-linux-gnu
           - os: windows-2025
             platform: windows-x64
+            triple: x86_64-pc-windows-msvc
+          - os: windows-11-arm
+            platform: windows-arm64
+            triple: aarch64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v7
         with:
@@ -49,6 +57,12 @@ jobs:
         run: |
           rustup default 1.100.0
           rustup component add rustfmt clippy --toolchain 1.100.0
+      - name: Assert Rust host matches target platform
+        shell: bash
+        run: |
+          host="$(rustc -vV | awk '/^host: / {print $2}')"
+          echo "Detected Rust host: $host (expected ${{ matrix.triple }})"
+          test "$host" = "${{ matrix.triple }}"
       - name: Retain the immutable migration provenance source
         shell: bash
         env:
@@ -61,6 +75,16 @@ jobs:
       - name: Build standalone release executables
         id: runtime-build
         run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
+      - name: Verify embedded logo and target architecture on built binaries
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then suffix=.exe; else suffix=; fi
+          for bin in numera-emoji numera-dev numera-runtime-tests numera-worker-admin; do
+            "runtime/target/release/numera-emoji$suffix" verify-binary \
+              --executable "runtime/target/release/${bin}${suffix}" \
+              --target "${{ matrix.platform }}" \
+              --logo assets/numera-emoji-mapper-logo-circle.png
+          done
       - name: Rust format and lint
         shell: bash
         run: |

@@ -489,11 +489,11 @@ fn admitted(root: &Path, args: &[OsString]) -> Result<PathBuf, String> {
 pub unsafe fn run(root: &Path, args: &[OsString]) -> i32 {
     let prepare = (|| {
         if !cfg!(all(
-            target_arch = "x86_64",
+            any(target_arch = "x86_64", target_arch = "aarch64"),
             target_pointer_width = "64",
             target_env = "gnu"
         )) {
-            return Err("test bootstrap requires Linux GNU x86_64 LP64; no test started".into());
+            return Err("test bootstrap requires Linux GNU 64-bit LP64; no test started".into());
         }
         let root = crate::tooling_environment::physical_root(root)?;
         let executable = admitted(&root, args)?;

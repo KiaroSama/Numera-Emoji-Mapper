@@ -57,22 +57,31 @@ fn run_with_family(
     let mut token_key = "TELEGRAM_BOT_TOKEN".to_owned();
     let mut i = 0;
     while i < args.len() {
-        match args[i].as_str() {
-            "--help" | "-h" => help = true,
-            "--fix" => fix = true,
+        let raw = args[i].as_str();
+        let (option, inline) = match raw.split_once('=') {
+            Some((k, v)) if k.starts_with("--") => (k, Some(v)),
+            _ => (raw, None),
+        };
+        match option {
+            "--help" | "-h" if inline.is_none() => help = true,
+            "--fix" if inline.is_none() => fix = true,
             "--emoji-dir" | "--token-env" | "--map" | "--state" | "--top" | "--threshold"
             | "--only" => {
-                let option = &args[i];
-                i += 1;
-                let value = args
-                    .get(i)
-                    .ok_or_else(|| format!("{option} requires a value"))?;
-                match option.as_str() {
+                let value = match inline {
+                    Some(v) => v,
+                    None => {
+                        i += 1;
+                        args.get(i)
+                            .map(String::as_str)
+                            .ok_or_else(|| format!("{option} requires a value"))?
+                    }
+                };
+                match option {
                     "--emoji-dir" => {
                         files.images = config.path(value);
                         images = true;
                     }
-                    "--token-env" => token_key.clone_from(value),
+                    "--token-env" => token_key = value.to_owned(),
                     "--map" => files.map = config.path(value),
                     "--state" => files.state = config.path(value),
                     "--top" => top = value.parse().map_err(|_| "--top must be an integer")?,
@@ -81,10 +90,10 @@ fn run_with_family(
                             .parse()
                             .map_err(|_| "--threshold must be an integer")?
                     }
-                    _ => only.clone_from(value),
+                    _ => only = value.to_owned(),
                 }
             }
-            value => return Err(format!("unknown coin-verify-logos option: {value}")),
+            _ => return Err(format!("unknown coin-verify-logos option: {raw}")),
         }
         i += 1;
     }

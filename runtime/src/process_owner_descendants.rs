@@ -7,34 +7,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 static ACTIVE: AtomicBool = AtomicBool::new(false);
 const MAX_PROCESSES: usize = 65_536;
 
-// GNU Linux x86_64: glibc2.39 bits/sigaction.h and Linux __sigset_t.
-#[repr(C)]
-#[derive(Default)]
-struct SignalAction {
-    handler: usize,
-    mask: [u64; 16],
-    flags: i32,
-    restorer: usize,
-}
-
-#[cfg(all(
-    target_arch = "x86_64",
-    target_env = "gnu",
-    target_pointer_width = "64"
-))]
-const _: () = {
-    assert!(std::mem::size_of::<SignalAction>() == 152);
-    assert!(std::mem::offset_of!(SignalAction, flags) == 136);
-    assert!(std::mem::offset_of!(SignalAction, restorer) == 144);
-};
-
+// Linux GNU LP64 (x86_64 and aarch64) process descendant ownership via libc.
 unsafe extern "C" {
-    fn sigaction(signal: i32, action: *const SignalAction, previous: *mut SignalAction) -> i32;
     fn prctl(option: i32, ...) -> i32;
     fn pidfd_open(pid: i32, flags: u32) -> i32;
     fn pidfd_send_signal(fd: i32, signal: i32, info: *const std::ffi::c_void, flags: u32) -> i32;
     fn waitpid(pid: i32, status: *mut i32, options: i32) -> i32;
-    fn waitid(kind: i32, id: u32, info: *mut std::ffi::c_void, options: i32) -> i32;
+    fn waitid(kind: i32, id: u32, info: *const std::ffi::c_void, options: i32) -> i32;
 }
 
 fn no_children() -> Result<bool, String> {
@@ -92,21 +71,24 @@ impl Descendants {
         }
         let result = (|| {
             if !cfg!(all(
-                target_arch = "x86_64",
+                any(target_arch = "x86_64", target_arch = "aarch64"),
                 target_env = "gnu",
                 target_pointer_width = "64"
             )) {
                 return Err(
-                    "test descendant scope requires the supported GNU Linux x64 ABI".into(),
+                    "test descendant scope requires a supported GNU Linux 64-bit ABI".into(),
                 );
             }
             let parent = std::process::id() as i32;
-            let mut action = SignalAction::default();
-            // SAFETY: supported ABI checked above; query only, with a live correctly sized output.
-            if unsafe { sigaction(17, std::ptr::null(), &mut action) } != 0 {
+            let mut action = std::mem::MaybeUninit::<libc::sigaction>::zeroed();
+            // SAFETY: supported GNU Linux LP64 ABI checked above; query-only sigaction fills a live output struct.
+            if unsafe { libc::sigaction(libc::SIGCHLD, std::ptr::null(), action.as_mut_ptr()) } != 0
+            {
                 return Err("cannot inspect test runner SIGCHLD action".into());
             }
-            if action.handler != 0 || action.flags & 2 != 0 {
+            // SAFETY: libc::sigaction returned 0, so `action` is initialized by the kernel.
+            let action = unsafe { action.assume_init() };
+            if action.sa_sigaction != libc::SIG_DFL || action.sa_flags & libc::SA_NOCLDWAIT != 0 {
                 return Err(
                     "test descendant owner requires default SIGCHLD without SA_NOCLDWAIT".into(),
                 );

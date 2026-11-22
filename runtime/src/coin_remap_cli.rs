@@ -21,28 +21,42 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
         incomplete_sets: 0,
         failed_images: 0,
     };
+    let cwd = std::env::current_dir().unwrap_or_else(|_| config.root.clone());
+    let resolve_explicit = |raw: &str| {
+        let p = std::path::PathBuf::from(raw);
+        if p.is_absolute() { p } else { cwd.join(p) }
+    };
     let mut i = 0;
     while i < args.len() {
-        match args[i].as_str() {
-            "--help" | "-h" => help = true,
-            "--apply" => options.apply = true,
+        let raw = args[i].as_str();
+        let (option, inline) = match raw.split_once('=') {
+            Some((k, v)) if k.starts_with("--") => (k, Some(v)),
+            _ => (raw, None),
+        };
+        match option {
+            "--help" | "-h" if inline.is_none() => help = true,
+            "--apply" if inline.is_none() => options.apply = true,
             "--emoji-dir" | "--token-env" | "--state" | "--cache" | "--out" | "--candidates"
             | "--max-distance" | "--min-margin" => {
-                let option = &args[i];
-                i += 1;
-                let value = args
-                    .get(i)
-                    .ok_or_else(|| format!("{option} requires a value"))?;
-                match option.as_str() {
+                let value = match inline {
+                    Some(v) => v,
+                    None => {
+                        i += 1;
+                        args.get(i)
+                            .map(String::as_str)
+                            .ok_or_else(|| format!("{option} requires a value"))?
+                    }
+                };
+                match option {
                     "--emoji-dir" => {
-                        files.images = config.path(value);
+                        files.images = resolve_explicit(value);
                         supplied_images = true;
                     }
-                    "--state" => files.state = config.path(value),
-                    "--cache" => files.cache = config.path(value),
-                    "--out" => files.output = config.path(value),
-                    "--candidates" => files.candidates = config.path(value),
-                    "--token-env" => token_key.clone_from(value),
+                    "--state" => files.state = resolve_explicit(value),
+                    "--cache" => files.cache = resolve_explicit(value),
+                    "--out" => files.output = resolve_explicit(value),
+                    "--candidates" => files.candidates = resolve_explicit(value),
+                    "--token-env" => token_key = value.to_owned(),
                     "--max-distance" => {
                         options.max_distance = Some(
                             value
@@ -56,7 +70,7 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
                     }
                 }
             }
-            value => return Err(format!("unknown coin-remap-ids option: {value}")),
+            _ => return Err(format!("unknown coin-remap-ids option: {raw}")),
         }
         i += 1;
     }

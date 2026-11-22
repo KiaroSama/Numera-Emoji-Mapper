@@ -1,12 +1,13 @@
 # Rust build and CI policy
 
 The supported compiler is Rust **1.100.0**, pinned in `rust-toolchain.toml` and
-CI. Supported application targets are **Linux x86_64** and **Windows x86_64**.
-macOS, ARM and 32-bit build/test matrices are removed.
+CI. Supported application targets are four 64-bit platforms: **Linux x64**,
+**Linux arm64**, **Windows x64**, and **Windows arm64**. macOS and 32-bit
+build/test matrices are excluded.
 
 Every push and pull request runs:
 
-- A mandatory release build of all standalone Rust executables on both OSes.
+- A mandatory release build of all standalone Rust executables on all four 64-bit targets, followed by byte-level embedded logo and architecture verification (`verify-binary`).
 - rustfmt, Clippy with warnings denied, and unfiltered Cargo test discovery.
 - Native codecs, SQLite/locking, process death/recovery and offline package tests.
 - One Chromium job for all 156 panel browser/source cases, with actual discovery.

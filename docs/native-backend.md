@@ -132,6 +132,6 @@ source. Browser acceptance remains JavaScript/Chromium and Worker tests remain
 TypeScript. Test helpers and build tools are excluded from application archives.
 
 CI preserves the original application identities and test categories, retains
-native regression properties, and builds release executables on Linux x64 and
-Windows x64. See [test ownership](native-test-migration.md) and
+native regression properties, and builds release executables across all four
+64-bit targets: Linux x64, Linux arm64, Windows x64, and Windows arm64. See [test ownership](native-test-migration.md) and
 [CI acceptance](rust-ci-status.md) for the gates and evidence limits.
