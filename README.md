@@ -49,8 +49,9 @@ Worker keeps TypeScript. Ready-made native codec dependencies are statically
 linked where appropriate; their source and redistribution notices are retained.
 
 Every push and pull request builds the application and runs unfiltered Rust
-acceptance on **Linux x64 and Windows x64**. Browser acceptance and Worker checks
-run in separate jobs. macOS, ARM and 32-bit targets are outside this release.
+acceptance on **Linux x64, Linux arm64, Windows x64, and Windows arm64**. Browser
+acceptance and Worker checks run in separate jobs. macOS and 32-bit targets are
+outside this release.
 The original 1,516 discovered application cases have an explicit migration
 inventory; browser cases retain their original browser/source-contract categories.
 See [test ownership](docs/native-test-migration.md) and
@@ -73,8 +74,8 @@ versions and renderer and logo-source review.
 
 - **Prebuilt packages:** the standalone executable and its bundled assets. No
   Python, virtual environment, Cargo or C++ toolchain is needed to run it.
-- **Package targets:** Windows x64, Linux x64 (Ubuntu 24.04+ / glibc 2.39+),
-  with x86_64 CPUs. Each download must pass its hosted native
+- **Package targets:** Windows x64/arm64 and Linux x64/arm64
+  (Ubuntu 24.04+ / glibc 2.39+). Each download must pass its hosted native
   package and media checks. Alpine/musl and other CPU targets are not covered.
 - A Telegram bot from [@BotFather](https://t.me/BotFather), and your numeric
   Telegram user id. Press **Start** on the bot once before publishing.
@@ -487,7 +488,7 @@ from Telegram by `./numera-emoji coin-rebuild map`.
 ## Checks
 
 CI runs on every push and pull request and supports manual dispatch. It always
-builds release executables for Linux x64 and Windows x64. Cargo discovers all
+builds release executables for Linux and Windows on x64 and arm64. Cargo discovers all
 backend tests automatically; Playwright discovers every browser spec. The tests
 retain real SQLite, subprocess, lock, interruption, transport and codec scenarios.
 

@@ -38,7 +38,7 @@ update into a fresh directory when an existing installation contains local data.
 
 Install the exact compiler in `rust-toolchain.toml` (Rust 1.100.0), rustfmt,
 Clippy, CMake and the platform C/C++ linker for bundled third-party codecs. On
-Windows use the x64 MSVC build tools. FFmpeg/FFprobe are required for video tests.
+Windows use the matching x64 or arm64 MSVC build tools. FFmpeg/FFprobe are required for video tests.
 Normal installed use needs none of these build tools.
 
 From the repository root:
