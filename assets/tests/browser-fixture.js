@@ -93,17 +93,17 @@ class Harness {
     if (this.root) rmSync(this.root, { recursive: true, force: true });
   }
   dbOrder() {
-    const db = new DatabaseSync(this.database, { readOnly: true });
+    const db = new DatabaseSync(this.database, { readOnly: true, timeout: 5000 });
     try { return db.prepare('SELECT content_key FROM items ORDER BY position,rowid').all().map(row => row.content_key); }
     finally { db.close(); }
   }
   excludedInDb() {
-    const db = new DatabaseSync(this.database, { readOnly: true });
+    const db = new DatabaseSync(this.database, { readOnly: true, timeout: 5000 });
     try { return new Set(db.prepare('SELECT content_key FROM items WHERE included=0').all().map(row => row.content_key)); }
     finally { db.close(); }
   }
   reset() {
-    const db = new DatabaseSync(this.database);
+    const db = new DatabaseSync(this.database, { timeout: 5000 });
     try {
       db.exec('UPDATE items SET included=1');
       const keys = db.prepare('SELECT content_key FROM items ORDER BY content_key').all();
