@@ -21,7 +21,7 @@ env:
   NUMERA_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
-  group: gitleaks-${{ inputs.release_acceptance && 'release' || 'standalone' }}-${{ github.workflow }}-${{ github.ref }}
+  group: gitleaks-${{ inputs.release_acceptance && 'release' || 'standalone' }}-${{ github.event_name }}-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

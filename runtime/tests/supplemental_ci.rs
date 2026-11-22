@@ -257,8 +257,20 @@ fn initiating_events(workflow: &str, expected: &[&str]) -> Result<(), &'static s
 }
 
 const BUILD_EVENTS: &[&str] = &["pull_request:", "push:", "workflow_dispatch:"];
+const REUSABLE_BUILD_EVENTS: &[&str] = &[
+    "pull_request:",
+    "push:",
+    "workflow_call:",
+    "workflow_dispatch:",
+];
 const MANUAL_EVENTS: &[&str] = &["workflow_dispatch:"];
-const SECURITY_EVENTS: &[&str] = &["pull_request:", "push:", "schedule:", "workflow_dispatch:"];
+const SECURITY_EVENTS: &[&str] = &[
+    "pull_request:",
+    "push:",
+    "schedule:",
+    "workflow_call:",
+    "workflow_dispatch:",
+];
 
 #[test]
 fn secret_scan_triage_cannot_hide_future_matches_or_disclose_values() {
@@ -331,7 +343,8 @@ fn every_ci_and_package_workflow_requires_push_pull_request_and_manual_dispatch(
             // The inherited security scan also runs on a schedule. Build and
             // checkpoint workflows retain their existing, stricter event sets.
             let expected = match name {
-                Some("ci.yml" | "release.yml") => BUILD_EVENTS,
+                Some("ci.yml") => REUSABLE_BUILD_EVENTS,
+                Some("release.yml") => BUILD_EVENTS,
                 Some("gitleaks.yml") => SECURITY_EVENTS,
                 _ => MANUAL_EVENTS,
             };
@@ -350,9 +363,11 @@ fn every_ci_and_package_workflow_requires_push_pull_request_and_manual_dispatch(
             if name == Some("gitleaks.yml") {
                 assert!(
                     text.lines().any(|line| {
-                        line.trim_start().starts_with("group:") && line.contains("github.ref")
+                        line.trim_start().starts_with("group:")
+                            && line.contains("github.ref")
+                            && line.contains("github.event_name")
                     }),
-                    "security runs must retain their ref-scoped concurrency group"
+                    "security runs must retain event- and ref-scoped concurrency groups"
                 );
             }
             count += 1;
@@ -390,7 +405,20 @@ fn every_ci_and_package_workflow_requires_push_pull_request_and_manual_dispatch(
         )
         .is_err()
     );
-    let security = valid.replace("jobs:", "  schedule:\n    - cron: '21 4 * * 4'\njobs:");
+    let reusable = valid.replace("jobs:", "  workflow_call:\njobs:");
+    assert!(initiating_events(&reusable, REUSABLE_BUILD_EVENTS).is_ok());
+    assert!(initiating_events(valid, REUSABLE_BUILD_EVENTS).is_err());
+    assert!(initiating_events(&reusable, BUILD_EVENTS).is_err());
+    for event in ["pull_request_target:", "workflow_run:", "workflow_call:"] {
+        assert!(
+            initiating_events(
+                &reusable.replace("jobs:", &format!("  {event}\njobs:")),
+                REUSABLE_BUILD_EVENTS
+            )
+            .is_err()
+        );
+    }
+    let security = reusable.replace("jobs:", "  schedule:\n    - cron: '21 4 * * 4'\njobs:");
     assert!(initiating_events(&security, SECURITY_EVENTS).is_ok());
     assert!(initiating_events(&security, BUILD_EVENTS).is_err());
     assert!(initiating_events(valid, SECURITY_EVENTS).is_err());
@@ -411,6 +439,75 @@ fn every_ci_and_package_workflow_requires_push_pull_request_and_manual_dispatch(
             )
             .is_err()
         );
+    }
+}
+
+fn release_acceptance(workflow: &str) -> Result<(), &'static str> {
+    for (name, field, expected) in [
+        ("acceptance", "uses", "./.github/workflows/ci.yml"),
+        (
+            "secret-acceptance",
+            "uses",
+            "./.github/workflows/gitleaks.yml",
+        ),
+        (
+            "signing",
+            "needs",
+            "[package, acceptance, secret-acceptance]",
+        ),
+        ("publish", "needs", "signing"),
+    ] {
+        let heading = format!("\n  {name}:\n");
+        let (_, remaining) = workflow.split_once(&heading).ok_or("missing release job")?;
+        let block = remaining
+            .lines()
+            .take_while(|line| {
+                line.trim().is_empty() || !line.starts_with("  ") || line.starts_with("   ")
+            })
+            .collect::<Vec<_>>();
+        let property = format!("    {field}: {expected}");
+        if block.iter().filter(|line| **line == property).count() != 1 {
+            return Err("release job lost its required acceptance dependency");
+        }
+        if block.iter().any(|line| {
+            line.trim_start().starts_with("continue-on-error:")
+                || line.starts_with("    if:") && line.contains("always()")
+        }) {
+            return Err("release acceptance failures must block signing and publication");
+        }
+        if field == "uses" && !block.contains(&"      release_acceptance: true") {
+            return Err("reused workflow must enforce release acceptance");
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn signing_and_publication_require_complete_ci_and_secret_acceptance() {
+    let release = include_str!("../../.github/workflows/release.yml");
+    assert!(release_acceptance(release).is_ok());
+    for (old, new) in [
+        (
+            "needs: [package, acceptance, secret-acceptance]",
+            "needs: package",
+        ),
+        ("needs: signing", "needs: package"),
+        (
+            "./.github/workflows/ci.yml",
+            "./.github/workflows/release.yml",
+        ),
+        ("release_acceptance: true", "release_acceptance: false"),
+        ("  signing:\n", "  signing:\n    continue-on-error: true\n"),
+    ] {
+        assert!(
+            release_acceptance(&release.replace(old, new)).is_err(),
+            "{old}"
+        );
+    }
+    let security = include_str!("../../.github/workflows/gitleaks.yml");
+    assert!(security.contains("if: inputs.release_acceptance || github.event_name != 'push'"));
+    for source in [include_str!("../../.github/workflows/ci.yml"), security] {
+        assert!(source.contains("inputs.release_acceptance && 'release' || 'standalone'"));
     }
 }
 
