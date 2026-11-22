@@ -208,7 +208,7 @@ fn direct_cards_list_worker_refusal_and_timeout_contract() {
             match *server_mode.lock().unwrap() {
                 "refuse" => Reply::Bytes(503, b"{\"ok\":true}".to_vec()),
                 "disconnect" => Reply::Disconnect,
-                _ => Reply::json(json!({"ok":true})),
+                _ => Reply::json(json!({"ok":true,"message_ids":[1]})),
             }
         } else {
             Reply::ok(json!({"message_id":1}))

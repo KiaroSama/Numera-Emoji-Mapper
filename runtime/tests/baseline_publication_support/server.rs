@@ -92,7 +92,11 @@ impl Model {
         }
         if path == "/worker" {
             self.worker.push(serde_json::from_slice(&r.raw).unwrap());
-            return Some((if self.worker_failure { 503 } else { 200 }, b"{}".to_vec()));
+            return Some(if self.worker_failure {
+                (503, b"{}".to_vec())
+            } else {
+                (200, br#"{"ok":true,"message_ids":[1]}"#.to_vec())
+            });
         }
         let method = path.rsplit('/').next().unwrap();
         let ok = |value: Value| {

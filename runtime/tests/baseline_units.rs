@@ -739,9 +739,14 @@ mod contracts_publish {
                     }
                 }
             };
-            stream
-                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
-                .unwrap();
+            let acknowledgment = br#"{"ok":true,"message_ids":[1]}"#;
+            write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                acknowledgment.len()
+            )
+            .unwrap();
+            stream.write_all(acknowledgment).unwrap();
             (headers, serde_json::from_slice::<Value>(&body).unwrap())
         });
         let t = Scratch::new();
