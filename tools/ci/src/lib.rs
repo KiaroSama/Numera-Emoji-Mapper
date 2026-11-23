@@ -56,44 +56,44 @@ const REVIEWED: &[(&str, &str, u64, &str)] = &[
         "generic-api-key",
         "runtime/tests/baseline_observability.rs",
         121,
-        "9750fc780ce9d9ae2e418375db96e01e37ed1546",
+        "605b29f031796fe72249641556db89a660119b75",
     ),
     // SHA-256 integrity digests verified against each referenced committed file.
     (
         "generic-api-key",
         "tools/test-inventory/language-policy.json",
         18,
-        "9750fc780ce9d9ae2e418375db96e01e37ed1546",
+        "605b29f031796fe72249641556db89a660119b75",
     ),
     (
         "generic-api-key",
         "tools/test-inventory/language-policy.json",
         32,
-        "9750fc780ce9d9ae2e418375db96e01e37ed1546",
+        "605b29f031796fe72249641556db89a660119b75",
     ),
     (
         "generic-api-key",
         "tools/test-inventory/language-policy.json",
         38,
-        "9750fc780ce9d9ae2e418375db96e01e37ed1546",
+        "605b29f031796fe72249641556db89a660119b75",
     ),
     (
         "generic-api-key",
         "tools/test-inventory/language-policy.json",
         39,
-        "9750fc780ce9d9ae2e418375db96e01e37ed1546",
+        "605b29f031796fe72249641556db89a660119b75",
     ),
     (
         "generic-api-key",
         "tools/test-inventory/language-policy.json",
         40,
-        "9750fc780ce9d9ae2e418375db96e01e37ed1546",
+        "605b29f031796fe72249641556db89a660119b75",
     ),
     (
         "generic-api-key",
         "tools/test-inventory/language-policy.json",
         238,
-        "9750fc780ce9d9ae2e418375db96e01e37ed1546",
+        "605b29f031796fe72249641556db89a660119b75",
     ),
     // SHA-256 digest of telegram_api.py in the retired Python migration oracle.
     (
