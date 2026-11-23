@@ -56,6 +56,8 @@ Copy-Item .env.example .env       # then edit tokens, owner and data paths
 .\numera-emoji.exe menu
 ```
 
+In a source checkout with the signed Windows executable copied to `bin\numera-emoji.exe`, you can also use the two root PowerShell 7 launchers (`.\run.ps1` for the menu, `-Check`, or any subcommand; `.\run-panel.ps1` for the Curate panel, with optional `-WithPack N` or `-All`). Double-clicking either launcher in Explorer opens Windows Terminal when installed and waits for Enter if the command exits with an error.
+
 On Linux use `./numera-emoji package-verify`, `./numera-emoji doctor` and
 `./numera-emoji menu`. Supported packages are Linux and Windows on x64 and arm64. A source checkout without `package.json` can run the native doctor;
 package verification requires a generated standalone package.

@@ -33,6 +33,7 @@ impl Tree {
                     files: BTreeMap::new(),
                 },
                 frozen_data: BTreeMap::new(),
+                launchers: BTreeMap::new(),
             },
         };
         for name in [
@@ -165,6 +166,24 @@ fn legacy_extensions_are_rejected_even_inside_fixture_browser_or_worker_director
             .count(),
         5
     );
+}
+#[test]
+fn reviewed_windows_launchers_require_exact_digest_receipts() {
+    let mut tree = Tree::new();
+    let script = b"#Requires -Version 7.0\n& $binary menu\n";
+    tree.put("run.ps1", script);
+    tree.policy
+        .launchers
+        .insert("run.ps1".into(), digest(script));
+    let ok = tree.run();
+    assert!(ok.findings.is_empty(), "{:?}", ok.findings);
+    assert_eq!(ok.categories["windows-launcher"], 1);
+
+    tree.put("run.ps1", b"#Requires -Version 7.0\n& $binary doctor\n");
+    assert!(tree.rule("windows-launcher"));
+
+    tree.put("extra.ps1", script);
+    assert!(tree.rule("first-party-language"));
 }
 #[test]
 fn renamed_python_powershell_and_shell_programs_are_not_treated_as_data() {

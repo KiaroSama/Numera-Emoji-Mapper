@@ -31,6 +31,8 @@ pub struct Policy {
     pub schema: u32,
     pub vendor: Vendor,
     pub frozen_data: BTreeMap<String, String>,
+    #[serde(default)]
+    pub launchers: BTreeMap<String, String>,
 }
 #[derive(Clone, Debug)]
 pub struct Candidate {
@@ -224,6 +226,18 @@ pub fn check(root: &Path, policy: &Policy, candidates: &[Candidate]) -> Report {
                 report.accept("pinned-third-party-native");
             } else {
                 report.reject(path,"vendor-receipt","unlisted or modified vendor member; a directory is not a first-party code exemption");
+            }
+            continue;
+        }
+        if let Some(expected) = policy.launchers.get(path) {
+            if digest(&bytes) == *expected {
+                report.accept("windows-launcher");
+            } else {
+                report.reject(
+                    path,
+                    "windows-launcher",
+                    "approved Windows launcher changed; refresh its reviewed SHA-256 receipt",
+                );
             }
             continue;
         }

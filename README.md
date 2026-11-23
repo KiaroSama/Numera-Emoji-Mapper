@@ -107,6 +107,13 @@ Prebuilt 64-bit packages ship for four targets: `windows-x64`, `windows-arm64`,
 .\numera-emoji.exe menu
 ```
 
+In a source checkout with the verified executable placed at `bin\numera-emoji.exe`, two PowerShell 7 launchers sit at the repository root and can be double-clicked from Explorer (they open in Windows Terminal when installed and pause on errors):
+
+```powershell
+.\run.ps1              # interactive menu (-Check runs doctor; other args pass through)
+.\run-panel.ps1        # Curate browser panel (-WithPack 6 or -All)
+```
+
 **Linux:**
 
 ```bash

@@ -35,26 +35,47 @@ impl<R: BufRead, W: Write, F: FnMut(&Request) -> Result<i32, String>> Menu<'_, R
         writeln!(self.output, "{message}").map_err(|_| "cannot write launcher output".into())
     }
 
+    fn paint(&self, code: &str, text: &str) -> String {
+        if self.color {
+            format!("\x1b[{code}m{text}\x1b[0m")
+        } else {
+            text.into()
+        }
+    }
+
+    pub fn banner(&mut self, message: &str) -> Result<(), String> {
+        self.line("")?;
+        if self.color {
+            let rule = "=".repeat(message.len().max(32));
+            self.line(&self.paint("1;38;2;255;50;115", message))?;
+            self.line(&self.paint("1;38;2;255;50;115", &rule))
+        } else {
+            self.line(message)
+        }
+    }
+
     pub fn title(&mut self, message: &str) -> Result<(), String> {
         self.line("")?;
-        let text = if self.color {
-            format!("\x1b[38;5;123m{message}\x1b[0m")
-        } else {
-            message.into()
-        };
+        let text = self.paint("38;5;123", message);
         self.line(&text)
     }
 
     pub fn ask(&mut self, label: &str, navigation: bool) -> Result<Answer, String> {
-        write!(
-            self.output,
-            "{label} {{{}}}: ",
-            if navigation {
-                "back=0, quit=exit"
-            } else {
-                "quit=exit"
-            }
-        )
+        let hint = if navigation {
+            "back=0, quit=exit"
+        } else {
+            "quit=exit"
+        };
+        if self.color {
+            write!(
+                self.output,
+                "{} {}: ",
+                self.paint("38;5;117", label),
+                self.paint("38;5;245", &format!("{{{hint}}}"))
+            )
+        } else {
+            write!(self.output, "{label} {{{hint}}}: ")
+        }
         .and_then(|_| self.output.flush())
         .map_err(|_| "cannot write launcher prompt")?;
         let mut bytes = Vec::new();
@@ -134,16 +155,20 @@ impl<R: BufRead, W: Write, F: FnMut(&Request) -> Result<i32, String>> Menu<'_, R
                 return Err(error);
             }
         };
-        self.line(&match code {
-            0 => format!("[OK] {label} finished."),
-            3 => format!("[!] {label} partially finished; review the log before retrying."),
-            _ => format!("[X] {label} failed (exit {code})."),
-        })?;
+        let status = match code {
+            0 => self.paint("38;5;120", &format!("[OK] {label} finished.")),
+            3 => self.paint(
+                "38;5;227",
+                &format!("[!] {label} partially finished; review the log before retrying."),
+            ),
+            _ => self.paint("38;5;203", &format!("[X] {label} failed (exit {code}).")),
+        };
+        self.line(&status)?;
         Ok(code)
     }
 
     pub fn show(&mut self) -> Result<(), String> {
-        for (title, entries, color) in [
+        for (title, entries, title_color, key_color) in [
             (
                 "Build a single pack",
                 &[
@@ -151,7 +176,8 @@ impl<R: BufRead, W: Write, F: FnMut(&Request) -> Result<i32, String>> Menu<'_, R
                     ("A2", "Convert images to 100x100 PNGs only"),
                     ("A3", "Crypto-coin pack rebuild    (coin bot)"),
                 ][..],
-                "222",
+                "1;38;5;222",
+                "38;5;154",
             ),
             (
                 "Collection (multi-format, duplicate-proof)",
@@ -166,7 +192,8 @@ impl<R: BufRead, W: Write, F: FnMut(&Request) -> Result<i32, String>> Menu<'_, R
                         "Reorder a live pack to match the panel (report, then apply)",
                     ),
                 ][..],
-                "123",
+                "1;38;5;123",
+                "38;5;87",
             ),
             (
                 "Bot",
@@ -174,7 +201,8 @@ impl<R: BufRead, W: Write, F: FnMut(&Request) -> Result<i32, String>> Menu<'_, R
                     "C1",
                     "Run the Numera Emoji Mapper bot (premium-emoji ID extractor)",
                 )][..],
-                "219",
+                "1;38;5;219",
+                "38;5;209",
             ),
             (
                 "Maintenance",
@@ -184,18 +212,28 @@ impl<R: BufRead, W: Write, F: FnMut(&Request) -> Result<i32, String>> Menu<'_, R
                     ("D3", "Check / refresh the pack roster (packs/)"),
                     ("D4", "Check / sync the pack archive"),
                 ][..],
-                "150",
+                "1;38;5;150",
+                "38;5;120",
             ),
         ] {
             self.line("")?;
-            if self.color {
-                self.line(&format!("\x1b[38;5;{color}m{title}\x1b[0m"))?;
-            } else {
-                self.line(title)?;
-            }
+            let header = self.paint(title_color, title);
+            self.line(&header)?;
             for (key, label) in entries {
-                self.line(&format!("  {key} {label}"))?;
+                if self.color {
+                    let k = self.paint(key_color, &format!("{key})"));
+                    let t = self.paint("38;5;252", label);
+                    self.line(&format!("  {k} {t}"))?;
+                } else {
+                    self.line(&format!("  {key} {label}"))?;
+                }
             }
+        }
+        if self.color {
+            self.line("")?;
+            let k = self.paint("38;5;32", "0)");
+            let t = self.paint("38;5;245", "Quit");
+            self.line(&format!("  {k} {t}"))?;
         }
         Ok(())
     }
@@ -224,7 +262,7 @@ where
         color,
         execution_failed: false,
     };
-    menu.title("Numera Emoji Mapper")?;
+    menu.banner("Numera Emoji Mapper")?;
     loop {
         menu.show()?;
         let choice = match menu.ask("Select", false)? {
@@ -241,11 +279,13 @@ where
             if error == "NAV_QUIT" {
                 break;
             }
-            menu.line(&format!(
-                "[X] Action failed: {}",
-                logging::redact(&error, &[])
-            ))?;
+            let msg = menu.paint(
+                "38;5;203",
+                &format!("[X] Action failed: {}", logging::redact(&error, &[])),
+            );
+            menu.line(&msg)?;
         }
     }
-    menu.line("[*] Bye.")
+    let bye = menu.paint("38;5;123", "[*] Bye.");
+    menu.line(&bye)
 }

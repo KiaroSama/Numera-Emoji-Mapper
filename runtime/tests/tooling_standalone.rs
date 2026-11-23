@@ -606,6 +606,36 @@ fn invalid_utf8_oversized_input_and_executor_errors_are_not_silent_success() {
 }
 
 #[test]
+fn colored_menu_paints_headers_keys_and_prompt_while_plain_omits_ansi() {
+    let root = Root::new("menu color output");
+    let mut colored = Vec::new();
+    tooling_menu::run(
+        &root.0,
+        &mut Cursor::new(b"0\n"),
+        &mut colored,
+        true,
+        |_| panic!("quit must not execute"),
+    )
+    .unwrap();
+    let colored = String::from_utf8(colored).unwrap();
+    assert!(colored.contains("\x1b[1;38;2;255;50;115mNumera Emoji Mapper\x1b[0m"));
+    assert!(colored.contains("\x1b[38;5;154mA1)\x1b[0m"));
+    assert!(colored.contains("\x1b[38;5;87mB0)\x1b[0m"));
+    assert!(colored.contains("\x1b[38;5;209mC1)\x1b[0m"));
+    assert!(colored.contains("\x1b[38;5;120mD1)\x1b[0m"));
+    assert!(colored.contains("\x1b[38;5;117mSelect\x1b[0m"));
+
+    let mut plain = Vec::new();
+    tooling_menu::run(&root.0, &mut Cursor::new(b"0\n"), &mut plain, false, |_| {
+        panic!("quit must not execute")
+    })
+    .unwrap();
+    let plain = String::from_utf8(plain).unwrap();
+    assert!(!plain.contains('\x1b'));
+    assert!(plain.contains("  A1 Build a general emoji pack"));
+}
+
+#[test]
 fn doctor_reports_only_unset_valid_unique_template_keys() {
     let keys = tooling_doctor::unset_keys(
         "# OMIT=\n SET =ignored\nMISSING=\nMISSING=again\nnot a key=\n=empty\nNO_EQUALS\nALSO_MISSING=\n",
