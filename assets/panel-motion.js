@@ -95,8 +95,12 @@ function forgetNode(n){
 
 let hovered = null, focused = null, focusLast = false, previewVideo = null;
 function previewNode(){
-  if (!(ANIM_HOVER || RM) || !mayAnimate(false, true)) return null;
-  const selector = ANIM_HOVER ? '.card' : '.fmt-video .thumb';
+  if (!mayAnimate(false, true)) return null;
+  let selector = null;
+  if (ANIM_HOVER) selector = '.card';
+  else if (RM) {
+    selector = '.fmt-video .thumb';
+  } else return null;
   const from = target => grid.contains(target) && target.closest(selector);
   const card = focusLast ? from(focused) || from(hovered) : from(hovered) || from(focused);
   const n = card && card.querySelector('img[data-anim],video[data-play]');
