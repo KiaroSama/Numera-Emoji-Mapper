@@ -16,6 +16,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  acceptance:
+    name: Full CI acceptance before signing
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    uses: ./.github/workflows/ci.yml
+    with:
+      release_acceptance: true
+
+  secret-acceptance:
+    name: Secret-scan acceptance before signing
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    uses: ./.github/workflows/gitleaks.yml
+    with:
+      release_acceptance: true
+
   package:
     name: Standalone package ${{ matrix.platform }}
     timeout-minutes: 45
@@ -122,7 +136,7 @@ jobs:
   signing:
     name: Sign standalone package ${{ matrix.platform }}
     if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    needs: package
+    needs: [package, acceptance, secret-acceptance]
     environment: numera-signing
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20

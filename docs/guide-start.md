@@ -57,7 +57,7 @@ Copy-Item .env.example .env       # then edit tokens, owner and data paths
 ```
 
 On Linux use `./numera-emoji package-verify`, `./numera-emoji doctor` and
-`./numera-emoji menu`. Supported packages are Linux x64 and Windows x64. A source checkout without `package.json` can run the native doctor;
+`./numera-emoji menu`. Supported packages are Linux and Windows on x64 and arm64. A source checkout without `package.json` can run the native doctor;
 package verification requires a generated standalone package.
 
 An explicit offline copy is available with

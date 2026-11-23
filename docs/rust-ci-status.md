@@ -25,12 +25,63 @@ four 64-bit targets (`linux-x64`, `linux-arm64`, `windows-x64`, `windows-arm64`)
 It builds the native executables, verifies embedded logos (`verify-binary`),
 exercises extracted offline installation, and uploads ZIP/checksum pairs. On
 `main` pushes and `v*` tags, the `signing` job runs inside the protected
-`numera-signing` GitHub environment to apply Windows Authenticode signatures
+`numera-signing` GitHub environment only after the package matrix, the complete
+reusable CI workflow, and the complete reusable Gitleaks workflow succeed for
+the same triggering revision. A failure, cancellation or missing acceptance
+job prevents signing and, transitively, publication. The release Gitleaks
+invocation explicitly scans tag pushes instead of inheriting the standalone
+workflow's non-default-branch push skip. The signing job applies Windows Authenticode signatures
 with RFC 3161 timestamps, sign every archive with the pinned RSA-3072 publisher
 key (`docs/SIGNING.md`), and verify tamper rejection. Only a version tag runs
 the `publish` job to sign `SHA256SUMS`, attest build provenance via
 `actions/attest-build-provenance@v4`, and attach the verified release assets.
 The manual Rust checkpoint is diagnostic, not a replacement for CI.
+
+## Manual checkpoint scopes
+
+The **Rust checkpoint** workflow accepts a `validation_scope` choice when
+dispatched against a branch or tag. Its default, **`full`**, retains the existing
+four-platform release build, formatting, lint, and unfiltered isolated Rust
+test commands. Four focused choices provide earlier Linux x64 evidence:
+
+| Scope | Executed coverage |
+| --- | --- |
+| `mutation-regressions` | The complete `supplemental_telegram_mutation`, `supplemental_plan_remove`, `supplemental_coin_recovery`, `supplemental_coin_walk`, and `supplemental_sync_order` Cargo test targets. |
+| `panel-browser` | All 156 Playwright browser, performance, and source-contract cases, using a freshly built Rust server, locked npm dependencies, Chromium, actual discovery, and the original-case inventory check. |
+| `announcement-regressions` | The complete `supplemental_announce_ack` Cargo test target. |
+| `ci-regressions` | The complete `supplemental_ci` Cargo test target, including release dependency and condition-policy regressions. |
+
+Focused runs build all standalone executables with Rust 1.100.0 in release
+mode, with LTO disabled and 16 codegen units to shorten diagnostic compilation.
+The runtime choices retain `.cargo/runtime-tests.toml`, the native isolation
+runner, private-network setup, and `--no-fail-fast`; they do not disable guards
+or substitute a listing for execution. A selected branch must contain its
+requested supplemental targets; missing targets fail visibly.
+
+Every focused run verifies and records the checked-out source SHA and selected
+scope before building, and uploads diagnostics even after failure. Concurrency
+is separate for each branch and scope, so a focused run cannot cancel the full
+checkpoint or another focused scope. These Linux results supplement the full
+exact-head CI and release gates; they do not replace any platform, package,
+browser, Worker, or signing requirement, and their faster binaries are not
+distribution artifacts.
+
+## Acceptance and distribution builds
+
+The reusable acceptance calls deliberately have separate concurrency groups
+from ordinary push/PR checks. Neither invocation can cancel the other. Ordinary
+checks remain visible on every latest pushed commit; signing cannot rely on a
+green result from an earlier commit or a separately triggered manual run.
+Signed main/tag builds repeat the acceptance suites inside the release workflow
+so GitHub enforces their dependency before granting access to the signing
+environment. PR and feature-branch package builds keep the existing lightweight
+package-only path and still run the ordinary CI and Gitleaks workflows.
+
+The release-policy regression requires the reviewed single-line main/tag and
+publication conditions. It rejects status-function overrides and multiline
+continuations that suppress GitHub's implicit success dependency check, as well
+as `continue-on-error`. Deliberate condition changes require updating that
+reviewed policy alongside the workflow.
 
 CI compiles the unfiltered Rust tests in `runtime/target/ci-tests` using release
 settings with LTO disabled and 16 codegen units. This avoids repeating link-time
