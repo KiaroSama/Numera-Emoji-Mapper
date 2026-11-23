@@ -44,6 +44,7 @@ export interface TgChat {
   id: number;
   type: "private" | "group" | "supergroup" | "channel";
   title?: string;
+  username?: string;
 }
 
 export interface TgMessageEntity {
