@@ -250,7 +250,9 @@ the grid is virtual, so a thousand cards cost what a hundred do. Click
 **Save** → writes the `included` flag to the catalog.
 
 The header's switches are remembered across reloads and undoable:
-**Animation** (off holds every card on its first frame), **All visible** (by
+**Animation** (off holds every card on its first frame), **Hover only**
+(keeps every card still until you hover or focus it, the lightest interactive
+mode while sorting), **All visible** (by
 default at most 24 cards animate, the ones nearest the centre of the screen; on,
 every visible card animates — heavier), and **Real video** (video cards are
 light animated WebP previews by default; on, they are real `<video>` players).

@@ -176,6 +176,18 @@ test(id('test_undo_restores_the_all_visible_switch'), async ({ panel }) => {
   expect(await page.getAttribute('#animAll', 'aria-pressed')).toBe('true');
   await page.keyboard.press('Control+z');
   expect(await page.getAttribute('#animAll', 'aria-pressed')).toBe('false');
+
+  const hover = page.locator('#animHover');
+  await hover.click();
+  await expect(hover).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Control+z');
+  await expect(hover).toHaveAttribute('aria-pressed', 'false');
+  await page.keyboard.press('Control+y');
+  await expect(hover).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate("localStorage.getItem('animHover')")).toBe('1');
+  await page.click('#resetAll');
+  await expect(hover).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#animAll')).toBeEnabled();
 });
 
 test(id('test_a_scroll_gesture_reports_its_cost_at_full_zoom'), async ({ panel }) => {

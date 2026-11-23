@@ -151,7 +151,10 @@ failed copy is logged and those previews render on demand), so a sandbox does
 not spend minutes re-rendering what the real catalog already has.
 
 Animated and video cards play on their own while on screen, at most 24 of them
-at once — the ones nearest the centre; **All visible** lifts that cap. Under
+at once — the ones nearest the centre; **Hover only** keeps every idle card
+still and animates only the card you hover or focus, and **All visible** lifts
+the 24-card cap. Scrolling, dragging, or switching focus to another window
+pauses animations automatically. Under
 `prefers-reduced-motion` nothing autoplays and hover plays a real video. The header's
 **Animation: On/Off** stops everything, and **Real video** swaps the light
 video previews for `<video>` players; all three are remembered in

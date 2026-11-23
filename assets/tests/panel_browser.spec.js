@@ -232,6 +232,45 @@ test(id('F05AFreezeIsNeverUndone', 'test_F05_what_you_can_see_still_animates'), 
   const page = await panel.open(synth(300, { fmt: 'animated' }));
   await page.waitForFunction('__animating() > 0', null, { timeout: 10_000 });
   expect(panel.errors).toEqual([]);
+
+  const card = page.locator('#grid .card').first();
+  const thumb = card.locator('.thumb');
+  const playing = () => page.evaluate('__animating()');
+  await test.step('Drag and window blur pause animation until they end', async () => {
+    const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
+    await card.dispatchEvent('dragstart', { dataTransfer });
+    expect(await playing()).toBe(0);
+    await page.evaluate('allocate()');
+    expect(await playing()).toBe(0);
+    await card.dispatchEvent('dragend', { dataTransfer });
+    await dataTransfer.dispose();
+    await page.waitForFunction('__animating() > 0');
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    expect(await playing()).toBe(0);
+    await page.evaluate('allocate()');
+    expect(await playing()).toBe(0);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await page.waitForFunction('__animating() > 0');
+  });
+
+  await test.step('Hover only previews one card and obeys the master switch', async () => {
+    await page.click('#animHover');
+    await expect(page.locator('#animAll')).toBeDisabled();
+    expect(await playing()).toBe(0);
+    await thumb.hover();
+    expect(await playing()).toBe(1);
+    expect(await thumb.locator('img').evaluate(img => img.getAttribute('src') === img.dataset.anim)).toBe(true);
+    await page.mouse.move(1, 1);
+    expect(await playing()).toBe(0);
+    await expect(thumb).toHaveAttribute('tabindex', '0');
+    await thumb.focus();
+    expect(await playing()).toBe(1);
+    await page.locator('#animHover').focus();
+    expect(await playing()).toBe(0);
+    await page.click('#anim');
+    await thumb.hover();
+    expect(await playing()).toBe(0);
+  });
 });
 
 test(id('F05AFreezeIsNeverUndone', 'test_F05_a_hidden_page_stays_frozen_when_new_cards_arrive'), async ({ panel }) => {

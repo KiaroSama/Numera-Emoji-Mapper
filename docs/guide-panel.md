@@ -59,7 +59,7 @@ Front-end:
 - All selected by default. Click toggles; **Shift+click** toggles a range.
   Header buttons: Undo / Redo / Reset all / Import draft / ↑ Top / ↓ Bottom /
   zoom / Select all / Deselect all / Invert / Backdrop / Animation /
-  All visible / Real video / Selection mode / → Hold / Save selection.
+  Hover only / All visible / Real video / Selection mode / → Hold / Save selection.
   Select all / Deselect all / Invert change inclusion in one pass over the list
   (`setIncludedMany`), and holding a picked group computes every origin in one
   pass (`originsFor`), instead of recomputing the pack runs per item (for
@@ -195,16 +195,17 @@ Front-end:
   under a drag.
 - **One `IntersectionObserver` (no margin) reports what is on screen, and
   `allocate()` decides what moves** (`assets/panel-motion.js`). At most
-  `ANIM_BUDGET` = 24 cards animate, the ones nearest the centre of the screen
-  below the sticky header; **All visible** lifts the cap. At low zoom the old
-  page decoded 128 animations per frame the moment Animation was switched on.
+  `ANIM_BUDGET` = 24 cards animate by default, the ones nearest the centre of
+  the screen below the sticky header; **All visible** lifts the cap, while
+  **Hover only** freezes every idle card and animates only the single card
+  under the pointer or keyboard focus (still obeying **Animation: Off**).
   The observer swaps an animated card's `src` between the still (`?still=1`)
-  and the animated WebP, and plays/pauses a real `<video>`. A grid of frozen
-  stills cannot be curated, which is why hover-only was rejected. A scroll
-  freezes only the cards that were playing and thaws them once it settles
-  (180 ms). While the page scrolls or a card is dragged, `body.moving` pauses
-  the pick ring's animation too. The checkerboard backdrop is drawn with one
-  `repeating-conic-gradient`.
+  and the animated WebP, and plays/pauses a real `<video>`. Scrolling,
+  dragging a card, or blurring the browser window pauses active animations
+  until movement settles or focus returns. Cards use CSS `contain: layout style
+  paint` instead of per-image `will-change` promotion, and `body.moving` pauses
+  the pick ring while scrolling or dragging. The checkerboard backdrop is drawn
+  with one `repeating-conic-gradient`.
 - `prefers-reduced-motion` is respected: nothing plays by itself, and hover
   becomes the only way to play a video, which is what those handlers are for.
 

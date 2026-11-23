@@ -11,23 +11,7 @@ function setAll(fn){ remember();
   // relayout() too, not just the counter: unticking moves the pack splits.
   relayout(); updateCount(); markSelDirty(); }
 
-// Reduced motion is the one case where nothing plays by itself; hover is then
-// the only way to see a video move at all, so the old handlers survive for it.
-if (RM) {
-  grid.addEventListener('mouseover',e=>{
-    const box = e.target.closest('.thumb'); if(!box || box.contains(/** @type {Node} */ (e.relatedTarget))) return;
-    const v = box.querySelector('video'); if(v) setPlaying(v, true);
-    // A video card is an animated preview image unless Real video is on.
-    const img = !v && box.closest('.fmt-video') && box.querySelector('img[data-anim]');
-    if(img && mayAnimate(false, true)) showMotion(img);
-  });
-  grid.addEventListener('mouseout',e=>{
-    const box = e.target.closest('.thumb'); if(!box || box.contains(/** @type {Node} */ (e.relatedTarget))) return;
-    const v = box.querySelector('video'); if(v){ setPlaying(v, false); try{v.currentTime=0;}catch(_){} }
-    const img = !v && box.closest('.fmt-video') && box.querySelector('img[data-anim]');
-    if(img) showStill(img);
-  });
-}
+// Reduced motion and Hover only previews share the gate in panel-motion.js.
 
 // --- Selection mode ------------------------------------------------------
 // Arranging a 200-card pack one emoji at a time is the slow part, so a run can

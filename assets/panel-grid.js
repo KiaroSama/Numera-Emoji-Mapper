@@ -86,6 +86,7 @@ function previewSources(img,key){
 
 function makeThumb(it){
   const box = el('div','thumb');
+  if(ANIM_HOVER && (it.fmt === 'animated' || it.fmt === 'video')) box.tabIndex = 0;
   const src = '/img/' + encodeURIComponent(it.key);
   if(it.fmt === 'video' && !VIDEO_REAL){
     // By default a video emoji is an animated preview image, decoded off the
@@ -99,10 +100,8 @@ function makeThumb(it){
   } else if(it.fmt === 'video'){
     const v = el('video');
     v.muted = true; v.loop = true; v.playsInline = true;
-    // Plays on its own, like the animated cards. Hover-only was rejected: a
-    // grid of stills is useless for curating. Bounded the same way instead --
-    // the viewport observer starts and pauses playback, and only a mounted
-    // card even has a player, so what costs anything is what you can see.
+    // Mount without a source so off-screen cards do not create players.
+    // The motion gate decides when this card may play.
     v.preload = 'metadata';
     v.dataset.play = '1';
     // No src yet: see videoIO. The URL waits on the element until the card is

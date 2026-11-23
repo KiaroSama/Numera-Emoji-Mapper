@@ -17,12 +17,14 @@ const pendingDetach = new Set();
 function releasePendingDetach(){
   for (const v of pendingDetach) {
     const r = v.getBoundingClientRect();
-    if (!v.isConnected || r.bottom <= 0 || r.top >= innerHeight) attachVideo(v, false);
+    if (!v.isConnected || r.bottom <= 0 || r.top >= innerHeight || document.hidden || !ANIM_ON ||
+        (ANIM_HOVER && v !== previewVideo)) attachVideo(v, false);
   }
   pendingDetach.clear();
 }
 
 function attachVideo(v, on){
+  if (on && (dragging || windowBlurred || movingTimer !== null || (ANIM_HOVER && v !== previewVideo))) return;
   on=on && ANIM_ON && !document.hidden;
   if (scrollThaw !== null) { if (!on && v.getAttribute('src')) pendingDetach.add(v); return; }
   try {
@@ -43,12 +45,12 @@ function attachVideo(v, on){
  *  observer knew nothing about a hidden tab or a scroll in progress, and those
  *  are the two moments the freeze exists for.
  *
- *  `hover` is the reduced-motion exception. Nothing plays by itself there, so
- *  hover is the only way to see a video move at all -- but it is still no way
- *  round the switch, a hidden tab or a scroll. */
+ *  Hover only and reduced motion allow interaction without starting idle cards. */
+let windowBlurred = false;
 function mayAnimate(inView, hover){
-  if(!ANIM_ON || document.hidden || scrollThaw !== null) return false;
-  return hover ? true : (inView && !RM);
+  if(!ANIM_ON || document.hidden || windowBlurred || dragging ||
+     movingTimer !== null || scrollThaw !== null) return false;
+  return hover ? true : (inView && !RM && !ANIM_HOVER);
 }
 
 // Swapping an <img> src is cheap -- both URLs are immutable-cached, so this
@@ -58,7 +60,11 @@ const animIO = window.IntersectionObserver ? new IntersectionObserver(es => {
   for (const e of es) {
     const t = e.target;
     const live = mayAnimate(t.isConnected && e.isIntersecting && e.boundingClientRect.bottom>headerH);
-    if (t.dataset.play) { setPlaying(t, live); continue; }
+    if (t.dataset.play) {
+      if (ANIM_HOVER || RM) scheduleAllocate();
+      else setPlaying(t, live);
+      continue;
+    }
     // Images only report what is on screen; allocate() decides which of them
     // may move, so a burst of callbacks costs one decision per frame.
     if (t.isConnected && e.isIntersecting && e.boundingClientRect.bottom > headerH) inView.add(t);
@@ -75,20 +81,61 @@ const animIO = window.IntersectionObserver ? new IntersectionObserver(es => {
 // lifts the cap for whoever wants the old behaviour.
 const ANIM_BUDGET = 24;
 let ANIM_ALL = prefs.get('animAll', '0') === '1';
+let ANIM_HOVER = prefs.get('animHover', '0') === '1';
 const inView = new Set();    // animated <img> intersecting the viewport
 const playing = new Set();   // <img> currently showing their animated source
-function showStill(n){ n.style.willChange = ''; playing.delete(n);
+function showStill(n){ playing.delete(n);
   if (n.getAttribute('src') !== n.dataset.still) n.src = n.dataset.still; }
-function showMotion(n){ n.style.willChange = 'transform'; playing.add(n);
+function showMotion(n){ playing.add(n);
   if (n.getAttribute('src') !== n.dataset.anim) n.src = n.dataset.anim; }
-function forgetNode(n){ inView.delete(n); playing.delete(n); }
+function forgetNode(n){
+  inView.delete(n); playing.delete(n);
+  if (n === previewVideo) previewVideo = null;
+}
+
+let hovered = null, focused = null, focusLast = false, previewVideo = null;
+function previewNode(){
+  if (!(ANIM_HOVER || RM) || !mayAnimate(false, true)) return null;
+  const selector = ANIM_HOVER ? '.card' : '.fmt-video .thumb';
+  const from = target => grid.contains(target) && target.closest(selector);
+  const card = focusLast ? from(focused) || from(hovered) : from(hovered) || from(focused);
+  const n = card && card.querySelector('img[data-anim],video[data-play]');
+  if (!n) return null;
+  const r = n.getBoundingClientRect();
+  return r.bottom > headerH && r.top < innerHeight ? n : null;
+}
+function previewVideoOnly(v){
+  if (v !== previewVideo && previewVideo) {
+    setPlaying(previewVideo, false);
+    if (ANIM_HOVER) attachVideo(previewVideo, false);
+    else try { previewVideo.currentTime = 0; } catch(_){}
+  }
+  previewVideo = v;
+  if (v?.paused) setPlaying(v, true);
+}
+for (const [enter, leave, focus] of /** @type {const} */ ([['mouseover', 'mouseout', false], ['focusin', 'focusout', true]])) {
+  for (const type of [enter, leave]) grid.addEventListener(type, e => {
+    const target = type === enter ? e.target : e.relatedTarget;
+    const next = target instanceof Element && grid.contains(target) ? target : null;
+    const previous = focus ? focused : hovered;
+    if (focus) focused = next; else hovered = next;
+    if (!(ANIM_HOVER || RM)) return;
+    const selector = ANIM_HOVER ? '.card' : '.fmt-video .thumb';
+    if (previous?.closest(selector) === next?.closest(selector)) return;
+    if (next?.closest(selector)) focusLast = focus;
+    allocate();
+  });
+}
 
 let allocRaf = null;
 function scheduleAllocate(){ if (allocRaf === null) allocRaf = requestAnimationFrame(allocate); }
 function allocate(){
+  if (allocRaf !== null) cancelAnimationFrame(allocRaf);
   allocRaf = null;
   let live = [];
-  if (mayAnimate(true)) {
+  const preview = previewNode();
+  if (preview instanceof HTMLImageElement) live = [preview];
+  else if (mayAnimate(true)) {
     // Read every rectangle first, then write: one layout, not one per card.
     // The rectangle is re-read here rather than trusted from the observer: a
     // card that slid under the sticky header is still "intersecting".
@@ -106,6 +153,9 @@ function allocate(){
   }
   const keep = new Set(live);
   for (const n of [...playing]) if (!keep.has(n)) showStill(n);
+  if (!dragging && movingTimer === null && scrollThaw === null) {
+    previewVideoOnly(preview instanceof HTMLVideoElement ? preview : null);
+  }
   for (const n of live) if (!playing.has(n)) showMotion(n);
 }
 
@@ -129,6 +179,9 @@ function freezeAll(){
   for (const img of [...playing]) showStill(img);
 }
 
+window.addEventListener('blur', () => { windowBlurred = true; freezeAll(); });
+window.addEventListener('focus', () => { windowBlurred = false; if (!document.hidden) applyAnim(); });
+
 // Switching to another tab or window used to change nothing: every visible
 // animation kept decoding for a page nobody was looking at. The browser
 // throttles rAF for a hidden tab but not image animation, so this has to be
@@ -148,11 +201,22 @@ let movingTimer = null, dragging = false;
 function markMoving(){
   document.body.classList.add('moving');
   clearTimeout(movingTimer);
-  movingTimer = setTimeout(()=>{ if(!dragging) document.body.classList.remove('moving'); }, 180);
+  movingTimer = setTimeout(()=>{
+    movingTimer = null;
+    if (!dragging) {
+      document.body.classList.remove('moving');
+      if (scrollThaw === null && ANIM_ON) applyAnim();
+    }
+  }, 180);
 }
-document.addEventListener('dragstart', ()=>{ dragging = true; document.body.classList.add('moving'); }, true);
+document.addEventListener('dragstart', e => {
+  if (e.defaultPrevented) return;
+  dragging = true;
+  document.body.classList.add('moving');
+  freezeAll();
+});
 for (const type of ['dragend', 'drop']) {
-  document.addEventListener(type, ()=>{ dragging = false; markMoving(); }, true);
+  document.addEventListener(type, ()=>{ if (dragging) { dragging = false; markMoving(); } }, true);
 }
 
 addEventListener('scroll', ()=>{
@@ -179,11 +243,13 @@ function applyAnim(){
   // hidden cannot reach a different answer from the callback beside it.
   const may = mayAnimate(true);
   grid.querySelectorAll('video[data-play]').forEach(n => {
-    if (!may) { setPlaying(n,false); if(!ANIM_ON||document.hidden) attachVideo(n,false); }
-    else if (animIO) { animIO.unobserve(n); animIO.observe(n); }  // re-evaluate
+    if (!may) {
+      setPlaying(n,false);
+      if (!ANIM_ON || document.hidden || (ANIM_HOVER && n !== previewVideo)) attachVideo(n,false);
+    } else if (animIO) { animIO.unobserve(n); animIO.observe(n); }  // re-evaluate
     else setPlaying(n, true);   // no observer: play what is mounted
   });
-  if (!may) { for (const n of [...playing]) showStill(n); }
+  if (!may) allocate();
   else if (animIO) scheduleAllocate();
   else grid.querySelectorAll('img[data-anim]').forEach(showMotion);  // no observer: all
 }
@@ -200,6 +266,24 @@ function setAnimAll(on){
 }
 document.getElementById('animAll').onclick = () => { remember(); setAnimAll(!ANIM_ALL); };
 paintAnimAll();
+
+function paintAnimHover(){
+  document.getElementById('animHover').setAttribute('aria-pressed', String(ANIM_HOVER));
+  document.getElementById('animHoverLabel').textContent = 'Hover only: ' + (ANIM_HOVER ? 'On' : 'Off');
+  /** @type {HTMLButtonElement} */ (document.getElementById('animAll')).disabled = ANIM_HOVER;
+}
+function setAnimHover(on){
+  ANIM_HOVER = !!on;
+  prefs.set('animHover', ANIM_HOVER ? '1' : '0');
+  paintAnimHover();
+  for (const n of grid.querySelectorAll('img[data-anim],video[data-play]')) {
+    const thumb = n.closest('.thumb');
+    if (ANIM_HOVER) thumb.setAttribute('tabindex', '0'); else thumb.removeAttribute('tabindex');
+  }
+  applyAnim();
+}
+document.getElementById('animHover').onclick = () => { remember(); setAnimHover(!ANIM_HOVER); };
+paintAnimHover();
 
 // "Real video": the original files in <video> players instead of the light
 // animated previews. Changing it rebuilds the mounted video cards, because the

@@ -17,7 +17,7 @@ function exportDraft(){
 function validDraftSnapshot(snap){
   const record=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
   const index=value=>Number.isSafeInteger(value)&&value>=0;
-  const pack=value=>value===null||index(value);
+  const pack=value=>value===null||(index(value)&&value>0);
   const originPack=value=>pack(value)||(typeof value==='string'&&
     /^new:(0|[1-9][0-9]*)$/.test(value)&&index(Number(value.slice(4))));
   const keys=value=>Array.isArray(value)&&value.every(key=>typeof key==='string');
