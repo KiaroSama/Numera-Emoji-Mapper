@@ -1,4 +1,4 @@
-// Ported from native/tests/preview_demand.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
+// Ported from native/tests/preview_demand.rs at a39a049c02f8dcc90d18fe8771869f82dd655221.
 // Original source SHA256: 7c229f7f1213127b77fae88787ece760b84804263a79aab2d3e9f47dbee47720.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

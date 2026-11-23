@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "source_revision": "45a96f9de70da8429b83c047e0626b6ed6694b20",
+  "source_revision": "a39a049c02f8dcc90d18fe8771869f82dd655221",
   "collection": "Original unittest defaultTestLoader discovery with inherited methods and unchanged tests package guard;1516 uniqueIDs, no execution/importerrors/load_tests extras.",
   "cases": [
     {
@@ -11432,7 +11432,7 @@
         "file": "runtime/tests/baseline_video.rs",
         "target": "baseline_video",
         "function": "test_native_preview_codec::native_preview_codec::test_static_and_lottie_preview_bytes_match_source",
-        "body_sha256": "4293fd5734da34421be9032587b36809b98bdec2b49fe6c0b6281b8a92e0a7d1"
+        "body_sha256": "d724bd2ebd9d586ce2b8152897323c4d75122dc53c5cbe857dba4f7befb46911"
       }
     },
     {

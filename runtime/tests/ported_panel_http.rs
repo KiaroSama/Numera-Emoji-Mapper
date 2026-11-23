@@ -1,4 +1,4 @@
-// Ported from native/tests/panel_http.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
+// Ported from native/tests/panel_http.rs at a39a049c02f8dcc90d18fe8771869f82dd655221.
 // Original source SHA256: 83b21ebf326e5e88f2c165b4b5ed8550e7528696d0d55674fa1e66180a4539f9.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

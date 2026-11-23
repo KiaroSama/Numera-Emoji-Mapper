@@ -1,4 +1,4 @@
-// Ported behavioral subset of native/tests/reconcile_commit.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
+// Ported behavioral subset of native/tests/reconcile_commit.rs at a39a049c02f8dcc90d18fe8771869f82dd655221.
 // Original source SHA256: 3cbb18d90a3c653ae89b877b0e5b62f3a61ccfd907f7f25a856664cbea9e9bd9.
 // Excluded compatibility-only cases remain in the original suite and migration inventory.
 extern crate numera_runtime as _native;

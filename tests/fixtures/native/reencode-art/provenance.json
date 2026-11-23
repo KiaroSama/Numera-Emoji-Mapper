@@ -1,5 +1,5 @@
 {
-  "source_revision": "45a96f9de70da8429b83c047e0626b6ed6694b20",
+  "source_revision": "a39a049c02f8dcc90d18fe8771869f82dd655221",
   "source_file": "tests/test_media_reencode.py",
   "source_file_sha256": "fa25c5717d7048d1eb2863f26d58c504314f0e6b6d6f73a8fb00376831c1fb5a",
   "source_method": "SameImageSurvivesAReEncode._art",

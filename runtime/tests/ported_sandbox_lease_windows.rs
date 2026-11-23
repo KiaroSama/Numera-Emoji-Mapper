@@ -1,4 +1,4 @@
-// Ported from native/tests/sandbox_lease_windows.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
+// Ported from native/tests/sandbox_lease_windows.rs at a39a049c02f8dcc90d18fe8771869f82dd655221.
 // Original source SHA256: 8d109d5487a650b109e82165f5b41750b9fcccf0b09ab5d34d04e845ea2ff5db.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

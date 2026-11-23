@@ -1,4 +1,4 @@
-// Ported from native/tests/publication_recovery.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
+// Ported from native/tests/publication_recovery.rs at a39a049c02f8dcc90d18fe8771869f82dd655221.
 // Original source SHA256: 626610f1d9510cf30afed4fe071ba9a41455185e78b5043083dd2b07c25235d1.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

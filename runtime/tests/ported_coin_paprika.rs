@@ -1,4 +1,4 @@
-// Ported from native/tests/coin_paprika.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
+// Ported from native/tests/coin_paprika.rs at a39a049c02f8dcc90d18fe8771869f82dd655221.
 // Original source SHA256: edc9eeef3646faecf3a9022abf944c276d8ac0bb1ab25820cc77a6b484f38fd9.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;

@@ -64,7 +64,7 @@ pub fn noise(name: &str) -> Vec<u8> {
     assert_eq!(provenance["Pillow"], "12.3.0");
     assert_eq!(
         provenance["baseline_revision"],
-        "45a96f9de70da8429b83c047e0626b6ed6694b20"
+        "a39a049c02f8dcc90d18fe8771869f82dd655221"
     );
     let row = provenance["cases"]
         .as_array()

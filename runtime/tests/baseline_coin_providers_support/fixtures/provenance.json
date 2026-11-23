@@ -1,5 +1,5 @@
 {
-  "baseline_revision": "45a96f9de70da8429b83c047e0626b6ed6694b20",
+  "baseline_revision": "a39a049c02f8dcc90d18fe8771869f82dd655221",
   "source": "tests/_cli_fixtures.py",
   "source_sha256": "25fccc28b1662f1b37e1505d9c359b598e642b5254184afc4daf751b5ef390cd",
   "function": "_noise_png_bytes",

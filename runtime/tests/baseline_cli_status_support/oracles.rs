@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::path::Path;
-const REFERENCE: &str = "45a96f9de70da8429b83c047e0626b6ed6694b20";
+const REFERENCE: &str = "a39a049c02f8dcc90d18fe8771869f82dd655221";
 fn historical_sources() -> Result<&'static std::collections::BTreeMap<String, Vec<u8>>, String> {
     static SOURCES: std::sync::OnceLock<
         Result<std::collections::BTreeMap<String, Vec<u8>>, String>,

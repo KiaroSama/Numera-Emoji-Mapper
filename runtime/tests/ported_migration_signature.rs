@@ -1,4 +1,4 @@
-// Ported from native/tests/migration_signature.rs at 45a96f9de70da8429b83c047e0626b6ed6694b20.
+// Ported from native/tests/migration_signature.rs at a39a049c02f8dcc90d18fe8771869f82dd655221.
 // Original source SHA256: ebf3cf6f352f5ed08e24e89661d9c6b174b6107f3f25060bf4bcd6671598fefd.
 // Original test identities and behavioral assertions retained against the production crate.
 extern crate numera_runtime as _native;
