@@ -5,12 +5,13 @@ const HISTORY_MAX = 100;
 let past = [], future = [], restoring = false;
 let pastTopSig = null;   // JSON of past's last entry: compared, never re-serialised
 const holdOrigins = new Map();
+const holdRuns = new Map();
 let savedSnapshot = null, pendingSaveSnapshot = null;
 
 function snapshot(){
   return {order: ITEMS.map(x=>x.key), included: ITEMS.filter(x=>x.included).map(x=>x.key),
     packs: ITEMS.filter(x=>x.pack!=null).map(x=>[x.key,x.pack]),
-    picked: [...picked], selMode, lastPick, lastIdx, holds: [...holdOrigins],
+    picked: [...picked], selMode, lastPick, lastHeldPick, lastIdx, holds: [...holdOrigins], runs: [...holdRuns],
     zoom, anim: ANIM_ON, animAll: ANIM_ALL, videoReal: VIDEO_REAL, bg: BGS.find(x=>document.body.classList.contains('bg-'+x)) || 'checker'};
 }
 function remember(snap){
@@ -44,17 +45,22 @@ function applySnapshot(snap, persist=true){
     }
     holdOrigins.clear();
     for(const [k,v] of snap.holds || []) holdOrigins.set(k,v);
+    holdRuns.clear();
+    const held=new Set(ITEMS.filter(it=>!it.isLogo&&!it.included).map(it=>it.key));
+    for(const [key,run] of readHoldRuns(snap.runs))if(held.has(key))holdRuns.set(key,run);
     clearPicked();
     for(const k of snap.picked || []) markPicked(k,true);
-    selMode=!!snap.selMode; lastPick=snap.lastPick; lastIdx=snap.lastIdx;
+    selMode=!!snap.selMode; lastPick=snap.lastPick; lastHeldPick=snap.lastHeldPick ?? null; lastIdx=snap.lastIdx;
     document.body.classList.toggle('selmode',selMode);
     document.getElementById('selmode').setAttribute('aria-pressed',String(selMode));
     paintSelLabel();
     ANIM_ON=snap.anim; prefs.set('animOn',ANIM_ON?'1':'0');
     if('animAll' in snap) setAnimAll(snap.animAll);
     if('videoReal' in snap) setVideoReal(snap.videoReal);
+    // Zoom must read rows for the restored inclusion/order, not a now-held anchor.
+    relayout();
     setZoom(snap.zoom); applyBg(snap.bg);
-    relayout(); updateCount(); applyAnim(); markSelDirty();
+    updateCount(); applyAnim(); markSelDirty();
     if(persist && before !== ITEMS.filter(x=>!x.isLogo).map(x=>x.key).join('\0')) saveOrder();
     updateHistoryButtons();
   }finally{ restoring=false; }
@@ -118,29 +124,91 @@ const holdCards=document.getElementById('holdCards');
 const holdCount=document.getElementById('holdCount');
 let holdDragKeys=null;
 
-function assignedPacks(){
-  const starts=packStarts().starts, result=new Map();
+function assignedPacks(items=ITEMS){
+  const starts=packStartsFor(items).starts, result=new Map();
   let run=0;
-  for(let i=0;i<ITEMS.length;i++){
+  for(let i=0;i<items.length;i++){
     while(run+1<starts.length&&starts[run+1].index<=i)run++;
-    result.set(ITEMS[i].key,ITEMS[i].pack ?? starts[run]?.pack ?? 'new:'+run);
+    result.set(items[i].key,items[i].pack ?? starts[run]?.pack ?? 'new:'+run);
   }
   return result;
 }
+function countsByPack(items,assignments=assignedPacks(items)){
+  const counts=new Map();
+  for(const it of items){
+    if(!it.included||it.isLogo)continue;
+    const pack=assignments.get(it.key);
+    counts.set(pack,(counts.get(pack)||0)+1);
+  }
+  return counts;
+}
 
-function originFor(it){
-  const index=ITEMS.indexOf(it);
+// Run identity is separate from the public origin records: one pack can have
+// several runs, and an automatic run does not include the preceding global logo.
+function holdingRunGroups(items){
+  const starts=packStartsFor(items).starts;
+  const bounds=[0,...starts.map(run=>run.index).filter(index=>index>0),items.length];
+  const groups=[];let run=-1;
+  for(let i=0;i+1<bounds.length;i++){
+    const start=bounds[i],end=bounds[i+1];
+    if(start===end)continue;
+    while(run+1<starts.length&&starts[run+1].index<=start)run++;
+    groups.push({start,end,pack:starts[run]?.pack??'new:'+Math.max(0,run),
+      members:items.slice(start,end).filter(it=>it.included||it.isLogo)});
+  }
+  return groups;
+}
+function holdRunsFor(items){
+  const groups=holdingRunGroups(items),out=new Map();
+  const after=new Array(groups.length);let next=null;
+  for(let i=groups.length-1;i>=0;i--){
+    after[i]=next;next=groups[i].members[0]?.key??next;
+  }
+  let before=null;
+  for(let i=0;i<groups.length;i++){
+    const group=groups[i];let slot=0;
+    const refs={first:group.members[0]?.key??null,last:group.members.at(-1)?.key??null,
+      before,after:after[i]};
+    for(const it of items.slice(group.start,group.end)){
+      out.set(it.key,{...refs,slot,pack:group.pack,previous:group.members[slot-1]?.key??null,
+        next:group.members[slot+(it.included||it.isLogo?1:0)]?.key??null});
+      if(it.included||it.isLogo)slot++;
+    }
+    before=group.members.at(-1)?.key??before;
+  }
+  return out;
+}
+function readHoldRuns(raw){
+  const out=new Map();
+  if(!Array.isArray(raw))return out;
+  for(const entry of raw){
+    if(!Array.isArray(entry)||entry.length!==2||typeof entry[0]!=='string')continue;
+    const run=entry[1];
+    if(!run||typeof run!=='object'||!Number.isSafeInteger(run.slot)||run.slot<0)continue;
+    if(!['first','last','before','after'].every(key=>run[key]===null||typeof run[key]==='string'))continue;
+    const pack=run.pack;
+    const validPack=pack===null||(Number.isSafeInteger(pack)&&pack>=0)||
+      (typeof pack==='string'&&/^new:(0|[1-9][0-9]*)$/.test(pack)&&Number.isSafeInteger(Number(pack.slice(4))));
+    const placement=validPack&&['previous','next'].every(key=>run[key]===null||typeof run[key]==='string')
+      ?{pack,previous:run.previous,next:run.next}:{};
+    out.set(entry[0],{first:run.first,last:run.last,before:run.before,after:run.after,slot:run.slot,...placement});
+  }
+  return out;
+}
+
+function originFor(it,items=ITEMS){
+  const index=items.indexOf(it);
   let pack=it.pack ?? null;
   if(pack===null){
-    const starts=packStarts().starts;
+    const starts=packStartsFor(items).starts;
     const run=starts.filter(s=>s.index<=index).pop();
     pack=run ? (run.pack ?? 'new:'+starts.indexOf(run)) : 'new:0';
   }
-  const starts=packStarts().starts;
+  const starts=packStartsFor(items).starts;
   const run=starts.filter(s=>s.index<=index).pop();
   const start=run?run.index:0;
-  return {index,pack,slot:ITEMS.slice(start,index).filter(x=>x.included||x.isLogo).length,
-          anchor:ITEMS[start]?.key};
+  return {index,pack,slot:items.slice(start,index).filter(x=>x.included||x.isLogo).length,
+          anchor:items[start]?.key};
 }
 // Every item's origin as the ONE current state gives it (holdKeys: the picks
 // leave together, so none of them sees the others gone). One packStarts() for
@@ -172,6 +240,7 @@ function setIncludedMany(pairs){
   const on=new Map();
   for(const [it,v] of pairs) if(!it.isLogo && it.included!==v) on.set(it,v);
   if(!on.size) return;
+  const runs=holdRunsFor(ITEMS);
   const logo=ITEMS.find(x=>x.isLogo), capacity=PER_SET-(logo?1:0);
   let members=ITEMS.filter(x=>x.pack!=null&&x.included).length;
   const M={n:0,last:null,cur:undefined,slot:0}, C={n:0,last:null,inPack:0,slot:0};
@@ -192,7 +261,8 @@ function setIncludedMany(pairs){
       holdOrigins.set(it.key,{index:i,
         pack:it.pack ?? (r ? (r.pack ?? 'new:'+(s.n-1)) : 'new:0'),
         slot:r?(r.index===i?0:s.slot):before, anchor:ITEMS[r?r.index:0]?.key});
-    } else if(on.has(it)) holdOrigins.delete(it.key);
+      holdRuns.set(it.key,runs.get(it.key));
+    } else if(on.has(it)){holdOrigins.delete(it.key);holdRuns.delete(it.key);}
     if(on.has(it)){
       if(it.pack!=null) members+=next?1:-1;
       it.included=next; setCard(it);
@@ -202,10 +272,12 @@ function setIncludedMany(pairs){
   }
 }
 
-function setIncluded(it,on){
+function setIncluded(it,on,origin=null,run=null){
   if(it.isLogo || it.included===on) return;
-  if(!on) holdOrigins.set(it.key,originFor(it));
-  else holdOrigins.delete(it.key);
+  if(!on){
+    holdOrigins.set(it.key,origin||originFor(it));
+    holdRuns.set(it.key,run||holdRunsFor(ITEMS).get(it.key));
+  }else{holdOrigins.delete(it.key);holdRuns.delete(it.key);}
   it.included=on; setCard(it);
 }
 
@@ -315,6 +387,7 @@ holdCards.addEventListener('click',e=>{
   const card=e.target.closest('.hcard'); if(!card)return;
   const order=heldOrder(), i=order.indexOf(card.dataset.key);
   if(i<0)return;
+  remember();
   const anchor=order.indexOf(lastHeldPick);
   const on=!picked.has(order[i]);
   const [a,b]=e.shiftKey&&anchor>=0?[Math.min(anchor,i),Math.max(anchor,i)]:[i,i];
@@ -323,60 +396,144 @@ holdCards.addEventListener('click',e=>{
   paintSelLabel();
 });
 
-function canUnhold(keys,atDrop=false){
-  const counts=new Map(), assignments=assignedPacks();
-  for(const it of ITEMS){
-    if(!it.included && !it.isLogo)continue;
-    const pack=assignments.get(it.key);
-    counts.set(pack,(counts.get(pack)||0)+1);
+// Project the complete gesture without changing live items or their origins.
+// Inserting a stamp can switch automatic runs to membership, including cards
+// that were not held; validation and commit must use this same final placement.
+function projectUnhold(items,keys,origins,runs=new Map()){
+  const projected=items.map(it=>({...it}));
+  const byKey=new Map(projected.map(it=>[it.key,it]));
+  const originalByKey=new Map(items.map(it=>[it.key,it]));
+  const restoring=new Set(keys);
+  const fallback=holdRunsFor(items.map(it=>restoring.has(it.key)?{...it,included:true}:it));
+  const restoringItems=keys.map(key=>originalByKey.get(key))
+    .filter(it=>it&&!it.isLogo&&!it.included)
+    .map(it=>({it:byKey.get(it.key),origin:origins.get(it.key)||originFor(it,items),run:runs.get(it.key)}))
+    .sort((a,b)=>a.origin.index-b.origin.index);
+  for(const {it,origin,run} of restoringItems){
+    const inferred=fallback.get(it.key);
+    // Legacy drafts have no saved neighbour proof. Keep their original slot
+    // semantics instead of mistaking the current layout for captured history.
+    const refs=run||{first:inferred.first,last:inferred.last,before:inferred.before,
+      after:inferred.after,slot:origin.slot};
+    const pack=refs.pack===undefined?origin.pack:refs.pack;
+    const marker=projected.indexOf(it);
+    projected.splice(marker,1);
+    const indexOf=key=>key===it.key?-1:projected.findIndex(x=>x.key===key);
+    const sameRun=saved=>saved&&saved.pack===pack&&
+      ['first','last','before','after'].every(field=>saved[field]===refs[field]);
+    // Neighbours and placement pack were captured together, unlike the public
+    // sequential bulk origins. A held marker can itself have moved: follow its
+    // original links within this run until a live neighbour proves the place.
+    const anchor=side=>{
+      const seen=new Set([it.key]),reverse=side==='previous'?'next':'previous';
+      let from=it.key,key=refs[side];
+      while(typeof key==='string'&&!seen.has(key)){
+        seen.add(key);
+        const item=byKey.get(key);
+        if(!item)return -1;
+        if(item.included||item.isLogo)return item.pack==null||item.pack===pack?projected.indexOf(item):-1;
+        const saved=runs.get(key);
+        if(!sameRun(saved)||saved[reverse]!==from)return -1;
+        from=key;key=saved[side];
+      }
+      return -1;
+    };
+    const previous=anchor('previous'),next=anchor('next');
+    if((previous>=0||next>=0)&&(previous<0||next<0||previous<next)){
+      projected.splice(next>=0?next:previous+1,0,it);it.included=true;continue;
+    }
+    // An edit can reverse the original neighbours (for example moving the
+    // preceding card to the end). Keep the established current-slot fallback.
+    const groups=holdingRunGroups(projected);
+    const before=indexOf(refs.before),after=indexOf(refs.after);
+    let group=null;
+    for(const key of [refs.first,refs.last]){
+      const index=indexOf(key);
+      if(index<0||!projected[index].included)continue;
+      const candidate=groups.find(g=>g.start<=index&&index<g.end);
+      if(candidate?.pack===pack){group=candidate;break;}
+    }
+    // The saved extent remains meaningful when all its stamps are held and
+    // current runs merge or split. A surviving member is the fallback when a
+    // boundary disappeared; a moved held marker is never the primary anchor.
+    let lo=refs.before===null?0:before>=0?before+1:group?group.start:Math.min(marker,projected.length);
+    let hi=refs.after===null?projected.length:after>=0?after:group?group.end:lo;
+    const extent=(refs.before===null||before>=0)&&(refs.after===null||after>=0)&&lo<=hi;
+    if(previous<0&&next<0&&extent){
+      // With no live member, an unmoved held peer can still prove the gap.
+      // Require reciprocal original links and intact exterior fences; a held
+      // marker dragged outside its saved run is not placement evidence.
+      const peer=side=>{
+        const key=refs[side],index=indexOf(key),saved=runs.get(key);
+        const reverse=side==='previous'?'next':'previous';
+        return index>=lo&&index<hi&&!projected[index].included&&sameRun(saved)&&saved[reverse]===it.key?index:-1;
+      };
+      const left=peer('previous'),right=peer('next');
+      if((left>=0||right>=0)&&(left<0||right<0||left<right)){
+        projected.splice(right>=0?right:left+1,0,it);it.included=true;continue;
+      }
+    }
+    if(lo>hi){lo=group?group.start:Math.min(marker,projected.length);hi=group?group.end:lo;}
+    const members=projected.slice(lo,hi).filter(x=>(x.included||x.isLogo)&&
+      (x.pack==null||x.pack===pack));
+    const following=members[refs.slot],last=members.at(-1);
+    const at=following?projected.indexOf(following):last?projected.indexOf(last)+1:lo;
+    projected.splice(at,0,it);it.included=true;
   }
-  for(const key of keys){
-    const it=ITEMS.find(x=>x.key===key);
-    if(!it||it.isLogo||it.included)continue;
-    // At a DROP the destination is the run the card was dragged into, which is
-    // the whole point of the gesture. Reading `assignments` here instead asked
-    // whether the emoji's OWN pack had room -- so moving one out of a full pack
-    // into a roomy one was refused, and moving into a full one was allowed.
-    // The aimed pack answers it now, for the same reason the stamp uses it: at
-    // a boundary the resting place names the pack above, not the one aimed at.
-    // Only when NOTHING was aimed at does capacity fall back to the resting
-    // place -- the guard must keep asking, and `undefined` is tested rather
-    // than `??` because `null` is a real answer (a run with no number yet).
-    const destination=atDrop
-      ? (aimedPack!==undefined?aimedPack:runPackAt(ITEMS.indexOf(it),new Set(keys)))
-      : null;
-    const origin=atDrop?{pack:destination??assignments.get(key)}
-                       :holdOrigins.get(key)||{pack:assignments.get(key)};
-    const count=(counts.get(origin.pack)||0)+1;
-    if(count>PER_SET){
-      const label=typeof origin.pack==='number'?'Pack '+origin.pack:'That pack';
+  return projected;
+}
+
+function canUnhold(keys,atDrop=false,projected=null){
+  const moving=new Set(keys);
+  // Count the state acceptDrop will commit. Old stamps in the drag preview can
+  // temporarily assign an unstamped neighbour to the wrong run. A grid drag
+  // can also carry held picks without activating them; only a tray drop does.
+  const items=projected||(atDrop?ITEMS.map(it=>moving.has(it.key)&&!it.isLogo&&(it.included||holdDragKeys?.has(it.key))?{
+    ...it, pack:aimedPack===undefined?it.pack:aimedPack,
+    included:it.included||!!holdDragKeys?.has(it.key)
+  }:it):projectUnhold(ITEMS,keys,holdOrigins,holdRuns));
+  const counts=countsByPack(items);
+  const logos=items.filter(x=>x.isLogo);
+  const fits=(pack,count)=>{
+    // The global brand logo ships in every pack; a live logo reserves its own.
+    const logoSlot=logos.some(x=>x.pack==null||x.pack===pack)?1:0;
+    if(count+logoSlot>PER_SET){
+      const label=typeof pack==='number'?'Pack '+pack:'That pack';
       toast(atDrop
         ? `${label} is full (${PER_SET}/${PER_SET}). Hold one of its emoji first, then bring this one in.`
         : `${label} is full (${PER_SET}/${PER_SET}). Its original place is occupied; hold or move another emoji before Unhold.`);
       return false;
     }
-    counts.set(origin.pack,count);
+    return true;
+  };
+  let beforeCounts=countsByPack(ITEMS);
+  if(atDrop){
+    beforeCounts=new Map();
+    if(dragSnap){
+      const byKey=new Map(ITEMS.map(it=>[it.key,it]));
+      const packs=new Map(dragSnap.packs), included=new Set(dragSnap.included);
+      const before=dragSnap.order.map(key=>byKey.get(key)).filter(Boolean).map(it=>({
+        ...it, pack:packs.get(it.key), included:included.has(it.key)
+      }));
+      beforeCounts=countsByPack(before);
+    }
+  }
+  // Restoring or moving a boundary can change a neighbour's inferred pack on
+  // either side. Existing overflow may stay unchanged or shrink, never grow.
+  for(const [pack,count] of counts){
+    if(count>(beforeCounts.get(pack)||0)&&!fits(pack,count))return false;
   }
   return true;
 }
 function unholdKeys(keys){
   keys=keys.filter(k=>ITEMS.some(x=>x.key===k&&!x.isLogo&&!x.included));
-  if(!keys.length||!canUnhold(keys))return false;
+  if(!keys.length)return false;
+  const projected=projectUnhold(ITEMS,keys,holdOrigins,holdRuns);
+  if(!canUnhold(keys,false,projected))return false;
   remember();
-  const restoringItems=keys.map(k=>ITEMS.find(x=>x.key===k))
-    .map(it=>({it,origin:holdOrigins.get(it.key)||originFor(it)}))
-    .sort((a,b)=>a.origin.index-b.origin.index);
-  for(const {it,origin} of restoringItems){
-    ITEMS.splice(ITEMS.indexOf(it),1);
-    const assignments=assignedPacks();
-    const samePack=ITEMS.filter(x=>(x.included||x.isLogo)&&assignments.get(x.key)===origin.pack);
-    const next=samePack[origin.slot];
-    const previous=samePack[samePack.length-1];
-    const anchor=ITEMS.findIndex(x=>x.key===origin.anchor);
-    const at=next?ITEMS.indexOf(next):previous?ITEMS.indexOf(previous)+1
-      :anchor>=0?anchor+1:Math.min(origin.index,ITEMS.length);
-    ITEMS.splice(at,0,it);setIncluded(it,true);
-  }
+  // Preserve the original item objects captured by mounted card handlers.
+  applyOrder(projected.map(it=>it.key));
+  for(const key of keys)setIncluded(ITEMS.find(it=>it.key===key),true);
   relayout();updateCount();markSelDirty();saveOrder();return true;
 }
 document.getElementById('unholdAll').onclick=()=>unholdKeys(ITEMS.filter(x=>!x.included&&!x.isLogo).map(x=>x.key));
@@ -386,7 +543,8 @@ function holdKeys(keys,snap){
   if(!items.length)return;
   remember(snap);
   const origins=originsFor(items);
-  for(const it of items){setIncluded(it,false);holdOrigins.set(it.key,origins.get(it.key));}
+  const runs=holdRunsFor(ITEMS);
+  for(const it of items)setIncluded(it,false,origins.get(it.key),runs.get(it.key));
   clearPicked();relayout();updateCount();markSelDirty();
 }
 document.getElementById('toHold').onclick=()=>{
@@ -458,10 +616,11 @@ function runPackAt(index,ignore){
  *  tray is for: park one, then bring the replacement in. */
 function acceptDrop(){
   const keys=[...(holdDragKeys||carried)];
-  if(holdDragKeys&&!canUnhold(keys,true))return false;
+  if(!canUnhold(keys,true))return false;
   for(const k of keys){
     const it=ITEMS.find(x=>x.key===k);
-    if(!it||it.isLogo)continue;
+    // A held grid pick keeps its origin for Unhold; only a tray drop moves it.
+    if(!it||it.isLogo||(!it.included&&!holdDragKeys?.has(k)))continue;
     // A number is the destination; `null` is a run with no number yet, and the
     // emoji must join it by LOSING its own -- carrying an old number there is
     // what cut a false run inside a pack that has not been published. Nothing
@@ -477,7 +636,10 @@ function acceptDrop(){
 }
 holdCards.addEventListener('dragend',()=>{holdDragKeys=null;});
 
-for(const it of ITEMS)if(!it.included&&!it.isLogo)holdOrigins.set(it.key,originFor(it));
+const initialHoldRuns=holdRunsFor(ITEMS.map(it=>({...it,included:true})));
+for(const it of ITEMS)if(!it.included&&!it.isLogo){
+  holdOrigins.set(it.key,originFor(it));holdRuns.set(it.key,initialHoldRuns.get(it.key));
+}
 renderHolding();
 savedSnapshot=snapshot();
 

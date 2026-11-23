@@ -187,18 +187,22 @@ function makeCard(it){
 // following pack. That is why this is part of every layout and not just of a
 // reorder -- untick enough cards and a boundary really does move.
 function packStarts(){
-  const logo = ITEMS.find(x=>x.isLogo);
+  return packStartsFor(ITEMS);
+}
+// The same projection serves the live grid and a proposed drop before it commits.
+function packStartsFor(items){
+  const logo = items.find(x=>x.isLogo);
   const capacity = PER_SET - (logo ? 1 : 0);   // items that fit beside the logo
   // An emoji already live in a pack knows WHICH pack (--with-pack sets it), and
   // then membership decides the boundaries. Capacity arithmetic cannot: two
   // published packs of 95 and 96 are neither of them PER_SET, so counting to
   // capacity finds no seam at all -- which is exactly how two packs came to
   // look like one long list.
-  const byMembership = ITEMS.some(x => x.pack != null && x.included);
+  const byMembership = items.some(x => x.pack != null && x.included);
   const starts = [];                 // {index, pack}
   let inPack = 0, cur;
-  for(let i = 0; i < ITEMS.length; i++){
-    const it = ITEMS[i];
+  for(let i = 0; i < items.length; i++){
+    const it = items[i];
     // The logo IS emoji 0 of its pack, so it OPENS that pack's run. Excluding
     // it here put pack 5's marker one card below its own logo.
     if(byMembership){

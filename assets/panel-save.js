@@ -50,6 +50,14 @@ const PERMANENT = new Set([400, 409]);
 let orderStuck = false, selStuck = false;
 let refusedOrder = null, refusedSel = null;
 const orderSig = keys => keys.join('\0');
+const currentOrder = () => ITEMS.filter(x=>!x.isLogo).map(x=>x.key);
+let ackedOrder = orderSig(currentOrder());
+
+// Draft imports change the visible order without submitting it. Keep that
+// state protected even when neither queue has seen the imported arrangement.
+function orderDirty(){
+  return pendingOrder!==null || orderSig(currentOrder())!==ackedOrder;
+}
 
 // What the SERVER has confirmed, as a comparable signature. Distinct from
 // `pendingSel`, which is only ever "a Save that has not landed yet": edits made
@@ -92,7 +100,7 @@ function selDirty(){ return selectionSig(selectionBody()) !== ackedSel; }
 /** Show it on the control you would press to fix it. */
 function markSelDirty(){
   const b = document.getElementById('save');
-  if(b) b.classList.toggle('dirty', selDirty());
+  if(b) b.classList.toggle('dirty', selDirty() || orderDirty());
 }
 
 function setAlert(html){
@@ -212,12 +220,14 @@ async function flushOrder(order){
       : 'The panel refused the save (HTTP ' + r.status + ').', r.status, order);
   }
   orderFlight = 0; orderBackoff = 0; orderStuck = false;
+  ackedOrder = orderSig(order);
   logUI('save_succeeded',{revision:rev,count:order.length});
   // Only the acknowledged revision is saved. An arrangement made WHILE this was
   // in flight is still at risk and goes next, instead of being forgotten the
   // moment an older save came back ✓.
   if(rev !== orderRev){ kickOrder(0); return false; }
   pendingOrder = null;
+  markSelDirty();
   clearAlertIfClean();
   return true;
 }
@@ -253,11 +263,12 @@ function kickOrder(ms){
 }
 
 function saveOrder(){
-  pendingOrder = ITEMS.filter(x=>!x.isLogo).map(x=>x.key);
+  pendingOrder = currentOrder();
   orderRev++;                           // at risk from this moment on
   orderStuck = orderSig(pendingOrder)===refusedOrder;
   // The debounce uses the same eligibility gate as retry and heartbeat.
   if(!orderStuck){orderBackoff=0;kickOrder(400);}
+  markSelDirty();
 }
 
 // Poll for the server rather than waiting for the next drag to discover it is
@@ -293,7 +304,7 @@ addEventListener('beforeunload', e=>{
   // means "a Save is still trying"; it says nothing about edits made while one
   // was in flight, or about edits where Save was never pressed. Both are work
   // this tab would take with it.
-  if(selDirty()) blockUnload(e);
+  if(selDirty() || orderDirty()) blockUnload(e);
 });
 function blockUnload(e){ e.preventDefault(); e.returnValue = ''; }
 
@@ -327,6 +338,7 @@ async function flushSel(submitted){
   clearAlertIfClean();
   const scope = HIDDEN ? ' in the catalog' : '';
   toast(selDirty() ? 'Saved the submitted version; newer changes are unsaved.'
+    : orderDirty() ? 'Saved selection; the arrangement is still unsaved.'
     : `Saved ✓  ${j.included} included · ${j.excluded} excluded${scope}`);
   return true;
 }
@@ -373,4 +385,9 @@ function queueSelection(checkpoint){
   if(!selStuck){selBackoff=0;selNextAt=Date.now();}
   flushSel(pendingSel);
 }
-document.getElementById('save').onclick=()=>queueSelection(snapshot());
+document.getElementById('save').onclick=()=>{
+  // Preserve the import's review step, then replace any older queued order.
+  const latest=pendingOrder===null?ackedOrder:orderSig(pendingOrder);
+  if(orderSig(currentOrder())!==latest)saveOrder();
+  queueSelection(snapshot());
+};
