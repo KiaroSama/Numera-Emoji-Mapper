@@ -1,6 +1,7 @@
 //! Owned SQLite operations. Identity/media decisions are made before inserting a row.
 use rusqlite::{Connection, OptionalExtension, Row, params};
 use serde_json::{Value, json};
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;
 
@@ -181,6 +182,26 @@ impl Catalog {
         sql(stmt.query_map(params![fmt, fmt], item))?
             .map(|r| sql(r).and_then(|v| self.resolve_item(v)))
             .collect()
+    }
+    /// Usable publication identities recorded for one exact Telegram set.
+    pub(crate) fn publication_ids(&self, set_name: &str) -> Result<BTreeMap<String, String>> {
+        let mut statement = sql(self.db.prepare(
+            "SELECT content_key,custom_emoji_id FROM publications WHERE set_name=? AND custom_emoji_id IS NOT NULL AND custom_emoji_id<>''",
+        ))?;
+        let rows = sql(statement.query_map([set_name], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        }))?;
+        let mut identities = BTreeMap::new();
+        for row in rows {
+            let (key, id) = sql(row)?;
+            if identities
+                .insert(key, id.clone())
+                .is_some_and(|old| old != id)
+            {
+                return Err("conflicting publication identities for recorded set".into());
+            }
+        }
+        Ok(identities)
     }
     pub fn insert(&mut self, value: &Value, utc: &str) -> Result<bool> {
         let key = text(value, "content_key")?;

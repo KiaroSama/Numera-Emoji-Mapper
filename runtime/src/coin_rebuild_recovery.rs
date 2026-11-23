@@ -38,12 +38,15 @@ fn add_landed<I: RecoveryIo>(marker: &Value, io: &mut I) -> Result<bool, String>
             v.as_u64()
                 .ok_or("rebuild intent has invalid expected count")
         })?;
+    let before = usize::try_from(before).map_err(|_| "rebuild expected count is too large")?;
+    if stickers.len() < before {
+        return Err(format!(
+            "live set {name} is smaller than the recorded count; cannot tell whether the in-flight {key} landed"
+        ));
+    }
     let want = io.source_hash(key)?;
     let mut hits = 0;
-    for sticker in stickers
-        .iter()
-        .skip(usize::try_from(before).map_err(|_| "rebuild expected count is too large")?)
-    {
+    for sticker in stickers.iter().skip(before) {
         let got = io.live_hash(sticker).map_err(|error| {
             format!(
                 "sticker {} in {name} could not be read ({error})",

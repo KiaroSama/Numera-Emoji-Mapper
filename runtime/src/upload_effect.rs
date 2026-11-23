@@ -1,13 +1,30 @@
 //! Upload/readback effects shared by both builders without imposing catalog storage.
 use crate::{
     media_adapter::{MediaAdapter, MediaCodec},
-    telegram::{ApiError, SetState, Telegram, input_sticker, upload, usable_fuids},
+    telegram::{ApiError, SetState, Telegram, input_sticker, upload},
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 fn text<'a>(v: &'a Value, key: &str) -> Result<&'a str, String> {
     v[key].as_str().ok_or_else(|| format!("missing {key}"))
+}
+fn complete_identities(stickers: &[Value]) -> Option<BTreeSet<(String, String)>> {
+    let mut fuids = BTreeSet::new();
+    let mut cids = BTreeSet::new();
+    let mut identities = BTreeSet::new();
+    for sticker in stickers {
+        let identity = crate::reconcile::identity(sticker);
+        if identity.0.is_empty()
+            || identity.1.is_empty()
+            || !fuids.insert(identity.0.clone())
+            || !cids.insert(identity.1.clone())
+        {
+            return None;
+        }
+        identities.insert(identity);
+    }
+    Some(identities)
 }
 pub struct UploadEffect<'a, M = MediaAdapter> {
     pub tg: &'a Telegram,
@@ -79,7 +96,7 @@ impl<M: MediaCodec> UploadEffect<'_, M> {
         } else {
             self.live(name).map_err(ApiError::Ambiguous)?
         };
-        let identities = usable_fuids(&before);
+        let identities = complete_identities(&before);
         let mut data = BTreeMap::from([
             ("user_id".into(), user.to_string()),
             ("name".into(), name.into()),
@@ -108,13 +125,16 @@ impl<M: MediaCodec> UploadEffect<'_, M> {
             let Some(live) = pack["stickers"].as_array() else {
                 return Ok(None);
             };
+            let Some(now) = complete_identities(live) else {
+                return Ok(None);
+            };
             if title.is_some() {
                 if live.len() != 1 {
                     return Ok(None);
                 }
                 return Ok(self.same(&live[0], &path, fmt).unwrap_or(None));
             }
-            let (Some(old), Some(now)) = (&identities, usable_fuids(live)) else {
+            let Some(old) = &identities else {
                 return Ok(None);
             };
             if old == &now {
@@ -125,11 +145,7 @@ impl<M: MediaCodec> UploadEffect<'_, M> {
             }
             let new = live
                 .iter()
-                .filter(|s| {
-                    s["file_unique_id"]
-                        .as_str()
-                        .is_some_and(|id| !old.contains(id))
-                })
+                .filter(|sticker| !old.contains(&crate::reconcile::identity(sticker)))
                 .collect::<Vec<_>>();
             if new.len() != 1 {
                 return Ok(None);
@@ -140,16 +156,19 @@ impl<M: MediaCodec> UploadEffect<'_, M> {
         // An answered request still needs identity proof. Do not route a failed
         // confirmation into the unanswered-transport recovery that can attribute a tail.
         let after = self.live(name).map_err(ApiError::Unproven)?;
-        let old = before
-            .iter()
-            .map(crate::reconcile::identity)
-            .collect::<BTreeSet<_>>();
+        let (Some(old), Some(now)) = (&identities, complete_identities(&after)) else {
+            return Err(ApiError::Unproven(
+                "live snapshots have incomplete or duplicate sticker identities".into(),
+            ));
+        };
+        if !old.is_subset(&now) {
+            return Err(ApiError::Unproven(
+                "live readback lost earlier sticker identities".into(),
+            ));
+        }
         let new = after
             .iter()
-            .filter(|s| {
-                let id = crate::reconcile::identity(s);
-                (!id.0.is_empty() || !id.1.is_empty()) && !old.contains(&id)
-            })
+            .filter(|sticker| !old.contains(&crate::reconcile::identity(sticker)))
             .collect::<Vec<_>>();
         if new.len() != 1 {
             return Err(ApiError::Unproven(
