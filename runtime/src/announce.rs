@@ -5,7 +5,39 @@ use crate::{
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
+use std::io::Read;
 use std::time::Duration;
+
+#[derive(serde::Deserialize)]
+struct WorkerAcknowledgment {
+    ok: bool,
+    message_ids: Vec<u64>,
+}
+
+fn worker_acknowledgment(bytes: &[u8]) -> serde_json::Result<WorkerAcknowledgment> {
+    struct ObjectVisitor;
+    impl<'de> serde::de::Visitor<'de> for ObjectVisitor {
+        type Value = WorkerAcknowledgment;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("a Worker acknowledgment object")
+        }
+
+        fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            serde::Deserialize::deserialize(serde::de::value::MapAccessDeserializer::new(map))
+        }
+    }
+    // Decode typed fields from the wire, before Value's arbitrary-precision
+    // representation can turn object-shaped identifiers into numbers. Requiring
+    // a map also excludes Serde's positional-array form for a struct.
+    let mut parser = serde_json::Deserializer::from_slice(bytes);
+    let acknowledgment = serde::Deserializer::deserialize_map(&mut parser, ObjectVisitor)?;
+    parser.end()?;
+    Ok(acknowledgment)
+}
 
 pub fn worker(
     config: &Config,
@@ -62,6 +94,33 @@ pub fn worker(
             "worker announce failed (HTTP {})",
             response.status().as_u16()
         ));
+    }
+    // HTTP success alone cannot authorize a durable sent milestone. Bound the
+    // acknowledgment before parsing and never expose upstream response text.
+    const MAX_ACK_BYTES: usize = 64 * 1024;
+    let mut bytes = Vec::new();
+    response
+        .take(MAX_ACK_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "worker announcement response could not be read; outcome unknown")?;
+    if bytes.len() > MAX_ACK_BYTES {
+        return Err(
+            "worker announcement response exceeds the acknowledgment limit; outcome unknown".into(),
+        );
+    }
+    let acknowledgment = worker_acknowledgment(&bytes)
+        .map_err(|_| "worker announcement response has no valid acknowledgment; outcome unknown")?;
+    // Match the Worker's exact integer range. Telegram may return zero for a
+    // scheduled message, and a single request can produce several messages.
+    let valid_ids = !acknowledgment.message_ids.is_empty()
+        && acknowledgment
+            .message_ids
+            .iter()
+            .all(|id| *id <= 9_007_199_254_740_991);
+    if !acknowledgment.ok || !valid_ids {
+        return Err(
+            "worker announcement response has no valid acknowledgment; outcome unknown".into(),
+        );
     }
     Ok(())
 }
