@@ -23,6 +23,7 @@ fn installed_converter_argv_exit_and_marker_deadlines_reap_acknowledged_tree() {
         ("exit", 3, 5_000, 2_000),
         ("idle", 124, 6_000, 2_000),
         ("wall", 125, 2_000, 5_000),
+        ("wall-staged", 125, 2_000, 5_000),
     ] {
         let root = parent.join(format!(
             "converter watchdog café {variant} {}",
@@ -118,7 +119,7 @@ fn installed_converter_argv_exit_and_marker_deadlines_reap_acknowledged_tree() {
             0
         );
         assert!(!crate::process_owner::cleanup_pending(&root));
-        if variant == "wall" {
+        if matches!(variant, "wall" | "wall-staged") {
             assert!(
                 std::fs::read(root.join("output café/.svg_cur"))
                     .unwrap()
@@ -127,6 +128,21 @@ fn installed_converter_argv_exit_and_marker_deadlines_reap_acknowledged_tree() {
             );
         } else {
             assert!(!root.join("output café/.svg_cur").exists());
+        }
+        if variant == "wall-staged" {
+            assert_eq!(
+                std::fs::read(root.join("output café/marker-update-opened")).unwrap(),
+                b"source-2.svg"
+            );
+            assert!(
+                std::fs::read(root.join("output café/.svg_cur.next"))
+                    .unwrap()
+                    .is_empty()
+            );
+            assert_eq!(
+                std::fs::read(root.join("output café/.svg_cur")).unwrap(),
+                b"source-1.svg"
+            );
         }
         log.finish(result);
         let path = log.path.clone().unwrap();
