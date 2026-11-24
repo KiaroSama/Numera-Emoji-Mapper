@@ -317,3 +317,62 @@ pub async fn execute(
     }
     Ok(0)
 }
+
+#[cfg(all(test, windows))]
+mod windows_tests {
+    use super::*;
+
+    #[test]
+    fn standard_windows_node_installation_enables_all_installed_web_checks() {
+        let node = crate::codec_process::executable("node")
+            .expect("Windows contributor checks require the installed Node runtime");
+        let installation = node.parent().unwrap();
+        assert!(
+            installation.join("npm.cmd").is_file(),
+            "the real Windows Node installation must supply its npm command shim"
+        );
+        assert!(
+            installation
+                .join("node_modules/npm/bin/npm-cli.js")
+                .is_file(),
+            "the real Windows Node installation must supply the npm CLI"
+        );
+        let tools = Tools::discover().unwrap();
+        assert!(
+            tools.npm.is_some(),
+            "installed Windows npm must not silently skip the browser and Worker checks"
+        );
+        let root = tempfile::Builder::new()
+            .prefix("developer-windows-web-")
+            .tempdir()
+            .unwrap();
+        for relative in [
+            "worker/node_modules/typescript/package.json",
+            "worker/node_modules/vitest/package.json",
+            "assets/node_modules/@playwright/test/package.json",
+        ] {
+            let path = root.path().join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, b"{}").unwrap();
+        }
+        let steps = plan(
+            root.path(),
+            &Command::Check(crate::developer::Options::default()),
+            &tools,
+        )
+        .unwrap();
+        assert_eq!(
+            steps
+                .iter()
+                .skip(4)
+                .map(|step| step.label.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "Worker type check",
+                "Browser script type check",
+                "Worker tests",
+                "Browser tests",
+            ]
+        );
+    }
+}
