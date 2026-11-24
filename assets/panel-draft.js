@@ -37,7 +37,12 @@ function validDraftSnapshot(snap){
 function mergeDraft(snap){
   const page=snapshot(), inPage=new Set(page.order);
   const kept=new Set(snap.order.filter(k=>inPage.has(k)));
-  const logos=page.order.filter(k=>ITEMS.find(x=>x.key===k)?.isLogo);
+  // Only the unassigned brand logo is fixed first. A numbered live logo keeps
+  // its place beside that pack's cards in the imported snapshot.
+  const logos=page.order.filter(k=>{
+    const item=ITEMS.find(x=>x.key===k);
+    return item?.isLogo&&item.pack==null;
+  });
   const order=[...logos,
     ...snap.order.filter(k=>kept.has(k)&&!logos.includes(k)),
     ...page.order.filter(k=>!kept.has(k)&&!logos.includes(k))];

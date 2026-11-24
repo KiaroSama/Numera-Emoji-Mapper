@@ -64,6 +64,7 @@ pub fn run(config: &Config, tg: &Telegram, log: &RunLog) -> Result<u8, String> {
             &key_of,
         )?;
         std::fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+        let branded = archive_rows::has_logo(&record);
         let logo = folder.join(archive_rows::LOGO_NAME);
         let mut have = BTreeMap::<String, PathBuf>::new();
         let mut older = Vec::new();
@@ -76,7 +77,7 @@ pub fn run(config: &Config, tg: &Telegram, log: &RunLog) -> Result<u8, String> {
                 .file_name()
                 .and_then(|s| s.to_str())
                 .ok_or("archive filename not UTF-8")?;
-            if file.starts_with("001_logo") && file.ends_with(".png") {
+            if branded && file.starts_with("001_logo") && file.ends_with(".png") {
                 older.push(path.clone());
             }
             let parts = file.split('_').collect::<Vec<_>>();
@@ -94,7 +95,7 @@ pub fn run(config: &Config, tg: &Telegram, log: &RunLog) -> Result<u8, String> {
             }
         }
         older.sort();
-        let logo_src = if !logo.is_file() && older.is_empty() {
+        let logo_src = if branded && !logo.is_file() && older.is_empty() {
             Some(
                 config
                     .logo_path(true)?
@@ -164,7 +165,7 @@ pub fn run(config: &Config, tg: &Telegram, log: &RunLog) -> Result<u8, String> {
                 return Err("archived media no longer has exactly one catalog row".into());
             }
         }
-        if !logo.is_file() {
+        if branded && !logo.is_file() {
             if let Some(old) = older.first() {
                 crate::archive_move::transfer(old, &logo, true)?;
             } else {
@@ -193,7 +194,7 @@ pub fn run(config: &Config, tg: &Telegram, log: &RunLog) -> Result<u8, String> {
             .filter(|e| {
                 let name = e.file_name().to_string_lossy().to_string();
                 !wanted.contains(&name)
-                    && name != archive_rows::LOGO_NAME
+                    && !(branded && name == archive_rows::LOGO_NAME)
                     && !archive_rows::META.contains(&name.as_str())
             })
             .count();

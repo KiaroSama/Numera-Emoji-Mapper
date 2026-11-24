@@ -131,6 +131,96 @@ fn successful_empty_lookup_still_names_the_unresolved_id() {
 }
 
 #[test]
+fn established_typed_identity_survives_an_optional_display_lookup_failure() {
+    let mut lookups = 0;
+    let server = http::Server::new(move |request| match request.method() {
+        "getCustomEmojiStickers" => {
+            lookups += 1;
+            if lookups == 1 {
+                http::Reply::ok(json!([{"custom_emoji_id":ID}]))
+            } else {
+                http::Reply::json(json!({
+                    "ok":false,"error_code":401,"description":"Unauthorized fixture"
+                }))
+            }
+        }
+        "sendMessage" => http::Reply::ok(json!({"message_id":1,"chat":{"id":42}})),
+        method => panic!("unexpected method {method}"),
+    });
+    handle(&server, &message(ID)).unwrap();
+    assert_eq!(
+        server.methods(),
+        [
+            "getCustomEmojiStickers",
+            "getCustomEmojiStickers",
+            "sendMessage"
+        ]
+    );
+    let requests = server.observed.lock().unwrap();
+    let form = requests[2].form();
+    assert!(form["text"].contains(&format!("<tg-emoji emoji-id=\"{ID}\">⭐")));
+    assert!(!form["text"].contains("does not know"));
+}
+
+#[test]
+fn complete_multi_batch_lookup_preserves_every_requested_identity() {
+    let ids = (0..201)
+        .map(|index| (5_893_098_741_073_715_000_u64 + index).to_string())
+        .collect::<Vec<_>>();
+    let server = http::Server::new(|request| match request.method() {
+        "getCustomEmojiStickers" => {
+            let requested: Vec<String> =
+                serde_json::from_str(&request.form()["custom_emoji_ids"]).unwrap();
+            http::Reply::ok(json!(
+                requested
+                    .iter()
+                    .map(|id| json!({"custom_emoji_id":id,"emoji":"✅"}))
+                    .collect::<Vec<_>>()
+            ))
+        }
+        "sendMessage" => http::Reply::ok(json!({"message_id":1,"chat":{"id":42}})),
+        method => panic!("unexpected method {method}"),
+    });
+    handle(&server, &message(&ids.join(" "))).unwrap();
+    let requests = server.observed.lock().unwrap();
+    let batches = requests
+        .iter()
+        .filter(|request| request.method() == "getCustomEmojiStickers")
+        .map(|request| {
+            serde_json::from_str::<Vec<String>>(&request.form()["custom_emoji_ids"]).unwrap()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        batches.iter().map(Vec::len).collect::<Vec<_>>(),
+        [200, 1, 200, 1]
+    );
+    assert_eq!(batches[..2].concat(), ids);
+    assert_eq!(batches[2..].concat(), ids);
+    let replies = requests
+        .iter()
+        .filter(|request| request.method() == "sendMessage")
+        .map(|request| request.form()["text"].clone())
+        .collect::<Vec<_>>();
+    assert!(!replies.is_empty());
+    assert!(
+        replies
+            .iter()
+            .all(|text| text.encode_utf16().count() <= 4096)
+    );
+    let combined = replies.join("\n");
+    assert!(!combined.contains("does not know"));
+    for id in ids {
+        assert_eq!(
+            combined
+                .matches(&format!("<tg-emoji emoji-id=\"{id}\">✅"))
+                .count(),
+            1,
+            "every resolved identity must appear exactly once"
+        );
+    }
+}
+
+#[test]
 fn extracted_entity_still_uses_fallback_when_optional_glyph_lookup_fails() {
     let server = http::Server::new(|request| match request.method() {
         "getCustomEmojiStickers" => http::Reply::json(json!({

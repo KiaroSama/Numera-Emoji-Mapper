@@ -415,11 +415,14 @@ still be reordered, which would make every name in its folder wrong.
 family it follows; both are required, with no default. Each folder holds:
 
 ```
-001_logo.png                         your brand logo, copied from BRAND_LOGO_PATH
-<slot>_<format>_<key[:12]>.<ext>     one per emoji; slot is 1-based, the logo is 1
+001_logo.png                         branded packs only; copied from BRAND_LOGO_PATH
+<slot>_<format>_<key[:12]>.<ext>     one per emoji; slot is 1-based
 _history.json  _history.md           every position, id, content key and glyph
 _manifest.md                         name -> current id, the quick lookup
 ```
+
+Packs published with `--no-brand-logo` need no logo configuration for archiving;
+their artwork starts at slot 1. Branded packs keep the logo in slot 1.
 
 `--sync` also rewrites `items.file_path` in the catalog, because that absolute
 path is what the roster gallery reads to draw the artwork; dedup is unaffected,

@@ -33,24 +33,38 @@ fn call(tg: &Telegram, method: &str, data: &Value, retries: u32) -> ApiResult<Va
         None::<fn() -> ApiResult<Option<bool>>>,
     )
 }
-fn labels(tg: &Telegram, ids: &[String]) -> Value {
+fn labels(tg: &Telegram, ids: &[String]) -> ApiResult<Value> {
     let mut out = serde_json::Map::new();
     for batch in ids.chunks(200) {
-        match tg.get_custom_emoji_stickers(batch) {
-            Ok(stickers) => {
-                for sticker in stickers.as_array().into_iter().flatten() {
-                    if let Some(id) = sticker["custom_emoji_id"].as_str() {
-                        out.insert(
-                            id.into(),
-                            sticker.get("emoji").cloned().unwrap_or(json!("")),
-                        );
-                    }
-                }
+        let response = tg.get_custom_emoji_stickers(batch)?;
+        let stickers = response.as_array().ok_or_else(|| {
+            ApiError::Invalid("getCustomEmojiStickers result must be an array".into())
+        })?;
+        for sticker in stickers {
+            let id = sticker["custom_emoji_id"]
+                .as_str()
+                .filter(|id| !id.is_empty() && batch.iter().any(|requested| requested == id))
+                .ok_or_else(|| {
+                    ApiError::Invalid(
+                        "getCustomEmojiStickers returned a missing, invalid or unrequested ID"
+                            .into(),
+                    )
+                })?;
+            if out.contains_key(id) {
+                return Err(ApiError::Invalid(
+                    "getCustomEmojiStickers returned a duplicate ID".into(),
+                ));
             }
-            Err(_) => break,
+            let emoji = match sticker.get("emoji") {
+                None => "",
+                Some(value) => value.as_str().ok_or_else(|| {
+                    ApiError::Invalid("getCustomEmojiStickers returned a non-string emoji".into())
+                })?,
+            };
+            out.insert(id.into(), json!(emoji));
         }
     }
-    Value::Object(out)
+    Ok(Value::Object(out))
 }
 fn reply(
     tg: &Telegram,
@@ -60,7 +74,15 @@ fn reply(
     header: Option<String>,
     log: &RunLog,
 ) -> Result<(), String> {
-    let labels = labels(tg, ids);
+    // Entity IDs are already established; glyph lookup is only display enrichment.
+    let labels = labels(tg, ids).unwrap_or_else(|error| {
+        log.event(
+            "WARNING",
+            "bot",
+            &format!("optional emoji glyph lookup failed; using fallback glyphs: {error}"),
+        );
+        json!({})
+    });
     let rich = bot_payloads::payloads(ids, &labels, true)?;
     let mut plain = None;
     for (i, row) in rich
@@ -119,7 +141,9 @@ fn typed_reply(
     reply_to: Option<i64>,
     log: &RunLog,
 ) -> Result<(), String> {
-    let known = labels(tg, ids);
+    // Absence claims require a successful, well-formed response for every batch.
+    let known =
+        labels(tg, ids).map_err(|error| format!("typed emoji ID lookup failed: {error}"))?;
     let found = ids
         .iter()
         .filter(|id| known.get(*id).is_some())

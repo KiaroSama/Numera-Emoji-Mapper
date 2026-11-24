@@ -1,4 +1,4 @@
-use super::Command;
+use super::{Command, NpmCommand};
 use crate::{logging::RunLog, tooling_environment, tooling_process};
 use std::{
     collections::BTreeMap,
@@ -10,7 +10,7 @@ use std::{
 pub struct Tools {
     pub cargo: PathBuf,
     pub rustc: PathBuf,
-    pub npm: Option<PathBuf>,
+    pub npm: Option<NpmCommand>,
     pub driver: PathBuf,
 }
 impl Tools {
@@ -21,7 +21,7 @@ impl Tools {
         Ok(Self {
             cargo: required("cargo")?,
             rustc: required("rustc")?,
-            npm: crate::codec_process::executable("npm").ok(),
+            npm: NpmCommand::discover(),
             driver: std::env::current_exe().map_err(|error| error.to_string())?,
         })
     }
@@ -32,7 +32,7 @@ pub struct Step {
     pub wall: Duration,
     pub idle: Duration,
 }
-fn step(label: &str, executable: &Path, args: &[&str], wall: Duration) -> Step {
+pub(super) fn step(label: &str, executable: &Path, args: &[&str], wall: Duration) -> Step {
     let mut argv = vec![executable.into()];
     argv.extend(args.iter().map(OsString::from));
     Step {
@@ -121,33 +121,32 @@ pub fn plan(root: &Path, command: &Command, tools: &Tools) -> Result<Vec<Step>, 
                 if worker.join("typescript/package.json").is_file()
                     && worker.join("vitest/package.json").is_file()
                 {
-                    steps.push(step(
+                    steps.push(npm.step(
                         "Worker type check",
-                        npm,
                         &["--prefix", "worker", "run", "typecheck"],
                         options.timeout,
                     ));
                     let config = root.join("assets/jsconfig.json");
-                    steps.push(step(
-                        "Browser script type check",
-                        npm,
-                        &[
-                            "--prefix",
-                            "worker",
-                            "exec",
-                            "--",
-                            "tsc",
-                            "-p",
-                            config
-                                .to_str()
-                                .ok_or("browser configuration path must be UTF-8")?,
-                            "--noEmit",
-                        ],
-                        options.timeout,
-                    ));
-                    steps.push(step(
+                    steps.push(
+                        npm.step(
+                            "Browser script type check",
+                            &[
+                                "--prefix",
+                                "worker",
+                                "exec",
+                                "--",
+                                "tsc",
+                                "-p",
+                                config
+                                    .to_str()
+                                    .ok_or("browser configuration path must be UTF-8")?,
+                                "--noEmit",
+                            ],
+                            options.timeout,
+                        ),
+                    );
+                    steps.push(npm.step(
                         "Worker tests",
-                        npm,
                         &["--prefix", "worker", "test"],
                         options.timeout,
                     ));
@@ -156,9 +155,8 @@ pub fn plan(root: &Path, command: &Command, tools: &Tools) -> Result<Vec<Step>, 
                     .join("assets/node_modules/@playwright/test/package.json")
                     .is_file()
                 {
-                    steps.push(step(
+                    steps.push(npm.step(
                         "Browser tests",
-                        npm,
                         &["--prefix", "assets", "test"],
                         options.timeout,
                     ));

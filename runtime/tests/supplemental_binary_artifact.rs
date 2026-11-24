@@ -161,7 +161,31 @@ fn valid_native_artifact_and_complete_windows_icon_fixture_are_accepted() {
     for (machine, target) in [(0x8664, "windows-x64"), (0xaa64, "windows-arm64")] {
         std::fs::write(&executable, pe_fixture(machine, false)).unwrap();
         verify_binary_artifact(&executable, target, &logo()).unwrap();
+        let mut normalized = pe_fixture(machine, false);
+        // The fixture's group payload begins at resource offset 448. Both real
+        // baseline Windows artifacts normalize these seven plane fields to 1.
+        for index in 0..7 {
+            u16_at(&mut normalized, 512 + 448 + 6 + index * 14 + 4, 1);
+        }
+        std::fs::write(&executable, normalized).unwrap();
+        verify_binary_artifact(&executable, target, &logo()).unwrap();
     }
+}
+
+#[test]
+fn unsorted_windows_resource_identifiers_are_rejected() {
+    let root = tempfile::tempdir().unwrap();
+    let executable = root.path().join("unsorted.exe");
+    let mut bytes = pe_fixture(0x8664, false);
+    let first = bytes[528..536].to_vec();
+    let second = bytes[536..544].to_vec();
+    bytes[528..536].copy_from_slice(&second);
+    bytes[536..544].copy_from_slice(&first);
+    std::fs::write(&executable, bytes).unwrap();
+    assert!(
+        verify_binary_artifact(&executable, "windows-x64", &logo()).is_err(),
+        "Windows resource lookup requires sorted numeric identifiers"
+    );
 }
 
 #[test]
@@ -186,6 +210,27 @@ fn foreign_windows_icon_pixels_are_rejected() {
         verify_binary_artifact(&executable, "windows-x64", &logo()).is_err(),
         "a complete resource tree containing a different icon is not the approved logo"
     );
+}
+
+#[test]
+fn same_length_windows_icon_payload_changes_are_rejected() {
+    let root = tempfile::tempdir().unwrap();
+    let executable = root.path().join("changed-payload.exe");
+    let approved = pe_fixture(0x8664, false);
+    let mut changed = approved.clone();
+    // The first image follows the seven-entry group at resource offset 552.
+    // Mutate only its PNG payload; every directory, description and length stays intact.
+    let image_offset = 512 + 552;
+    assert_eq!(
+        &changed[image_offset..image_offset + 8],
+        b"\x89PNG\r\n\x1a\n"
+    );
+    changed[image_offset + 40] ^= 1;
+    assert_eq!(changed.len(), approved.len());
+    assert_eq!(changed[..image_offset], approved[..image_offset]);
+    std::fs::write(&executable, changed).unwrap();
+    let error = verify_binary_artifact(&executable, "windows-x64", &logo()).unwrap_err();
+    assert!(error.contains("embedded icon image differs"), "{error}");
 }
 
 #[test]

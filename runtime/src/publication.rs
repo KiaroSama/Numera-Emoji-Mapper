@@ -7,6 +7,7 @@ use crate::{
 };
 use serde_json::{Value, json};
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 fn text<'a>(v: &'a Value, k: &str) -> Result<&'a str, String> {
     v.get(k)
@@ -24,6 +25,12 @@ fn list(v: &Value, k: &str) -> Result<Vec<String>, String> {
                 .ok_or_else(|| format!("invalid {k}"))
         })
         .collect()
+}
+fn custom_id(sticker: &Value) -> Result<&str, String> {
+    sticker["custom_emoji_id"]
+        .as_str()
+        .filter(|id| !id.is_empty())
+        .ok_or_else(|| "verified live sticker has no custom_emoji_id".into())
 }
 
 pub(crate) struct Failure {
@@ -187,13 +194,24 @@ impl<M: MediaCodec> Publisher<'_, M> {
         if live.len() < offset + keys.len() {
             return Err("live set is smaller than recorded membership".into());
         }
+        let mut custom_ids = BTreeSet::new();
+        if offset == 1
+            && let Some(id) = live[0]["custom_emoji_id"]
+                .as_str()
+                .filter(|id| !id.is_empty())
+        {
+            custom_ids.insert(id);
+        }
         for (i, key) in keys.iter().enumerate() {
             let sticker = &live[i + offset];
-            let cid = sticker["custom_emoji_id"].as_str().unwrap_or("");
+            let cid = custom_id(sticker)?;
+            if !custom_ids.insert(cid) {
+                return Err("live set repeats a custom_emoji_id".into());
+            }
             let known = self
                 .cat
                 .dispatch(json!({"operation":"custom_id","base":base,"content_key":key}))?;
-            if cid.is_empty() || known.as_str() != Some(cid) {
+            if known.as_str() != Some(cid) {
                 let position = i + offset;
                 let resolved = self.resolve(sticker).map_err(|error| {
                     format!("live position {position} could not be examined ({error}); recorded key {key} remains unproven")
@@ -227,7 +245,15 @@ impl<M: MediaCodec> Publisher<'_, M> {
             if keys.contains(&key) {
                 return Err("live set records an emoji twice".into());
             }
-            self.cat.uploaded(&json!({"content_key":key,"custom_emoji_id":sticker.get("custom_emoji_id"),"base":base,"set_name":name}),&logging::utc())?;
+            let cid = custom_id(sticker)?;
+            if !custom_ids.insert(cid) {
+                return Err("live set repeats a custom_emoji_id".into());
+            }
+            // Validate before this row's durable commit; earlier proven rows remain committed.
+            self.cat.uploaded(
+                &json!({"content_key":key,"custom_emoji_id":cid,"base":base,"set_name":name}),
+                &logging::utc(),
+            )?;
             if let Some(fuid) = sticker["file_unique_id"].as_str() {
                 self.cat.record_seen(fuid, &key)?;
             }
@@ -236,10 +262,7 @@ impl<M: MediaCodec> Publisher<'_, M> {
         // The whole prefix was identity-validated above before assigning any IDs.
         for (i, key) in keys.iter().enumerate() {
             let sticker = &live[i + offset];
-            let cid = sticker["custom_emoji_id"]
-                .as_str()
-                .filter(|s| !s.is_empty())
-                .ok_or("verified live sticker has no custom_emoji_id")?;
+            let cid = custom_id(sticker)?;
             self.cat.uploaded(
                 &json!({"content_key":key,"custom_emoji_id":cid,
                 "base":base,"set_name":name}),

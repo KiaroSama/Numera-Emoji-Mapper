@@ -2,6 +2,10 @@
 use serde_json::{Value, json};
 pub const LOGO_NAME: &str = "001_logo.png";
 pub const META: [&str; 3] = ["_history.json", "_history.md", "_manifest.md"];
+pub(crate) fn has_logo(record: &Value) -> bool {
+    // Older archive records predate the explicit publication branding flag.
+    record.get("logo").and_then(Value::as_bool).unwrap_or(true)
+}
 pub fn folder(title: &str) -> String {
     let text = title
         .chars()
@@ -65,7 +69,7 @@ fn rows_with_warning(
                 .map(|s| format!(".{s}"))
                 .unwrap_or_default();
             json!({"position":slot,"file":name(slot,item["fmt"].as_str().ok_or("archive item has no format")?,key,&suffix)?,"format":item["fmt"],"premium_id":id,"content_key":key,"emoji":sticker["emoji"]})
-        } else if slot == 1 {
+        } else if slot == 1 && has_logo(record) {
             json!({"position":slot,"file":LOGO_NAME,"format":"static","premium_id":null,"content_key":null,"note":"brand logo, copied from the repo"})
         } else {
             let title = record["title"]

@@ -7,6 +7,8 @@ use std::time::Duration;
 
 #[path = "developer/build_steps.rs"]
 mod build_steps;
+#[path = "developer/npm.rs"]
+mod npm;
 #[path = "developer/sandbox.rs"]
 mod sandbox;
 #[path = "developer/similarity.rs"]
@@ -14,6 +16,7 @@ mod similarity;
 
 use build_steps::PREREQUISITES;
 pub use build_steps::{Step, Tools, environment, execute, plan, worker_limit};
+pub use npm::NpmCommand;
 #[cfg(target_os = "linux")]
 use sandbox::current_process_start;
 use sandbox::sandbox;

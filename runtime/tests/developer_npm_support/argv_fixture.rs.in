@@ -1,0 +1,72 @@
+use std::io::Write;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+enum Level {
+    Info,
+    Warning,
+    Error,
+    Debug,
+}
+
+fn log(level: Level, message: &str) {
+    let severity = match level {
+        Level::Info => "INFO",
+        Level::Warning => "WARNING",
+        Level::Error => "ERROR",
+        Level::Debug => "DEBUG",
+    };
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    eprintln!(
+        "{}.{:03}Z [{severity}] [npm-fixture] {message}",
+        timestamp.as_secs(),
+        timestamp.subsec_millis()
+    );
+}
+
+fn run() -> Result<i32, Box<dyn std::error::Error>> {
+    log(Level::Info, "Owned argument fixture started");
+    let record =
+        std::env::var_os("NUMERA_NPM_FIXTURE_RECORD").ok_or("Missing fixture record path")?;
+    let mut file = std::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(record)?;
+    for argument in std::env::args().skip(1) {
+        for byte in argument.as_bytes() {
+            write!(file, "{byte:02x}")?;
+        }
+        writeln!(file)?;
+    }
+    file.sync_all()?;
+    log(
+        Level::Debug,
+        "Exact argument bytes recorded in the owned fixture directory",
+    );
+    if let Ok(delay) = std::env::var("NUMERA_NPM_FIXTURE_SLEEP_MS") {
+        log(Level::Info, "Waiting for the requested synthetic timeout");
+        std::thread::sleep(std::time::Duration::from_millis(delay.parse()?));
+    }
+    let code = std::env::var("NUMERA_NPM_FIXTURE_EXIT")?.parse::<i32>()?;
+    if code != 0 {
+        log(
+            Level::Warning,
+            "Returning the requested synthetic nonzero exit code",
+        );
+    }
+    Ok(code)
+}
+
+fn main() {
+    match run() {
+        Ok(code) => std::process::exit(code),
+        Err(_) => {
+            log(
+                Level::Error,
+                "Argument fixture failed; private arguments were not logged",
+            );
+            std::process::exit(1);
+        }
+    }
+}

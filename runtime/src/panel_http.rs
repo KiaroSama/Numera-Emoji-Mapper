@@ -96,6 +96,23 @@ fn script_json(value: &Value) -> String {
         .replace('\u{2028}', "\\u2028")
         .replace('\u{2029}', "\\u2029")
 }
+fn render_template(template: &str, values: &[(&str, String)]) -> String {
+    let mut out = String::with_capacity(template.len());
+    let mut remaining = template;
+    // Search only the original template. Inserted catalog text may contain the
+    // same markers and must remain literal, already-escaped JSON data.
+    while let Some((index, marker, value)) = values
+        .iter()
+        .filter_map(|(marker, value)| remaining.find(*marker).map(|i| (i, *marker, value)))
+        .min_by_key(|(index, _, _)| *index)
+    {
+        out.push_str(&remaining[..index]);
+        out.push_str(value);
+        remaining = &remaining[index + marker.len()..];
+    }
+    out.push_str(remaining);
+    out
+}
 fn view_options(panel: &Panel) -> Result<Value, String> {
     let mut options = panel.options.clone();
     if let Some((_, _, bots)) = &panel.branding {
@@ -155,30 +172,31 @@ fn get_page(panel: &Panel) -> Result<Response, String> {
         json!({"operation":"overlay","view":guard["view"],"previous":previous}),
     )?;
     let assets = panel.root.join("assets");
-    let mut page = std::fs::read_to_string(assets.join("panel.html")).map_err(|e| e.to_string())?;
+    let page = std::fs::read_to_string(assets.join("panel.html")).map_err(|e| e.to_string())?;
     let (version, icon) = crate::asset_version::versions(&panel.root).map_err(|e| e.to_string())?;
     let fps = panel
         .options
         .get("preview_fps")
         .and_then(Value::as_u64)
         .unwrap_or(15);
-    for (from, to) in [
-        ("__ITEMS__", script_json(&items)),
-        ("__TOKEN__", panel.token.clone()),
-        (
-            "__PREVIEW_TIERS__",
-            script_json(
-                &json!({"full":{"size":104,"fps":fps.min(15)},"compact":{"size":72,"fps":fps.min(10)}}),
+    let page = render_template(
+        &page,
+        &[
+            ("__ITEMS__", script_json(&items)),
+            ("__TOKEN__", panel.token.clone()),
+            (
+                "__PREVIEW_TIERS__",
+                script_json(
+                    &json!({"full":{"size":104,"fps":fps.min(15)},"compact":{"size":72,"fps":fps.min(10)}}),
+                ),
             ),
-        ),
-        ("__PER_SET__", "200".into()),
-        ("__HIDDEN__", guard["hidden"].to_string()),
-        ("__STALE__", script_json(&json!(stale))),
-        ("__ASSET_VER__", version),
-        ("__ICON_VER__", icon),
-    ] {
-        page = page.replace(from, &to)
-    }
+            ("__PER_SET__", "200".into()),
+            ("__HIDDEN__", guard["hidden"].to_string()),
+            ("__STALE__", script_json(&json!(stale))),
+            ("__ASSET_VER__", version),
+            ("__ICON_VER__", icon),
+        ],
+    );
     Ok(response(200, page, "text/html; charset=utf-8", "no-store"))
 }
 fn file_response(path: &Path) -> Response {
