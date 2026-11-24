@@ -11774,7 +11774,7 @@
         "file": "runtime/tests/baseline_cli_status_support/oracles.rs",
         "target": "baseline_cli_status",
         "function": "oracles::whole_roster_and_gallery_frozen_source_provenance",
-        "body_sha256": "eacba46ea20e5e0d8252fbef9be5a1aee23a2d8c7edf36fd52ae6db3972039de"
+        "body_sha256": "ed56b84c8558396dc4117d7cd71e3a4b04088ddec942ebf3fb0a1ec4881c6949"
       }
     },
     {

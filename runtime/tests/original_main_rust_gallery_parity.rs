@@ -1,6 +1,8 @@
 // Original-main Rust test; never counted toward1516 Python IDs.
 // Source native/tests/gallery_parity.rs @9c3cbb43305b; SHA256 9381e85ae9fa4c11f196abf7d7f739cedce1f4e3f1ff5fd7f110f1054d650bfa
 extern crate numera_runtime as _native;
+#[path = "support/gallery_oracle.rs"]
+mod gallery_oracle;
 #[path = "original_main_rust_support/mod.rs"]
 mod support;
 // Exact public renderer parity; codec tuples are explicit boundary evidence, not real-media claims.
@@ -152,27 +154,7 @@ fn cancelled_gallery_reaps_codec_before_removing_outer_staging() {
 }
 
 fn assert_same(actual: &str, expected: &str) {
-    // Keep the independent frozen HTML intact and admit only this reviewed
-    // motion-gate correction. Unrelated script, markup and media drift still
-    // fail full-document equality; no expectation is read from current assets.
-    let mut expected = expected.to_owned();
-    for (before, after) in [
-        (
-            "function setLive(n, live) {\n  if (!n) return;\n",
-            "function mayAnimate() {\n  return ANIM_ON && !RM && !document.hidden && thaw === null;\n}\nfunction setLive(n, live) {\n  if (!n) return;\n  live = live && mayAnimate();\n",
-        ),
-        (
-            "  if (!ANIM_ON || RM) { freezeAll(); return; }\n",
-            "  if (!mayAnimate()) { freezeAll(); return; }\n",
-        ),
-    ] {
-        assert_eq!(
-            expected.matches(before).count(),
-            1,
-            "frozen gallery motion transition must match exactly once"
-        );
-        expected = expected.replacen(before, after, 1);
-    }
+    let expected = gallery_oracle::with_reviewed_motion_gate(expected);
     if actual != expected {
         let offset = actual
             .bytes()

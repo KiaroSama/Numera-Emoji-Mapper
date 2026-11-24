@@ -4,6 +4,8 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::path::Path;
+#[path = "../support/gallery_oracle.rs"]
+mod gallery_oracle;
 const REFERENCE: &str = "a39a049c02f8dcc90d18fe8771869f82dd655221";
 fn historical_sources() -> Result<&'static std::collections::BTreeMap<String, Vec<u8>>, String> {
     static SOURCES: std::sync::OnceLock<
@@ -410,9 +412,10 @@ fn whole_roster_and_gallery_frozen_source_provenance() {
     for case in d["cases"].as_array().unwrap() {
         let thumbnails = serde_json::from_value(case["thumbnails"].clone()).unwrap();
         let out = native::pack_gallery::render_page(&case["document"], &thumbnails).unwrap();
+        let expected = case["expected"].as_str().unwrap().replace("\r\n", "\n");
         assert_eq!(
             out.replace("\r\n", "\n"),
-            case["expected"].as_str().unwrap().replace("\r\n", "\n")
+            gallery_oracle::with_reviewed_motion_gate(&expected)
         );
     }
     for case in corpus("archive")["cases"].as_array().unwrap() {
