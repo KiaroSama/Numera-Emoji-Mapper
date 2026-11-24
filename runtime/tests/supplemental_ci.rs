@@ -2,8 +2,14 @@
 use std::path::{Path, PathBuf};
 use syn::visit::Visit;
 
+#[path = "supplemental_ci_support/native_discovery.rs"]
+mod native_discovery;
 #[path = "support/test_admission.rs"]
 mod test_admission;
+#[path = "supplemental_ci_support/windows_media.rs"]
+mod windows_media;
+
+use windows_media::windows_media_prerequisites;
 
 fn root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap()
@@ -232,68 +238,6 @@ fn read_step(workflow: &str, name: &str, required: bool) -> Result<String, &'sta
         .filter(|line| !line.starts_with('#'))
         .collect::<Vec<_>>()
         .join("\n"))
-}
-
-fn windows_media_prerequisites(workflow: &str, tests: &str) -> Result<(), &'static str> {
-    let heading = "- name: Install Windows video prerequisites";
-    let lines = workflow.lines().collect::<Vec<_>>();
-    let starts = lines
-        .iter()
-        .enumerate()
-        .filter(|(_, line)| line.trim() == heading)
-        .collect::<Vec<_>>();
-    let [(start, line)] = starts.as_slice() else {
-        return Err("Windows media installation must exist exactly once");
-    };
-    let indentation = line.len() - line.trim_start().len();
-    let mut windows = false;
-    let mut shared = false;
-    for line in lines[start + 1..].iter().take_while(|line| {
-        line.trim().is_empty()
-            || line.trim_start().starts_with('#')
-            || line.len() - line.trim_start().len() > indentation
-    }) {
-        if line.trim().is_empty()
-            || line.trim_start().starts_with('#')
-            || line.len() - line.trim_start().len() != indentation + 2
-        {
-            continue;
-        }
-        let (key, value) = line
-            .trim()
-            .split_once(':')
-            .ok_or("unsupported Windows media step metadata")?;
-        let key = key.trim().trim_matches(['\'', '"']);
-        let value = value.split('#').next().unwrap().trim();
-        match key {
-            "if" if value == "runner.os == 'Windows'" && !windows => windows = true,
-            "uses" if value == "./.github/actions/windows-video-tools" && !shared => {
-                shared = true;
-            }
-            "if" | "uses" | "run" => return Err("Windows media must use the shared action"),
-            "continue-on-error" if value != "false" => {
-                return Err("Windows media installation failure must fail the job");
-            }
-            _ => {}
-        }
-    }
-    if !windows || !shared {
-        return Err("Windows media must use the shared action on Windows");
-    }
-    let versions = required_step_run(workflow, "Require actual video tools")?;
-    for command in ["ffmpeg -version", "ffprobe -version"] {
-        if !versions.lines().any(|line| line == command) {
-            return Err("both actual media tools must execute before native tests");
-        }
-    }
-    required_step_run(workflow, tests)?;
-    let install = workflow.find(heading).unwrap();
-    let versions = workflow.find("- name: Require actual video tools").unwrap();
-    let tests = workflow.find(&format!("- name: {tests}")).unwrap();
-    if !(install < versions && versions < tests) {
-        return Err("media installation and version checks must precede native tests");
-    }
-    Ok(())
 }
 
 fn initiating_events(workflow: &str, expected: &[&str]) -> Result<(), &'static str> {
@@ -737,138 +681,4 @@ fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_pyt
         .contains("--release --test standalone_package")
     );
     assert!(!release.contains("\n  compatibility:"));
-}
-
-#[test]
-fn both_full_native_workflows_share_required_windows_media_installation() {
-    for (workflow, tests) in [
-        (
-            include_str!("../../.github/workflows/ci.yml")
-                .split_once("\n  worker:")
-                .unwrap()
-                .0,
-            "All Rust tests through the isolated runner",
-        ),
-        (
-            include_str!("../../.github/workflows/native-checkpoint.yml")
-                .split_once("\n  focused:")
-                .unwrap()
-                .0,
-            "Full isolated test discovery",
-        ),
-    ] {
-        windows_media_prerequisites(workflow, tests).unwrap();
-        for (old, new) in [
-            (
-                "Install Windows video prerequisites",
-                "Missing Windows media",
-            ),
-            ("if: runner.os == 'Windows'", "if: false"),
-            (
-                "uses: ./.github/actions/windows-video-tools",
-                "uses: ./.github/actions/test-network",
-            ),
-            (
-                "uses: ./.github/actions/windows-video-tools",
-                "run: echo skipped",
-            ),
-            (
-                "uses: ./.github/actions/windows-video-tools",
-                "uses: ./.github/actions/windows-video-tools\n        continue-on-error: true",
-            ),
-            ("ffprobe -version", "echo ffprobe -version"),
-        ] {
-            assert!(workflow.contains(old));
-            assert!(
-                windows_media_prerequisites(&workflow.replace(old, new), tests).is_err(),
-                "{tests}: {old} -> {new}"
-            );
-        }
-        let heading = "      - name: Require actual video tools\n";
-        let (before, after) = workflow.split_once(heading).unwrap();
-        let (versions, after) = after.split_once("      - ").unwrap();
-        let reordered = format!("{before}      - {after}\n{heading}{versions}");
-        assert!(windows_media_prerequisites(&reordered, tests).is_err());
-    }
-}
-
-fn full_discovery(run: &str, manifest: &str) -> Result<(), &'static str> {
-    if run.trim() != FULL_NATIVE {
-        return Err("native acceptance must run unfiltered Cargo test discovery");
-    }
-    for line in manifest
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.starts_with('#'))
-    {
-        if let Some((key, value)) = line.split_once('=')
-            && matches!(
-                key.trim(),
-                "autotests" | "autolib" | "autobins" | "test" | "doctest"
-            )
-            && value.split('#').next().unwrap_or("").trim() == "false"
-        {
-            return Err("manifest disables default test coverage");
-        }
-    }
-    Ok(())
-}
-
-const FULL_NATIVE: &str = "mkdir -p logs/checkpoint\ncargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log";
-
-#[test]
-fn coverage_guard_rejects_comments_disabled_discovery_and_compile_only_commands() {
-    let workflow = std::fs::read_to_string(root().join(".github/workflows/ci.yml")).unwrap();
-    let manifest = std::fs::read_to_string(root().join("runtime/Cargo.toml")).unwrap();
-    let actual =
-        required_step_run(&workflow, "All Rust tests through the isolated runner").unwrap();
-    assert!(full_discovery(&actual, &manifest).is_ok());
-    assert!(full_discovery(FULL_NATIVE, "[package]\n").is_ok());
-    assert!(full_discovery(&format!("# {FULL_NATIVE}"), "[package]\n").is_err());
-    for command in [
-        "cargo test --manifest-path runtime/Cargo.toml --locked --test codec_worker",
-        "cargo test --manifest-path runtime/Cargo.toml --locked --no-run",
-        "cargo test --manifest-path runtime/Cargo.toml --locked --lib",
-    ] {
-        assert!(full_discovery(command, "[package]\n").is_err());
-    }
-    for key in ["autotests", "autolib", "autobins", "test", "doctest"] {
-        assert!(full_discovery(FULL_NATIVE, &format!("[package]\n{key} = false\n")).is_err());
-    }
-    let workflow = "jobs:\n  native:\n    steps:\n      - name: Checks\n        run: |\n          echo checked\n      - name: Elsewhere\n        run: cargo test\n";
-    assert_eq!(step_run(workflow, "Checks").unwrap(), "echo checked");
-    assert!(step_run(workflow, "Missing").is_err());
-    let security = include_str!("../../.github/workflows/gitleaks.yml");
-    let runtime = include_str!("../../.github/workflows/ci.yml");
-    for (source, name) in [
-        (security, "Rust security tooling behavior tests"),
-        (runtime, "Build standalone release executables"),
-        (runtime, "All Rust tests through the isolated runner"),
-    ] {
-        let positive = required_step_run(source, name).unwrap();
-        let heading = format!("      - name: {name}\n");
-        assert_eq!(source.matches(&heading).count(), 1);
-        for field in [
-            "if: false",
-            "if : false",
-            "'if': false",
-            "\"if\" : false",
-            "if: |\n          false",
-            "continue-on-error: true",
-            "'continue-on-error' : true",
-            "continue-on-error: ${{ true }}",
-        ] {
-            let changed = source.replace(&heading, &format!("{heading}        {field}\n"));
-            assert_eq!(step_run(&changed, name).unwrap(), positive);
-            assert!(
-                required_step_run(&changed, name).is_err(),
-                "{name}: {field}"
-            );
-        }
-        let explicit_false = source.replace(
-            &heading,
-            &format!("{heading}        continue-on-error: false\n"),
-        );
-        assert_eq!(required_step_run(&explicit_false, name).unwrap(), positive);
-    }
 }

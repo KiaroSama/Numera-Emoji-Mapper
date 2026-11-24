@@ -8,7 +8,7 @@
 
 [![GitHub Actions CI workflow on main](https://img.shields.io/badge/CI-GitHub%20Actions-16a34a)](.github/workflows/ci.yml)
 [![GNU General Public License v3.0 or later](https://img.shields.io/badge/license-GPL--3.0--or--later-2563eb)](LICENSE)
-[![Release v3.0.0 standalone Rust packages](https://img.shields.io/badge/release-v3.0.0-ea580c)](CHANGELOG.md)
+[![Latest Git tag release](https://img.shields.io/github/v/tag/KiaroSama/Numera-Emoji-Mapper?style=flat-square&label=release&color=ea580c)](https://github.com/KiaroSama/Numera-Emoji-Mapper/tags)
 [![1516 preserved test identities across Rust and browser suites](https://img.shields.io/badge/tests-1516%20cases-0d9488)](tests/fixtures/migration/reference-cases.json)
 [![Rust 1.100.0 toolchain measured via rustc](https://img.shields.io/badge/Rust-1.100.0-8b5cf6)](rust-toolchain.toml)
 [![Runs on Linux x64, Linux arm64, Windows x64, and Windows arm64](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%2064--bit-0891b2)](.github/workflows/release.yml)
@@ -107,17 +107,19 @@ Prebuilt 64-bit packages ship for four targets: `windows-x64`, `windows-arm64`,
 .\numera-emoji.exe menu
 ```
 
-In a source checkout with the verified executable placed at `bin\numera-emoji.exe`, two PowerShell 7.3 or newer launchers sit at the repository root and can be double-clicked from Explorer (they open in Windows Terminal when installed and pause on errors):
+In a source checkout, place the verified executable at `bin\numera-emoji.exe` and run the root launcher with PowerShell 7.3 or newer:
 
 ```powershell
-.\run.ps1              # interactive menu (-Check runs doctor; other args pass through)
-.\run-panel.ps1        # Curate browser panel (-WithPack 6 or -All)
-.\run-panel.ps1 -WithPack 6,7,8  # show several existing packs from PowerShell
+.\run.ps1              # interactive menu
+.\run.ps1 -Check       # environment doctor
+.\run.ps1 panel        # Curate browser panel
 ```
 
-These source-checkout helpers preserve native arguments and exit codes, including
-when they reopen in Windows Terminal. A failed launcher log produces one warning
-and leaves the native command running. They are not included in release archives.
+With Explorer configured to run the script in PowerShell 7, launching `run.ps1`
+there opens one console window. The launcher waits for Enter after a failed
+interactive Explorer launch and preserves native arguments and exit codes. If it
+cannot write its log, it warns once and continues. Release archives do not include
+the launcher.
 
 **Linux:**
 

@@ -2,8 +2,8 @@
 
 The standalone Rust crate in `runtime/` owns local application tests. Browser
 JavaScript is tested with Playwright/Chromium in `assets/tests`; the Cloudflare
-Worker keeps its TypeScript/Vitest suite. The two reviewed source-checkout
-PowerShell launchers have a separate process contract suite described below.
+Worker keeps its TypeScript/Vitest suite. The source-checkout PowerShell launcher
+has a separate process contract suite described below.
 No Python interpreter or PyO3 extension is part of test execution.
 
 ## Original case inventories
@@ -98,27 +98,23 @@ node --test assets/tests/launcher-process.js
 This separate launcher integration suite requires Node 24, PowerShell 7.3 or newer (`pwsh`
 on PATH, or an explicit `NUMERA_TEST_PWSH` path), and the pinned Rust compiler.
 It compiles a small synthetic executable in an owned temporary fixture root,
-copies the actual `run.ps1` and `run-panel.ps1` there, and records exact native
-arguments, working directories and exit codes. Child environments use an explicit
-allowlist. The suite never invokes the repository's native executable, reads an
-operator `.env`, or contacts a network service. Each PowerShell child has a timeout
-that terminates its owned process tree.
+copies `run.ps1` there, and records exact native arguments, working directories
+and exit codes. Child environments use an explicit allowlist. The suite never
+invokes the repository's native executable, reads an operator `.env`, or contacts
+a network service. Each PowerShell child has a timeout that terminates its owned
+process tree.
 
-The 46 cases cover menu/doctor/panel dispatch, multi-pack arrays, invalid inputs,
-missing binaries, ordinary and legacy native argument passing, quotes and empty
-strings and timestamp-shaped argument preservation, error preferences, pipeline
-output capture, caller preference isolation, log failures, loop prevention,
-pauses, and real child
-reentry from paths containing spaces, Unicode, apostrophes and semicolons. Explorer
-detection is supplied at the actual script branch. A synthetic terminal captures
-its arguments; a separate delimiter check follows Windows Terminal's documented
-semicolon rule before real child PowerShell execution. This checks the transport
-boundary and does not claim GUI Windows Terminal coverage.
+The suite checks single-window launch and exercises `run.ps1`, `run.ps1 -Check`,
+and `run.ps1 panel`. It covers invalid inputs, missing binaries, literal arguments
+(including quotes, empty strings and timestamps), inherited preferences, pipeline
+capture and log failures. It runs the launcher from a different directory than
+its copy under test.
 
-Pause assertions record the actual `Read-Host` invocation and delegate to the
-real cmdlet, because redirected Windows hosts need not echo its prompt to stdout.
-They still require exactly one pause on failure, none on success, and the native
-exit status after the real read completes.
+The suite supplies the Explorer parent and console state to exercise the same
+pause branch without opening a window. It records `Read-Host` calls and delegates
+to the real cmdlet. Failure pauses once for a non-redirected Explorer session;
+success and redirected stdio never pause. The suite checks the native exit code
+in each case. A real Explorer launch still needs a desktop check.
 
 The timestamped acceptance summary stays in
 `logs/checkpoint/launcher-process-<os>-<arch>.log`, included by the existing CI

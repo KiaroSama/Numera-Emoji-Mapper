@@ -5,10 +5,9 @@
     other command straight to the native executable.
 .DESCRIPTION
     Resolves bin\numera-emoji.exe next to this script, so it works from any
-    working directory and from a path with spaces. When started by a double-click
-    in Explorer, relaunches inside Windows Terminal (when available, with a
-    loop guard) for full color rendering and waits for Enter after a failure so
-    the error stays readable.
+    working directory and from a path with spaces. Runs in the original console.
+    When launched from Explorer in an interactive console, waits for Enter after
+    a failure so the error stays readable.
 .EXAMPLE
     .\run.ps1              # interactive menu
 .EXAMPLE
@@ -18,8 +17,6 @@
 #>
 param(
     [switch]$Check,
-    [switch]$PauseOnError,
-    [switch]$NoRelaunch,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CommandArguments = @()
 )
@@ -32,70 +29,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 $PSStyle.OutputRendering = 'Ansi'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
-function New-LauncherRelaunch(
-    [string]$TerminalPath, [string]$PowerShellPath, [string]$ScriptPath,
-    [string]$Directory, [string]$Title, [hashtable]$Parameters
-) {
-    # Encode every string leaf before JSON so PowerShell 7.3 cannot infer dates.
-    function ConvertTo-LauncherValue($Value) {
-        if ($Value -is [string]) {
-            return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Value))
-        }
-        if ($Value -is [System.Collections.IDictionary]) {
-            $result = @{}
-            foreach ($key in $Value.Keys) { $result[$key] = ConvertTo-LauncherValue $Value[$key] }
-            return $result
-        }
-        if ($Value -is [array]) {
-            $result = [object[]]::new($Value.Length)
-            for ($index = 0; $index -lt $Value.Length; $index++) {
-                $result[$index] = ConvertTo-LauncherValue $Value[$index]
-            }
-            return ,$result
-        }
-        return $Value
-    }
-    # Only base64 data enters the fixed bootstrap; user strings are never code.
-    $data = ConvertTo-LauncherValue @{ Script = $ScriptPath; Directory = $Directory; Parameters = $Parameters }
-    $json = ConvertTo-Json -InputObject $data -Depth 5 -Compress
-    $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
-    $bootstrap = @'
-$ErrorActionPreference = 'Stop'
-function ConvertFrom-LauncherValue($Value) {
-    if ($Value -is [string]) {
-        return [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Value))
-    }
-    if ($Value -is [System.Collections.IDictionary]) {
-        $result = @{}
-        foreach ($key in $Value.Keys) { $result[$key] = ConvertFrom-LauncherValue $Value[$key] }
-        return $result
-    }
-    if ($Value -is [array]) {
-        $result = [object[]]::new($Value.Length)
-        for ($index = 0; $index -lt $Value.Length; $index++) {
-            $result[$index] = ConvertFrom-LauncherValue $Value[$index]
-        }
-        return ,$result
-    }
-    return $Value
-}
-$data = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__')) | ConvertFrom-Json -AsHashtable
-$data = ConvertFrom-LauncherValue $data
-Set-Location -LiteralPath $data.Directory
-$parameters = $data.Parameters
-& $data.Script @parameters -NoRelaunch -PauseOnError
-exit $LASTEXITCODE
-'@
-    $command = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($bootstrap.Replace('__PAYLOAD__', $payload)))
-    $psi = [System.Diagnostics.ProcessStartInfo]::new($TerminalPath)
-    $psi.UseShellExecute = $false
-    # WT splits semicolons inside argv entries; its own escape is backslash-semicolon.
-    # Script paths and arguments stay in the encoded data, outside this parser.
-    foreach ($arg in @('--title', $Title, $PowerShellPath.Replace(';', '\;'), '-NoLogo', '-NoProfile', '-EncodedCommand', $command)) {
-        [void]$psi.ArgumentList.Add($arg)
-    }
-    return $psi
-}
+try { [Console]::Title = 'Numera Emoji Mapper' } catch {}
 
 function Write-LauncherConsole(
     [ValidateSet('INFO', 'WARNING', 'ERROR', 'DEBUG')][string]$Level,
@@ -128,27 +62,6 @@ function Write-Log(
 }
 
 $binary = Join-Path $PSScriptRoot 'bin' 'numera-emoji.exe'
-$interactiveConsole = (-not [Console]::IsInputRedirected) -and (-not [Console]::IsOutputRedirected)
-$parentProc = (Get-Process -Id $PID -ErrorAction SilentlyContinue).Parent
-$fromExplorer = $interactiveConsole -and (($null -eq $parentProc) -or ($parentProc.ProcessName -eq 'explorer'))
-$shouldPause = $PauseOnError -or $fromExplorer
-
-# Explorer starts double-clicked scripts in legacy conhost; prefer Windows Terminal once.
-if ($fromExplorer -and -not $NoRelaunch -and -not $env:WT_SESSION) {
-    $wt = Get-Command 'wt.exe' -ErrorAction SilentlyContinue
-    if ($wt) {
-        try {
-            $pwshExe = (Get-Process -Id $PID).Path
-            $parameters = @{ Check = [bool]$Check; CommandArguments = $CommandArguments }
-            $psi = New-LauncherRelaunch $wt.Source $pwshExe $PSCommandPath $PSScriptRoot 'Numera Emoji Mapper' $parameters
-            [void][System.Diagnostics.Process]::Start($psi)
-            exit 0
-        } catch {
-            Write-LauncherConsole WARNING 'Could not launch Windows Terminal; continuing here.'
-        }
-    }
-}
-
 $logDir = Join-Path $PSScriptRoot 'logs'
 $log = $null
 $logDisabled = $false
@@ -163,7 +76,7 @@ try {
 $code = 1
 $failureMessage = 'Could not start the native executable.'
 try {
-    Write-Log INFO "start pwsh=$($PSVersionTable.PSVersion) explorer=$fromExplorer wt=$([bool]$env:WT_SESSION)"
+    Write-Log INFO "start pwsh=$($PSVersionTable.PSVersion)"
     if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) {
         $failureMessage = 'Native executable not found. Put the signed numera-emoji.exe from a release package in the bin folder.'
         throw $failureMessage
@@ -189,9 +102,13 @@ try {
     $code = 1
 }
 
-if ($shouldPause -and $code -ne 0) {
-    Write-Host ''
-    Write-LauncherConsole WARNING "Finished with exit code $code. Log: $log"
-    Read-Host 'Press Enter to close' | Out-Null
+if ($code -ne 0 -and -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected -and -not [Console]::IsErrorRedirected) {
+    $parentProc = (Get-Process -Id $PID -ErrorAction SilentlyContinue).Parent
+    if ($null -eq $parentProc -or $parentProc.ProcessName -eq 'explorer') {
+        $message = "Finished with exit code $code."
+        if ($log) { $message += " Log: $log" }
+        Write-LauncherConsole WARNING $message
+        try { Read-Host 'Press Enter to close' | Out-Null } catch {}
+    }
 }
 exit $code

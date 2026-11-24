@@ -14,10 +14,18 @@ Linux arm64, Windows x64, and Windows arm64 (no macOS or 32-bit builds).
 
 On Linux use `./numera-emoji`. The menu and doctor are Rust commands. Installed
 archives contain no PowerShell/shell application launchers, interpreter bootstrap
-or automatic build. Source checkouts additionally offer `run.ps1` and
-`run-panel.ps1` as PowerShell 7.3 or newer convenience helpers for a verified native
-executable in `bin`; these scripts are not part of an installed package.
-The menu supports Back and cancellation; entering it does not authorize a publish.
+or automatic build. In a source checkout, put the verified native executable at
+`bin\numera-emoji.exe` and run `run.ps1` with PowerShell 7.3 or newer:
+
+```powershell
+.\run.ps1
+.\run.ps1 -Check
+.\run.ps1 panel
+```
+
+The launcher uses the original console. If Explorer runs it with PowerShell 7,
+it pauses after a failure only when standard streams are not redirected. The
+menu supports Back and cancellation; entering it does not authorize a publish.
 
 `doctor` checks native codecs, physical paths, assets and package hashes. It
 reports missing optional video tools and configuration key names without printing
