@@ -231,7 +231,7 @@ impl Tree {
             && listed < SLOTS
             && self
                 .3
-                .fetch_update(
+                .try_update(
                     std::sync::atomic::Ordering::SeqCst,
                     std::sync::atomic::Ordering::SeqCst,
                     |remaining| remaining.checked_sub(1),

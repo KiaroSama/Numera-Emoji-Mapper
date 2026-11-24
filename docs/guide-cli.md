@@ -421,7 +421,7 @@ _history.json  _history.md           every position, id, content key and glyph
 _manifest.md                         name -> current id, the quick lookup
 ```
 
-Packs published with `--no-brand-logo` need no logo configuration for archiving;
+Unbranded packs need no logo configuration for archiving;
 their artwork starts at slot 1. Branded packs keep the logo in slot 1.
 
 `--sync` also rewrites `items.file_path` in the catalog, because that absolute
