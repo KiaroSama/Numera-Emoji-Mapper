@@ -107,12 +107,13 @@ process tree.
 The suite checks single-window launch and exercises `run.ps1`, `run.ps1 -Check`,
 and `run.ps1 panel`. It covers invalid inputs, missing binaries, literal arguments
 (including quotes, empty strings and timestamps), inherited preferences, pipeline
-capture and log failures. Its 61 cases also exercise native values that match
+capture and log failures. Its 78 cases also exercise native values that match
 PowerShell common parameters or launcher control names, through both `-File`
 and PowerShell callers. Ordered hashtable splats, explicit arrays, Boolean
 switch forms, empty arguments, argument order, and invalid launcher prefixes
-have actual process assertions. The suite runs the launcher from a different
-directory than its copy under test.
+have actual process assertions. Adjacent launcher controls are rejected before
+native execution, while explicit arrays preserve literal control names. The suite
+runs the launcher from a different directory than its copy under test.
 
 The suite supplies the Explorer parent and console state to exercise the same
 pause branch without opening a window. It records `Read-Host` calls and delegates

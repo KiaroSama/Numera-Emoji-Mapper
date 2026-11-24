@@ -110,6 +110,11 @@ try {
             }
             $seenArguments = $true
             $index++
+            if ($args[$index] -is [string] -and
+                @('-Check', '-Check:', '-CommandArguments', '-CommandArguments:') -icontains $args[$index]) {
+                $failureMessage = '-CommandArguments requires one value. Put literal launcher control names inside an explicit array, even when quoted.'
+                throw $failureMessage
+            }
             # Match the old typed array contract: scalar null means no args;
             # null elements inside an array become literal empty strings.
             if ($null -eq $args[$index]) { $CommandArguments = @() }

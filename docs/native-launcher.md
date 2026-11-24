@@ -34,6 +34,10 @@ including names such as `-Debug`, `-Verbose`, `-Check`, and `-CommandArguments`.
 For example, `.\run.ps1 build-collection --title -Check --help` forwards the
 complete native command. With an explicit array, place literal launcher-like
 values inside the array: `.\run.ps1 -CommandArguments @('status', '-Check')`.
+The scalar value immediately after `-CommandArguments` cannot be another
+launcher control. Quoting a reserved scalar name does not distinguish it from a
+control after PowerShell argument parsing; use an explicit array even for one
+literal name, such as `.\run.ps1 -CommandArguments @('-Check')`.
 Keep any launcher controls before the native command; `-Check` with command
 arguments is an error. Explicit `-Check:$false` retains ordinary passthrough.
 

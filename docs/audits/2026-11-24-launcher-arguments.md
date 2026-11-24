@@ -4,6 +4,8 @@
 
 This follow-up starts from `c0b8368e9f34a8c02ce678d3b9b649172de10839` after
 [PR #99](https://github.com/KiaroSama/Numera-Emoji-Mapper/pull/99) was merged.
+The complete implementation and review are in
+[PR #103](https://github.com/KiaroSama/Numera-Emoji-Mapper/pull/103).
 Follow the owner's Rules, AGENTS instructions, hooks and prescribed Spec Kit
 chain. The tracked contributor requirements remain in
 [`CONTRIBUTING.md`](../../.github/CONTRIBUTING.md).
@@ -66,6 +68,11 @@ operator's configuration.
   menu versus a native command.
 - Reject malformed or duplicate launcher controls before starting the native
   executable. Do not print the rejected value or complete argument list.
+- In particular, reject an adjacent scalar launcher control where
+  `-CommandArguments` requires a value. Preserve reserved names inside an
+  explicit array, including a single-element array. Raw `$args` does not retain
+  scalar quote metadata, so quoting a reserved scalar is not an alternative to
+  that documented array escape.
 - Preserve native exit codes, pipeline capture, caller preference isolation,
   nonfatal log failure, and the existing interactive Explorer pause contract.
 
@@ -79,6 +86,15 @@ hashtable splats. After the first ordinary native token, retain all remaining
 arguments literally. Do not recover arguments by evaluating command text,
 re-parsing `$MyInvocation.Line`, serializing dates through JSON, or building a
 shell command string.
+
+The adjacent-control check recognizes only the four actual control tokens
+`-Check`, `-Check:`, `-CommandArguments` and `-CommandArguments:`, ignoring case.
+It does not reject arbitrary dash-prefixed data or similar names such as
+`-Checkmate`. This closes the concrete review finding that
+`-CommandArguments -Check` or `-CommandArguments -CommandArguments menu`
+otherwise started the executable with a malformed launcher prefix. The same
+PR includes failing-before-fix and passing-after-fix process assertions for
+both caller and `-File` routes, colon/case forms and array escape controls.
 
 Normalize explicit and positional values using the previous string-array
 contract before selecting the default command. Pass the resulting array to
@@ -103,7 +119,8 @@ Retain the existing process assertions and add real process cases for:
 3. Both `-File` and PowerShell caller syntax, typed array and ordered hashtable
    splats, empty arrays/items, Boolean forms and explicit-plus-trailing input.
 4. Duplicate/missing controls and `-Check` with extra native arguments, with
-   proof that the native fixture never ran on rejection.
+   proof that the native fixture never ran on rejection; adjacent control
+   names must fail while explicit array-contained names still pass.
 5. The retained menu/doctor/panel, exact argv/cwd, native exit, log-failure,
    pipeline-capture and pause assertions.
 

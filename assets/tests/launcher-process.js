@@ -286,6 +286,11 @@ for (const [label, expression, expected] of [
   ['Check with explicit null arguments', '-Check -CommandArguments $null', ['doctor']],
   ['false typed switch', '-Check:([switch]$false) status', ['status']],
   ['true typed switch', '-Check:([switch]$true)', ['doctor']],
+  ['literal launcher-name array', `-CommandArguments @('-Check', '-Check:', '-CommandArguments', '-CommandArguments:')`, ['-Check', '-Check:', '-CommandArguments', '-CommandArguments:']],
+  ['single Check literal array', `-CommandArguments @('-Check')`, ['-Check']],
+  ['single CommandArguments literal array', `-CommandArguments @('-CommandArguments')`, ['-CommandArguments']],
+  ['ordinary scalar with a common-parameter name', `-CommandArguments '-Debug'`, ['-Debug']],
+  ['ordinary scalar with a similar launcher name', `-CommandArguments '-Checkmate'`, ['-Checkmate']],
   ['array-splatted arguments', '@literalArguments', ordinaryArgs],
   ['explicit and trailing arguments', `-CommandArguments @('status', '') --output 'two words' -Debug`, ['status', '', '--output', 'two words', '-Debug']],
 ]) {
@@ -327,6 +332,27 @@ for (const [label, expression, message] of [
     assert.match(result.output, message);
     assert(!existsSync(context.env.NUMERA_LAUNCHER_NATIVE_RECEIPT));
   });
+}
+
+for (const [label, args, expression] of [
+  ['Check', ['-CommandArguments', '-Check'], '-CommandArguments -Check'],
+  ['CommandArguments', ['-CommandArguments', '-CommandArguments', 'menu'], '-CommandArguments -CommandArguments menu'],
+  ['Check with a colon value', ['-CommandArguments', '-Check:$false'], '-CommandArguments -Check:$false'],
+  ['CommandArguments with a colon value', ['-CommandArguments', '-CommandArguments:menu'], '-CommandArguments -CommandArguments:menu'],
+  ['mixed-case Check', ['-cOmMaNdArGuMeNtS', '-cHeCk:$false'], '-cOmMaNdArGuMeNtS -cHeCk:$false'],
+  ['mixed-case CommandArguments', ['-COMMANDARGUMENTS', '-commandarguments:menu'], '-COMMANDARGUMENTS -commandarguments:menu'],
+]) {
+  for (const mode of ['-File', 'PowerShell caller']) {
+    scenario(`run.ps1 rejects adjacent launcher control ${label} from ${mode}`, async () => {
+      const context = setup();
+      const result = mode === '-File'
+        ? await invoke(context, '', ['-NoLogo', '-NoProfile', '-File', context.data.Script, ...args])
+        : await invoke(context, [unpack, '$ErrorActionPreference = "Stop"', `& $case.Script ${expression}`, 'exit $LASTEXITCODE'].join(';\n'));
+      assert.equal(result.status, 1, result.output);
+      assert.match(result.output, /-CommandArguments requires one value/);
+      assert(!existsSync(context.env.NUMERA_LAUNCHER_NATIVE_RECEIPT));
+    });
+  }
 }
 
 scenario('run.ps1 reports a missing native binary', async () => {
