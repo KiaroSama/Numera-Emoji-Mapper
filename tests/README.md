@@ -96,15 +96,21 @@ allowlist. The suite never invokes the repository's native executable, reads an
 operator `.env`, or contacts a network service. Each PowerShell child has a timeout
 that terminates its owned process tree.
 
-The 44 cases cover menu/doctor/panel dispatch, multi-pack arrays, invalid inputs,
+The 46 cases cover menu/doctor/panel dispatch, multi-pack arrays, invalid inputs,
 missing binaries, ordinary and legacy native argument passing, quotes and empty
-strings, error preferences, pipeline output capture, caller preference isolation,
-log failures, loop prevention, pauses, and real child
+strings and timestamp-shaped argument preservation, error preferences, pipeline
+output capture, caller preference isolation, log failures, loop prevention,
+pauses, and real child
 reentry from paths containing spaces, Unicode, apostrophes and semicolons. Explorer
 detection is supplied at the actual script branch. A synthetic terminal captures
 its arguments; a separate delimiter check follows Windows Terminal's documented
 semicolon rule before real child PowerShell execution. This checks the transport
 boundary and does not claim GUI Windows Terminal coverage.
+
+Pause assertions record the actual `Read-Host` invocation and delegate to the
+real cmdlet, because redirected Windows hosts need not echo its prompt to stdout.
+They still require exactly one pause on failure, none on success, and the native
+exit status after the real read completes.
 
 The timestamped acceptance summary stays in
 `logs/checkpoint/launcher-process-<os>-<arch>.log`, included by the existing CI

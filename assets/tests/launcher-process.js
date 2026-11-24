@@ -67,9 +67,22 @@ const decode = file => {
   return rows.map(row => Buffer.from(row, 'hex').toString('utf8'));
 };
 const encoded = source => Buffer.from(source, 'utf16le').toString('base64');
-const unpack = '$case = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:NUMERA_LAUNCHER_CASE)) | ConvertFrom-Json -AsHashtable';
+const unpack = [
+  '$case = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:NUMERA_LAUNCHER_CASE)) | ConvertFrom-Json -AsHashtable',
+  // Timestamp cases must reach the launcher as strings before testing its own serializer.
+  'if ($case.ContainsKey("EncodedArguments")) { $case.Parameters[$case.ArgumentParameter] = @($case.EncodedArguments | ForEach-Object { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)) }) }',
+].join(';\n');
 const ordinaryArgs = ['status', '--help', '--output', 'two words', 'literal"quote', "single'quote", ';',
   '$(Write-Output injected)', 'سلام 😀', '', 'synthetic-secret-do-not-log'];
+// Windows' redirected host omits the prompt from stdout. Observe the invocation
+// and still delegate to the real cmdlet, preserving its actual input/exit behavior.
+const recordPause = String.raw`function Read-Host {
+  param([string]$Prompt)
+  [IO.File]::AppendAllText($env:NUMERA_LAUNCHER_PAUSE_RECEIPT, $Prompt + "` + '`n' + String.raw`")
+  Microsoft.PowerShell.Utility\Read-Host -Prompt $Prompt
+}`;
+const pauses = context => existsSync(context.env.NUMERA_LAUNCHER_PAUSE_RECEIPT)
+  ? readFileSync(context.env.NUMERA_LAUNCHER_PAUSE_RECEIPT, 'utf8').trimEnd().split('\n') : [];
 
 function setup(script, parameters = {}, code = 0, options = {}) {
   const dir = path.join(root, `case-${++sequence}`);
@@ -80,6 +93,10 @@ function setup(script, parameters = {}, code = 0, options = {}) {
   const data = { Script: path.join(dir, script), Directory: dir, Parameters: parameters,
     NativePreference: Boolean(options.nativePreference), NoRelaunch: Boolean(options.noRelaunch),
     LegacyArguments: Boolean(options.legacyArguments), PowerShellPath: options.powerShellPath || '' };
+  if (options.literalArguments) {
+    data.ArgumentParameter = script === 'run.ps1' ? 'CommandArguments' : 'ExtraArgs';
+    data.EncodedArguments = options.literalArguments.map(value => Buffer.from(value, 'utf8').toString('base64'));
+  }
   if (options.failedLogDirectory) writeFileSync(path.join(dir, 'logs'), 'synthetic directory obstruction');
   return { dir, script, data, env: { ...cleanEnvironment,
     NUMERA_EMOJI_MAPPER_NO_DOTENV: '1',
@@ -88,12 +105,19 @@ function setup(script, parameters = {}, code = 0, options = {}) {
     NUMERA_LAUNCHER_TERMINAL_RECEIPT: path.join(dir, 'terminal.receipt'),
     NUMERA_LAUNCHER_FAKE_TERMINAL: path.join(dir, 'wt.exe'),
     NUMERA_LAUNCHER_LOG_ATTEMPTS: path.join(dir, 'log-attempts.receipt'),
+    NUMERA_LAUNCHER_PAUSE_RECEIPT: path.join(dir, 'pause.receipt'),
     NUMERA_LAUNCHER_NATIVE_EXIT: String(code),
   } };
 }
 
 async function invoke(context, source, args) {
-  const child = spawn(pwsh, args || ['-NoLogo', '-NoProfile', '-OutputFormat', 'Text', '-EncodedCommand', encoded(source)], {
+  const childArguments = args ? [...args] : ['-NoLogo', '-NoProfile', '-OutputFormat', 'Text', '-EncodedCommand', encoded(source)];
+  const encodedIndex = childArguments.indexOf('-EncodedCommand');
+  if (encodedIndex >= 0) {
+    const command = Buffer.from(childArguments[encodedIndex + 1], 'base64').toString('utf16le');
+    childArguments[encodedIndex + 1] = encoded(`${recordPause}\n${command}`);
+  }
+  const child = spawn(pwsh, childArguments, {
     cwd: root, env: context.env, windowsHide: true, detached: process.platform !== 'win32',
   });
   let stdout = '';
@@ -237,6 +261,19 @@ for (const [label, script, parameters, expected] of [
 }
 
 for (const script of ['run.ps1', 'run-panel.ps1']) {
+  scenario(`${script} real child reentry preserves timestamp-shaped strings`, async () => {
+    const argumentsToPreserve = ['2026-11-24T12:34:56Z', '2026-11-24T12:34:56.1234567Z',
+      '2026-11-24T12:34:56+03:30', '2026-11-24T12:34:56', '2026-11-24', 'true', 'null', '0', '', 'سلام 😀'];
+    const context = setup(script, {}, 0, { literalArguments: argumentsToPreserve });
+    const expected = script === 'run.ps1' ? argumentsToPreserve : ['panel', ...argumentsToPreserve];
+    const control = await direct(context);
+    assert.equal(control.status, 0, control.output);
+    assert.deepEqual(decode(context.env.NUMERA_LAUNCHER_NATIVE_RECEIPT), expected, 'direct control must retain original string bytes');
+    const result = await reentry(context);
+    assert.equal(result.status, 0, result.output);
+    assert.deepEqual(decode(context.env.NUMERA_LAUNCHER_NATIVE_RECEIPT), expected);
+  });
+
   scenario(`${script} preserves PowerShell output capture and caller preferences`, async () => {
     const context = setup(script, {}, 3);
     const source = [unpack,
@@ -334,7 +371,7 @@ for (const script of ['run.ps1', 'run-panel.ps1']) {
     const context = setup(script, { PauseOnError: true }, 7);
     const result = await direct(context);
     assert.equal(result.status, 7, result.output);
-    assert.match(result.output, /Press Enter to close/);
+    assert.deepEqual(pauses(context), ['Press Enter to close']);
   });
 
   for (const [packs, code] of [[[6], 0], [[6, 7], 3], [[6, 7, 8], 7]]) {
@@ -345,7 +382,7 @@ for (const script of ['run.ps1', 'run-panel.ps1']) {
       assert.equal(result.status, code, result.output);
       const expected = script === 'run.ps1' ? ordinaryArgs : ['panel', ...packs.flatMap(pack => ['--with-pack', String(pack)]), '--all', ...ordinaryArgs];
       assert.deepEqual(decode(context.env.NUMERA_LAUNCHER_NATIVE_RECEIPT), expected);
-      assert.equal((result.stdout.match(/Press Enter to close/g) || []).length, code ? 1 : 0);
+      assert.deepEqual(pauses(context), code ? ['Press Enter to close'] : []);
     });
   }
 }

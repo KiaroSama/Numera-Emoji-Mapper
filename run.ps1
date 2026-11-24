@@ -36,13 +36,51 @@ function New-LauncherRelaunch(
     [string]$TerminalPath, [string]$PowerShellPath, [string]$ScriptPath,
     [string]$Directory, [string]$Title, [hashtable]$Parameters
 ) {
+    # Encode every string leaf before JSON so PowerShell 7.3 cannot infer dates.
+    function ConvertTo-LauncherValue($Value) {
+        if ($Value -is [string]) {
+            return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Value))
+        }
+        if ($Value -is [System.Collections.IDictionary]) {
+            $result = @{}
+            foreach ($key in $Value.Keys) { $result[$key] = ConvertTo-LauncherValue $Value[$key] }
+            return $result
+        }
+        if ($Value -is [array]) {
+            $result = [object[]]::new($Value.Length)
+            for ($index = 0; $index -lt $Value.Length; $index++) {
+                $result[$index] = ConvertTo-LauncherValue $Value[$index]
+            }
+            return ,$result
+        }
+        return $Value
+    }
     # Only base64 data enters the fixed bootstrap; user strings are never code.
-    $json = @{ Script = $ScriptPath; Directory = $Directory; Parameters = $Parameters } |
-        ConvertTo-Json -Depth 5 -Compress
+    $data = ConvertTo-LauncherValue @{ Script = $ScriptPath; Directory = $Directory; Parameters = $Parameters }
+    $json = ConvertTo-Json -InputObject $data -Depth 5 -Compress
     $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
     $bootstrap = @'
 $ErrorActionPreference = 'Stop'
+function ConvertFrom-LauncherValue($Value) {
+    if ($Value -is [string]) {
+        return [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Value))
+    }
+    if ($Value -is [System.Collections.IDictionary]) {
+        $result = @{}
+        foreach ($key in $Value.Keys) { $result[$key] = ConvertFrom-LauncherValue $Value[$key] }
+        return $result
+    }
+    if ($Value -is [array]) {
+        $result = [object[]]::new($Value.Length)
+        for ($index = 0; $index -lt $Value.Length; $index++) {
+            $result[$index] = ConvertFrom-LauncherValue $Value[$index]
+        }
+        return ,$result
+    }
+    return $Value
+}
 $data = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__')) | ConvertFrom-Json -AsHashtable
+$data = ConvertFrom-LauncherValue $data
 Set-Location -LiteralPath $data.Directory
 $parameters = $data.Parameters
 & $data.Script @parameters -NoRelaunch -PauseOnError
