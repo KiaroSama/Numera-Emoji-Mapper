@@ -38,6 +38,14 @@ Supported application platforms are Linux and Windows on x64 and arm64. Install 
 compiler in `rust-toolchain.toml` (Rust 1.100.0), rustfmt, Clippy, CMake and the
 platform C/C++ build tools. Video tests require FFmpeg and FFprobe.
 
+Both full native CI workflows use the shared
+[`windows-video-tools`](../.github/actions/windows-video-tools/action.yml) action
+on Windows. It preserves an existing complete tool pair or installs the fixed
+FFmpeg 9.1 essentials ZIP after verifying its pinned SHA256. Release and digest
+updates belong together in that action and require archive-layout review. Both
+workflows execute the actual FFmpeg and FFprobe version commands before full
+native tests; installation failure must not become a media-test skip.
+
 From the repository root:
 
 ```sh

@@ -1,0 +1,54 @@
+name: Verified Windows video prerequisites
+description: Retain an existing FFmpeg pair or stage the fixed, checksum-verified Windows essentials build.
+runs:
+  using: composite
+  steps:
+    - shell: pwsh
+      run: |
+        $ffmpeg = Get-Command ffmpeg -CommandType Application -ErrorAction SilentlyContinue
+        $ffprobe = Get-Command ffprobe -CommandType Application -ErrorAction SilentlyContinue
+        if ($ffmpeg -and $ffprobe) {
+          Write-Output "$([DateTime]::UtcNow.ToString('o')) [INFO] [video-prerequisite] Using the existing FFmpeg and FFprobe pair."
+        } else {
+          $stage = $null
+          $ready = $false
+          $originalPath = $env:PATH
+          $phase = 'staging'
+          try {
+            if (-not $env:RUNNER_TEMP -or -not $env:GITHUB_PATH) { throw 'Required runner paths are missing.' }
+            $stage = (New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP ('numera-ffmpeg-' + [Guid]::NewGuid().ToString('N'))) -ErrorAction Stop).FullName
+            $archive = Join-Path $stage 'ffmpeg.zip'
+            $phase = 'download'
+            Write-Output "$([DateTime]::UtcNow.ToString('o')) [WARNING] [video-prerequisite] A complete tool pair is missing; downloading pinned FFmpeg 9.1 with at most 3 attempts."
+            Invoke-WebRequest -Uri 'https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-essentials_build.zip' -OutFile $archive -TimeoutSec 120 -OperationTimeoutSeconds 120 -MaximumRetryCount 2 -RetryIntervalSec 3 -ErrorAction Stop
+            $phase = 'checksum verification'
+            Write-Output "$([DateTime]::UtcNow.ToString('o')) [DEBUG] [video-prerequisite] Verifying the pinned SHA256 before archive extraction."
+            if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256 -ErrorAction Stop).Hash -ne 'b9bbbb3acece000cbeec994f856649354e52c773807841e78908374b24d658fd') { throw 'FFmpeg archive checksum mismatch.' }
+            $phase = 'archive extraction'
+            Expand-Archive -LiteralPath $archive -DestinationPath $stage -ErrorAction Stop
+            $roots = @(Get-ChildItem -LiteralPath $stage -Directory -ErrorAction Stop)
+            if ($roots.Count -ne 1 -or $roots[0].Name -notlike 'ffmpeg-*' -or ($roots[0].Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Unexpected FFmpeg archive root.' }
+            $bin = Join-Path $roots[0].FullName 'bin'
+            $phase = 'executable validation'
+            foreach ($name in @('ffmpeg.exe', 'ffprobe.exe')) {
+              $file = Get-Item -LiteralPath (Join-Path $bin $name) -Force -ErrorAction Stop
+              if ($file -isnot [IO.FileInfo] -or $file.Length -eq 0 -or ($file.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Expected FFmpeg executable is missing, empty or linked.' }
+            }
+            Remove-Item -LiteralPath $archive -Force -ErrorAction Stop
+            $env:PATH = $bin + [IO.Path]::PathSeparator + $originalPath
+            if (-not (Get-Command ffmpeg -CommandType Application -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -CommandType Application -ErrorAction SilentlyContinue)) { throw 'FFmpeg and FFprobe are required.' }
+            $phase = 'PATH publication'
+            Add-Content -LiteralPath $env:GITHUB_PATH -Value $bin -Encoding utf8 -ErrorAction Stop
+            $ready = $true
+            Write-Output "$([DateTime]::UtcNow.ToString('o')) [INFO] [video-prerequisite] Verified FFmpeg and FFprobe are ready for the following execution checks."
+          } catch {
+            Write-Output "$([DateTime]::UtcNow.ToString('o')) [ERROR] [video-prerequisite] Setup failed during $phase ($($_.Exception.GetType().Name))."
+            throw 'Windows video prerequisite setup failed.'
+          } finally {
+            if ($stage -and -not $ready) {
+              $env:PATH = $originalPath
+              try { Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction Stop }
+              catch { Write-Output "$([DateTime]::UtcNow.ToString('o')) [WARNING] [video-prerequisite] Could not remove this invocation's temporary staging directory." }
+            }
+          }
+        }

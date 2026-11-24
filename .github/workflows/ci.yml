@@ -112,15 +112,8 @@ jobs:
           sudo apt-get -o Dir::State::lists="$GITHUB_WORKSPACE/.cache/apt/lists" -o Dir::Cache::archives="$GITHUB_WORKSPACE/.cache/apt/archives" install -y --no-install-recommends ffmpeg
       - name: Install Windows video prerequisites
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
-            choco install ffmpeg --yes --no-progress --cache-location="$env:GITHUB_WORKSPACE\.cache\chocolatey"
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            $env:PATH = [Environment]::GetEnvironmentVariable('PATH','Machine') + ';' + $env:PATH
-            "PATH=$env:PATH" >> $env:GITHUB_ENV
-          }
-          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) { throw 'FFmpeg and FFprobe are required' }
+        uses: ./.github/actions/windows-video-tools
+        timeout-minutes: 8
       - name: Require actual video tools
         shell: bash
         run: |

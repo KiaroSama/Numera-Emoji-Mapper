@@ -59,6 +59,15 @@ jobs:
       - name: Install external media tools
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Install Windows video prerequisites
+        if: runner.os == 'Windows'
+        uses: ./.github/actions/windows-video-tools
+        timeout-minutes: 8
+      - name: Require actual video tools
+        shell: bash
+        run: |
+          ffmpeg -version
+          ffprobe -version
       - name: Build every standalone executable
         run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
       - name: Permit private test namespaces
