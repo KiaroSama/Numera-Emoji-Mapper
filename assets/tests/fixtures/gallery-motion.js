@@ -66,6 +66,58 @@ async function frozen(page) {
   expect(await page.locator('video').evaluate(video => video.paused), 'gallery video restarted during a freeze').toBe(true);
 }
 
+async function playing(page) {
+  await page.waitForFunction('window.__galleryMoving() > 0');
+  await page.waitForFunction('!document.querySelector("video").paused');
+}
+
+async function deadlineGallery(panel, initiallyOn) {
+  const page = await openGallery(panel, {
+    init: `localStorage.setItem('rosterAnim', '${initiallyOn ? '1' : '0'}');`,
+  });
+  await deliverObserver(page);
+  if (initiallyOn) await playing(page); else await frozen(page);
+  // Control only the gallery's 180 ms debounce; native observers, media and
+  // animation frames keep running, so slow CI cannot cross an assertion's
+  // deadline or deadlock the real observer-delivery barrier.
+  await page.evaluate(() => {
+    const schedule = window.setTimeout.bind(window);
+    const cancel = window.clearTimeout.bind(window);
+    const timers = new Map();
+    let now = 0, token = 0;
+    window.setTimeout = (callback, delay, ...args) => {
+      if (delay !== 180 || typeof callback !== 'function') return schedule(callback, delay, ...args);
+      const id = --token;
+      timers.set(id, { at: now + delay, run: () => callback(...args) });
+      return id;
+    };
+    window.clearTimeout = id => { if (!timers.delete(id)) cancel(id); };
+    window.__galleryAdvance = elapsed => {
+      const end = now + elapsed;
+      for (;;) {
+        const next = [...timers].filter(([, timer]) => timer.at <= end)
+          .sort((a, b) => a[1].at - b[1].at)[0];
+        if (!next) break;
+        timers.delete(next[0]); now = next[1].at; next[1].run();
+      }
+      now = end;
+    };
+  });
+  return page;
+}
+
+async function scrollOnce(page) {
+  await page.evaluate(() => new Promise(resolve => {
+    addEventListener('scroll', () => resolve(), { once: true });
+    scrollTo(0, scrollY === 0 ? 1 : 0);
+  }));
+}
+
+async function advance(page, elapsed) {
+  await page.evaluate(ms => window.__galleryAdvance(ms), elapsed);
+  await deliverObserver(page);
+}
+
 export async function runGalleryFreezeScenarios(panel) {
   const page = await openGallery(panel);
   await page.waitForFunction('window.__galleryMoving() > 0');
@@ -109,5 +161,43 @@ export async function runGalleryFreezeScenarios(panel) {
     await deliverObserver(reduced);
     await frozen(reduced);
   });
-  log('INFO', 'Gallery freeze checks passed for hidden, scroll, toggle, re-entry and reduced-motion states.');
+
+  await test.step('Gallery scrolling begun while Off retains its quiet deadline after On', async () => {
+    const off = await deadlineGallery(panel, false);
+    await scrollOnce(off);
+    await off.evaluate('window.__galleryAdvance(1); document.getElementById("anim").click()');
+    await deliverObserver(off);
+    await frozen(off);
+    await advance(off, 178);
+    await frozen(off);
+    await advance(off, 1);
+    await playing(off);
+  });
+
+  await test.step('Gallery later scrolling while Off resets the latest quiet deadline', async () => {
+    const later = await deadlineGallery(panel, true);
+    await scrollOnce(later);
+    await later.evaluate('document.getElementById("anim").click(); window.__galleryAdvance(100)');
+    await scrollOnce(later);
+    await later.evaluate('window.__galleryAdvance(1); document.getElementById("anim").click()');
+    await deliverObserver(later);
+    await frozen(later);
+    await advance(later, 79);
+    await frozen(later);
+    await advance(later, 99);
+    await frozen(later);
+    await advance(later, 1);
+    await playing(later);
+  });
+
+  await test.step('Gallery remains Off through expiry and resumes when enabled after settling', async () => {
+    const settled = await deadlineGallery(panel, false);
+    await scrollOnce(settled);
+    await advance(settled, 180);
+    await frozen(settled);
+    await settled.evaluate('document.getElementById("anim").click()');
+    await deliverObserver(settled);
+    await playing(settled);
+  });
+  log('INFO', 'Gallery freeze checks passed for hidden, scroll, toggle, re-entry, reduced-motion and Off-period deadlines.');
 }

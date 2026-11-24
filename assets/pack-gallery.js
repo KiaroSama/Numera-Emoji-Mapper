@@ -59,7 +59,7 @@ function applyAnim() {
 // fast to read while the compositor is already busy.
 let thaw = null;
 addEventListener('scroll', () => {
-  if (!ANIM_ON || RM) return;
+  if (RM) return;
   if (thaw === null) freezeAll(); else clearTimeout(thaw);
   thaw = setTimeout(() => { thaw = null; applyAnim(); }, 180);
 }, { passive: true });

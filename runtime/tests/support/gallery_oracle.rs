@@ -13,6 +13,7 @@ pub fn with_reviewed_motion_gate(expected: &str) -> String {
             "  if (!ANIM_ON || RM) { freezeAll(); return; }\n",
             "  if (!mayAnimate()) { freezeAll(); return; }\n",
         ),
+        ("  if (!ANIM_ON || RM) return;\n", "  if (RM) return;\n"),
     ] {
         assert_eq!(
             expected.matches(before).count(),
