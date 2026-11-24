@@ -68,6 +68,13 @@ const unpack = [
   // PowerShell 7.3 can infer dates while reading JSON; argv values must stay strings.
   'if ($case.Parameters.ContainsKey("CommandArguments")) { $case.Parameters.CommandArguments = @($case.Parameters.CommandArguments | ForEach-Object { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)) }) }',
 ].join(';\n');
+const commonParameterArgs = ['status', '-Debug', '-Verbose', '-ErrorAction', 'Continue',
+  '-ErrorVariable', 'nativeErrorValue', '-InformationAction', 'Continue', '-InformationVariable', 'nativeInfoValue',
+  '-WarningAction', 'Continue', '-WarningVariable', 'nativeWarningValue', '-OutVariable', 'nativeOutputValue',
+  '-OutBuffer', '2', '-PipelineVariable', 'nativePipelineValue', '-ProgressAction', 'Continue',
+  '-db', '-vb', '-ea', 'Continue', '-ev', 'nativeErrorAlias', '-infa', 'Continue', '-iv', 'nativeInfoAlias',
+  '-wa', 'Continue', '-wv', 'nativeWarningAlias', '-ov', 'nativeOutputAlias', '-ob', '2',
+  '-pv', 'nativePipelineAlias', '-proga', 'Continue'];
 const ordinaryArgs = ['status', '--help', '--output', 'two words', 'literal"quote', "single'quote", ';',
   '$(Write-Output injected)', 'سلام 😀', '', 'synthetic-secret-do-not-log'];
 // The redirected Windows host can omit the prompt; record it and still read stdin.
@@ -200,6 +207,7 @@ for (const [label, parameters, expected] of [
   ['doctor', { Check: true }, ['doctor']],
   ['panel', { CommandArguments: ['panel'] }, ['panel']],
   ['literal passthrough', { CommandArguments: ordinaryArgs }, ordinaryArgs],
+  ['explicit common-parameter and reserved names', { CommandArguments: [...commonParameterArgs, '-Check', '-CommandArguments'] }, null],
   ['timestamp-like text', { CommandArguments: ['2026-11-24T12:34:56Z', '2026-11-24T12:34:56.1234567Z',
     '2026-11-24T12:34:56+03:30', '2026-11-24T12:34:56', '2026-11-24', 'true', 'null', '0', '', 'سلام 😀'] }, null],
 ]) {
@@ -237,6 +245,12 @@ scenario('run.ps1 preserves literal native arguments under Legacy passing', asyn
 
 for (const [label, args, expected] of [
   ['option-looking native arguments', ['status', '--help', '--output', 'two words'], ['status', '--help', '--output', 'two words']],
+  ['all literal native arguments', ordinaryArgs, ordinaryArgs],
+  ['common-parameter names as native arguments', commonParameterArgs, commonParameterArgs],
+  ['common-parameter names as native option values', ['build-collection', '--title', '-Debug', '--data-dir', '-Verbose'], ['build-collection', '--title', '-Debug', '--data-dir', '-Verbose']],
+  ['launcher names as native option values', ['build-collection', '--title', '-Check', '--data-dir', '-CommandArguments'], ['build-collection', '--title', '-Check', '--data-dir', '-CommandArguments']],
+  ['false Check switch', ['-Check:$false', 'status', '-Debug'], ['status', '-Debug']],
+  ['true Check switch', ['-Check:$true'], ['doctor']],
   ['-Check', ['-Check'], ['doctor']],
   ['-Check extra', ['-Check', 'extra'], null],
 ]) {
@@ -250,6 +264,68 @@ for (const [label, args, expected] of [
       assert.match(result.output, /-Check accepts no command arguments/);
       assert(!existsSync(context.env.NUMERA_LAUNCHER_NATIVE_RECEIPT));
     }
+  });
+}
+
+for (const [label, expression, expected] of [
+  ['raw common-parameter names and aliases', commonParameterArgs.join(' '), commonParameterArgs],
+  ['quoted option values', `build-collection --title '-Debug' --data-dir '-Verbose'`, ['build-collection', '--title', '-Debug', '--data-dir', '-Verbose']],
+  ['launcher names as native values', `build-collection --title -Check --data-dir -CommandArguments`, ['build-collection', '--title', '-Check', '--data-dir', '-CommandArguments']],
+  ['false Check switch', `-Check:$false status -Debug`, ['status', '-Debug']],
+  ['true Check switch', `-Check:$true`, ['doctor']],
+  ['empty explicit argument array', `-CommandArguments @()`, ['menu']],
+  ['one empty native argument', `-CommandArguments @('')`, ['']],
+  ['positional empty array', '@()', ['menu']],
+  ['explicit null arguments', '-CommandArguments $null', ['menu']],
+  ['positional null argument', '$null', ['']],
+  ['positional array with null', '@($null)', ['']],
+  ['mixed positional null and empty values', `status $null @() '' --output 'two words'`, ['status', '', '', '', '--output', 'two words']],
+  ['explicit array with null values', `-CommandArguments @('status', $null, '')`, ['status', '', '']],
+  ['nested positional array values', `@('status', @('a', 'b'))`, ['status', 'a b']],
+  ['Check with positional empty array', '-Check @()', ['doctor']],
+  ['Check with explicit null arguments', '-Check -CommandArguments $null', ['doctor']],
+  ['false typed switch', '-Check:([switch]$false) status', ['status']],
+  ['true typed switch', '-Check:([switch]$true)', ['doctor']],
+  ['array-splatted arguments', '@literalArguments', ordinaryArgs],
+  ['explicit and trailing arguments', `-CommandArguments @('status', '') --output 'two words' -Debug`, ['status', '', '--output', 'two words', '-Debug']],
+]) {
+  scenario(`run.ps1 preserves ${label} from a PowerShell caller`, async () => {
+    const context = setup({ CommandArguments: ordinaryArgs });
+    const source = [unpack, '$literalArguments = $case.Parameters.CommandArguments',
+      `& $case.Script ${expression}`, 'exit $LASTEXITCODE'].join(';\n');
+    const result = await invoke(context, source);
+    assert.equal(result.status, 0, result.output);
+    assert.deepEqual(decode(context.env.NUMERA_LAUNCHER_NATIVE_RECEIPT), expected);
+    checkLogs(context);
+  });
+}
+
+for (const names of [['Check', 'CommandArguments'], ['CommandArguments', 'Check']]) {
+  scenario(`run.ps1 preserves ordered hashtable splats with ${names[0]} first`, async () => {
+    const context = setup({ CommandArguments: ['status', '', '-Check', '-CommandArguments', '-Debug'] });
+    const source = [unpack, '$parameters = [ordered]@{}',
+      ...names.map(name => `$parameters['${name}'] = ${name === 'Check' ? '$false' : '$case.Parameters.CommandArguments'}`),
+      '& $case.Script @parameters', 'exit $LASTEXITCODE'].join(';\n');
+    const result = await invoke(context, source);
+    assert.equal(result.status, 0, result.output);
+    assert.deepEqual(decode(context.env.NUMERA_LAUNCHER_NATIVE_RECEIPT), ['status', '', '-Check', '-CommandArguments', '-Debug']);
+    checkLogs(context);
+  });
+}
+
+for (const [label, expression, message] of [
+  ['duplicate Check controls', '-Check -Check', /-Check may be specified only once/],
+  ['missing explicit arguments', '-CommandArguments', /-CommandArguments requires one value/],
+  ['duplicate explicit arguments', '-CommandArguments status -CommandArguments menu', /-CommandArguments requires one value/],
+  ['Check with explicit native arguments', `-Check -CommandArguments @('status')`, /-Check accepts no command arguments/],
+  ['Check with a null positional argument', '-Check $null', /-Check accepts no command arguments/],
+]) {
+  scenario(`run.ps1 rejects ${label} before native execution`, async () => {
+    const context = setup();
+    const result = await invoke(context, [unpack, `& $case.Script ${expression}`, 'exit $LASTEXITCODE'].join(';\n'));
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, message);
+    assert(!existsSync(context.env.NUMERA_LAUNCHER_NATIVE_RECEIPT));
   });
 }
 

@@ -27,6 +27,16 @@ The launcher uses the original console. If Explorer runs it with PowerShell 7,
 it pauses after a failure only when standard streams are not redirected. The
 menu supports Back and cancellation; entering it does not authorize a publish.
 
+Only leading launcher controls are interpreted: `-Check` selects doctor, and
+`-CommandArguments` accepts an explicit argument array for PowerShell callers.
+After the first ordinary native token, every remaining argument is literal,
+including names such as `-Debug`, `-Verbose`, `-Check`, and `-CommandArguments`.
+For example, `.\run.ps1 build-collection --title -Check --help` forwards the
+complete native command. With an explicit array, place literal launcher-like
+values inside the array: `.\run.ps1 -CommandArguments @('status', '-Check')`.
+Keep any launcher controls before the native command; `-Check` with command
+arguments is an error. Explicit `-Check:$false` retains ordinary passthrough.
+
 `doctor` checks native codecs, physical paths, assets and package hashes. It
 reports missing optional video tools and configuration key names without printing
 secret values. It does not install dependencies or contact Telegram.
