@@ -113,7 +113,7 @@ fn unbranded_sync(configure_logo: bool) {
     let archive = Archive::new(Some(false), configure_logo);
     let logo_before = std::fs::read(&archive.logo).unwrap();
     assert_eq!(archive.sync().unwrap(), 0);
-    let folder = archive.config.root.join("archive/Full pack");
+    let folder = archive.config.root.join("archive").join("Full pack");
     assert!(
         !folder.join(archive_rows::LOGO_NAME).exists(),
         "unbranded pack acquired a foreign logo"

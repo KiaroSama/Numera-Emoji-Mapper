@@ -19,10 +19,13 @@ use windows_sys::Win32::System::Threading::{
     PROCESS_SYNCHRONIZE, ResumeThread, THREAD_SUSPEND_RESUME, WaitForSingleObject,
 };
 
+const SLOTS: u32 = 8192;
+
 pub struct Tree(
     OwnedHandle,
     std::sync::Mutex<std::collections::BTreeMap<u32, OwnedHandle>>,
     #[cfg(test)] std::sync::atomic::AtomicBool,
+    #[cfg(test)] std::sync::atomic::AtomicUsize,
 );
 
 impl Tree {
@@ -35,6 +38,8 @@ impl Tree {
         // SAFETY: newly created non-null handle has exactly one owner.
         let tree = Self(
             unsafe { OwnedHandle::from_raw_handle(handle) },
+            Default::default(),
+            #[cfg(test)]
             Default::default(),
             #[cfg(test)]
             Default::default(),
@@ -59,6 +64,16 @@ impl Tree {
     #[cfg(test)]
     pub(super) fn fail_next_member_query(&self) {
         self.2.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    #[cfg(test)]
+    pub(super) fn defer_member_queries(&self, queries: usize) {
+        self.3.store(queries, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    #[cfg(test)]
+    pub(super) fn pending_member_queries(&self) -> usize {
+        self.3.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     #[cfg(test)]
@@ -168,41 +183,69 @@ impl Tree {
     }
 
     fn record_members(&self) -> Result<(), String> {
+        let (count, storage) = complete_job_inventory(SLOTS, || self.query_members())?;
+        self.pin_members(count, storage)
+    }
+
+    fn poll_members(&self) -> Result<InventoryPoll<()>, String> {
+        match poll_job_inventory(SLOTS, || self.query_members())? {
+            InventoryPoll::Ready((count, storage)) => {
+                self.pin_members(count, storage).map(InventoryPoll::Ready)
+            }
+            InventoryPoll::Pending(reason) => Ok(InventoryPoll::Pending(reason)),
+        }
+    }
+
+    fn query_members(&self) -> Result<(u32, u32, Vec<usize>), String> {
         #[cfg(test)]
         if self.2.swap(false, std::sync::atomic::Ordering::SeqCst) {
             return Err("fixture member query failed".into());
         }
-        const SLOTS: u32 = 8192;
-        let (count, storage) = complete_job_inventory(SLOTS, || {
-            self.prune_finished_members()?;
-            // usize storage supplies alignment for the flexible PID array.
-            let mut storage = vec![0usize; SLOTS as usize + 2];
-            let length = std::mem::size_of_val(storage.as_slice());
-            // SAFETY: initialized, aligned writable storage covers the header
-            // and SLOTS PIDs on both 32-bit and 64-bit Windows.
-            if unsafe {
-                QueryInformationJobObject(
-                    self.0.as_raw_handle(),
-                    JobObjectBasicProcessIdList,
-                    storage.as_mut_ptr().cast(),
-                    length as u32,
-                    std::ptr::null_mut(),
+        self.prune_finished_members()?;
+        // usize storage supplies alignment for the flexible PID array.
+        let mut storage = vec![0usize; SLOTS as usize + 2];
+        let length = std::mem::size_of_val(storage.as_slice());
+        // SAFETY: initialized, aligned writable storage covers the header
+        // and SLOTS PIDs on both 32-bit and 64-bit Windows.
+        if unsafe {
+            QueryInformationJobObject(
+                self.0.as_raw_handle(),
+                JobObjectBasicProcessIdList,
+                storage.as_mut_ptr().cast(),
+                length as u32,
+                std::ptr::null_mut(),
+            )
+        } == 0
+        {
+            return Err(format!(
+                "cannot inspect complete codec job member inventory (slots={SLOTS}, error={})",
+                unsafe { GetLastError() }
+            ));
+        }
+        // SAFETY: successful query initialized the SDK header in aligned storage.
+        let header = unsafe { &*storage.as_ptr().cast::<JOBOBJECT_BASIC_PROCESS_ID_LIST>() };
+        let assigned = header.NumberOfAssignedProcesses;
+        let listed = header.NumberOfProcessIdsInList;
+        #[cfg(test)]
+        if assigned <= SLOTS
+            && listed < SLOTS
+            && self
+                .3
+                .fetch_update(
+                    std::sync::atomic::Ordering::SeqCst,
+                    std::sync::atomic::Ordering::SeqCst,
+                    |remaining| remaining.checked_sub(1),
                 )
-            } == 0
-            {
-                return Err(format!(
-                    "cannot inspect complete codec job member inventory (slots={SLOTS}, error={})",
-                    unsafe { GetLastError() }
-                ));
-            }
-            // SAFETY: successful query initialized the SDK header in aligned storage.
-            let header = unsafe { &*storage.as_ptr().cast::<JOBOBJECT_BASIC_PROCESS_ID_LIST>() };
-            Ok((
-                header.NumberOfAssignedProcesses,
-                header.NumberOfProcessIdsInList,
-                storage,
-            ))
-        })?;
+                .is_ok()
+        {
+            // Preserve the real list and handles, but withhold completeness
+            // for a deterministic number of actual successful native queries.
+            return Ok((listed + 1, listed, storage));
+        }
+        Ok((assigned, listed, storage))
+    }
+
+    fn pin_members(&self, count: usize, storage: Vec<usize>) -> Result<(), String> {
         // SAFETY: derive from the whole allocation, not the SDK's one-element
         // placeholder. The checked count fits the allocated native PID array.
         let members = unsafe {
@@ -272,6 +315,17 @@ impl Tree {
 
     pub fn sample(&self) -> Result<Vec<u64>, String> {
         self.record_members()?;
+        self.progress_sample()
+    }
+
+    pub(super) fn poll_sample(&self) -> Result<InventoryPoll<Vec<u64>>, String> {
+        match self.poll_members()? {
+            InventoryPoll::Ready(()) => self.progress_sample().map(InventoryPoll::Ready),
+            InventoryPoll::Pending(reason) => Ok(InventoryPoll::Pending(reason)),
+        }
+    }
+
+    fn progress_sample(&self) -> Result<Vec<u64>, String> {
         let info = self.accounting()?;
         Ok(vec![
             info.BasicInfo.TotalUserTime as u64,
@@ -289,6 +343,17 @@ impl Tree {
 
     pub fn terminate(&self) -> Result<(), String> {
         self.record_members()?;
+        self.terminate_recorded()
+    }
+
+    pub(super) fn poll_terminate(&self) -> Result<InventoryPoll<()>, String> {
+        match self.poll_members()? {
+            InventoryPoll::Ready(()) => self.terminate_recorded().map(InventoryPoll::Ready),
+            InventoryPoll::Pending(reason) => Ok(InventoryPoll::Pending(reason)),
+        }
+    }
+
+    fn terminate_recorded(&self) -> Result<(), String> {
         if self.quiescent()? {
             return Ok(());
         }
