@@ -412,6 +412,58 @@ test("test_panel_curation.AnExportedDraftComesBack.test_a_draft_is_applied_witho
   assert.ok((await page.evaluate("document.getElementById('toast').textContent")).includes("1 not in this catalog"));
   (await page.click("#undo"));
   assert.deepEqual((await page.evaluate("ITEMS.map(x => x.key)")), before);
+
+  await test.step("a draft roundtrip retains each live pack logo beside its own run", async () => {
+    panel.reset();
+    try {
+      const catalogPage = await open(panel);
+      const ordinary = await catalogPage.evaluate("ITEMS.filter(item=>!item.isLogo)");
+      const logos = [1, 2].map(pack => ({key: `__logo_pack_${pack}__`, fmt: "static",
+        label: `Brand logo (live in pack ${pack})`, emoji: "", included: true, isLogo: true, pack}));
+      const model = [logos[0], ...ordinary.slice(0, 2).map(item=>({...item,pack:1})),
+        logos[1], ...ordinary.slice(2).map(item=>({...item,pack:2}))];
+      const logoPage = await open(panel, model);
+      const checkpoint = await logoPage.evaluate("snapshot()");
+      await Import(panel, logoPage, {version: 1, snapshot: checkpoint});
+      await logoPage.waitForFunction("document.getElementById('toast').textContent.startsWith('Imported:')");
+      assert.deepEqual(await logoPage.evaluate("snapshot()"), checkpoint,
+        "importing an unchanged draft must not move the second logo ahead of the first pack's emoji");
+      assert.deepEqual(await logoPage.evaluate("packStarts().starts.map(run=>run.pack)"), [1, 2]);
+      assert.equal(await logoPage.locator("#grid .packsep").count(), 2);
+      assert.equal(await logoPage.evaluate("orderDirty() || selDirty()"), false);
+      assert.deepEqual(await logoPage.evaluate("__sent()"), [], "import still waits for explicit Save");
+
+      const edited = {...checkpoint,
+        order: [logos[0].key, ordinary[1].key, ordinary[0].key, logos[1].key, ordinary[3].key, ordinary[2].key],
+        included: checkpoint.included.filter(key=>key!==ordinary[1].key)};
+      await Import(panel, logoPage, {version: 1, snapshot: edited});
+      await logoPage.waitForFunction(order=>JSON.stringify(ITEMS.map(item=>item.key))===JSON.stringify(order), edited.order);
+      assert.deepEqual(await logoPage.evaluate("packStarts().starts.map(run=>run.pack)"), [1, 2]);
+      assert.deepEqual(await logoPage.evaluate("__sent()"), []);
+      await logoPage.evaluate("__net.passthrough=true");
+      await logoPage.click("#save");
+      await logoPage.waitForFunction("pendingOrder===null && pendingSel===null && !orderDirty() && !selDirty()", null, {timeout: 15000});
+      assert.deepEqual(panel.dbOrder(), edited.order.filter(key=>!key.startsWith("__")));
+      assert.deepEqual([...panel.excludedInDb()], [ordinary[1].key]);
+      const plan = panel.packPlan();
+      assert.deepEqual(plan.excluded, [ordinary[1].key]);
+      assert.deepEqual(new Map(plan.targets), new Map(ordinary.map((item, index)=>[item.key,index<2?1:2])));
+      assert.ok(plan.known.every(key=>!key.startsWith("__")), "preview logos must never become catalog identities");
+    } finally { panel.reset(); }
+  });
+
+  await test.step("the unassigned global brand logo remains fixed before an imported order", async () => {
+    const model = synth(4, {logo: true});
+    const globalPage = await open(panel, model, {clock: true});
+    const checkpoint = await globalPage.evaluate("snapshot()");
+    const edited = {...checkpoint, order: [...checkpoint.order].reverse()};
+    await Import(panel, globalPage, {version: 1, snapshot: edited});
+    await globalPage.waitForFunction("document.getElementById('toast').textContent.startsWith('Imported:')");
+    assert.deepEqual(await globalPage.evaluate("ITEMS.map(item=>item.key)"),
+      [model[0].key, ...model.slice(1).reverse().map(item=>item.key)]);
+    await globalPage.clock.runFor(500);
+    assert.deepEqual(await globalPage.evaluate("__sent()"), []);
+  });
 });
 
 test("test_panel_curation.AnExportedDraftComesBack.test_an_unknown_version_is_refused", async ({ panel }) => {

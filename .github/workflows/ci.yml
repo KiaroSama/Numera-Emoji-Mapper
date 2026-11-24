@@ -130,6 +130,41 @@ jobs:
           cargo test --config .cargo/runtime-tests.toml --manifest-path tools/test-inventory/Cargo.toml --locked
           cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode rust
           cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode language --output logs/checkpoint/language-policy.json
+      - name: Installed Windows npm discovery regression
+        if: runner.os == 'Windows'
+        env:
+          CARGO_TARGET_DIR: runtime/target/ci-tests
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+        shell: bash
+        run: |
+          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release \
+            --lib standard_windows_node_installation_enables_all_installed_web_checks \
+            -- --test-threads=1 2>&1 | tee logs/checkpoint/windows-npm-regression.log
+      - name: Publication, archive, panel and package boundary regressions
+        # Surface critical boundary failures before compiling every test target.
+        # The complete unfiltered acceptance step below remains mandatory.
+        env:
+          CARGO_TARGET_DIR: runtime/target/ci-tests
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+        shell: bash
+        run: |
+          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
+            --test supplemental_publication_admission --test supplemental_archive_branding \
+            --test supplemental_panel_http --test supplemental_bot_resolution \
+            --test supplemental_binary_artifact -- --test-threads=1 2>&1 | tee logs/checkpoint/boundary-regressions.log
+      - name: Bounded process ownership regressions
+        # Exercise strict inventory, deadline and real Windows handle contracts
+        # before the full suite, without changing its admission or timeout policy.
+        env:
+          CARGO_TARGET_DIR: runtime/target/ci-tests
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+        shell: bash
+        run: |
+          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release \
+            --lib process_owner:: -- --test-threads=1 2>&1 | tee logs/checkpoint/process-ownership-regressions.log
       - name: All Rust tests through the isolated runner
         # Preserve optimized distribution binaries while avoiding LTO for each
         # test executable. Release cfg, assertions and test discovery stay the same.

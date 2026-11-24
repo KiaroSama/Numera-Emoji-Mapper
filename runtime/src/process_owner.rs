@@ -8,6 +8,23 @@ use std::time::{Duration, Instant};
 const CLEANUP: Duration = Duration::from_secs(10);
 const POLL: Duration = Duration::from_millis(100);
 
+#[derive(Debug)]
+enum InventoryPoll<T> {
+    Ready(T),
+    #[cfg(any(windows, test))]
+    Pending(String),
+}
+
+#[cfg(any(windows, test))]
+impl<T> InventoryPoll<T> {
+    fn require_complete(self) -> Result<T, String> {
+        match self {
+            Self::Ready(value) => Ok(value),
+            Self::Pending(reason) => Err(reason),
+        }
+    }
+}
+
 #[cfg(any(windows, test))]
 fn job_settled(
     active: u32,
@@ -24,8 +41,16 @@ fn job_settled(
 #[cfg(any(windows, test))]
 fn complete_job_inventory<T>(
     slots: u32,
-    mut query: impl FnMut() -> Result<(u32, u32, T), String>,
+    query: impl FnMut() -> Result<(u32, u32, T), String>,
 ) -> Result<(usize, T), String> {
+    poll_job_inventory(slots, query)?.require_complete()
+}
+
+#[cfg(any(windows, test))]
+fn poll_job_inventory<T>(
+    slots: u32,
+    mut query: impl FnMut() -> Result<(u32, u32, T), String>,
+) -> Result<InventoryPoll<(usize, T)>, String> {
     const ATTEMPTS: usize = 8;
     let mut last = (0, 0);
     for attempt in 1..=ATTEMPTS {
@@ -36,7 +61,7 @@ fn complete_job_inventory<T>(
             ));
         }
         if assigned == listed {
-            return Ok((listed as usize, inventory));
+            return Ok(InventoryPoll::Ready((listed as usize, inventory)));
         }
         last = (assigned, listed);
         if attempt < ATTEMPTS {
@@ -45,10 +70,10 @@ fn complete_job_inventory<T>(
             std::thread::yield_now();
         }
     }
-    Err(format!(
+    Ok(InventoryPoll::Pending(format!(
         "codec job member inventory remains incomplete (assigned={}, listed={}, slots={slots}, attempts={ATTEMPTS})",
         last.0, last.1
-    ))
+    )))
 }
 
 #[cfg(test)]
@@ -140,6 +165,129 @@ impl WaitOutcome {
                 limit.as_secs()
             )),
         }
+    }
+}
+
+struct WaitMonitor {
+    started: Instant,
+    advanced: Instant,
+    previous: Option<Vec<u64>>,
+    wall: Duration,
+    idle: Duration,
+    pending: bool,
+}
+
+impl WaitMonitor {
+    fn new(wall: Duration, idle: Duration, started: Instant) -> Self {
+        Self {
+            started,
+            advanced: started,
+            previous: None,
+            wall,
+            idle,
+            pending: false,
+        }
+    }
+
+    fn expired(&self, now: Instant) -> Option<WaitOutcome> {
+        // Elapsed comparisons also support budgets too large to add to Instant.
+        if now.duration_since(self.started) >= self.wall {
+            Some(WaitOutcome::Wall(self.wall))
+        } else if now.duration_since(self.advanced) >= self.idle {
+            Some(WaitOutcome::Idle(self.idle))
+        } else {
+            None
+        }
+    }
+
+    fn pending_expired(&self, now: Instant) -> Option<WaitOutcome> {
+        if self.pending {
+            self.expired(now)
+        } else {
+            None
+        }
+    }
+
+    fn poll(
+        &mut self,
+        inventory: Result<InventoryPoll<Vec<u64>>, String>,
+        progress: impl FnOnce() -> Result<bool, String>,
+        reap: impl FnOnce() -> Result<Option<ExitStatus>, String>,
+        mut now: impl FnMut() -> Instant,
+    ) -> Result<Option<WaitOutcome>, String> {
+        let inventory = inventory?;
+        // A complete response arriving after pending must not restart an expired
+        // idle budget, including when there has never been a complete sample.
+        if let Some(outcome) = self.pending_expired(now()) {
+            return Ok(Some(outcome));
+        }
+        match inventory {
+            InventoryPoll::Ready(sample) => {
+                let external = progress()?;
+                if self.previous.as_ref() != Some(&sample) || external {
+                    self.advanced = now();
+                    self.previous = Some(sample);
+                }
+                self.pending = false;
+                if let Some(status) = reap()? {
+                    return Ok(Some(WaitOutcome::Finished(status)));
+                }
+            }
+            #[cfg(any(windows, test))]
+            InventoryPoll::Pending(_) => self.pending = true,
+        }
+        Ok(self.expired(now()))
+    }
+}
+
+struct CleanupMonitor {
+    deadline: Instant,
+    pending: bool,
+}
+
+impl CleanupMonitor {
+    fn new(started: Instant) -> Self {
+        Self {
+            deadline: started + CLEANUP,
+            pending: false,
+        }
+    }
+
+    fn check_deadline(&self, now: Instant) -> Result<(), String> {
+        if now >= self.deadline {
+            Err("codec tree termination/reaping could not be verified within10s".into())
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_pending_deadline(&self, now: Instant) -> Result<(), String> {
+        if self.pending {
+            self.check_deadline(now)?;
+        }
+        Ok(())
+    }
+
+    fn poll(
+        &mut self,
+        inventory: Result<InventoryPoll<()>, String>,
+        settled: impl FnOnce() -> Result<bool, String>,
+        mut now: impl FnMut() -> Instant,
+    ) -> Result<bool, String> {
+        let inventory = inventory?;
+        self.check_pending_deadline(now())?;
+        match inventory {
+            InventoryPoll::Ready(()) => {
+                self.pending = false;
+                if settled()? {
+                    return Ok(true);
+                }
+            }
+            #[cfg(any(windows, test))]
+            InventoryPoll::Pending(_) => self.pending = true,
+        }
+        self.check_deadline(now())?;
+        Ok(false)
     }
 }
 
@@ -344,25 +492,17 @@ impl OwnedProcess {
         idle: Duration,
         mut progress: impl FnMut() -> Result<bool, String>,
     ) -> Result<WaitOutcome, String> {
-        let started = Instant::now();
-        let mut advanced = started;
-        let mut previous = None;
+        let mut monitor = WaitMonitor::new(wall, idle, Instant::now());
         loop {
+            if let Some(outcome) = monitor.pending_expired(Instant::now()) {
+                return Ok(outcome);
+            }
             // Enroll the complete current cohort before try_wait can reap the root.
-            let sample = self.tree.sample()?;
-            let external = progress()?;
-            if previous.as_ref() != Some(&sample) || external {
-                advanced = Instant::now();
-                previous = Some(sample);
-            }
-            if let Some(status) = self.try_reap()? {
-                return Ok(WaitOutcome::Finished(status));
-            }
-            if started.elapsed() >= wall {
-                return Ok(WaitOutcome::Wall(wall));
-            }
-            if advanced.elapsed() >= idle {
-                return Ok(WaitOutcome::Idle(idle));
+            let inventory = self.tree.poll_sample();
+            if let Some(outcome) =
+                monitor.poll(inventory, &mut progress, || self.try_reap(), Instant::now)?
+            {
+                return Ok(outcome);
             }
             // Bounded monitor cadence, not an unbounded readiness sleep.
             tokio::time::sleep(POLL).await;
@@ -373,6 +513,7 @@ impl OwnedProcess {
     /// callers provide wall/idle bounds. Cleanup always retains its existing10s ceiling.
     pub async fn wait_console(&mut self) -> Result<ExitStatus, String> {
         loop {
+            // No caller deadline exists here: keep incomplete inspection a strict refusal.
             self.tree.sample()?;
             if let Some(status) = self.try_reap()? {
                 return Ok(status);
@@ -405,24 +546,26 @@ impl OwnedProcess {
         if self.workspace.is_none() {
             return Ok(());
         }
-        let deadline = Instant::now() + CLEANUP;
+        let mut monitor = CleanupMonitor::new(Instant::now());
         loop {
+            monitor.check_pending_deadline(Instant::now())?;
             // A member can fork another private group during the previous snapshot.
             // Repeat verified signals within the existing bound, then sample afresh.
-            self.tree.terminate()?;
-            let root_done = self.try_reap()?.is_some();
-            if root_done && self.tree.quiescent()? {
+            let inventory = self.tree.poll_terminate();
+            if monitor.poll(
+                inventory,
+                || {
+                    let root_done = self.try_reap()?.is_some();
+                    Ok(root_done && self.tree.quiescent()?)
+                },
+                Instant::now,
+            )? {
                 let workspace = self.workspace.as_ref().ok_or("missing codec workspace")?;
                 std::fs::remove_dir_all(workspace)
                     .map_err(|_| "codec tree stopped but scratch cleanup failed".to_owned())?;
                 self.child.take();
                 self.workspace.take();
                 return Ok(());
-            }
-            if Instant::now() >= deadline {
-                return Err(
-                    "codec tree termination/reaping could not be verified within10s".into(),
-                );
             }
             std::thread::sleep(POLL);
         }
@@ -627,3 +770,18 @@ mod platform {
 #[cfg(test)]
 #[path = "supplemental_process_progress.rs"]
 mod supplemental_progress_tests;
+
+#[cfg(not(windows))]
+impl platform::Tree {
+    fn poll_sample(&self) -> Result<InventoryPoll<Vec<u64>>, String> {
+        self.sample().map(InventoryPoll::Ready)
+    }
+
+    fn poll_terminate(&self) -> Result<InventoryPoll<()>, String> {
+        self.terminate().map(InventoryPoll::Ready)
+    }
+}
+
+#[cfg(test)]
+#[path = "supplemental_process_inventory.rs"]
+mod supplemental_inventory_tests;

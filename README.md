@@ -6,7 +6,7 @@
 
 **Build Telegram premium custom-emoji packs from any collection of images.**
 
-[![GitHub Actions CI workflow on main](https://img.shields.io/badge/CI-GitHub%20Actions-16a34a)](.github/workflows/ci.yml)
+[![GitHub Actions CI status on main](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
 [![GNU General Public License v3.0 or later](https://img.shields.io/badge/license-GPL--3.0--or--later-2563eb)](LICENSE)
 [![Latest Git tag release](https://img.shields.io/github/v/tag/KiaroSama/Numera-Emoji-Mapper?style=flat-square&label=release&color=ea580c)](https://github.com/KiaroSama/Numera-Emoji-Mapper/tags)
 [![1516 preserved test identities across Rust and browser suites](https://img.shields.io/badge/tests-1516%20cases-0d9488)](tests/fixtures/migration/reference-cases.json)

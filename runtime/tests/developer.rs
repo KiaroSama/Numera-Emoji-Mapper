@@ -1,5 +1,5 @@
 //! Contributor behavior over real Rust code, temporary catalogs and bounded native children.
-use numera_runtime::developer::{self, Command, Options, Step, Tools};
+use numera_runtime::developer::{self, Command, NpmCommand, Options, Step, Tools};
 use numera_runtime::{logging::RunLog, tooling_environment, tooling_process};
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -43,7 +43,7 @@ fn tools() -> Tools {
     Tools {
         cargo: PathBuf::from("selected cargo"),
         rustc: PathBuf::from("selected rustc"),
-        npm: Some(PathBuf::from("selected npm")),
+        npm: Some(NpmCommand::Executable(PathBuf::from("selected npm"))),
         driver: PathBuf::from("selected numera-dev"),
     }
 }

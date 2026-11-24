@@ -102,6 +102,27 @@ class Harness {
     try { return new Set(db.prepare('SELECT content_key FROM items WHERE included=0').all().map(row => row.content_key)); }
     finally { db.close(); }
   }
+  packPlan() { return JSON.parse(readFileSync(join(this.data, 'pack_plan.json'), 'utf8')); }
+  async withCatalogLabels(labels, run) {
+    const db = new DatabaseSync(this.database, { timeout: 5000 });
+    let original;
+    try {
+      original = db.prepare('SELECT content_key,keywords FROM items ORDER BY position,rowid').all();
+      if (labels.length > original.length || labels.some(label => typeof label !== 'string')) {
+        throw new Error('Synthetic labels must name existing fixture rows');
+      }
+      const update = db.prepare('UPDATE items SET keywords=? WHERE content_key=?');
+      for (const [i, label] of labels.entries()) update.run(JSON.stringify([label]), original[i].content_key);
+    } finally { db.close(); }
+    try { return await run(); }
+    finally {
+      const restore = new DatabaseSync(this.database, { timeout: 5000 });
+      try {
+        const update = restore.prepare('UPDATE items SET keywords=? WHERE content_key=?');
+        for (const row of original) update.run(row.keywords, row.content_key);
+      } finally { restore.close(); }
+    }
+  }
   reset() {
     const db = new DatabaseSync(this.database, { timeout: 5000 });
     try {
@@ -149,11 +170,12 @@ export const test = base.extend({
   panel: async ({ harness }, use) => {
     const owner = { contexts: [], errors: [] };
     const panel = { open: (items, options) => harness.open(items, options, owner),
-      dbOrder: () => harness.dbOrder(), excludedInDb: () => harness.excludedInDb(), reset: () => harness.reset(), errors: owner.errors };
+      dbOrder: () => harness.dbOrder(), excludedInDb: () => harness.excludedInDb(), reset: () => harness.reset(),
+      packPlan: () => harness.packPlan(), withCatalogLabels: (labels, run) => harness.withCatalogLabels(labels, run), errors: owner.errors };
     try { await use(panel); } finally {
       for (const context of owner.contexts.reverse()) await context.close();
       expect(owner.errors, 'the page threw during the scenario').toEqual([]);
     }
   },
 });
-export { expect };
+export { expect, Harness };

@@ -393,4 +393,22 @@ test(id('F07DeniedStorageStillBoots', 'test_F07_a_malformed_stored_preference_is
   expect(await page.evaluate('zoom')).toBe(1);
   expect(await page.evaluate("document.getElementById('bg').textContent")).toBe('Backdrop: Checker');
   expect(await page.evaluate("document.getElementById('animLabel').textContent")).toBe('Animation: On');
+
+  await test.step('Template-looking catalog labels remain literal through the real HTTP page', async () => {
+    const labels = ['__ITEMS__', '__TOKEN__', '__PREVIEW_TIERS__', '__PER_SET__',
+      '__HIDDEN__', '__STALE__', '__ASSET_VER__', '__ICON_VER__'];
+    await panel.withCatalogLabels(labels, async () => {
+      // Read the actual catalog through the Rust page handler, without replacing its item JSON.
+      const literalPage = await panel.open();
+      expect(panel.errors, 'valid catalog labels must not abort panel setup').toEqual([]);
+      expect(await literalPage.evaluate('ITEMS.map(item => item.label)')).toEqual(labels);
+      expect(await literalPage.locator('#grid .card .lbl').allTextContents()).toEqual(labels);
+      expect(await literalPage.locator('#selCount').innerText()).toBe(String(labels.length));
+      await literalPage.locator('#grid .card').first().click();
+      expect(await literalPage.locator('#selCount').innerText()).toBe(String(labels.length - 1));
+      await literalPage.click('#undo');
+      expect(await literalPage.locator('#selCount').innerText()).toBe(String(labels.length));
+      expect(panel.errors).toEqual([]);
+    });
+  });
 });

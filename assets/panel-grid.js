@@ -569,7 +569,7 @@ function updateCount(){
   const note = document.getElementById('hiddenNote');
   if (note) {
     note.textContent = HIDDEN
-      ? `· ${HIDDEN} in finished packs (hidden — panel.py --all shows them)`
+      ? `· ${HIDDEN} in finished packs (hidden — numera-emoji panel --all shows them)`
       : '';
   }
   const stale = document.getElementById('staleNote');

@@ -40,12 +40,10 @@ pub fn check(config: &Config) -> Result<(bool, Vec<String>), String> {
                 "{title}: {outside} published file(s) still in the project"
             ));
         }
-        for file in [
-            archive_rows::LOGO_NAME,
-            "_history.json",
-            "_history.md",
-            "_manifest.md",
-        ] {
+        for file in std::iter::once(archive_rows::LOGO_NAME)
+            .filter(|_| archive_rows::has_logo(&record))
+            .chain(archive_rows::META)
+        {
             if !folder.join(file).is_file() {
                 why.push(format!("{title}: missing {file}"));
             }
