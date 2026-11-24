@@ -258,7 +258,7 @@ cargo about generate --manifest-path runtime/Cargo.toml --locked --config runtim
 | [zerotrie 0.2.5](https://crates.io/crates/zerotrie/0.2.5) | Unicode-3.0 |
 | [zerovec 0.11.9](https://crates.io/crates/zerovec/0.11.9) | Unicode-3.0 |
 | [zerovec-derive 0.11.7](https://crates.io/crates/zerovec-derive/0.11.7) | Unicode-3.0 |
-| [zip 9.7.3](https://crates.io/crates/zip/9.7.3) | MIT |
+| [zip 9.8.1](https://crates.io/crates/zip/9.8.1) | MIT |
 | [zlib-rs 0.6.8](https://crates.io/crates/zlib-rs/0.6.8) | Zlib |
 | [zmij 1.0.23](https://crates.io/crates/zmij/1.0.23) | MIT |
 | [zune-core 0.5.3](https://crates.io/crates/zune-core/0.5.3) | MIT OR Apache-2.0 OR Zlib |
@@ -4254,7 +4254,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Used by:
 - tracing-core 0.1.36
-- zip 9.7.3
+- zip 9.8.1
 
 ````text
 The MIT License (MIT)

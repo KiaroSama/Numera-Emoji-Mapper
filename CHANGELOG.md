@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-25
+
+### Changed
+- Run the menu and panel in one PowerShell window with `run.ps1`. Removed the separate `run-panel.ps1` launcher, and preserve native arguments that match PowerShell option names (#103).
+- Link the README version badge to Git tags.
+- Add hover-only animation playback. Pause animations while dragging or when the window loses focus.
+- Update `zip` to `9.8.1`, `wrangler` to `4.166.0`, and `@cloudflare/workers-types` to `5.20261121.1`.
+
+### Fixed
+- Reject invalid or duplicate custom emoji IDs during publication reconciliation, including the logo ID in the first slot of branded packs (NEM-01).
+- Preserve unbranded archives, panel text that resembles template markers, and logo positions when importing drafts. Report failed emoji lookups as errors instead of saying the IDs do not exist (NEM-02 through NEM-05).
+- Find standard Windows npm installations, verify the approved icon in Windows binaries, correct the CI badge and panel help, and let the Windows process inventory settle within its existing timeout (NEM-06 through NEM-10, #105).
+- Publish the lifecycle test's readiness file atomically so the parent cannot read it before it is complete.
+
 ## [3.0.0] - 2026-11-22
 
 ### Breaking

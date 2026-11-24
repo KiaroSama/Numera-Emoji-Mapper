@@ -56,6 +56,55 @@ fn reconcile(
     .reconcile(set, BASE)
 }
 
+#[test]
+fn malformed_branded_logo_never_records_downstream_items() {
+    let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    for logo in [json!({}), json!({"custom_emoji_id":""})] {
+        let scratch = tempfile::tempdir().unwrap();
+        let database = scratch.path().join("catalog.db");
+        let mut catalog = Catalog::open(&database, "fixture UTC", project).unwrap();
+        catalog
+            .insert(
+                &json!({"content_key":NEXT,"fmt":"static",
+                    "file_path":scratch.path().join("next.png")}),
+                "fixture UTC",
+            )
+            .unwrap();
+        catalog.record_seen(&format!("known-{NEXT}"), NEXT).unwrap();
+        let mut server = Fixture::new(vec![observation(&[
+            logo,
+            sticker(NEXT, json!("111111111")),
+        ])]);
+        let tg = Telegram::new(TOKEN.into(), server.base.clone()).unwrap();
+        let media = MediaAdapter {
+            executable: "must-not-run".into(),
+            root: project.into(),
+            scratch: scratch.path().join("unused-codec"),
+        };
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let mut set = json!({"name":SET,"fmt":"static","index":1,
+            "keys":[],"live":0,"logo":true});
+        let original = set.clone();
+        let result = reconcile(
+            &mut catalog,
+            &tg,
+            &media,
+            &runtime,
+            scratch.path(),
+            &mut set,
+        );
+        drop(catalog);
+        let mut catalog = Catalog::open(&database, "reopen UTC", project).unwrap();
+        assert_eq!(published(&mut catalog, NEXT), false);
+        assert!(result.is_err(), "malformed logo CID was accepted");
+        assert_eq!(set, original);
+        assert_eq!(server.finish().unwrap().len(), 1);
+    }
+}
+
 fn refused_tail_keeps_pending(prior_valid: bool) {
     let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     for (label, cid) in [

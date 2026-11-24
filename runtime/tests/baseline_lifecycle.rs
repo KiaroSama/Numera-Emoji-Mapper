@@ -586,7 +586,9 @@ fn construction_child_fixture() {
         &root.join("panel-sandbox-dest"),
     )
     .unwrap();
-    std::fs::write(root.join("construction-ready"), b"READY\n").unwrap();
+    let pending = root.join("construction-ready.tmp");
+    std::fs::write(&pending, b"READY\n").unwrap();
+    std::fs::rename(pending, root.join("construction-ready")).unwrap();
     std::thread::sleep(std::time::Duration::from_secs(300));
 }
 

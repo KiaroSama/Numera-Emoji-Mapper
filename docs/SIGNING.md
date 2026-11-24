@@ -48,8 +48,8 @@ sha256sum -c SHA256SUMS
 
 ```bash
 openssl dgst -sha256 -verify publisher-key.pem \
-  -signature numera-emoji-mapper-3.0.0-linux-x64.zip.sig \
-  numera-emoji-mapper-3.0.0-linux-x64.zip
+  -signature numera-emoji-mapper-3.1.0-linux-x64.zip.sig \
+  numera-emoji-mapper-3.1.0-linux-x64.zip
 ```
 
 ### 3. Verify the Windows Authenticode signature
@@ -63,5 +63,5 @@ $null -ne $sig.TimeStamperCertificate
 ### 4. Verify GitHub build provenance
 
 ```bash
-gh attestation verify numera-emoji-mapper-3.0.0-windows-x64.zip --owner KiaroSama
+gh attestation verify numera-emoji-mapper-3.1.0-windows-x64.zip --owner KiaroSama
 ```

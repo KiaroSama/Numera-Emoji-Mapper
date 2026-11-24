@@ -195,12 +195,8 @@ impl<M: MediaCodec> Publisher<'_, M> {
             return Err("live set is smaller than recorded membership".into());
         }
         let mut custom_ids = BTreeSet::new();
-        if offset == 1
-            && let Some(id) = live[0]["custom_emoji_id"]
-                .as_str()
-                .filter(|id| !id.is_empty())
-        {
-            custom_ids.insert(id);
+        if offset == 1 {
+            custom_ids.insert(custom_id(&live[0])?);
         }
         for (i, key) in keys.iter().enumerate() {
             let sticker = &live[i + offset];
