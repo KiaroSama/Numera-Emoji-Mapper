@@ -1,5 +1,6 @@
 // Real-page regression scenarios, retaining each original Python class/method identity.
 import { test, expect, synth, DENY_STORAGE, sleep } from './browser-fixture.js';
+import { runGalleryFreezeScenarios } from './fixtures/gallery-motion.js';
 import { PER_SET } from './source-fixture.js';
 
 test.skip(process.env.NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS === '1', 'Explicit browser opt-out');
@@ -281,6 +282,7 @@ test(id('F05AFreezeIsNeverUndone', 'test_F05_a_hidden_page_stays_frozen_when_new
   await barrier(page, 'scrollBy(0, innerHeight * 3);');
   expect(await page.evaluate('__animating()'), 'an observer callback restarted a hidden page').toBe(0);
   expect(panel.errors).toEqual([]);
+  await runGalleryFreezeScenarios(panel);
 });
 
 test(id('F05AFreezeIsNeverUndone', 'test_F05_a_switched_off_grid_stays_frozen_when_new_cards_arrive'), async ({ panel }) => {

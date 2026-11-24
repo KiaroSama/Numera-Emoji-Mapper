@@ -255,6 +255,40 @@ describe("F14 - what a valid publish still does", () => {
 });
 
 describe("F15 - an oversized note cannot escape the chunker", () => {
+  it.each([
+    { label: "spaces", note: " ".repeat(4096) },
+    { label: "tabs and line breaks", note: "\t\r\n".repeat(1365) },
+  ])("does not send a standalone note containing only $label", async ({ note }) => {
+    const calls: Record<string, unknown>[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      calls.push(body);
+      if (!body.text.trim()) {
+        return Response.json({ ok: false, error_code: 400, description: "text must be non-empty" },
+                             { status: 400 });
+      }
+      return Response.json({ ok: true, result: {
+        message_id: 7, date: 1795478400,
+        chat: { id: -1004211401345, type: "channel", title: "Fixture" },
+        text: body.text,
+      } });
+    });
+
+    const res = await worker.fetch(publish(JSON.stringify({ note, packs: PACKS })), ENV, CTX);
+    await settle();
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, message_ids: [7] });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].text).toContain("https://t.me/addemoji/cryptoemoji1_by_bot");
+  });
+
+  it("preserves spacing around a non-blank note", () => {
+    const parts = renderAnnouncement({ note: "  release note\n", packs: PACKS });
+    expect(parts).toHaveLength(1);
+    expect(parts[0].startsWith("  release note\n\n✅")).toBe(true);
+  });
+
   it("no longer emits a 5000-character message", () => {
     // The chunker only ever split BETWEEN blocks, so the note -- one block --
     // went out whole: the two message lengths were [5000, 60].

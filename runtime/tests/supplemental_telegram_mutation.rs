@@ -1,4 +1,6 @@
 //! Retry proof must preserve every identity observed before an append.
+#[path = "supplemental_telegram_mutation_support/envelope.rs"]
+mod envelope;
 #[allow(dead_code)]
 #[path = "baseline_packs_support/http.rs"]
 mod http;
