@@ -15,11 +15,8 @@
 .EXAMPLE
     .\run.ps1 status       # any native command
 #>
-param(
-    [switch]$Check,
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$CommandArguments = @()
-)
+# Keep the native command tail outside PowerShell's named/common parameter binder.
+# Only leading launcher controls are parsed below; later tokens are literal data.
 
 $ErrorActionPreference = 'Stop'
 # Script-local preferences retain PowerShell pipelines and console ownership while
@@ -80,6 +77,61 @@ try {
     if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) {
         $failureMessage = 'Native executable not found. Put the signed numera-emoji.exe from a release package in the bin folder.'
         throw $failureMessage
+    }
+    $Check = $false
+    $CommandArguments = @()
+    $seenCheck = $false
+    $seenArguments = $false
+    $index = 0
+    while ($index -lt $args.Count) {
+        $option = $args[$index]
+        if ($option -isnot [string]) { break }
+        if ($option -ieq '-Check' -or $option -ieq '-Check:') {
+            if ($seenCheck) {
+                $failureMessage = '-Check may be specified only once.'
+                throw $failureMessage
+            }
+            $seenCheck = $true
+            $Check = $true
+            $index++
+            # A caller/hashtable splat keeps the colon; -File removes it but
+            # retains the Boolean value for -Check:$true and -Check:$false.
+            if ($index -lt $args.Count -and ($args[$index] -is [bool] -or $args[$index] -is [switch])) {
+                $Check = [bool]$args[$index]
+                $index++
+            } elseif ($option.EndsWith(':')) {
+                $failureMessage = '-Check requires a Boolean switch value.'
+                throw $failureMessage
+            }
+        } elseif ($option -ieq '-CommandArguments' -or $option -ieq '-CommandArguments:') {
+            if ($seenArguments -or $index + 1 -ge $args.Count) {
+                $failureMessage = '-CommandArguments requires one value and may be specified only once.'
+                throw $failureMessage
+            }
+            $seenArguments = $true
+            $index++
+            if ($args[$index] -is [string] -and
+                @('-Check', '-Check:', '-CommandArguments', '-CommandArguments:') -icontains $args[$index]) {
+                $failureMessage = '-CommandArguments requires one value. Put literal launcher control names inside an explicit array, even when quoted.'
+                throw $failureMessage
+            }
+            # Match the old typed array contract: scalar null means no args;
+            # null elements inside an array become literal empty strings.
+            if ($null -eq $args[$index]) { $CommandArguments = @() }
+            else { $CommandArguments = [string[]]$args[$index] }
+            $index++
+        } else {
+            break
+        }
+    }
+    if ($index -lt $args.Count) {
+        $remaining = $args[$index..($args.Count - 1)]
+        # PowerShell unwraps one positional array, but converts arrays among
+        # several positional values to strings. Preserve that binding contract.
+        if ($remaining.Count -eq 1 -and $remaining[0] -is [array]) {
+            $remaining = $remaining[0]
+        }
+        $CommandArguments += [string[]]$remaining
     }
     if ($Check) {
         if ($CommandArguments.Count -gt 0) {
