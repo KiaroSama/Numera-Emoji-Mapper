@@ -320,7 +320,9 @@ nothing else happens: no token lookup, no message built, not even a log line
 a `null` is a bug upstream and a loud 400 finds it. The `note` cap matters
 because the note is one block and the renderer only splits *between* blocks — an
 over-long one used to leave as a single message Telegram rejects, so half the
-announcement landed and the rest was dropped mid-send. `packs` is bounded
+announcement landed and the rest was dropped mid-send. Empty or whitespace-only
+notes are omitted so they cannot become a standalone empty Telegram message.
+`packs` is bounded
 because it is caller-shaped input, and unbounded work inside a Worker is a
 request that never finishes. `test/publish-input.test.ts` covers each rule.
 

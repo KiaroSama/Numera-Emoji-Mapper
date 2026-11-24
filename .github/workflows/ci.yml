@@ -91,6 +91,14 @@ jobs:
               --target "${{ matrix.platform }}" \
               --logo assets/numera-emoji-mapper-logo-circle.png
           done
+      - name: Set up Node for Windows launcher contracts
+        if: runner.os == 'Windows'
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Windows source launcher process contracts
+        if: runner.os == 'Windows'
+        run: node --test assets/tests/launcher-process.js
       - name: Rust format and lint
         shell: bash
         run: |

@@ -390,7 +390,7 @@
     "tests/fixtures/similarity.json": "34df25f072dc51a8812006223465259493c8499815e8e91d9df52c3f0a680dcb"
   },
   "launchers": {
-    "run.ps1": "f4784f1e894936f4819952f23b474243c00fa22d99adaf037c1245a1c63a7b19",
-    "run-panel.ps1": "8417d0ac084065f7be54464cfcad7335ade95bf72ea02a349a3dea33339df15a"
+    "run.ps1": "34a1b450131bddab3fdcb61ae4401bf9dad899909df7bc6cfd9314251349bd09",
+    "run-panel.ps1": "482590be7951198a924d0deb95f3090d21a59b74559b0df7adcb3771153136dd"
   }
 }

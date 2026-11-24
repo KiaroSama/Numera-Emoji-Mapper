@@ -2,8 +2,9 @@
 
 The standalone Rust crate in `runtime/` owns local application tests. Browser
 JavaScript is tested with Playwright/Chromium in `assets/tests`; the Cloudflare
-Worker keeps its TypeScript/Vitest suite. No Python interpreter, PyO3 extension,
-PowerShell launcher or shell application harness is part of test execution.
+Worker keeps its TypeScript/Vitest suite. The two reviewed source-checkout
+PowerShell launchers have a separate process contract suite described below.
+No Python interpreter or PyO3 extension is part of test execution.
 
 ## Original case inventories
 
@@ -77,6 +78,40 @@ The explicit `NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS=1` opt-out is reported as a
 skip; it is never browser acceptance. Missing Chromium or the Rust panel binary
 fails by default. Fixtures start the real Rust server and inspect committed
 SQLite state after saves. Screenshots and artifacts stay under `logs/tmp/browser`.
+
+## Source-checkout launcher process contracts
+
+The Windows x64 and Windows arm64 `native-build` jobs also execute:
+
+```powershell
+node --test assets/tests/launcher-process.js
+```
+
+This separate launcher integration suite requires Node 24, PowerShell 7.3 or newer (`pwsh`
+on PATH, or an explicit `NUMERA_TEST_PWSH` path), and the pinned Rust compiler.
+It compiles a small synthetic executable in an owned temporary fixture root,
+copies the actual `run.ps1` and `run-panel.ps1` there, and records exact native
+arguments, working directories and exit codes. Child environments use an explicit
+allowlist. The suite never invokes the repository's native executable, reads an
+operator `.env`, or contacts a network service. Each PowerShell child has a timeout
+that terminates its owned process tree.
+
+The 44 cases cover menu/doctor/panel dispatch, multi-pack arrays, invalid inputs,
+missing binaries, ordinary and legacy native argument passing, quotes and empty
+strings, error preferences, pipeline output capture, caller preference isolation,
+log failures, loop prevention, pauses, and real child
+reentry from paths containing spaces, Unicode, apostrophes and semicolons. Explorer
+detection is supplied at the actual script branch. A synthetic terminal captures
+its arguments; a separate delimiter check follows Windows Terminal's documented
+semicolon rule before real child PowerShell execution. This checks the transport
+boundary and does not claim GUI Windows Terminal coverage.
+
+The timestamped acceptance summary stays in
+`logs/checkpoint/launcher-process-<os>-<arch>.log`, included by the existing CI
+diagnostic upload. Failed synthetic fixtures remain under
+`logs/tmp/launcher-tests-*`; successful runs delete their owned fixtures. These
+process checks supplement the guarded Rust suites above and never replace or
+bypass their runner.
 
 ## Worker and inventory tooling
 

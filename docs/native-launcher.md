@@ -12,8 +12,11 @@ Linux arm64, Windows x64, and Windows arm64 (no macOS or 32-bit builds).
 .\numera-emoji.exe build-collection --help
 ```
 
-On Linux use `./numera-emoji`. The menu and doctor are Rust commands. There are no
-PowerShell/shell application launchers, interpreter bootstrap or automatic build.
+On Linux use `./numera-emoji`. The menu and doctor are Rust commands. Installed
+archives contain no PowerShell/shell application launchers, interpreter bootstrap
+or automatic build. Source checkouts additionally offer `run.ps1` and
+`run-panel.ps1` as PowerShell 7.3 or newer convenience helpers for a verified native
+executable in `bin`; these scripts are not part of an installed package.
 The menu supports Back and cancellation; entering it does not authorize a publish.
 
 `doctor` checks native codecs, physical paths, assets and package hashes. It

@@ -61,6 +61,31 @@ fn malformed_mutation_outcomes_use_live_proof_without_resending() {
 }
 
 #[test]
+fn malformed_send_message_outcomes_do_not_introduce_unproved_retries() {
+    for body in malformed_outcomes() {
+        let bot = http::Bot::new(move |request| {
+            assert_eq!(request.method, "sendMessage");
+            http::payload(body.clone())
+        });
+        let mut waits = Vec::new();
+        let result = bot.telegram().call_with_wait(
+            "sendMessage",
+            &BTreeMap::new(),
+            &[],
+            2,
+            None::<fn() -> numera_runtime::telegram::Result<Option<bool>>>,
+            |delay| waits.push(delay),
+        );
+        assert!(
+            result.is_err(),
+            "malformed send was acknowledged: {result:?}"
+        );
+        assert!(waits.is_empty());
+        assert_eq!(bot.methods(), ["sendMessage"]);
+    }
+}
+
+#[test]
 fn malformed_missing_evidence_preserves_provider_intent_and_source() {
     for body in malformed_outcomes() {
         let root = tempfile::tempdir().unwrap();

@@ -33,8 +33,12 @@ const mediaIn = (card) => card.querySelector('img[data-anim], video[data-play]')
 function play(v, on) {
   try { if (on) { const q = v.play(); if (q) q.catch(() => {}); } else v.pause(); } catch (_) {}
 }
+function mayAnimate() {
+  return ANIM_ON && !RM && !document.hidden && thaw === null;
+}
 function setLive(n, live) {
   if (!n) return;
+  live = live && mayAnimate();
   if (n.dataset.play) { play(n, live); return; }
   const want = live ? n.dataset.anim : n.dataset.still;
   if (want && n.getAttribute('src') !== want) n.src = want;
@@ -48,7 +52,7 @@ function applyAnim() {
   const b = document.getElementById('anim');
   b.setAttribute('aria-pressed', ANIM_ON ? 'true' : 'false');
   document.getElementById('animLabel').textContent = 'Animation: ' + (ANIM_ON ? 'On' : 'Off');
-  if (!ANIM_ON || RM) { freezeAll(); return; }
+  if (!mayAnimate()) { freezeAll(); return; }
   cards().forEach(c => { if (io) { io.unobserve(c); io.observe(c); } });
 }
 // Scrolling is the one moment the decoding buys nothing: the frames go past too

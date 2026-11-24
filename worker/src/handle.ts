@@ -228,7 +228,9 @@ export function renderAnnouncement(req: PublishRequest): string[] {
   // character note used to become exactly that -- a 5000-character sendMessage
   // Telegram rejects. Every block has to fit before the loop can guarantee
   // anything.
-  if (req.note) blocks.push(escapeHtml(clampText(String(req.note), TEXT_LIMIT)));
+  const note = clampText(String(req.note ?? ""), TEXT_LIMIT);
+  // A blank standalone note is rejected by Telegram before any pack can send.
+  if (note.trim()) blocks.push(escapeHtml(note));
   for (const p of req.packs) {
     const title = escapeHtml(clampText(String(p.title ?? p.name), TITLE_LIMIT));
     // Escaped at the sink. The validator keeps this a number, but this

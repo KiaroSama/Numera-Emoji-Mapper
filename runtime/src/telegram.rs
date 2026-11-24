@@ -190,6 +190,12 @@ impl Telegram {
                 "non-object JSON response (HTTP {status})"
             )));
         }
+        if !payload.get("ok").is_some_and(Value::is_boolean) {
+            // Malformed outcome flags cannot prove rejection or remote absence.
+            return Err(ApiError::Ambiguous(
+                "Bot API reply has no boolean outcome; outcome unknown".into(),
+            ));
+        }
         Ok(payload)
     }
     pub fn call<F>(
@@ -307,7 +313,9 @@ impl Telegram {
                     }
                     return Err(ApiError::Rejected(format!("{method} failed: {desc}")));
                 }
-                Err(ApiError::Transport(reason)) => {
+                // New envelope refusals must not introduce unproved message replay.
+                Err(error @ ApiError::Ambiguous(_)) if applied.is_none() => return Err(error),
+                Err(ApiError::Transport(reason) | ApiError::Ambiguous(reason)) => {
                     if let Some(check) = applied.as_mut() {
                         sleep(Duration::from_secs(2));
                         match check()? {
@@ -356,11 +364,12 @@ impl Telegram {
                 }
             }
             Ok(p)
-                if p.get("description")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_lowercase()
-                    .contains("stickerset_invalid") =>
+                if p.get("ok") == Some(&Value::Bool(false))
+                    && p.get("description")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_lowercase()
+                        .contains("stickerset_invalid") =>
             {
                 (SetState::Missing, None)
             }

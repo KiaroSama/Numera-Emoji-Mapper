@@ -107,12 +107,17 @@ Prebuilt 64-bit packages ship for four targets: `windows-x64`, `windows-arm64`,
 .\numera-emoji.exe menu
 ```
 
-In a source checkout with the verified executable placed at `bin\numera-emoji.exe`, two PowerShell 7 launchers sit at the repository root and can be double-clicked from Explorer (they open in Windows Terminal when installed and pause on errors):
+In a source checkout with the verified executable placed at `bin\numera-emoji.exe`, two PowerShell 7.3 or newer launchers sit at the repository root and can be double-clicked from Explorer (they open in Windows Terminal when installed and pause on errors):
 
 ```powershell
 .\run.ps1              # interactive menu (-Check runs doctor; other args pass through)
 .\run-panel.ps1        # Curate browser panel (-WithPack 6 or -All)
+.\run-panel.ps1 -WithPack 6,7,8  # show several existing packs from PowerShell
 ```
+
+These source-checkout helpers preserve native arguments and exit codes, including
+when they reopen in Windows Terminal. A failed launcher log produces one warning
+and leaves the native command running. They are not included in release archives.
 
 **Linux:**
 
@@ -125,7 +130,7 @@ chmod +x numera-emoji
 
 `numera-emoji doctor` checks the installed application. Use `numera-emoji menu`
 for the interactive menu, `numera-emoji panel` for the browser panel, or `--help`
-for commands. The executable runs directly; there are no shell launchers.
+for commands. The installed executable runs directly; release archives contain no shell launchers.
 Copy `.env.example` to `.env` and fill in your configuration before contacting
 Telegram. Runtime temp/cache files stay in `logs/tmp/` and `.cache/` beside the
 application.

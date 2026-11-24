@@ -152,6 +152,27 @@ fn cancelled_gallery_reaps_codec_before_removing_outer_staging() {
 }
 
 fn assert_same(actual: &str, expected: &str) {
+    // Keep the independent frozen HTML intact and admit only this reviewed
+    // motion-gate correction. Unrelated script, markup and media drift still
+    // fail full-document equality; no expectation is read from current assets.
+    let mut expected = expected.to_owned();
+    for (before, after) in [
+        (
+            "function setLive(n, live) {\n  if (!n) return;\n",
+            "function mayAnimate() {\n  return ANIM_ON && !RM && !document.hidden && thaw === null;\n}\nfunction setLive(n, live) {\n  if (!n) return;\n  live = live && mayAnimate();\n",
+        ),
+        (
+            "  if (!ANIM_ON || RM) { freezeAll(); return; }\n",
+            "  if (!mayAnimate()) { freezeAll(); return; }\n",
+        ),
+    ] {
+        assert_eq!(
+            expected.matches(before).count(),
+            1,
+            "frozen gallery motion transition must match exactly once"
+        );
+        expected = expected.replacen(before, after, 1);
+    }
     if actual != expected {
         let offset = actual
             .bytes()
