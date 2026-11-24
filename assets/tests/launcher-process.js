@@ -76,11 +76,13 @@ const ordinaryArgs = ['status', '--help', '--output', 'two words', 'literal"quot
   '$(Write-Output injected)', 'سلام 😀', '', 'synthetic-secret-do-not-log'];
 // Windows' redirected host omits the prompt from stdout. Observe the invocation
 // and still delegate to the real cmdlet, preserving its actual input/exit behavior.
-const recordPause = String.raw`function Read-Host {
-  param([string]$Prompt)
-  [IO.File]::AppendAllText($env:NUMERA_LAUNCHER_PAUSE_RECEIPT, $Prompt + "` + '`n' + String.raw`")
-  Microsoft.PowerShell.Utility\Read-Host -Prompt $Prompt
-}`;
+const recordPause = [
+  'function Read-Host {',
+  '  param([string]$Prompt)',
+  '  [IO.File]::AppendAllText($env:NUMERA_LAUNCHER_PAUSE_RECEIPT, $Prompt + [char]10)',
+  '  Microsoft.PowerShell.Utility\\Read-Host -Prompt $Prompt',
+  '}',
+].join('\n');
 const pauses = context => existsSync(context.env.NUMERA_LAUNCHER_PAUSE_RECEIPT)
   ? readFileSync(context.env.NUMERA_LAUNCHER_PAUSE_RECEIPT, 'utf8').trimEnd().split('\n') : [];
 
