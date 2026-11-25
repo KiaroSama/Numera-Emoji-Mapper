@@ -94,6 +94,11 @@ jobs:
       - name: Verify Windows binary version metadata
         if: runner.os == 'Windows'
         uses: ./.github/actions/windows-binary-versions
+      - name: Exercise the single-executable Windows version gate
+        if: runner.os == 'Windows'
+        uses: ./.github/actions/windows-binary-versions
+        with:
+          executable-path: runtime/target/release/numera-emoji.exe
       - name: Set up Node for Windows launcher contracts
         if: runner.os == 'Windows'
         uses: actions/setup-node@v7

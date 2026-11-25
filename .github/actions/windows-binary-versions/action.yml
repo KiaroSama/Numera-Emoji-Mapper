@@ -1,9 +1,16 @@
 name: Windows binary version consistency
 description: Verify actual numeric and string executable versions against the Cargo package version.
+inputs:
+  executable-path:
+    description: Optional single executable to verify instead of all four release binaries.
+    required: false
+    default: ''
 runs:
   using: composite
   steps:
     - shell: pwsh
+      env:
+        NUMERA_VERSION_EXECUTABLE: ${{ inputs.executable-path }}
       run: |
         $ErrorActionPreference = 'Stop'
         function Write-VersionLog {
@@ -29,8 +36,15 @@ runs:
           }
           $expectedNumeric = ($parts + @(0)) -join '.'
           Write-VersionLog DEBUG "Expected numeric version $expectedNumeric and string version $expectedString."
-          foreach ($name in @('numera-emoji', 'numera-dev', 'numera-runtime-tests', 'numera-worker-admin')) {
-            $path = (Resolve-Path -LiteralPath "runtime/target/release/$name.exe").ProviderPath
+          $executables = if ([string]::IsNullOrEmpty($env:NUMERA_VERSION_EXECUTABLE)) {
+            @('numera-emoji', 'numera-dev', 'numera-runtime-tests', 'numera-worker-admin') |
+              ForEach-Object { "runtime/target/release/$_.exe" }
+          } else {
+            @($env:NUMERA_VERSION_EXECUTABLE)
+          }
+          foreach ($executable in $executables) {
+            $path = (Resolve-Path -LiteralPath $executable).ProviderPath
+            $name = [IO.Path]::GetFileName($path)
             $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($path)
             $fileVersion = @($info.FileMajorPart, $info.FileMinorPart, $info.FileBuildPart, $info.FilePrivatePart) -join '.'
             $productVersion = @($info.ProductMajorPart, $info.ProductMinorPart, $info.ProductBuildPart, $info.ProductPrivatePart) -join '.'
@@ -39,7 +53,7 @@ runs:
               throw ('Version mismatch for {0}: file={1}; product={2}; strings={3}/{4}' -f
                 $name, $fileVersion, $productVersion, $info.FileVersion, $info.ProductVersion)
             }
-            Write-VersionLog INFO "Verified $name.exe numeric and string file/product versions."
+            Write-VersionLog INFO "Verified $name numeric and string file/product versions."
           }
         } catch {
           Write-VersionLog ERROR $_.Exception.Message

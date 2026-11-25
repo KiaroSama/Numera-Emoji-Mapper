@@ -121,6 +121,11 @@ Correct the active guides to describe OS ownership and surviving owned handles,
 and instruct operators to leave lease files in place. Historical changelogs
 retain their original context. No runtime lock behavior is changed.
 
+The troubleshooting row also distinguishes contention from other filesystem
+or I/O failures using the detail after `OS lock acquisition failed:`. Waiting
+for an owner applies only to a held lease; other reported failures need their
+underlying condition resolved. Neither branch permits removing the lease file.
+
 ## R14: Windows numeric versions remain hard-coded to 3.0.0.0
 
 The authenticated Windows x64 and ARM64 `v3.1.0` release executables both
@@ -144,6 +149,11 @@ both strings must equal the full Cargo version. Both Windows architectures run
 this check in CI and prebuilt-package jobs before their existing acceptance.
 The action includes timestamped INFO/WARNING/ERROR/DEBUG logging and rejects
 missing/malformed metadata. Existing icon, architecture and signing checks remain.
+Its optional single-executable mode is exercised in PR Windows CI and verifies
+the actual `bin/numera-emoji.exe` again after signing and package creation,
+before uploading the signed artifact. This keeps the signed distributable
+under the same version contract without changing the secret-handling or signing
+flow. Signing itself remains restricted to the existing main/tag conditions.
 
 ## Plan, verification and integration gates
 
