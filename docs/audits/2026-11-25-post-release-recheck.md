@@ -8,8 +8,8 @@ Reviewed main and the authenticated `v3.1.0` release:
 `eb8c2e8cf9e296532464a24cff36939cb4070c50`.
 Tracking Issue: [#106](https://github.com/KiaroSama/Numera-Emoji-Mapper/issues/106).
 The earlier repairs in #105 and the launcher repair in #103 were already merged.
-This follow-up contains new, reproduced producer/consumer boundary findings;
-it does not reopen those completed repairs.
+This follow-up contains reproduced application boundary findings and a bounded
+review of live test-file publication; it does not reopen those completed repairs.
 
 The owner requested a complete recheck and implementation PRs, with no merge
 or closure by the audit agent. One repair branch is necessary for that PR.
@@ -255,6 +255,53 @@ warnings-as-errors Clippy and formatting passed, and the refreshed inventory
 retained all 1,516 original identities with 1,895 wired Rust functions and
 zero errors. The unchanged language policy still reports zero violations.
 
+## R16: readiness files become visible before their PID contents
+
+A bounded adjacency review of the R15 publication/observation boundary found
+three equivalent one-shot readiness windows. These are source-confirmed
+scheduling windows, not newly reproduced CI assertion failures:
+
+- `baseline_lifecycle.rs`: the detached grandchild writes `descendant-ready`
+  directly; its observer parses a PID immediately after file existence.
+- `original_main_rust_support/worker.rs`: leaf, tree and codec fixtures publish
+  PID files directly. Process-lifecycle readers parse after existence, while
+  preview/gallery cancellation can terminate the writer before its write ends.
+- `coin_workflows_support/mod.rs`: the child publishes two PIDs directly; its
+  observer reads and requires exactly two entries as soon as the file exists.
+
+`std::fs::write` creates the file before writing its bytes. A reader scheduled
+between those operations can therefore see an empty marker; no partial small
+OS write needs to be assumed. The repair writes each complete marker to a
+distinct sibling staging file, lets the write return and close its handle,
+then renames it to the readiness path. The worker appends the staging suffix
+to the whole filename so `ready.txt` and `ready.leaf` cannot share a staging
+name. Each fixture already has a unique scratch directory and one publisher.
+This follows the existing construction-marker pattern and does not claim
+crash durability or change production persistence.
+
+The published PID bytes, observers, original test identities, process ownership,
+independent handle/PID assertions, cancellation order, deadlines, polling and
+hold durations stay unchanged. Synchronous config-observer responses are not
+readiness markers and remain unchanged. No extra retry or larger budget masks
+the defect. Existing lifecycle, preview, gallery and coin-workflow cases cover
+the repaired publication through their real child processes in the full
+four-platform suite. Local compilation and review are not substituted for that
+protected hosted execution.
+
+The exact three-file repair passed independent source review, formatting,
+all-target warnings-as-errors Clippy, standalone worker compilation, and
+locked release `--no-run` compilation of the library and four lifecycle/
+original-main targets. No protected body or compiled worker was executed
+locally. No test declaration, expected result or platform gate changed.
+Fresh inventory still reports 1,516 original identities, 1,895 wired Rust
+functions and zero errors; all 1,129 language-policy candidates pass unchanged.
+
+The same bounded inspection found no additional live JSONL stream requiring
+R15's framing fix: worker-admin metadata is read after owned process completion;
+media readers require complete framing; construction and converter handshakes
+already require completed publication or exact expected content. These findings
+close this specific fault-class inspection without creating a new broad audit.
+
 ## Plan, verification and integration gates
 
 1. Preserve the ordinary-CLI red receipts and independent fixture identity.
@@ -270,6 +317,9 @@ zero errors. The unchanged language policy still reports zero violations.
    native and package jobs and inspect final Windows package bytes.
    Include both existing CLI-reference targets and the recovery target with
    its two deterministic framing cases in early and complete acceptance.
+   Preserve complete readiness-marker publication and execute the existing
+   detached-descendant, process-lifecycle, preview, gallery and coin-workflow
+   ownership cases on their applicable platforms in complete acceptance.
 7. Require browser, Worker, inventory, package and security checks on the exact
    published repair head. Record applicable conditional skips honestly.
 8. Open the complete implementation PR linked to #106. The authorized owner
@@ -306,6 +356,9 @@ with its original postcondition, rather than deferred to another repair cycle.
 - [Rust line termination](https://doc.rust-lang.org/std/primitive.str.html#method.lines)
   and [formatted writer semantics](https://doc.rust-lang.org/std/io/trait.Write.html#method.write_fmt):
   a live append is not a complete record until its framing delimiter is present.
+- [Rust file writes](https://doc.rust-lang.org/std/fs/fn.write.html) and
+  [same-filesystem rename](https://doc.rust-lang.org/std/fs/fn.rename.html):
+  publish one-shot readiness files only after their contents are complete.
 - [PNG third edition: animation](https://www.w3.org/TR/png-3/#11acTL) and
   [image crate PNG decoder](https://docs.rs/image/0.25.10/image/codecs/png/struct.PngDecoder.html).
 - [Windows fixed version fields](https://learn.microsoft.com/en-us/windows/win32/api/verrsrc/ns-verrsrc-vs_fixedfileinfo),
