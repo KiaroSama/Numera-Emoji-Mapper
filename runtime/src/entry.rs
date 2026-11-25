@@ -254,6 +254,7 @@ pub fn run() -> std::process::ExitCode {
                 | "package-verify"
                 | "verify-package"
                 | "verify-binary"
+                | "verify-binary-version"
                 | "install-prebuilt"
         ) {
             let result: Result<i32, String> = root().map(|root| match command {
@@ -284,7 +285,7 @@ pub fn run() -> std::process::ExitCode {
     }
     if args.is_empty() || args == ["--help"] || args == ["-h"] {
         println!(
-            "Numera Emoji Mapper native backend\nUsage: numera-emoji COMMAND [OPTIONS]\nCommands: panel doctor menu check native-convert-owner package-native package-verify verify-binary install-prebuilt {}\nUse COMMAND --help for options (emoji-bot uses environment configuration).",
+            "Numera Emoji Mapper native backend\nUsage: numera-emoji COMMAND [OPTIONS]\nCommands: panel doctor menu check native-convert-owner package-native package-verify verify-binary verify-binary-version install-prebuilt {}\nUse COMMAND --help for options (emoji-bot uses environment configuration).",
             COMMANDS.join(" ")
         );
         return std::process::ExitCode::SUCCESS;

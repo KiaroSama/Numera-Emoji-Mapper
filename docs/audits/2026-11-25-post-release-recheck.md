@@ -142,18 +142,70 @@ as 3.0.0.0; it is not evidence of an installer failure or a tested Explorer UI.
 Cargo-derived defaults for numeric and textual versions. Do not replace them
 with another manually maintained constant or overwrite an existing release tag.
 
-The shared `windows-binary-versions` action inspects all four actual built
-executables through Windows `FileVersionInfo`, an oracle independent of the
-resource generator. Both numeric tuples must equal Cargo major/minor/patch/0;
-both strings must equal the full Cargo version. Both Windows architectures run
-this check in CI and prebuilt-package jobs before their existing acceptance.
-The action includes timestamped INFO/WARNING/ERROR/DEBUG logging and rejects
-missing/malformed metadata. Existing icon, architecture and signing checks remain.
-Its optional single-executable mode is exercised in PR Windows CI and verifies
-the actual `bin/numera-emoji.exe` again after signing and package creation,
-before uploading the signed artifact. This keeps the signed distributable
-under the same version contract without changing the secret-handling or signing
-flow. Signing itself remains restricted to the existing main/tag conditions.
+The shared `windows-binary-versions` action invokes the native Rust command
+`verify-binary-version --executable FILE` for all four actual built executables.
+Its bounded PE reader inspects every `RT_VERSION` language payload and string
+table independently of the resource generator. Both numeric tuples must equal
+compiled Cargo major/minor/patch/0; both strings must equal the full Cargo
+version. The expected version is never obtained from the inspected file.
+Missing files/resources, malformed version blocks and mismatched values fail.
+Both Windows architectures run this check in CI and prebuilt-package jobs.
+The command uses the existing four-level timestamped Rust logger; the action
+contains only command orchestration. Existing icon, architecture and signing
+checks remain. Its optional single-executable mode is exercised in PR Windows
+CI. The signing workflow uses the known application in `bin` as the verifier
+and verifies that actual `bin/numera-emoji.exe` again after signing and package
+creation, before signed-artifact upload. Signing itself remains restricted to
+the existing main/tag conditions; no secret-handling or signing flow is changed.
+
+### CI policy failure found and repaired during review
+
+Candidate `08a5fea5db9c381bcc9e1b86dabfb71fc2e6b971` failed the existing
+language-policy gate because the first version of this action embedded a
+PowerShell verification program. The failure occurred before focused and full
+native regression execution, so those jobs were not counted as passes. The
+same ordinary inventory command reproduced the single violation locally.
+Moving verification into native Rust and retaining only the CI command loop
+removed that violation without changing the policy, allowlists or test guard.
+The final published head must pass that same gate and the complete downstream
+tests. Eleven focused version tests cover both architectures, multiple resource
+identities/languages and string tables, every numeric component, independent
+text mismatches, advertised translation lookup, absent/duplicate metadata,
+malformed UTF-16/types/lengths,
+truncation/range bounds, literal paths and CLI refusal. A separate library case
+checks expected-version parsing and Windows component bounds. The focused
+target runs in the early native boundary step; a syntactically valid workflow
+alone is not acceptance.
+
+The rebuilt ordinary Linux CLI passed a frozen 39-case version contract against
+both authenticated released Windows executables and controlled byte copies.
+The genuine stale numeric versions were rejected; changing only the two numeric
+tuples to literal `3.1.0.0` made the positive controls pass. Independent File/
+Product numeric/text changes, absent keys/resources, invalid signatures, lengths,
+UTF-16, truncated/empty files and CLI argument errors were rejected. Every
+original archive and test input retained its pre-execution SHA256. No Windows
+code or guarded test binary was executed by this probe. Driver SHA256:
+`7b3d1eec45a46b428515ba546aa0bc15c5357a7ace9d94fc9a235cd8098d21ae`.
+Independent review also reproduced a dangling `Translation` pair accepted by
+an intermediate native verifier: the sole table was `000004b0`, but the resource
+advertised `041104b0`. The final verifier requires each advertised pair to resolve
+to a validated table, without requiring `VarFileInfo`, equality with the PE
+resource language, or advertisement of every valid table. The unchanged four-
+case real-byte regression first had two intended-negative failures and then
+passed all four cases after correction. Both correct originals remained accepted;
+both dangling declarations were refused with the specific missing-table error.
+The frozen 39-case regression also passed again on this final native binary.
+Translation driver SHA256:
+`5b42e7a2184eb32c260b478db647fc7c168330eeef1d7f0b7960e455e0a40cc5`.
+Seven additional ordinary-command checks preserved the existing architecture/
+approved-logo behavior on both original and corrected Windows files, rejected
+the opposite architecture, and accepted the rebuilt Linux executable.
+
+Formatting, all-target Clippy, release builds of all four binaries and compilation
+of the two focused test targets passed locally. The unchanged identity inventory
+reported 1,516 originals, 1,893 wired Rust functions and zero errors; the language
+inventory reported 1,129 candidate files and zero violations. Compiled test
+targets still require protected execution on the final hosted revision.
 
 ## Plan, verification and integration gates
 
@@ -164,9 +216,9 @@ flow. Signing itself remains restricted to the existing main/tag conditions.
 4. Correct the active input/lease documentation and describe the supported
    converter-to-catalog composition explicitly.
 5. Rebuild the ordinary executable and run unchanged baseline/fixed probes.
-6. Compile/lint the eight-case additive target and execute it in the existing
-   early four-platform boundary step, followed by full unfiltered native
-   acceptance. Verify actual Windows numeric/string version metadata in both
+6. Compile/lint and execute the eight media cases and eleven version cases in the
+   existing early four-platform boundary step, followed by full unfiltered
+   native acceptance, including the expected-version parser case. Verify actual Windows numeric/string version metadata in both
    native and package jobs and inspect final Windows package bytes.
 7. Require browser, Worker, inventory, package and security checks on the exact
    published repair head. Record applicable conditional skips honestly.
@@ -203,8 +255,10 @@ with its original postcondition, rather than deferred to another repair cycle.
   and [Windows LockFileEx](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-lockfileex).
 - [PNG third edition: animation](https://www.w3.org/TR/png-3/#11acTL) and
   [image crate PNG decoder](https://docs.rs/image/0.25.10/image/codecs/png/struct.PngDecoder.html).
-- [Windows fixed version fields](https://learn.microsoft.com/en-us/windows/win32/api/verrsrc/ns-verrsrc-vs_fixedfileinfo)
-  and [FileVersionInfo](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.fileversioninfo):
+- [Windows fixed version fields](https://learn.microsoft.com/en-us/windows/win32/api/verrsrc/ns-verrsrc-vs_fixedfileinfo),
+  [VS_VERSIONINFO layout](https://learn.microsoft.com/en-us/windows/win32/menurc/vs-versioninfo)
+  [StringTable layout](https://learn.microsoft.com/en-us/windows/win32/menurc/stringtable),
+  and [translation-based lookup](https://learn.microsoft.com/en-us/windows/win32/api/winver/nf-winver-verqueryvaluew):
   independent numeric and string artifact verification.
 - [winresource constructor defaults](https://docs.rs/winresource/latest/src/winresource/lib.rs.html):
   the reviewed 0.1.34 version derives numeric and textual resources from Cargo.

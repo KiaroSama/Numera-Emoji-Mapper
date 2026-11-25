@@ -162,6 +162,7 @@ jobs:
             --test supplemental_publication_admission --test supplemental_archive_branding \
             --test supplemental_panel_http --test supplemental_bot_resolution \
             --test supplemental_binary_artifact --test supplemental_local_inputs \
+            --test supplemental_binary_version \
             -- --test-threads=1 2>&1 | tee logs/checkpoint/boundary-regressions.log
       - name: Bounded process ownership regressions
         # Exercise strict inventory, deadline and real Windows handle contracts

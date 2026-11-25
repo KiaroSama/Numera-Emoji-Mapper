@@ -1,61 +1,26 @@
 name: Windows binary version consistency
-description: Verify actual numeric and string executable versions against the Cargo package version.
+description: Verify actual numeric and string executable versions with the native Rust verifier.
 inputs:
   executable-path:
     description: Optional single executable to verify instead of all four release binaries.
     required: false
     default: ''
+  verifier-path:
+    description: Native numera-emoji executable built from the source revision being verified.
+    required: false
+    default: runtime/target/release/numera-emoji.exe
 runs:
   using: composite
   steps:
-    - shell: pwsh
+    - shell: bash
       env:
         NUMERA_VERSION_EXECUTABLE: ${{ inputs.executable-path }}
+        NUMERA_VERSION_VERIFIER: ${{ inputs.verifier-path }}
       run: |
-        $ErrorActionPreference = 'Stop'
-        function Write-VersionLog {
-          param(
-            [ValidateSet('INFO', 'WARNING', 'ERROR', 'DEBUG')][string]$Level,
-            [string]$Message
-          )
-          Write-Host "$([DateTime]::UtcNow.ToString('o')) [$Level] [binary-version] $Message"
-        }
-        try {
-          $metadataText = & cargo metadata --manifest-path runtime/Cargo.toml --locked --format-version 1 --no-deps
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot read the Cargo package version.' }
-          $metadata = ($metadataText -join "`n") | ConvertFrom-Json
-          $packages = @($metadata.packages | Where-Object { $_.name -eq 'numera-emoji-runtime' })
-          if ($packages.Count -ne 1) { throw 'Expected exactly one runtime package.' }
-          $expectedString = [string]$packages[0].version
-          if ($expectedString -notmatch '^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$') {
-            throw 'The runtime version is not a supported semantic version.'
-          }
-          $parts = @([int]$Matches[1], [int]$Matches[2], [int]$Matches[3])
-          if (@($parts | Where-Object { $_ -gt 65535 }).Count -ne 0) {
-            throw 'The runtime version exceeds a Windows version component.'
-          }
-          $expectedNumeric = ($parts + @(0)) -join '.'
-          Write-VersionLog DEBUG "Expected numeric version $expectedNumeric and string version $expectedString."
-          $executables = if ([string]::IsNullOrEmpty($env:NUMERA_VERSION_EXECUTABLE)) {
-            @('numera-emoji', 'numera-dev', 'numera-runtime-tests', 'numera-worker-admin') |
-              ForEach-Object { "runtime/target/release/$_.exe" }
-          } else {
-            @($env:NUMERA_VERSION_EXECUTABLE)
-          }
-          foreach ($executable in $executables) {
-            $path = (Resolve-Path -LiteralPath $executable).ProviderPath
-            $name = [IO.Path]::GetFileName($path)
-            $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($path)
-            $fileVersion = @($info.FileMajorPart, $info.FileMinorPart, $info.FileBuildPart, $info.FilePrivatePart) -join '.'
-            $productVersion = @($info.ProductMajorPart, $info.ProductMinorPart, $info.ProductBuildPart, $info.ProductPrivatePart) -join '.'
-            if ($fileVersion -ne $expectedNumeric -or $productVersion -ne $expectedNumeric -or
-                $info.FileVersion -cne $expectedString -or $info.ProductVersion -cne $expectedString) {
-              throw ('Version mismatch for {0}: file={1}; product={2}; strings={3}/{4}' -f
-                $name, $fileVersion, $productVersion, $info.FileVersion, $info.ProductVersion)
-            }
-            Write-VersionLog INFO "Verified $name numeric and string file/product versions."
-          }
-        } catch {
-          Write-VersionLog ERROR $_.Exception.Message
-          exit 1
-        }
+        if [[ -n "$NUMERA_VERSION_EXECUTABLE" ]]; then
+          "$NUMERA_VERSION_VERIFIER" verify-binary-version --executable "$NUMERA_VERSION_EXECUTABLE"
+        else
+          for name in numera-emoji numera-dev numera-runtime-tests numera-worker-admin; do
+            "$NUMERA_VERSION_VERIFIER" verify-binary-version --executable "runtime/target/release/${name}.exe"
+          done
+        fi

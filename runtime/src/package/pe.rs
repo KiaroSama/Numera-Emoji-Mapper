@@ -1,4 +1,4 @@
-//! Bounded PE32+ resource traversal for the approved Windows application icon.
+//! Bounded PE32+ resource traversal for application icons and version metadata.
 use std::collections::{BTreeMap, BTreeSet};
 
 const APPROVED_LOGO: &[u8] = include_bytes!("../../../assets/numera-emoji-mapper-logo-circle.png");
@@ -102,9 +102,11 @@ fn directory(bytes: &[u8], offset: usize, budget: &mut usize) -> Result<Vec<Entr
     Ok(result)
 }
 
-fn subdirectory(entry: Entry) -> Result<usize, String> {
+fn subdirectory(entry: Entry, description: &str) -> Result<usize, String> {
     if entry.target & DIRECTORY_FLAG == 0 {
-        return Err("PE icon resource is missing a required directory level".into());
+        return Err(format!(
+            "PE {description} resource is missing a required directory level"
+        ));
     }
     Ok((entry.target & !DIRECTORY_FLAG) as usize)
 }
@@ -118,32 +120,50 @@ fn resources<'a>(
     kind: u32,
     budget: &mut usize,
 ) -> Result<Resources<'a>, String> {
+    let description = if kind == 16 { "version" } else { "icon" };
     let entry = entries
         .iter()
         .find(|entry| entry.id == Some(kind))
         .copied()
-        .ok_or("Windows executable is missing RT_GROUP_ICON / RT_ICON embedded logo")?;
-    let names = directory(root, subdirectory(entry)?, budget)?;
+        .ok_or(if kind == 16 {
+            "Windows executable is missing RT_VERSION metadata"
+        } else {
+            "Windows executable is missing RT_GROUP_ICON / RT_ICON embedded logo"
+        })?;
+    let names = directory(root, subdirectory(entry, description)?, budget)?;
     let mut result = BTreeMap::new();
     for name in names {
-        let id = name.id.ok_or("PE application icon names must be numeric")?;
-        for language in directory(root, subdirectory(name)?, budget)? {
+        let id = name
+            .id
+            .ok_or_else(|| format!("PE application {description} names must be numeric"))?;
+        for language in directory(root, subdirectory(name, description)?, budget)? {
             let language_id = language
                 .id
                 .filter(|id| *id <= u16::MAX.into())
-                .ok_or("PE icon language must be a numeric language identifier")?;
+                .ok_or_else(|| {
+                    format!("PE {description} language must be a numeric language identifier")
+                })?;
             if language.target & DIRECTORY_FLAG != 0 {
-                return Err("PE icon resource has an unexpected nested directory".into());
+                return Err(format!(
+                    "PE {description} resource has an unexpected nested directory"
+                ));
             }
             let data = range(root, language.target as usize, 16)?;
             let payload = image.at_rva(dword(data, 0)?, dword(data, 4)?)?;
             if result.insert((id, language_id), payload).is_some() {
-                return Err("PE icon resource has a duplicate identity".into());
+                return Err(format!(
+                    "PE {description} resource has a duplicate identity"
+                ));
             }
         }
     }
     if result.is_empty() {
-        return Err("PE icon resource has no image data".into());
+        return Err(if kind == 16 {
+            "PE version resource has no version data"
+        } else {
+            "PE icon resource has no image data"
+        }
+        .into());
     }
     Ok(result)
 }
@@ -210,16 +230,13 @@ fn verify_icons(icons: &Resources<'_>, groups: &Resources<'_>) -> Result<(), Str
     Ok(())
 }
 
-pub(super) fn verify(bytes: &[u8], machine: u16, expected_logo: &[u8]) -> Result<(), String> {
-    if expected_logo != APPROVED_LOGO {
-        return Err("Windows expected logo differs from the compiled approved logo".into());
-    }
+fn image_and_root(bytes: &[u8], machine: Option<u16>) -> Result<(Image<'_>, &[u8]), String> {
     if range(bytes, 0, 2)? != b"MZ" {
         return Err("Windows executable is missing MZ header".into());
     }
     let pe_offset = dword(bytes, 0x3c)? as usize;
     let pe = range(bytes, pe_offset, 24)?;
-    if &pe[..4] != b"PE\0\0" || word(pe, 4)? != machine {
+    if &pe[..4] != b"PE\0\0" || machine.is_some_and(|machine| word(pe, 4).ok() != Some(machine)) {
         return Err("Windows executable PE signature or target machine is invalid".into());
     }
     let sections = word(pe, 6)? as usize;
@@ -252,6 +269,21 @@ pub(super) fn verify(bytes: &[u8], machine: u16, expected_logo: &[u8]) -> Result
         });
     }
     let root = image.at_rva(dword(optional, 128)?, dword(optional, 132)?)?;
+    Ok((image, root))
+}
+
+pub(super) fn version_resources(bytes: &[u8]) -> Result<Resources<'_>, String> {
+    let (image, root) = image_and_root(bytes, None)?;
+    let mut budget = RESOURCE_ENTRY_LIMIT;
+    let entries = directory(root, 0, &mut budget)?;
+    resources(&image, root, &entries, 16, &mut budget)
+}
+
+pub(super) fn verify(bytes: &[u8], machine: u16, expected_logo: &[u8]) -> Result<(), String> {
+    if expected_logo != APPROVED_LOGO {
+        return Err("Windows expected logo differs from the compiled approved logo".into());
+    }
+    let (image, root) = image_and_root(bytes, Some(machine))?;
     let mut budget = RESOURCE_ENTRY_LIMIT;
     let entries = directory(root, 0, &mut budget)?;
     let icons = resources(&image, root, &entries, 3, &mut budget)?;
