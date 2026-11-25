@@ -69,7 +69,7 @@ fn browser_discovery(command: &str) -> bool {
 }
 fn full_rust_discovery(command: &str) -> bool {
     command.trim()
-        == "mkdir -p logs/checkpoint\ncargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log"
+        == "mkdir -p logs/checkpoint\ncargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log"
 }
 fn rust_sources(path: &Path, files: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(path).unwrap() {
@@ -257,7 +257,7 @@ fn platform_gated_cases_have_a_real_windows_execution_bucket() {
     assert!(full_rust_discovery(&command));
     assert!(native.contains("platform: linux-x64"));
     assert!(native.contains("platform: windows-x64"));
-    let config = std::fs::read_to_string(root().join(".cargo/runtime-tests.toml")).unwrap();
+    let config = std::fs::read_to_string(root().join("tests/runtime-tests.toml")).unwrap();
     assert!(config.contains("[target.'cfg(windows)']"));
     assert!(config.contains("numera-runtime-tests.exe"));
     assert!(windows_cases().len() >= 5);

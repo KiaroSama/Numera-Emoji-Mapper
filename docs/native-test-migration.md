@@ -76,7 +76,7 @@ From the repository root, with FFmpeg and FFprobe installed:
 
 ```bash
 cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
+cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
 cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode rust
 ```
 
@@ -101,7 +101,7 @@ arbitrary-socket kernel isolation claim is made for Windows.
 
 Every libtest crate checks admission before its test bodies start. Bare
 `cargo test` and direct libtest execution refuse to run without that context.
-Select `.cargo/runtime-tests.toml` explicitly as above, or use `numera-dev test`
+Select `tests/runtime-tests.toml` explicitly as above, or use `numera-dev test`
 or `numera-dev check`. There is no global Cargo runner: ordinary `cargo run`
 keeps application arguments, configuration and networking unchanged.
 

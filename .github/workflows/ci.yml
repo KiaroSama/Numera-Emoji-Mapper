@@ -78,6 +78,16 @@ jobs:
             git fetch --no-tags --depth=1 https://github.com/KiaroSama/Numera-Emoji-Mapper.git "$NUMERA_MIGRATION_REFERENCE"
           fi
           git cat-file -e "$NUMERA_MIGRATION_REFERENCE^{commit}"
+      - name: Cache Cargo dependency downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('runtime/Cargo.lock', 'tools/ci/Cargo.lock', 'tools/test-inventory/Cargo.lock') }}
+          restore-keys: |
+            cargo-downloads-${{ runner.os }}-${{ runner.arch }}-
       - name: Build standalone release executables
         id: runtime-build
         run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
@@ -135,7 +145,7 @@ jobs:
         run: |
           cargo fmt --manifest-path tools/test-inventory/Cargo.toml --check
           cargo clippy --manifest-path tools/test-inventory/Cargo.toml --locked --all-targets -- -D warnings
-          cargo test --config .cargo/runtime-tests.toml --manifest-path tools/test-inventory/Cargo.toml --locked
+          cargo test --config tests/runtime-tests.toml --manifest-path tools/test-inventory/Cargo.toml --locked
           cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode rust
           cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode language --output logs/checkpoint/language-policy.json
       - name: Installed Windows npm discovery regression
@@ -146,7 +156,7 @@ jobs:
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
         shell: bash
         run: |
-          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release \
+          cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release \
             --lib standard_windows_node_installation_enables_all_installed_web_checks \
             -- --test-threads=1 2>&1 | tee logs/checkpoint/windows-npm-regression.log
       - name: Publication, archive, panel, media, CLI and package boundary regressions
@@ -158,7 +168,7 @@ jobs:
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
         shell: bash
         run: |
-          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
+          cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
             --test supplemental_publication_admission --test supplemental_archive_branding \
             --test supplemental_panel_http --test supplemental_bot_resolution \
             --test supplemental_binary_artifact --test supplemental_local_inputs \
@@ -175,7 +185,7 @@ jobs:
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
         shell: bash
         run: |
-          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release \
+          cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release \
             --lib process_owner:: -- --test-threads=1 2>&1 | tee logs/checkpoint/process-ownership-regressions.log
       - name: All Rust tests through the isolated runner
         # Preserve optimized distribution binaries while avoiding LTO for each
@@ -187,7 +197,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p logs/checkpoint
-          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log
+          cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log
       - name: Similarity benchmark and parity
         shell: bash
         run: |
@@ -344,3 +354,37 @@ jobs:
             logs/tmp/browser/**
           if-no-files-found: warn
           retention-days: 7
+
+  powershell-7-3-compat:
+    name: PowerShell 7.3.12 launcher compatibility (Linux x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify tested source revision
+        run: test "$(git rev-parse HEAD)" = "$NUMERA_SOURCE_REVISION"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Select Rust compiler for the launcher fixture
+        run: rustup default 1.100.0
+      # This exercises the legacy PowerShell host on Linux, not Windows desktop behavior.
+      - name: Verify PowerShell archive and run launcher contracts
+        shell: bash
+        run: |
+          temp_dir="$(mktemp -d "$RUNNER_TEMP/numera-pwsh.XXXXXX")"
+          trap 'rm -rf -- "$temp_dir"' EXIT
+          archive="$temp_dir/powershell-7.3.12-linux-x64.tar.gz"
+          curl --fail --silent --show-error --location --max-time 120 \
+            --output "$archive" \
+            https://github.com/PowerShell/PowerShell/releases/download/v7.3.12/powershell-7.3.12-linux-x64.tar.gz
+          printf '%s  %s\n' '34d2ed497f11d3c160a6a20abd635686458d7c5173fede7ad354bd73327fe89b' "$archive" | sha256sum --check
+          mkdir "$temp_dir/pwsh"
+          tar -xzf "$archive" -C "$temp_dir/pwsh"
+          export NUMERA_TEST_PWSH="$temp_dir/pwsh/pwsh"
+          chmod +x "$NUMERA_TEST_PWSH"
+          test "$("$NUMERA_TEST_PWSH" -NoLogo -NoProfile -NonInteractive -Command '$PSVersionTable.PSVersion.ToString()')" = '7.3.12'
+          node --test assets/tests/launcher-process.js

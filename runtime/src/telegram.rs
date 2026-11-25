@@ -522,3 +522,44 @@ pub fn upload(path: &Path, field: &str) -> Result<Upload> {
         bytes: std::fs::read(path).map_err(|e| ApiError::Invalid(e.to_string()))?,
     })
 }
+
+/// An authoritative set observation must contain a list of sticker objects.
+pub fn validated_sticker_set(value: &Value) -> Result<&[Value]> {
+    value
+        .get("stickers")
+        .and_then(Value::as_array)
+        .filter(|items| items.iter().all(Value::is_object))
+        .map(Vec::as_slice)
+        .ok_or_else(|| {
+            ApiError::Invalid(
+                "getStickerSet result must contain a stickers array of objects".into(),
+            )
+        })
+}
+
+pub fn validated_custom_emoji_stickers<'a>(
+    value: &'a Value,
+    requested: &[String],
+) -> Result<BTreeMap<&'a str, &'a Value>> {
+    let items = value.as_array().ok_or_else(|| {
+        ApiError::Invalid("getCustomEmojiStickers result must be an array".into())
+    })?;
+    let mut found = BTreeMap::new();
+    for item in items {
+        let id = item
+            .get("custom_emoji_id")
+            .and_then(Value::as_str)
+            .filter(|id| !id.is_empty() && requested.iter().any(|key| key == id))
+            .ok_or_else(|| {
+                ApiError::Invalid(
+                    "getCustomEmojiStickers returned a missing, invalid or unrequested ID".into(),
+                )
+            })?;
+        if found.insert(id, item).is_some() {
+            return Err(ApiError::Invalid(
+                "getCustomEmojiStickers returned a duplicate ID".into(),
+            ));
+        }
+    }
+    Ok(found)
+}

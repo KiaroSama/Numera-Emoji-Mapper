@@ -15,7 +15,7 @@ mod sandbox;
 mod similarity;
 
 use build_steps::PREREQUISITES;
-pub use build_steps::{Step, Tools, environment, execute, plan, worker_limit};
+pub use build_steps::{Step, Tools, environment, execute, plan, plan_report, worker_limit};
 pub use npm::NpmCommand;
 #[cfg(target_os = "linux")]
 use sandbox::current_process_start;
@@ -332,25 +332,35 @@ fn work(root: &Path, args: &[String], log: &RunLog) -> Result<i32, String> {
         );
         return Ok(0);
     }
-    let guard = root.join(".cargo/runtime-tests.toml");
+    let guard = root.join("tests/runtime-tests.toml");
     tooling_environment::reject_links(&guard, "runtime test guard cannot follow links")?;
     if !guard.is_file() {
         return Err(
-            "guarded tests require .cargo/runtime-tests.toml; unguarded execution was refused"
+            "guarded tests require tests/runtime-tests.toml; unguarded execution was refused"
                 .into(),
         );
     }
-    let steps = plan(root, &command, &tools)?;
+    let (steps, skipped) = plan_report(root, &command, &tools)?;
+    let mut outcomes = Vec::new();
+    let result = runtime.block_on(build_steps::execute_report(
+        root,
+        &steps,
+        &environment,
+        log,
+        &mut outcomes,
+    ));
     if matches!(command, Command::Check(_)) {
-        for label in ["Worker tests", "Browser tests"] {
-            if !steps.iter().any(|step| step.label == label) {
-                println!(
-                    "[SKIP] {label}: optional dependencies are unavailable or web checks were explicitly disabled."
-                );
-            }
+        for (label, passed) in &outcomes {
+            println!("[{}] {label}", if *passed { "PASS" } else { "FAIL" });
+        }
+        for (label, reason) in skipped {
+            println!("[SKIP] {label} ({reason})");
+        }
+        for step in &steps[outcomes.len()..] {
+            println!("[SKIP] {} (earlier check failed)", step.label);
         }
     }
-    runtime.block_on(execute(root, &steps, &environment, log))
+    result
 }
 
 /// Worker entry for explicit contributor commands; the binary's outer owner supplies cancellation.

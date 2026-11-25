@@ -512,7 +512,7 @@ Run these commands from the repository root:
 cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
 cargo fmt --manifest-path runtime/Cargo.toml --check
 cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
+cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
 ```
 
 The native test runner scrubs credentials and owns descendants. Linux additionally

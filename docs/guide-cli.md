@@ -465,3 +465,17 @@ not yet published to `COLLECTION_PACK_BASE`. One line per item, each with the
 command that fixes it. Exit 0 when nothing is stale, 3 when something is;
 emoji waiting to be published are a to-do, not staleness. An archive whose
 `EMOJI_ARCHIVE_DIR` is unset is reported as not checked, never as current.
+
+### 12.5f `audit-publication`: check publication state against the catalog
+
+```powershell
+.\numera-emoji.exe audit-publication --base BASE [--data-dir DIR]
+```
+
+`--base` selects the publication family. Use `--data-dir` to override the
+`collection` directory. The audit reads the
+publication state and SQLite catalog without writing either file or contacting
+Telegram. It reports malformed entries, duplicate content keys, missing catalog
+rows, and conflicting publication records. Exit 0 means no findings, 1 means
+findings were reported, and 2 means the inputs were invalid or the audit could
+not read the required files. Use `--help` for command help.

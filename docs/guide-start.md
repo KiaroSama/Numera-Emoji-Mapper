@@ -56,7 +56,7 @@ Copy-Item .env.example .env       # then edit tokens, owner and data paths
 .\numera-emoji.exe menu
 ```
 
-In a source checkout with the signed Windows executable at `bin\numera-emoji.exe`, use PowerShell 7.3 or newer: `.\run.ps1` opens the menu, `.\run.ps1 -Check` runs the environment doctor, and `.\run.ps1 panel` opens the Curate panel. If Explorer runs the script with PowerShell 7, it opens one console window and waits for Enter only after an interactive launch fails.
+In a source checkout with the signed Windows executable at `bin\numera-emoji.exe`, use PowerShell 7.3 or newer: `.\run.ps1` opens the menu, `.\run.ps1 -Check` runs the environment doctor, and `.\run.ps1 panel` opens the Curate panel. If Explorer runs the script with PowerShell 7, it opens one console window and waits for Enter only after an interactive launch fails. See the [manual Windows desktop acceptance checklist](native-launcher.md#manual-windows-desktop-acceptance-checklist).
 
 On Linux use `./numera-emoji package-verify`, `./numera-emoji doctor` and
 `./numera-emoji menu`. Supported packages are Linux and Windows on x64 and arm64. A source checkout without `package.json` can run the native doctor;
@@ -416,7 +416,7 @@ Operator diagnostics and contributor tests are separate:
 ```powershell
 .\numera-emoji.exe doctor
 cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1
+cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1
 ```
 
 The first command needs only the installed application. The second is for a

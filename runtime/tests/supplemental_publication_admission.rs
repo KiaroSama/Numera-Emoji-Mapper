@@ -305,3 +305,36 @@ fn a_tail_cannot_reuse_an_earlier_custom_emoji_id_for_another_catalog_key() {
         assert_eq!(server.finish().unwrap().len(), 1);
     }
 }
+
+#[test]
+fn authoritative_response_shapes_do_not_turn_errors_into_absence() {
+    use numera_runtime::telegram::{validated_custom_emoji_stickers, validated_sticker_set};
+    let ids = [String::from("111111111")];
+    for malformed in [
+        json!({}),
+        json!({"stickers":null}),
+        json!({"stickers":[null]}),
+    ] {
+        assert!(validated_sticker_set(&malformed).is_err());
+    }
+    assert!(
+        validated_sticker_set(&json!({"stickers":[]}))
+            .unwrap()
+            .is_empty()
+    );
+    for malformed in [
+        json!({}),
+        json!([null]),
+        json!([{"custom_emoji_id":""}]),
+        json!([{"custom_emoji_id":"222222222"}]),
+        json!([{"custom_emoji_id":"111111111"},{"custom_emoji_id":"111111111"}]),
+    ] {
+        assert!(validated_custom_emoji_stickers(&malformed, &ids).is_err());
+    }
+    let no_display_metadata = json!([{"custom_emoji_id":"111111111"}]);
+    assert!(
+        validated_custom_emoji_stickers(&no_display_metadata, &ids)
+            .unwrap()
+            .contains_key("111111111")
+    );
+}

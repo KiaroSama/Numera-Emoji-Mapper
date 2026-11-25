@@ -223,6 +223,10 @@ const COMMANDS: &[&str] = &[
 ];
 pub fn run() -> std::process::ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args.first().is_some_and(|arg| arg == "audit-publication") {
+        let code = crate::publication_audit::run(&args[1..], root);
+        return code.into();
+    }
     if let Some(command) = args.first().map(String::as_str) {
         if matches!(
             command,
@@ -285,7 +289,7 @@ pub fn run() -> std::process::ExitCode {
     }
     if args.is_empty() || args == ["--help"] || args == ["-h"] {
         println!(
-            "Numera Emoji Mapper native backend\nUsage: numera-emoji COMMAND [OPTIONS]\nCommands: panel doctor menu check native-convert-owner package-native package-verify verify-binary verify-binary-version install-prebuilt {}\nUse COMMAND --help for options (emoji-bot uses environment configuration).",
+            "Numera Emoji Mapper native backend\nUsage: numera-emoji COMMAND [OPTIONS]\nCommands: panel doctor menu check native-convert-owner package-native package-verify verify-binary verify-binary-version install-prebuilt audit-publication {}\nUse COMMAND --help for options (emoji-bot uses environment configuration).",
             COMMANDS.join(" ")
         );
         return std::process::ExitCode::SUCCESS;

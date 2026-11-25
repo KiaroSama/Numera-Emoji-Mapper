@@ -39,11 +39,37 @@ launcher control. Quoting a reserved scalar name does not distinguish it from a
 control after PowerShell argument parsing; use an explicit array even for one
 literal name, such as `.\run.ps1 -CommandArguments @('-Check')`.
 Keep any launcher controls before the native command; `-Check` with command
-arguments is an error. Explicit `-Check:$false` retains ordinary passthrough.
+arguments is an error. Explicit `-Check:$false` retains ordinary passthrough when called from PowerShell.
+
+### Passing literal arguments to PowerShell
+
+`pwsh -File` splits dash-prefixed arguments containing `:` before `run.ps1`
+receives them. This can affect `-Check:$false`, `-CommandArguments:menu`, and
+`--data-dir=C:\path`, even when the outer shell quotes the argument. To pass
+literal values, call the script from an existing PowerShell session with an
+array, or call `.\bin\numera-emoji.exe` directly:
+
+```powershell
+.\run.ps1 -CommandArguments @('panel', '--data-dir=C:\path with spaces')
+```
 
 `doctor` checks native codecs, physical paths, assets and package hashes. It
 reports missing optional video tools and configuration key names without printing
 secret values. It does not install dependencies or contact Telegram.
+
+## Manual Windows desktop acceptance checklist
+
+Use a disposable fixture, not a live catalog. Record these observations
+separately from automated CI results.
+
+- On a desktop where Explorer opens `.ps1` with PowerShell 7, double-click
+  `run.ps1`. Check that one console opens, it closes on success, and it waits
+  for Enter after a controlled interactive failure.
+- Use fixture input and output paths containing both spaces and non-ASCII
+  characters. Confirm that the files land at the intended paths.
+- Check the intended GPU and media settings with `run.ps1 -Check`, then convert
+  a small fixture and inspect the output and log for the selected codec or a
+  reported fallback.
 
 ## Installation and updates
 
@@ -89,7 +115,7 @@ clone. Contributor binaries and the guarded runner are excluded from downloads.
 ```bash
 cargo fmt --manifest-path runtime/Cargo.toml --check
 cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
+cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
 ```
 
 Build the release binaries first. Use the isolated runner; see

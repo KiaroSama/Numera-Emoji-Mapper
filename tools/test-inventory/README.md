@@ -12,7 +12,7 @@ Run from the repository root:
 
 ```sh
 # Build the actual release isolation runner first (see the contributor guide).
-cargo test --config .cargo/runtime-tests.toml \
+cargo test --config tests/runtime-tests.toml \
   --manifest-path tools/test-inventory/Cargo.toml --locked
 cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- \
   --mode rust --output logs/checkpoint/rust-inventory.json

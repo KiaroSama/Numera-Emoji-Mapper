@@ -22,7 +22,7 @@ fn full_discovery(run: &str, manifest: &str) -> Result<(), &'static str> {
     Ok(())
 }
 
-const FULL_NATIVE: &str = "mkdir -p logs/checkpoint\ncargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log";
+const FULL_NATIVE: &str = "mkdir -p logs/checkpoint\ncargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log";
 
 #[test]
 fn coverage_guard_rejects_comments_disabled_discovery_and_compile_only_commands() {

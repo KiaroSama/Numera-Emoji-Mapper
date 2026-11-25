@@ -241,6 +241,7 @@ pub(super) fn config(path: &str) -> bool {
         || path.ends_with("/Cargo.toml")
         || path == "runtime/about.toml"
         || path == "worker/wrangler.toml"
+        || path == "tests/runtime-tests.toml"
         || path.starts_with(".cargo/") && path.ends_with(".toml")
         || path.starts_with(".github/") && (path.ends_with(".yml") || path.ends_with(".yaml"))
 }

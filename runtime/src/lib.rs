@@ -181,6 +181,7 @@ pub mod plan_status;
 pub mod plan_steps;
 pub mod process_owner;
 pub mod publication;
+pub mod publication_audit;
 pub mod publication_download;
 pub mod publication_media;
 pub mod publication_recovery;

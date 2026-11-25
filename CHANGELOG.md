@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-11-25
+
+### Added
+- `numera-dev check` reports which checks passed, failed, or were skipped and why.
+- `numera-emoji audit-publication` reports publication state and catalog inconsistencies without writing either file.
+- Document how `pwsh -File` changes some literal arguments and how to check the launcher on a Windows desktop. CI checks the launcher on PowerShell 7.3.12 on Linux separately.
+
+### Changed
+- Move the explicit guarded Cargo runner configuration to `tests/runtime-tests.toml`. The test runner and its isolation rules stay the same.
+- Cache only Cargo dependency downloads in CI and release builds, leaving compiled artifacts and credentials out.
+
+### Fixed
+- Exclude converter control files from directory ingest and discover APNG inputs (#107).
+- Describe when the OS releases a publication lock. Validate recovery journal framing and write test readiness markers atomically (#107).
+- Verify numeric and string version metadata in native Windows binaries before and after signing (#107).
+- Validate Telegram sticker-set and custom-emoji responses without treating malformed results as missing IDs.
+
 ## [3.1.0] - 2026-11-25
 
 ### Changed

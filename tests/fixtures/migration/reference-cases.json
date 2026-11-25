@@ -2240,7 +2240,7 @@
         "file": "runtime/tests/baseline_ci_coverage.rs",
         "target": "baseline_ci_coverage",
         "function": "platform_gated_cases_have_a_real_windows_execution_bucket",
-        "body_sha256": "1d7035911de8f97b6bb77f5830e6be2b0c44cf77d92e26c9796b76026396e817"
+        "body_sha256": "f89867227ef70d1e9ba87619a4b9f908ead444509bd0231b9b29acb86ed21866"
       }
     },
     {

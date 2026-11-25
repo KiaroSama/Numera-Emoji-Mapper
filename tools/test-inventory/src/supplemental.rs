@@ -685,7 +685,7 @@ mod tests {
     fn ordinary_cargo_run_has_no_global_runner_but_explicit_test_configuration_is_allowed() {
         let tree = Tree::new("");
         tree.put(
-            ".cargo/runtime-tests.toml",
+            "tests/runtime-tests.toml",
             "[target.'cfg(unix)']\nrunner=\"runtime/target/release/numera-runtime-tests\"\n",
         );
         assert!(tree.scan().errors.is_empty());
@@ -726,7 +726,7 @@ mod tests {
         }
         tree.put(
             ".cargo/config.toml",
-            "# runner = 'historical example'\n[alias]\nchecked=\"test --config .cargo/runtime-tests.toml\"\nnote=\"runner = inert example text\"\n",
+            "# runner = 'historical example'\n[alias]\nchecked=\"test --config tests/runtime-tests.toml\"\nnote=\"runner = inert example text\"\n",
         );
         assert!(tree.scan().errors.is_empty());
     }

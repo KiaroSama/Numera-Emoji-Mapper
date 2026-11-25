@@ -52,10 +52,10 @@ From the repository root:
 cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
 cargo fmt --manifest-path runtime/Cargo.toml --check
 cargo clippy --manifest-path runtime/Cargo.toml --locked --all-targets -- -D warnings
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1
+cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1
 ```
 
-Build the release runner before using `.cargo/runtime-tests.toml`, even if
+Build the release runner before using `tests/runtime-tests.toml`, even if
 selecting a different Cargo test profile. Selection remains available, for
 example `--test baseline_catalog`, or through `numera-dev test --test NAME`.
 A selected run proves only that selection; final acceptance uses unfiltered
@@ -134,7 +134,7 @@ bypass their runner.
 npm ci --prefix worker
 npm run typecheck --prefix worker
 npm test --prefix worker
-cargo test --config .cargo/runtime-tests.toml --manifest-path tools/test-inventory/Cargo.toml --locked --release
+cargo test --config tests/runtime-tests.toml --manifest-path tools/test-inventory/Cargo.toml --locked --release
 cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode rust
 ```
 

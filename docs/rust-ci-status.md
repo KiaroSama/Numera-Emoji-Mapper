@@ -53,7 +53,7 @@ test commands. Four focused choices provide earlier Linux x64 evidence:
 
 Focused runs build all standalone executables with Rust 1.100.0 in release
 mode, with LTO disabled and 16 codegen units to shorten diagnostic compilation.
-The runtime choices retain `.cargo/runtime-tests.toml`, the native isolation
+The runtime choices retain `tests/runtime-tests.toml`, the native isolation
 runner, private-network setup, and `--no-fail-fast`; they do not disable guards
 or substitute a listing for execution. A selected branch must contain its
 requested supplemental targets; missing targets fail visibly.

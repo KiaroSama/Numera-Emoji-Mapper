@@ -173,7 +173,6 @@ worker/.wrangler/
 rustc-ice-*.txt
 /.cargo/*
 !/.cargo/config.toml
-!/.cargo/runtime-tests.toml
 **/.cargo/credentials*
 /vendor/
 *.profraw

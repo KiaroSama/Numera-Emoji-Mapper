@@ -71,6 +71,16 @@ jobs:
           rustup default 1.100.0
           host="$(rustc -vV | awk '/^host: / {print $2}')"
           test "$host" = "${{ matrix.triple }}"
+      - name: Cache Cargo dependency downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('runtime/Cargo.lock', 'tools/ci/Cargo.lock', 'tools/test-inventory/Cargo.lock') }}
+          restore-keys: |
+            cargo-downloads-${{ runner.os }}-${{ runner.arch }}-
       - name: Build standalone production runtime
         run: cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
       - name: Verify embedded logo and target architecture on built binaries
@@ -95,7 +105,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p logs/checkpoint
-          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --test standalone_package -- --test-threads=1 2>&1 | tee logs/checkpoint/package-tests.log
+          cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --test standalone_package -- --test-threads=1 2>&1 | tee logs/checkpoint/package-tests.log
       - name: Create standalone archive and SHA256 checksum
         id: standalone-package
         shell: bash

@@ -47,7 +47,7 @@ Copy-Item .env.example .env       # then edit configuration
 
 # --- contributor tests (source checkout/toolchain required) ---
 cargo build --manifest-path runtime/Cargo.toml --locked --release --bins
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1
+cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1
 ```
 
 Calibrate remapping without `--apply` before choosing a cutoff. Live publishing,

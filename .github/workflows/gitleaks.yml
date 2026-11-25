@@ -66,7 +66,7 @@ jobs:
       - name: Permit private security-test namespaces
         uses: ./.github/actions/test-network
       - name: Rust security tooling behavior tests
-        run: cargo test --config .cargo/runtime-tests.toml --manifest-path tools/ci/Cargo.toml --locked
+        run: cargo test --config tests/runtime-tests.toml --manifest-path tools/ci/Cargo.toml --locked
 
   gitleaks:
     name: Gitleaks secret scan

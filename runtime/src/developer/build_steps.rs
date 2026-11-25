@@ -44,8 +44,19 @@ pub(super) fn step(label: &str, executable: &Path, args: &[&str], wall: Duration
 }
 
 pub fn plan(root: &Path, command: &Command, tools: &Tools) -> Result<Vec<Step>, String> {
+    plan_report(root, command, tools).map(|(steps, _)| steps)
+}
+
+pub type SkippedCheck = (&'static str, &'static str);
+
+pub fn plan_report(
+    root: &Path,
+    command: &Command,
+    tools: &Tools,
+) -> Result<(Vec<Step>, Vec<SkippedCheck>), String> {
     let root = tooling_environment::physical_root(root)?;
     let mut steps = Vec::new();
+    let mut skipped = Vec::new();
     match command {
         Command::Check(options) | Command::Test(options) => {
             if matches!(command, Command::Check(_)) {
@@ -101,7 +112,7 @@ pub fn plan(root: &Path, command: &Command, tools: &Tools) -> Result<Vec<Step>, 
                 &[
                     "test",
                     "--config",
-                    ".cargo/runtime-tests.toml",
+                    "tests/runtime-tests.toml",
                     "--manifest-path",
                     "runtime/Cargo.toml",
                     "--locked",
@@ -113,53 +124,57 @@ pub fn plan(root: &Path, command: &Command, tools: &Tools) -> Result<Vec<Step>, 
             }
             tests.argv.extend(["--".into(), "--test-threads=1".into()]);
             steps.push(tests);
-            if matches!(command, Command::Check(_))
-                && options.web
-                && let Some(npm) = &tools.npm
-            {
-                let worker = root.join("worker/node_modules");
-                if worker.join("typescript/package.json").is_file()
-                    && worker.join("vitest/package.json").is_file()
-                {
-                    steps.push(npm.step(
+            if matches!(command, Command::Check(_)) {
+                for (label, prerequisite) in [
+                    (
                         "Worker type check",
-                        &["--prefix", "worker", "run", "typecheck"],
-                        options.timeout,
-                    ));
-                    let config = root.join("assets/jsconfig.json");
-                    steps.push(
-                        npm.step(
-                            "Browser script type check",
-                            &[
-                                "--prefix",
-                                "worker",
-                                "exec",
-                                "--",
-                                "tsc",
-                                "-p",
-                                config
-                                    .to_str()
-                                    .ok_or("browser configuration path must be UTF-8")?,
-                                "--noEmit",
-                            ],
-                            options.timeout,
-                        ),
-                    );
-                    steps.push(npm.step(
-                        "Worker tests",
-                        &["--prefix", "worker", "test"],
-                        options.timeout,
-                    ));
-                }
-                if root
-                    .join("assets/node_modules/@playwright/test/package.json")
-                    .is_file()
-                {
-                    steps.push(npm.step(
+                        "worker/node_modules/typescript/package.json",
+                    ),
+                    (
+                        "Browser script type check",
+                        "worker/node_modules/typescript/package.json",
+                    ),
+                    ("Worker tests", "worker/node_modules/vitest/package.json"),
+                    (
                         "Browser tests",
-                        &["--prefix", "assets", "test"],
-                        options.timeout,
-                    ));
+                        "assets/node_modules/@playwright/test/package.json",
+                    ),
+                ] {
+                    let reason = if !options.web {
+                        Some("--no-web")
+                    } else if tools.npm.is_none() {
+                        Some("npm executable unavailable")
+                    } else if !root.join(prerequisite).is_file() {
+                        Some(prerequisite)
+                    } else {
+                        None
+                    };
+                    if let Some(reason) = reason {
+                        skipped.push((label, reason));
+                        continue;
+                    }
+                    let Some(npm) = &tools.npm else {
+                        continue;
+                    };
+                    let config = root.join("assets/jsconfig.json");
+                    let argv: &[&str] = match label {
+                        "Worker type check" => &["--prefix", "worker", "run", "typecheck"],
+                        "Browser script type check" => &[
+                            "--prefix",
+                            "worker",
+                            "exec",
+                            "--",
+                            "tsc",
+                            "-p",
+                            config
+                                .to_str()
+                                .ok_or("browser configuration path must be UTF-8")?,
+                            "--noEmit",
+                        ],
+                        "Worker tests" => &["--prefix", "worker", "test"],
+                        _ => &["--prefix", "assets", "test"],
+                    };
+                    steps.push(npm.step(label, argv, options.timeout));
                 }
             }
         }
@@ -175,7 +190,7 @@ pub fn plan(root: &Path, command: &Command, tools: &Tools) -> Result<Vec<Step>, 
         )),
         _ => return Err("this developer command has no external process plan".into()),
     }
-    Ok(steps)
+    Ok((steps, skipped))
 }
 
 pub fn worker_limit(cores: Option<usize>, original: &BTreeMap<String, String>) -> usize {
@@ -288,11 +303,26 @@ pub async fn execute(
     environment: &BTreeMap<String, String>,
     log: &RunLog,
 ) -> Result<i32, String> {
+    execute_report(root, steps, environment, log, &mut Vec::new()).await
+}
+
+pub(super) async fn execute_report(
+    root: &Path,
+    steps: &[Step],
+    environment: &BTreeMap<String, String>,
+    log: &RunLog,
+    outcomes: &mut Vec<(String, bool)>,
+) -> Result<i32, String> {
     for step in steps {
         log.event("INFO", "developer", &format!("Starting {}", step.label));
         let result =
             tooling_process::capture(root, &step.argv, environment, step.wall, step.idle, log)
-                .await?;
+                .await;
+        outcomes.push((
+            step.label.clone(),
+            result.as_ref().is_ok_and(|result| result.code == 0),
+        ));
+        let result = result?;
         for (text, stderr) in [(&result.stdout, false), (&result.stderr, true)] {
             let text = crate::logging::redact(text, &[]);
             if !text.is_empty() {

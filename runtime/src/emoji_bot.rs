@@ -37,24 +37,7 @@ fn labels(tg: &Telegram, ids: &[String]) -> ApiResult<Value> {
     let mut out = serde_json::Map::new();
     for batch in ids.chunks(200) {
         let response = tg.get_custom_emoji_stickers(batch)?;
-        let stickers = response.as_array().ok_or_else(|| {
-            ApiError::Invalid("getCustomEmojiStickers result must be an array".into())
-        })?;
-        for sticker in stickers {
-            let id = sticker["custom_emoji_id"]
-                .as_str()
-                .filter(|id| !id.is_empty() && batch.iter().any(|requested| requested == id))
-                .ok_or_else(|| {
-                    ApiError::Invalid(
-                        "getCustomEmojiStickers returned a missing, invalid or unrequested ID"
-                            .into(),
-                    )
-                })?;
-            if out.contains_key(id) {
-                return Err(ApiError::Invalid(
-                    "getCustomEmojiStickers returned a duplicate ID".into(),
-                ));
-            }
+        for (id, sticker) in crate::telegram::validated_custom_emoji_stickers(&response, batch)? {
             let emoji = match sticker.get("emoji") {
                 None => "",
                 Some(value) => value.as_str().ok_or_else(|| {

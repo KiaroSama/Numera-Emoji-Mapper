@@ -83,7 +83,7 @@ jobs:
         run: |
           mkdir -p logs/checkpoint
           git rev-parse HEAD > logs/checkpoint/source-revision.log
-          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log
+          cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log
       - name: Preserve checkpoint diagnostics
         if: always()
         uses: actions/upload-artifact@v7
@@ -131,19 +131,19 @@ jobs:
       - name: Guarded mutation regressions
         if: inputs.validation_scope == 'mutation-regressions'
         run: |
-          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
+          cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
             --test supplemental_telegram_mutation --test supplemental_plan_remove \
             --test supplemental_coin_recovery --test supplemental_coin_walk --test supplemental_sync_order \
             -- --test-threads=1 2>&1 | tee logs/checkpoint/mutation-regressions.log
       - name: Guarded announcement regressions
         if: inputs.validation_scope == 'announcement-regressions'
         run: |
-          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
+          cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
             --test supplemental_announce_ack -- --test-threads=1 2>&1 | tee logs/checkpoint/announcement-regressions.log
       - name: Guarded CI policy regressions
         if: inputs.validation_scope == 'ci-regressions'
         run: |
-          cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
+          cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast \
             --test supplemental_ci -- --test-threads=1 2>&1 | tee logs/checkpoint/ci-regressions.log
       - uses: actions/setup-node@v7
         if: inputs.validation_scope == 'panel-browser'

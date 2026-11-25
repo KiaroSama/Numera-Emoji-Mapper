@@ -144,7 +144,7 @@ fn original_check_subset_skip_and_timeout_keep_the_tests_package_guard() {
             "selected cargo",
             "test",
             "--config",
-            ".cargo/runtime-tests.toml",
+            "tests/runtime-tests.toml",
             "--manifest-path",
             "runtime/Cargo.toml",
             "--locked",
@@ -505,3 +505,41 @@ fn contributor_builder_help_and_missing_compiler_are_real_bounded_commands() {
 #[cfg(test)]
 #[path = "support/test_admission.rs"]
 mod test_admission;
+
+#[test]
+fn optional_check_reasons_are_independent() {
+    let root = Root::new("optional checks");
+    let mut tools = tools();
+    let options = Options {
+        web: false,
+        ..Options::default()
+    };
+    let (_, disabled) = developer::plan_report(&root.0, &Command::Check(options), &tools).unwrap();
+    assert_eq!(disabled.len(), 4);
+    assert!(disabled.iter().all(|(_, reason)| *reason == "--no-web"));
+    let command = Command::Check(Options::default());
+    let (_, missing) = developer::plan_report(&root.0, &command, &tools).unwrap();
+    assert!(
+        missing
+            .iter()
+            .any(|(_, reason)| reason.ends_with("typescript/package.json"))
+    );
+    assert!(
+        missing
+            .iter()
+            .any(|(_, reason)| reason.ends_with("vitest/package.json"))
+    );
+    assert!(
+        missing
+            .iter()
+            .any(|(_, reason)| reason.ends_with("@playwright/test/package.json"))
+    );
+    tools.npm = None;
+    let (_, unavailable) = developer::plan_report(&root.0, &command, &tools).unwrap();
+    assert_eq!(unavailable.len(), 4);
+    assert!(
+        unavailable
+            .iter()
+            .all(|(_, reason)| *reason == "npm executable unavailable")
+    );
+}

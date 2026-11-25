@@ -79,11 +79,9 @@ pub struct Publisher<'a, M = MediaAdapter> {
 impl<M: MediaCodec> Publisher<'_, M> {
     fn live(&self, name: &str) -> Result<Vec<Value>, Failure> {
         match self.tg.probe(name) {
-            (SetState::Exists, Some(value)) => value
-                .get("stickers")
-                .and_then(Value::as_array)
-                .cloned()
-                .ok_or("live set has no stickers".into()),
+            (SetState::Exists, Some(value)) => crate::telegram::validated_sticker_set(&value)
+                .map(<[Value]>::to_vec)
+                .map_err(|error| Failure::unknown(error.to_string())),
             (SetState::Missing, _) => {
                 Err("recorded set no longer exists; refusing to recreate it".into())
             }

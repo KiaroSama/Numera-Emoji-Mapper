@@ -110,7 +110,7 @@ Use the standalone test runner for production tests:
 
 ```bash
 cargo build --manifest-path runtime/Cargo.toml --locked --release --bin numera-runtime-tests
-cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
+cargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release -- --test-threads=1
 ```
 
 The installed CLI and menu run the bundled executable directly. Normal

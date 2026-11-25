@@ -23,7 +23,7 @@ fn private_namespace_profiles_follow_both_configured_rust_test_runners() {
         !root().join(".cargo/config.toml").exists(),
         "test isolation must not change ordinary Cargo run"
     );
-    let config = std::fs::read_to_string(root().join(".cargo/runtime-tests.toml")).unwrap();
+    let config = std::fs::read_to_string(root().join("tests/runtime-tests.toml")).unwrap();
     let mut runners = 0;
     for line in config
         .lines()
@@ -303,7 +303,7 @@ fn secret_scan_triage_cannot_hide_future_matches_or_disclose_values() {
     );
     assert_eq!(
         required_step_run(tests, "Rust security tooling behavior tests").unwrap(),
-        "cargo test --config .cargo/runtime-tests.toml --manifest-path tools/ci/Cargo.toml --locked"
+        "cargo test --config tests/runtime-tests.toml --manifest-path tools/ci/Cargo.toml --locked"
     );
     let scanner = workflow.split_once("\n  gitleaks:").unwrap().1;
     assert!(scanner.contains("needs: security-tool-tests"));
@@ -622,9 +622,9 @@ fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_pyt
         required_step_run(production, "All Rust tests through the isolated runner").unwrap();
     assert_eq!(
         tests,
-        "mkdir -p logs/checkpoint\ncargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log"
+        "mkdir -p logs/checkpoint\ncargo test --config tests/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release --no-fail-fast -- --test-threads=1 2>&1 | tee logs/checkpoint/runtime-tests.log"
     );
-    let runner = std::fs::read_to_string(root.join(".cargo/runtime-tests.toml")).unwrap();
+    let runner = std::fs::read_to_string(root.join("tests/runtime-tests.toml")).unwrap();
     assert!(runner.contains("runtime/target/release/numera-runtime-tests.exe"));
     assert!(runner.contains("runtime/target/release/numera-runtime-tests\""));
     let helper = std::fs::read_to_string(root.join("runtime/src/test_main.rs")).unwrap();
