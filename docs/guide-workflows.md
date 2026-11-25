@@ -183,10 +183,13 @@ stopped, not slow.
 
 ### Stopping is safe; resuming is automatic
 
-Every upload commits its own flag, so a killed run loses nothing. The lock its
-process left behind frees itself **120 seconds** after the process dies — just
-re-run the same command. `reconcile_set` attributes anything that landed without
-being recorded.
+Every proven upload commits its own progress. Re-run the same command to
+reconcile anything that reached Telegram before its local record was committed.
+The persistent lock file is an OS-lease coordinate, not proof that a writer is
+still alive. The owner releases its OS lease explicitly or through closure of
+its owning handles; a surviving owned child can still hold it. There is no
+age-based 120-second delay. Let the owning process tree finish and leave the
+lock file in place when resuming.
 
 ### The channel link waits for a clean run
 

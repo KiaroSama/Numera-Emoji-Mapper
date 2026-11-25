@@ -8,10 +8,18 @@ fn hold() -> ! {
         std::thread::park_timeout(Duration::from_secs(60));
     }
 }
+fn publish_ready(path: &Path, pid: u32) {
+    // Keep ready.txt and ready.leaf staging paths distinct, and publish only
+    // after the writer closes so an existence-based cancellation cannot cut it.
+    let mut pending = path.as_os_str().to_owned();
+    pending.push(".tmp");
+    std::fs::write(&pending, pid.to_string()).unwrap();
+    std::fs::rename(pending, path).unwrap();
+}
 fn main() {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     if args[0] == "leaf" {
-        std::fs::write(&args[1], std::process::id().to_string()).unwrap();
+        publish_ready(Path::new(&args[1]), std::process::id());
         hold();
     }
     if args[0] == "tree" {
@@ -30,7 +38,7 @@ fn main() {
             assert!(std::time::Instant::now() < deadline);
             std::thread::sleep(Duration::from_millis(5));
         }
-        std::fs::write(ready, child.id().to_string()).unwrap();
+        publish_ready(ready, child.id());
         child.wait().unwrap();
         return;
     }
@@ -46,7 +54,7 @@ fn main() {
         std::fs::write(&args[2], response).unwrap();
     } else {
         let ready = std::env::current_dir().unwrap().join("ready");
-        std::fs::write(ready, std::process::id().to_string()).unwrap();
+        publish_ready(&ready, std::process::id());
         hold();
     }
 }

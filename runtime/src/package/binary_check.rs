@@ -3,6 +3,19 @@ use std::path::Path;
 
 #[path = "pe.rs"]
 mod pe;
+#[path = "version.rs"]
+mod version;
+
+/// Verify every Windows version resource against this verifier's compiled package version.
+pub fn verify_binary_version_bytes(bytes: &[u8]) -> Result<(), String> {
+    version::verify(bytes, env!("CARGO_PKG_VERSION"))
+}
+
+pub fn verify_binary_version(executable: &Path) -> Result<(), String> {
+    let bytes =
+        std::fs::read(executable).map_err(|error| format!("cannot read binary: {error}"))?;
+    verify_binary_version_bytes(&bytes)
+}
 
 const PE_MACHINE_X64: u16 = 0x8664;
 const PE_MACHINE_ARM64: u16 = 0xAA64;

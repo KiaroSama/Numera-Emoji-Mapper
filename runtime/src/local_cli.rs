@@ -143,7 +143,25 @@ pub fn run_with_codec<M: MediaCodec>(
             .map(|entry| entry.map(|e| e.path()))
             .collect::<std::io::Result<Vec<_>>>()
             .map_err(|e| e.to_string())?;
-        found.retain(|p| p.is_file());
+        found.retain(|path| {
+            if !path.is_file() {
+                return false;
+            }
+            let control = path.file_name().is_some_and(|name| {
+                matches!(
+                    name.to_str(),
+                    Some(".convert.lock" | ".svg_cur" | ".svg_skip.txt")
+                )
+            });
+            if control {
+                log.event(
+                    "DEBUG",
+                    "collector",
+                    "skipped converter control file during folder discovery",
+                );
+            }
+            !control
+        });
         found.sort();
         found.extend(files);
         files = found;

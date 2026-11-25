@@ -85,12 +85,7 @@ fn embed_windows_resources(target: &str) {
             "Numera Emoji Mapper: Telegram custom-emoji pack toolkit",
         )
         .set("CompanyName", "KiaroSama")
-        .set("LegalCopyright", "KiaroSama (GPL-3.0-or-later)")
-        .set_version_info(
-            winresource::VersionInfo::PRODUCTVERSION,
-            0x0003_0000_0000_0000,
-        )
-        .set_version_info(winresource::VersionInfo::FILEVERSION, 0x0003_0000_0000_0000);
+        .set("LegalCopyright", "KiaroSama (GPL-3.0-or-later)");
     res.compile()
         .expect("compile Windows PE icon and version resources");
 }

@@ -565,11 +565,11 @@ fn detached_grandchild_fixture() {
     let Ok(directory) = std::env::var("NUMERA_DETACHED_GRANDCHILD_FIXTURE") else {
         return;
     };
-    std::fs::write(
-        std::path::Path::new(&directory).join("descendant-ready"),
-        std::process::id().to_string(),
-    )
-    .unwrap();
+    let root = std::path::Path::new(&directory);
+    let pending = root.join("descendant-ready.tmp");
+    // File existence must acknowledge complete PID bytes before inspection.
+    std::fs::write(&pending, std::process::id().to_string()).unwrap();
+    std::fs::rename(pending, root.join("descendant-ready")).unwrap();
     std::thread::sleep(std::time::Duration::from_secs(300));
 }
 

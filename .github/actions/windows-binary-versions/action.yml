@@ -1,0 +1,26 @@
+name: Windows binary version consistency
+description: Verify actual numeric and string executable versions with the native Rust verifier.
+inputs:
+  executable-path:
+    description: Optional single executable to verify instead of all four release binaries.
+    required: false
+    default: ''
+  verifier-path:
+    description: Native numera-emoji executable built from the source revision being verified.
+    required: false
+    default: runtime/target/release/numera-emoji.exe
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        NUMERA_VERSION_EXECUTABLE: ${{ inputs.executable-path }}
+        NUMERA_VERSION_VERIFIER: ${{ inputs.verifier-path }}
+      run: |
+        if [[ -n "$NUMERA_VERSION_EXECUTABLE" ]]; then
+          "$NUMERA_VERSION_VERIFIER" verify-binary-version --executable "$NUMERA_VERSION_EXECUTABLE"
+        else
+          for name in numera-emoji numera-dev numera-runtime-tests numera-worker-admin; do
+            "$NUMERA_VERSION_VERIFIER" verify-binary-version --executable "runtime/target/release/${name}.exe"
+          done
+        fi

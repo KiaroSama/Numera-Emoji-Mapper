@@ -7,7 +7,7 @@ use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-const PRIORITY: [&str; 7] = ["svg", "png", "webp", "gif", "bmp", "jpg", "jpeg"];
+const PRIORITY: [&str; 8] = ["svg", "png", "webp", "gif", "bmp", "jpg", "jpeg", "apng"];
 struct Staging(PathBuf);
 impl Staging {
     fn new(parent: &Path) -> Result<Self, String> {

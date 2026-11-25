@@ -9,7 +9,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 pub mod binary_check;
 pub mod cli;
 mod install;
-pub use binary_check::{run_verify_binary_cli, verify_binary_artifact};
+pub use binary_check::{
+    run_verify_binary_cli, verify_binary_artifact, verify_binary_version,
+    verify_binary_version_bytes,
+};
 pub use install::{install, verify};
 
 pub(super) static NEXT: AtomicU64 = AtomicU64::new(0);

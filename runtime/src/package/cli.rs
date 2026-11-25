@@ -12,10 +12,15 @@ pub fn run(root: &std::path::Path, command: &str, args: &[String]) -> i32 {
             "verify-binary" => println!(
                 "Usage: numera-emoji verify-binary --executable FILE --target PLATFORM [--logo FILE]"
             ),
+            "verify-binary-version" => println!(
+                "Usage: numera-emoji verify-binary-version --executable FILE\nVerify Windows numeric and string versions against this application's compiled package version."
+            ),
             _ => println!("Usage: numera-emoji package-verify [--package-root DIR]"),
         }
         return 0;
     }
+    let log = (command == "verify-binary-version")
+        .then(|| crate::logging::RunLog::open(root, "verify-binary-version", vec![]));
     let result = (|| -> Result<(), String> {
         let mut values = std::collections::BTreeMap::new();
         let allowed: &[&str] = match command {
@@ -28,6 +33,7 @@ pub fn run(root: &std::path::Path, command: &str, args: &[String]) -> i32 {
             ],
             "install-prebuilt" => &["--package-root", "--destination"],
             "verify-binary" => &["--executable", "--target", "--logo"],
+            "verify-binary-version" => &["--executable"],
             _ => &["--package-root"],
         };
         let mut index = 0;
@@ -120,6 +126,26 @@ pub fn run(root: &std::path::Path, command: &str, args: &[String]) -> i32 {
                 crate::package::run_verify_binary_cli(&owned, &resolve)?;
                 println!("[OK] Built binary architecture and embedded logo verified.");
             }
+            "verify-binary-version" => {
+                let executable = values
+                    .get("--executable")
+                    .ok_or("--executable is required")?;
+                if let Some(log) = &log {
+                    log.event(
+                        "DEBUG",
+                        "binary-version",
+                        &format!("expected_package_version={}", env!("CARGO_PKG_VERSION")),
+                    );
+                }
+                crate::package::verify_binary_version(&resolve(executable))?;
+                if let Some(log) = &log {
+                    log.event("INFO", "binary-version", "All Windows numeric and string version resources match the compiled package version.");
+                }
+                println!(
+                    "[OK] Windows numeric and string binary versions verified against {}.",
+                    env!("CARGO_PKG_VERSION")
+                );
+            }
             _ => {
                 crate::package::verify(&package_root)?;
                 println!("[OK] Package contents match their manifest.");
@@ -127,11 +153,19 @@ pub fn run(root: &std::path::Path, command: &str, args: &[String]) -> i32 {
         }
         Ok(())
     })();
-    match result {
+    let code = match result {
         Ok(()) => 0,
         Err(error) => {
-            eprintln!("ERROR: {}", crate::logging::redact(&error, &[]));
+            if let Some(log) = &log {
+                log.event("ERROR", "binary-version", &error);
+            } else {
+                eprintln!("ERROR: {}", crate::logging::redact(&error, &[]));
+            }
             2
         }
+    };
+    if let Some(log) = log {
+        log.finish(code);
     }
+    code
 }

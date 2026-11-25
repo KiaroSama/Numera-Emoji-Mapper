@@ -523,11 +523,16 @@ fn child_role() -> bool {
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
+    let ready = std::env::var_os("NUMERA_COIN_WORKFLOW_READY").unwrap();
+    let mut pending = ready.clone();
+    pending.push(".tmp");
+    // Publish both PID records together before the observer may cancel us.
     std::fs::write(
-        std::env::var_os("NUMERA_COIN_WORKFLOW_READY").unwrap(),
+        &pending,
         format!("{}\n{}\n", std::process::id(), child.id()),
     )
     .unwrap();
+    std::fs::rename(pending, ready).unwrap();
     let _ = child.wait();
     true
 }
