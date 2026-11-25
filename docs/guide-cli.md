@@ -168,8 +168,9 @@ Other hidden files and files without a recognized extension are still attempted,
 and invalid media still reports a failure. Explicitly listed files are appended
 in argument order and are always attempted, including a control-named file.
 
+After creating `build\myset` with the conversion example in §12.1, import it:
+
 ```powershell
-.\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
 .\numera-emoji.exe add-media --in build\myset --as static
 ```
 

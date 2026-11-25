@@ -1,6 +1,6 @@
 **First, comply with the owner's Rules, AGENTS instructions, hooks and prescribed Spec Kit chain. Preserve native test admission, independent fixtures and exact-source CI.**
 
-# Post-release media and Windows version recheck
+# Post-release media, Windows metadata and CI recheck
 
 ## Assessment and scope
 
@@ -207,6 +207,54 @@ reported 1,516 originals, 1,893 wired Rust functions and zero errors; the langua
 inventory reported 1,129 candidate files and zero violations. Compiled test
 targets still require protected execution on the final hosted revision.
 
+### Full-suite documentation correction
+
+The complete protected Linux suites on candidate `d13dfa0` exposed a shared
+documentation failure after the new media and version regressions passed.
+Both `baseline_tooling` and `supplemental_tooling` correctly rejected the
+converter-only `--out` flag inside the `add-media` reference section §12.4.
+Its two-command example was semantically valid as a workflow, but mixed two
+different command interfaces in a section whose contract describes one.
+The guide now keeps the conversion example in §12.1, refers readers there,
+and shows only the actual `add-media` command in §12.4. Neither assertion,
+flag parser nor allowlist changed. Both existing tooling targets also run in
+the early four-platform boundary step, followed by the unchanged complete
+suite, so a reference mismatch is visible before full-suite compilation.
+The failed candidate is retained as diagnostic evidence, not acceptance;
+the corrected published revision requires its own full hosted gates.
+
+## R15: recovery-journal observation race
+
+The completed Windows ARM64 push suite on `d13dfa0` also exposed a separate
+test-harness defect. The live-holder exclusion case failed at
+`baseline_recovery_support/locks_tests.rs:168` with
+`EOF while parsing an object`, line 1, column 15. Each child appends a JSON
+value and newline with `writeln!`, which can perform multiple writes. The
+parent's `read_to_string(...).lines()` also returned an unfinished final
+record and parsed it as complete. This is an observation-framing failure;
+the parse error does not establish that the OS lease admitted two owners.
+The corresponding PR run passed, but that does not resolve the observed race.
+Uploaded diagnostics retained the error and fixture path, not the journal
+bytes, so neither the exact interrupted byte sequence nor the optimized
+call site is claimed to have been recovered.
+
+The repaired observer treats newline-terminated records as committed while
+child handles remain owned. Malformed committed records still fail. After
+all children exit and their handles are drained, `wait()` validates every
+settled journal strictly, including callers that do not request spans again;
+truncated final records cannot disappear into a passing result. The real
+lease operations, separate child journals, original identities, independent
+PID/timestamp assertions, overlap canary, hold durations and 20/60-second
+budgets remain unchanged. Deterministic framing regressions cover partial
+publication, completion, malformed committed data and strict settlement.
+The existing recovery target now also runs in the early guarded boundary
+step, and failed synthetic journal files are included in CI diagnostics.
+Final protected execution must establish this repair on all four platforms.
+The two new framing tests compiled in the locked release target, scoped
+warnings-as-errors Clippy and formatting passed, and the refreshed inventory
+retained all 1,516 original identities with 1,895 wired Rust functions and
+zero errors. The unchanged language policy still reports zero violations.
+
 ## Plan, verification and integration gates
 
 1. Preserve the ordinary-CLI red receipts and independent fixture identity.
@@ -220,6 +268,8 @@ targets still require protected execution on the final hosted revision.
    existing early four-platform boundary step, followed by full unfiltered
    native acceptance, including the expected-version parser case. Verify actual Windows numeric/string version metadata in both
    native and package jobs and inspect final Windows package bytes.
+   Include both existing CLI-reference targets and the recovery target with
+   its two deterministic framing cases in early and complete acceptance.
 7. Require browser, Worker, inventory, package and security checks on the exact
    published repair head. Record applicable conditional skips honestly.
 8. Open the complete implementation PR linked to #106. The authorized owner
@@ -253,6 +303,9 @@ with its original postcondition, rather than deferred to another repair cycle.
 - [Independent previous repair record](2026-11-24-deep-review.md).
 - [Rust File locking API](https://doc.rust-lang.org/std/fs/struct.File.html#method.try_lock)
   and [Windows LockFileEx](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-lockfileex).
+- [Rust line termination](https://doc.rust-lang.org/std/primitive.str.html#method.lines)
+  and [formatted writer semantics](https://doc.rust-lang.org/std/io/trait.Write.html#method.write_fmt):
+  a live append is not a complete record until its framing delimiter is present.
 - [PNG third edition: animation](https://www.w3.org/TR/png-3/#11acTL) and
   [image crate PNG decoder](https://docs.rs/image/0.25.10/image/codecs/png/struct.PngDecoder.html).
 - [Windows fixed version fields](https://learn.microsoft.com/en-us/windows/win32/api/verrsrc/ns-verrsrc-vs_fixedfileinfo),

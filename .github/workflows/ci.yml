@@ -149,7 +149,7 @@ jobs:
           cargo test --config .cargo/runtime-tests.toml --manifest-path runtime/Cargo.toml --locked --release \
             --lib standard_windows_node_installation_enables_all_installed_web_checks \
             -- --test-threads=1 2>&1 | tee logs/checkpoint/windows-npm-regression.log
-      - name: Publication, archive, panel, media and package boundary regressions
+      - name: Publication, archive, panel, media, CLI and package boundary regressions
         # Surface critical boundary failures before compiling every test target.
         # The complete unfiltered acceptance step below remains mandatory.
         env:
@@ -163,6 +163,8 @@ jobs:
             --test supplemental_panel_http --test supplemental_bot_resolution \
             --test supplemental_binary_artifact --test supplemental_local_inputs \
             --test supplemental_binary_version \
+            --test baseline_tooling --test supplemental_tooling \
+            --test baseline_recovery \
             -- --test-threads=1 2>&1 | tee logs/checkpoint/boundary-regressions.log
       - name: Bounded process ownership regressions
         # Exercise strict inventory, deadline and real Windows handle contracts
@@ -215,6 +217,7 @@ jobs:
             logs/**/*.log
             logs/tmp/runtime-tests-*/stdout
             logs/tmp/runtime-tests-*/stderr
+            logs/tmp/baseline-catalog-baseline_recovery_baseline_catalog_support-*/*.jsonl
           if-no-files-found: warn
           retention-days: 7
 

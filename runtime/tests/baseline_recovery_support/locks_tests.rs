@@ -110,6 +110,26 @@ fn child_branch() -> bool {
     };
     true
 }
+fn journal_records(bytes: &[u8], settled: bool) -> Result<Vec<Value>, String> {
+    // A live append may expose any prefix, including otherwise valid JSON before
+    // its newline. Only the newline commits an observable journal record.
+    let complete = bytes
+        .iter()
+        .rposition(|byte| *byte == b'\n')
+        .map_or(0, |index| index + 1);
+    let records = bytes[..complete]
+        .split_inclusive(|byte| *byte == b'\n')
+        .enumerate()
+        .map(|(index, line)| {
+            serde_json::from_slice(line)
+                .map_err(|error| format!("journal record {}: {error}", index + 1))
+        })
+        .collect::<Result<Vec<Value>, _>>()?;
+    if settled && complete != bytes.len() {
+        return Err("settled journal has an unterminated record".into());
+    }
+    Ok(records)
+}
 struct Harness {
     scratch: Scratch,
     path: PathBuf,
@@ -156,16 +176,26 @@ impl Harness {
                 std::thread::sleep(Duration::from_millis(5));
             }
         }
-        self.children
+        let output = self
+            .children
             .drain(..)
             .map(|c| c.wait_with_output().unwrap())
-            .collect()
+            .collect();
+        // No writer remains. Validate every final record even when the caller
+        // needs only child statuses and does not inspect spans again.
+        let _ = self.spans();
+        output
     }
     fn spans(&self) -> Vec<(u64, f64, f64)> {
+        self.read_spans(self.children.is_empty())
+    }
+    fn read_spans(&self, settled: bool) -> Vec<(u64, f64, f64)> {
         let mut spans = std::collections::BTreeMap::<u64, (Option<f64>, f64)>::new();
         for p in &self.journals {
-            for l in std::fs::read_to_string(p).unwrap().lines() {
-                let v: Value = serde_json::from_str(l).unwrap();
+            let bytes = std::fs::read(p).unwrap();
+            for v in journal_records(&bytes, settled)
+                .unwrap_or_else(|error| panic!("{}: {error}", p.display()))
+            {
                 let t = v["t"].as_f64().unwrap();
                 let s = spans
                     .entry(v["pid"].as_u64().unwrap())
@@ -190,6 +220,84 @@ impl Harness {
             std::thread::sleep(Duration::from_millis(20));
         }
     }
+}
+
+#[test]
+fn live_journal_snapshots_observe_only_newline_committed_events() {
+    let mut h = Harness::new();
+    let journal = h.scratch.0.join("split-journal.jsonl");
+    let enter = b"{\"pid\":4104,\"t\":10,\"what\":\"enter\"}\n";
+    let exit = b"{\"pid\":4104,\"t\":11,\"what\":\"exit\"}\n";
+    std::fs::write(&journal, &enter[..15]).unwrap();
+    h.journals.push(journal.clone());
+    assert!(h.read_spans(false).is_empty());
+    let mut writer = std::fs::OpenOptions::new()
+        .append(true)
+        .open(&journal)
+        .unwrap();
+    writer.write_all(&enter[15..enter.len() - 1]).unwrap();
+    assert!(h.read_spans(false).is_empty());
+    writer.write_all(b"\n").unwrap();
+    writer.write_all(&exit[..15]).unwrap();
+    assert_eq!(h.read_spans(false), vec![(4104, 10.0, f64::INFINITY)]);
+    writer.write_all(&exit[15..exit.len() - 1]).unwrap();
+    assert_eq!(h.read_spans(false), vec![(4104, 10.0, f64::INFINITY)]);
+    writer.write_all(b"\n").unwrap();
+    drop(writer);
+    assert_eq!(h.read_spans(false), vec![(4104, 10.0, 11.0)]);
+    assert!(h.wait().is_empty());
+    assert_eq!(h.spans(), vec![(4104, 10.0, 11.0)]);
+}
+
+#[test]
+fn settled_journals_reject_uncommitted_or_malformed_evidence() {
+    let mut h = Harness::new();
+    let journal = h.scratch.0.join("invalid-journal.jsonl");
+    h.journals.push(journal.clone());
+    let pending: &[&[u8]] = &[
+        b"{\"pid\":4104,\"t\"",
+        b"{\"pid\":4104,\"t\":10,\"what\":\"enter\"}",
+        b"{\"pid\":4104,\"t\":10,\"what\":\"enter\"}\n{\"pid\":4104,\"t\"",
+        b"{\"pid\":4104,\"t\":10,\"what\":\"enter\"}\n\xff",
+    ];
+    for (index, bytes) in pending.iter().enumerate() {
+        std::fs::write(&journal, bytes).unwrap();
+        let expected = if index < 2 {
+            vec![]
+        } else {
+            vec![(4104, 10.0, f64::INFINITY)]
+        };
+        assert_eq!(h.read_spans(false), expected);
+        assert!(journal_records(bytes, true).is_err());
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| h.wait())).is_err(),
+            "wait accepted uncommitted journal fixture {index}"
+        );
+    }
+    let malformed: &[&[u8]] = &[
+        b"{\n",
+        b"{\"pid\":4104,\"t\":10,\"what\":\"enter\"}\n{\n{\"pid\":",
+        b"{\"pid\":4104,\"t\":10,\"what\":\"\xff\"}\n",
+        b"{\"t\":10,\"what\":\"enter\"}\n",
+        b"{\"pid\":4104,\"t\":\"10\",\"what\":\"enter\"}\n",
+        b"{\"pid\":4104,\"t\":10,\"what\":\"unknown\"}\n",
+    ];
+    for (index, bytes) in malformed.iter().enumerate() {
+        std::fs::write(&journal, bytes).unwrap();
+        for settled in [false, true] {
+            assert!(
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| h.read_spans(settled)))
+                    .is_err(),
+                "accepted malformed journal fixture {index}, settled={settled}"
+            );
+        }
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| h.wait())).is_err(),
+            "wait accepted malformed journal fixture {index}"
+        );
+    }
+    std::fs::write(&journal, b"").unwrap();
+    assert!(h.wait().is_empty());
 }
 impl Drop for Harness {
     fn drop(&mut self) {
