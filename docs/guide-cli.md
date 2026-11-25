@@ -22,6 +22,9 @@ Behaviour:
   .webp .gif .bmp .apng` in `--in` to `<name>.png` (100×100, transparent) in
   `--out`. Skips files already converted (idempotent), and records a marker so a
   hung SVG is blacklisted on the next run (`.svg_skip.txt`, `.svg_cur`).
+  APNG produces a static PNG from its default image; animation is not preserved.
+  For the same source stem, APNG is tried after the existing SVG/PNG/WebP/GIF/
+  BMP/JPG/JPEG choices.
 - **Legacy coin mode** (no `--in`): reads `coins/logos/svg/*.svg` then
   `coins/logos/png/*.png` and writes `coins/logos/emoji/<ticker>.png`.
 - **Blank guard**: if an SVG renders blank (e.g. an unsupported gradient), it is
@@ -156,6 +159,19 @@ Auto format: still image → static; animated GIF/APNG/MP4/WEBM/MOV → **video*
 (ffmpeg); Lottie `.json`/`.tgs` → **animated**. Remember: a raster animation
 cannot become an *animated* emoji (those are vector-only) — it becomes a *video*
 emoji.
+
+Folder discovery is nonrecursive and sorted. It ignores the converter's exact
+control filenames `.convert.lock`, `.svg_cur`, and `.svg_skip.txt`, so a
+`make-emoji-pngs` output folder can be passed directly to `add-media --in`.
+Those control files remain untouched; do not delete them to prepare an import.
+Other hidden files and files without a recognized extension are still attempted,
+and invalid media still reports a failure. Explicitly listed files are appended
+in argument order and are always attempted, including a control-named file.
+
+```powershell
+.\numera-emoji.exe make-emoji-pngs --in input\myset --out build\myset
+.\numera-emoji.exe add-media --in build\myset --as static
+```
 
 ### 12.5 `build-collection` — publish the catalog into new packs
 

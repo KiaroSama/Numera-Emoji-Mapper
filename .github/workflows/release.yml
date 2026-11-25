@@ -83,6 +83,9 @@ jobs:
               --target "${{ matrix.platform }}" \
               --logo assets/numera-emoji-mapper-logo-circle.png
           done
+      - name: Verify Windows binary version metadata
+        if: runner.os == 'Windows'
+        uses: ./.github/actions/windows-binary-versions
       - name: Permit private runtime test namespaces
         if: runner.os == 'Linux'
         uses: ./.github/actions/test-network
