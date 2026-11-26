@@ -7,9 +7,14 @@ use std::{
 mod test_admission;
 
 fn audit(dir: &Path) -> Output {
+    audit_with(dir, &[])
+}
+
+fn audit_with(dir: &Path, extra: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_numera-emoji"))
         .args(["audit-publication", "--base", "fixture", "--data-dir"])
         .arg(dir)
+        .args(extra)
         .output()
         .unwrap()
 }
@@ -225,4 +230,61 @@ fn reports_uninspectable_inputs_as_unknown() {
     assert!(stderr.contains("UNKNOWN:"), "{stderr}");
     assert_eq!(std::fs::read(&state).unwrap(), b"{}");
     assert_eq!(std::fs::read(&database).unwrap(), before);
+}
+
+#[test]
+fn json_report_reads_uncheckpointed_catalog_without_changing_durable_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    let unknown = audit_with(dir.path(), &["--json"]);
+    let invalid = audit_with(dir.path(), &["--json", "--invalid"]);
+    for (output, code) in [
+        (unknown, "STATE_UNREADABLE"),
+        (invalid, "INVALID_ARGUMENTS"),
+    ] {
+        assert_exit(code, &output, 2);
+        let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(report["status"], "unknown");
+        assert_eq!(report["findings"], serde_json::json!([]));
+        assert_eq!(report["error"]["code"], code);
+        assert!(output.stderr.is_empty());
+    }
+    let state = dir.path().join("publish_fixture.json");
+    std::fs::write(
+        &state,
+        br#"{"sets":[{"name":"fixture_set","fmt":"static","index":1,"keys":["s:one"],"live":1,"logo":false}]}"#,
+    )
+    .unwrap();
+    let db = rusqlite::Connection::open(dir.path().join("catalog.db")).unwrap();
+    db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0;
+        CREATE TABLE items(content_key TEXT PRIMARY KEY, uploaded INTEGER NOT NULL);
+        CREATE TABLE publications(base TEXT NOT NULL, content_key TEXT NOT NULL, set_name TEXT, custom_emoji_id TEXT, uploaded_utc TEXT NOT NULL, PRIMARY KEY(base,content_key));
+        INSERT INTO items VALUES('s:one',1);
+        INSERT INTO publications VALUES('fixture','s:one','fixture_set','111111111','fixture UTC');").unwrap();
+    let paths =
+        ["catalog.db", "catalog.db-wal", "publish_fixture.json"].map(|name| dir.path().join(name));
+    let before = paths.each_ref().map(|path| std::fs::read(path).unwrap());
+    let shm = dir.path().join("catalog.db-shm");
+    let shm_length = std::fs::metadata(&shm).unwrap().len();
+    assert_exit("text WAL report", &audit(dir.path()), 0);
+    let clean = audit_with(dir.path(), &["--json"]);
+    assert_exit("JSON WAL report", &clean, 0);
+    let report: serde_json::Value = serde_json::from_slice(&clean.stdout).unwrap();
+    assert_eq!(report["schema_version"], 1);
+    assert_eq!(report["status"], "clean");
+    assert!(report["error"].is_null());
+    assert_eq!(
+        paths.each_ref().map(|path| std::fs::read(path).unwrap()),
+        before
+    );
+    assert_eq!(std::fs::metadata(shm).unwrap().len(), shm_length);
+    db.execute("UPDATE items SET uploaded=0", []).unwrap();
+    let findings = audit_with(dir.path(), &["--json"]);
+    assert_exit("JSON finding", &findings, 1);
+    let report: serde_json::Value = serde_json::from_slice(&findings.stdout).unwrap();
+    assert_eq!(report["schema_version"], 1);
+    assert_eq!(report["status"], "findings");
+    assert_eq!(report["findings"][0]["code"], "NOT_UPLOADED");
+    assert_eq!(report["findings"][0]["set_index"], 0);
+    assert_eq!(report["findings"][0]["content_key"], "s:one");
+    assert!(report["error"].is_null());
 }

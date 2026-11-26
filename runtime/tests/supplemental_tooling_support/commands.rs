@@ -191,3 +191,56 @@ fn actual_benchmark_command_replays_read_only_catalog_without_operator_configura
     assert!(!root.0.join("collection").exists());
     root.clean().unwrap();
 }
+
+#[test]
+fn doctor_describes_catalog_and_external_workspace_without_creating_it() {
+    let root = Root::new("doctor locations");
+    let external = Root::new("external doctor data");
+    std::fs::create_dir(root.0.join("assets")).unwrap();
+    std::fs::write(root.0.join("assets/panel.html"), b"fixture").unwrap();
+    let executable = root
+        .0
+        .join(format!("numera-emoji{}", std::env::consts::EXE_SUFFIX));
+    std::fs::copy(env!("CARGO_BIN_EXE_numera-emoji"), &executable).unwrap();
+    let inside = invoke(&root.0, &executable, &["doctor"], &[]);
+    assert_eq!(inside.code, 0, "{}", inside.stderr);
+    assert!(inside.stdout.contains("collection"));
+    assert!(inside.stdout.contains("catalog.db"));
+    assert!(
+        inside.stdout.contains(
+            "Private codec workspace: not required (data directory is inside project root)"
+        )
+    );
+    let secret = "synthetic-doctor-credential";
+    std::fs::write(
+        root.0.join(".env"),
+        format!(
+            "GENERAL_BOT_TOKEN={secret}
+"
+        ),
+    )
+    .unwrap();
+    let outside = invoke(
+        &root.0,
+        &executable,
+        &["doctor"],
+        &[("EMOJI_DATA_DIR", external.0.to_str().unwrap())],
+    );
+    assert_eq!(outside.code, 0, "{}", outside.stderr);
+    assert!(
+        outside.stdout.contains(
+            &external
+                .0
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .into_owned()
+        )
+    );
+    assert!(outside.stdout.contains("external-data"));
+    assert!(!outside.stdout.contains(secret));
+    assert!(!outside.stderr.contains(secret));
+    assert!(!root.0.join("logs/tmp/external-data").exists());
+    external.clean().unwrap();
+    root.clean().unwrap();
+}

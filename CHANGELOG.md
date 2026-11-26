@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-26
+
+### Added
+- `audit-publication --json` emits schema version 1 with stable finding and error codes. A regression test covers read-only access when SQLite has uncheckpointed WAL data.
+- `doctor` reports resolved catalog and private codec workspace paths without printing credentials or creating directories.
+
+### Fixed
+- Use the publisher's state schema and compatibility defaults in the publication audit (#109).
+- Keep codec workspace files for external catalogs private. Verify Linux permissions and Windows ACLs, including pointer and bounds checks at the Windows API boundary (#109).
+- Check Linux ARM64 video identities against independent pixel references, and bound directory allocation for retained compiler fixtures (#109).
+
 ## [3.2.0] - 2026-11-25
 
 ### Added

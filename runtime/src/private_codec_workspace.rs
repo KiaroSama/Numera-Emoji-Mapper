@@ -46,6 +46,15 @@ fn select_allocator(relative: &Path, private: EvidenceAllocator) -> EvidenceAllo
 #[cfg(windows)]
 use windows::private_directory;
 
+pub(crate) fn describe_for_data(root: &Path, data: &Path) -> Result<Option<PathBuf>, String> {
+    let root = crate::tooling_environment::workspace_root(root, false)?;
+    let data = crate::tooling_environment::workspace_root(data, false)?;
+    if data.starts_with(&root) {
+        return Ok(None);
+    }
+    confined_directory(&root, &format!("logs/tmp/{EXTERNAL_DATA}"), false).map(Some)
+}
+
 pub(crate) fn external_base(root: &Path, relative: &str) -> Result<PathBuf, String> {
     let parent = confined_directory(root, "logs/tmp", true)?;
     let base = confined_directory(&parent, EXTERNAL_DATA, false)?;

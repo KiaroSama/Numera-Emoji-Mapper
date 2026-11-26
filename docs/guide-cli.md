@@ -474,7 +474,7 @@ emoji waiting to be published are a to-do, not staleness. An archive whose
 ### 12.5f `audit-publication`: check publication state against the catalog
 
 ```powershell
-.\numera-emoji.exe audit-publication --base BASE [--data-dir DIR]
+.\numera-emoji.exe audit-publication --base BASE [--data-dir DIR] [--json]
 ```
 
 `--base` selects the publication family. Use `--data-dir` to override the
@@ -485,3 +485,8 @@ It reports malformed entries, duplicate content keys, missing catalog rows, and
 conflicting publication records. Exit 0 means no findings, 1 means findings were
 reported, and 2 means invalid arguments or required inputs the audit could not
 inspect. Use `--help` for command help.
+
+`--json` writes one UTF-8 JSON object to stdout. It contains `schema_version`
+(currently `1`), `status` (`clean`, `findings`, or `unknown`), `base`,
+`data_dir`, `findings`, and `error`. The exit codes stay the same. Without this
+option, the command keeps its human-readable output.

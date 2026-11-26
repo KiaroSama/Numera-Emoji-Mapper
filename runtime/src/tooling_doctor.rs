@@ -95,6 +95,31 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
                 println!("[!] unset: {key}");
             }
         }
+        let raw = config.value("EMOJI_DATA_DIR");
+        let data = config.path(if raw.is_empty() { "collection" } else { raw });
+        let secrets = config.secret_values();
+        let catalog = tooling_environment::workspace_root(&data, false).map_or_else(
+            |error| format!("unresolved ({error})"),
+            |path| path.join("catalog.db").display().to_string(),
+        );
+        let workspace = crate::private_codec_workspace::describe_for_data(&root, &data)
+            .map_or_else(
+                |error| format!("unresolved ({error})"),
+                |path| {
+                    path.map_or_else(
+                        || "not required (data directory is inside project root)".into(),
+                        |path| path.display().to_string(),
+                    )
+                },
+            );
+        println!(
+            "[INFO] Catalog path: {}",
+            crate::logging::redact(&catalog, &secrets)
+        );
+        println!(
+            "[INFO] Private codec workspace: {}",
+            crate::logging::redact(&workspace, &secrets)
+        );
         println!("[OK] Environment check complete.");
         Ok(())
     })();

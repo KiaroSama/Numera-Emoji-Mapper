@@ -70,6 +70,9 @@ separately from automated CI results.
 - Check the intended GPU and media settings with `run.ps1 -Check`, then convert
   a small fixture and inspect the output and log for the selected codec or a
   reported fallback.
+- If a second physical volume is available, point `EMOJI_DATA_DIR` to a
+  disposable external catalog there and repeat the media check. Sibling
+  directories on `C:` test the project boundary, not separate physical volumes.
 
 ## Installation and updates
 
