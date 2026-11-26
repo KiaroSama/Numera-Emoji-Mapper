@@ -1,4 +1,6 @@
 //! Original frozen clips verify interpreter-free video sampling, alpha, timing and preparation.
+#[path = "support/video_identity_reference.rs"]
+mod video_identity_reference;
 use numera_runtime::{codec_video::VideoDecoder, codec_video_probe::VideoInfo};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -217,7 +219,8 @@ fn original_clips_preserve_alpha_sampling_fingerprints_and_timeline_comparison()
             for case in manifest["cases"].as_array().unwrap() {
                 let path = root.join(case["input"].as_str().unwrap());
                 let expected = &case["expected"];
-                assert_eq!(hash(&std::fs::read(&path).unwrap()), case["input_sha256"]);
+                let (expected_key, expected_digest) =
+                    video_identity_reference::expected(case, &std::fs::read(&path).unwrap());
                 let info = decoder.probe_typed(&path).await.unwrap();
                 for key in [
                     "width",
@@ -234,16 +237,9 @@ fn original_clips_preserve_alpha_sampling_fingerprints_and_timeline_comparison()
                 }
                 let raw = decoder.frames_rgba_typed(&path, 10).await.unwrap();
                 assert_eq!(raw.len() as u64, expected["frame_bytes"].as_u64().unwrap());
-                #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
-                assert_eq!(hash(&raw), expected["rgba_sha256"]);
+                assert_eq!(hash(&raw), expected_digest);
                 let identity = decoder.fingerprint_typed(&path).await.unwrap();
-                #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
-                assert_eq!(identity["content_key"], expected["content_key"]);
-                #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-                assert_eq!(
-                    identity["content_key"],
-                    json!(format!("v:{}", &hash(&raw)[..32]))
-                );
+                assert_eq!(identity["content_key"], expected_key);
                 assert_eq!(identity["phash"], expected["phash"]);
                 if let Some(args) = expected.get("decoder_args") {
                     assert_eq!(

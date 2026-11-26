@@ -204,6 +204,58 @@ filesystem support; this repair must not impose a new persistent-ACL-volume
 requirement on every Windows converter, ticker or internal catalog operation.
 External work must still fail if its private allocator is unavailable.
 
+## R19: independent Linux ARM64 video reference coverage
+
+The first published repair head, `9bf75f2dfd555b465beb69f3ce0061efdd431cfa`,
+passed both Linux x64 full suites, but both Linux ARM64 full suites found one
+new fixture error. The external-catalog video report decoded the frozen
+`fast15.webm` correctly and reported a key correction from
+`v:5ef91fd9de2aa94681a8d2811c6a1f7b` to
+`v:5b6ca0d6a27c1345826cda6cfc461358`. The same behavior was reproduced with
+the authenticated v3.2.0 executable and an internal catalog. Production
+sampling and hashing were unchanged by this PR.
+
+The original source at `1a36a968b006236bd0665a1da65c541938c06061`, verified
+against the historical fixture manifest, hashes the complete FFmpeg sampling
+stream. Its recipe uses the alpha-capable decoder, at most 3 seconds,
+10 fps, 64 by 64 RGBA and a no-fps retry only after successful empty output.
+It does not normalize CPU-specific resampling. Earlier repository history
+already records Linux aarch64 libswscale rounding. Some old tests consequently
+omitted exact ARM digests or obtained an expected ARM key by invoking the
+production fingerprinter. The latter is a circular test oracle.
+
+The follow-up records a separate immutable ARM reference for all eight
+original identity cases, retaining every original input and golden. Official
+Ubuntu ARM64 FFmpeg 6.1.1-3ubuntu5 was authenticated through signed package
+indexes and package hashes, then run as third-party code under user-mode
+AArch64 emulation in an owned extracted sysroot. Both `max` and `cortex-a57`
+CPU models produced the same full stream digest for every case. The eight
+x64 controls matched the old goldens, and the hash-verified original dHash
+routine matched every original perceptual hash across all 16 streams.
+No protected Rust executable was run through emulation.
+
+The new `video-identity-linux-arm64.json` binds references to exact input
+digests and records the sampler, complete stream digests/lengths and package
+provenance. Raw streams and per-frame digests remain in the separate
+`task2-arm64-full-reference` evidence receipts. A shared test helper chooses
+the fixed architecture reference. The native identity
+loop now checks ARM full digests and keys. Maintenance, IPC, fetch and the
+new external-catalog test use the same independent expected values instead
+of calculating expectations with the product. Actual product observations,
+phash, frame/timing, catalog/seen identity, preview/cache, cleanup and input
+preservation assertions remain in place.
+
+A finite scan distinguished these exact-input oracle defects from different
+timeline/conversion/preview outputs and meaningful relational remux checks.
+Independent full platform references for those different pixel outputs are
+an additional coverage proposal. Their existing dimension, timing, alpha,
+independent bounded-pixel and preservation checks are unchanged. The identity
+hashes must never be reused as expected hashes for a different transformation.
+
+Emulated reference capture and local target compilation do not replace real
+Linux ARM64 execution. The revised published head must pass the complete
+native matrix, including the restored exact ARM assertions, before integration.
+
 ## Verification and integration gates
 
 Local release builds, supplemental target compilation, formatting and Clippy

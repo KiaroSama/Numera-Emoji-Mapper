@@ -21,6 +21,13 @@ They cover an initial migration slice, not the whole source test inventory.
   33 ms single-frame clips. Source dHash values prove the first frame belongs to
   the frozen 10 fps stream rather than native frame zero; the short clip records
   an actual successful-empty sample followed by native-frame retry.
+- `video-identity-linux-arm64.json` records the eight identity streams from the
+  original `video-codec` and `video-fingerprint` inputs on Ubuntu Noble's AArch64
+  FFmpeg 6.1.1-3ubuntu5. The AArch64 executable ran under QEMU user mode with
+  the original libvpx decoder and 10 fps RGBA filter, including the successful-empty
+  retry for `short30`. Each full digest identifies the stream for that input
+  SHA-256. The original manifests retain their expected lengths, phashes and
+  reference digests for the other platforms.
 - `gallery-codec.json`: five pinned gallery outputs: 88px static LANCZOS/lossy65,
   animated still/moving 88px/9fps/lossy65, raw video copy and source animation-info
   booleans. This is distinct from the panel preview's BICUBIC/lossless policy.

@@ -35,22 +35,9 @@ impl Scratch {
         std::fs::remove_dir_all(&self.0).expect("clean verified native identity fixture");
     }
 }
-pub(super) fn expected_video_key(_source: &Path, case: &Value) -> String {
-    #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
-    {
-        case["expected"]["content_key"].as_str().unwrap().to_owned()
-    }
-    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-    {
-        let project = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-        let observed = _native::codec_worker::execute_typed_at(
-            Some(project),
-            &json!({"operation":"fingerprint","source":_source,"format":"video"}),
-        )
-        .unwrap();
-        assert_eq!(observed["phash"], case["expected"]["phash"]);
-        observed["content_key"].as_str().unwrap().to_owned()
-    }
+
+pub(super) fn expected_video_key(source: &Path, case: &Value) -> String {
+    crate::video_identity_reference::expected(case, &std::fs::read(source).unwrap()).0
 }
 
 fn database(path: &Path) -> Connection {

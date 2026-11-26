@@ -36,11 +36,13 @@ mod root;
 mod scripted;
 #[path = "supplemental_cli_product_support/status_commands.rs"]
 mod status_commands;
-#[cfg(test)]
 #[path = "support/test_admission.rs"]
 mod test_admission;
 #[path = "supplemental_cli_product_support/unit_tails.rs"]
 mod unit_tails;
+#[cfg(test)]
+#[path = "support/video_identity_reference.rs"]
+mod video_identity_reference;
 
 // Same allowlist and synthetic defaults as the real supplemental worker fixture;
 // this cohort needs its guarded child environment, without a fixture compiler.

@@ -1,6 +1,8 @@
 // Retained supplemental native regression from native/tests/codec_worker_error_ipc.rs.
 // Source SHA256: 28a46208de6bbf6b4ce2c386dff335d5bc296db11dccc9b90d4575e80a126221; separate from the1516 baseline IDs.
 //! Real worker preserves the source catch boundary: handled errors answer; TypeError/EOF escape.
+#[path = "../support/video_identity_reference.rs"]
+mod video_identity_reference;
 use _native::process_owner::OwnedProcess;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
@@ -206,19 +208,18 @@ fn typed_source_errors_do_not_become_invented_worker_envelopes() {
             case["expected"] = json!(true);
         }
         cases.push(case);
-        #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
-        let expected_key = original["expected"]["content_key"].clone();
+        let (expected_key, _) =
+            video_identity_reference::expected(original, &std::fs::read(&source).unwrap());
         #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-        let expected_key = {
+        {
             let observed = _native::codec_worker::execute_typed_at(
                 Some(&root),
                 &json!({"operation":"fingerprint","source":source,"format":"video"}),
             )
             .unwrap();
             assert_eq!(observed["phash"], original["expected"]["phash"]);
-            assert!(observed["content_key"].as_str().unwrap().starts_with("v:"));
-            observed["content_key"].clone()
-        };
+            assert_eq!(observed["content_key"], expected_key);
+        }
         cases.push(json!({"name":format!("fingerprint {input}"),
             "request":{"operation":"fingerprint","source":source,"format":"video"},
             "expected":{"content_key":expected_key,

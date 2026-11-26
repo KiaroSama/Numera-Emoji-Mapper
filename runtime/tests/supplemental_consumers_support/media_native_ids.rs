@@ -529,17 +529,8 @@ fn mixed_requested_ids_preserve_good_formats_when_download_or_resolution_fails()
         .unwrap();
         for (index, format) in formats.iter().enumerate() {
             let expected = &cases[index]["expected"];
-            #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
-            let key = expected["content_key"].as_str().unwrap().to_owned();
-            #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
             let key = if *format == "video" {
-                let observed = _native::codec_worker::execute_typed_at(
-                    Some(&project),
-                    &json!({"operation":"fingerprint","source":project.join(cases[index]["input"].as_str().unwrap()),"format":"video"}),
-                )
-                .unwrap();
-                assert_eq!(observed["phash"], expected["phash"]);
-                observed["content_key"].as_str().unwrap().to_owned()
+                crate::video_identity_reference::expected(cases[index], &inputs[index]).0
             } else {
                 expected["content_key"].as_str().unwrap().to_owned()
             };

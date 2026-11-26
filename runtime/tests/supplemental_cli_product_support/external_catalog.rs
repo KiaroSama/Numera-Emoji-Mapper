@@ -20,7 +20,6 @@ mod publication;
 const STATIC: &str = "static-codec/public-logo.png";
 const STATIC_KEY: &str = "s:1745338c58098cc08d6406ac9d629f6a";
 const VIDEO: &str = "video-fingerprint/fast15.webm";
-const VIDEO_KEY: &str = "v:5ef91fd9de2aa94681a8d2811c6a1f7b";
 const EMOJI_ID: &str = "990000001";
 
 fn frozen(name: &str) -> Vec<u8> {

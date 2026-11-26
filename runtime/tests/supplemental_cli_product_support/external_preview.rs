@@ -10,8 +10,20 @@ use std::{
 fn video_report_and_cold_panel_preview_use_the_external_catalog() {
     let app = Installation::new();
     let video = frozen(VIDEO);
+    let manifest: Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/native/video-fingerprint.json"
+    ))
+    .unwrap();
+    let input = format!("tests/fixtures/native/{VIDEO}");
+    let case = manifest["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["input"] == input)
+        .unwrap();
+    let (video_key, _) = crate::video_identity_reference::expected(case, &video);
     let source = app.seed(
-        VIDEO_KEY,
+        &video_key,
         "video",
         "video é.webm",
         &video,
@@ -62,7 +74,7 @@ fn video_report_and_cold_panel_preview_use_the_external_catalog() {
         if let Ok(res) = client.get(format!("{url}/api/session")).send() {
             assert_eq!(res.status(), 200);
             assert_eq!(res.json::<Value>().unwrap(), session);
-            let image = client.get(format!("{url}/img/{VIDEO_KEY}")).send().unwrap();
+            let image = client.get(format!("{url}/img/{video_key}")).send().unwrap();
             if image.status() == 200 {
                 assert_eq!(&image.bytes().unwrap()[..], &video);
                 break;
@@ -71,7 +83,7 @@ fn video_report_and_cold_panel_preview_use_the_external_catalog() {
         assert!(Instant::now() < end, "panel did not expose the owned video");
         std::thread::sleep(Duration::from_millis(50));
     }
-    let digest = numera_runtime::native_raster::digest_hex(VIDEO_KEY.as_bytes());
+    let digest = numera_runtime::native_raster::digest_hex(video_key.as_bytes());
     let cache = app
         .data
         .join("preview")
@@ -79,7 +91,7 @@ fn video_report_and_cold_panel_preview_use_the_external_catalog() {
     assert!(!cache.exists());
     let preview = || {
         let res = client
-            .get(format!("{url}/preview/{VIDEO_KEY}?still=1&size=52"))
+            .get(format!("{url}/preview/{video_key}?still=1&size=52"))
             .send()
             .unwrap();
         assert_eq!(res.status(), 200);

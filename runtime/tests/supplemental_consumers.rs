@@ -18,3 +18,5 @@ mod retained_cli;
 mod test_admission;
 #[path = "support/tooling_fixture.rs"]
 mod tooling_fixture;
+#[path = "support/video_identity_reference.rs"]
+mod video_identity_reference;

@@ -1,0 +1,73 @@
+{
+  "source_revision": "1a36a968b006236bd0665a1da65c541938c06061",
+  "source_sha256": {
+    "emojikit/media.py": "2e9c453de37a858db4b86cb3303bda9e2d2a2271fe12ac918924f97df8a42f53",
+    "emojikit/video_decode.py": "bab9579240a23bb8ee59c1a66e496586ca881398bb4d82e956e2fb6c2b3ff13a",
+    "emojikit/identity.py": "8cbefd550e306e671df1e52af2dd9fe6b4e3647c3aa1b13dc98bf35080d36e89"
+  },
+  "architecture": "Linux AArch64",
+  "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+  "capture": "qemu-aarch64 version 10.0.13 (Debian 1:10.0.13+ds-0+deb13u1)",
+  "packages": {
+    "ffmpeg": {
+      "filename": "ffmpeg_6.1.1-3ubuntu5_arm64.deb",
+      "sha256": "b67d11113ce72b679586ca23f962d68e111e46dafeb0aec0333037b4348a2711"
+    },
+    "libswscale7": {
+      "filename": "libswscale7_6.1.1-3ubuntu5_arm64.deb",
+      "sha256": "80d58ac7cc2fe9efd05907a201e78775932484f8b18af0fc82cbb41142057078"
+    },
+    "libvpx9": {
+      "filename": "libvpx9_1.14.0-1ubuntu2.3_arm64.deb",
+      "sha256": "0a11569cb76d303978bb8d1a97cb012d96baadb5e093e6936f5b53de802241ec"
+    },
+    "qemu-user": {
+      "filename": "qemu-user_10.0.13+ds-0+deb13u1_amd64.deb",
+      "sha256": "ca6ede739327a20ae5a3498230c8a3a9a072c586e131bc6bcc1201eb1725e336"
+    }
+  },
+  "filter": "fps=10,scale=64:64,format=rgba",
+  "empty_sample_retry_filter": "scale=64:64,format=rgba",
+  "cases": {
+    "tests/fixtures/native/video-codec/opaque.webm": {
+      "input_sha256": "9ad49bae33aec4cc5e754476800285ddc0f7f7ba4738e39e1f4245d87e4551e1",
+      "frame_bytes": 163840,
+      "rgba_sha256": "17ac6fa32d78099f42f26495962dbbaa6d1ad7e09e27ffb1e2b573bdf9466a5b"
+    },
+    "tests/fixtures/native/video-codec/alpha.webm": {
+      "input_sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "frame_bytes": 163840,
+      "rgba_sha256": "afa3b7714ac0e34f10d8fd16b71d933f8b1c2c315f38f1c64b5e051e8903d54e"
+    },
+    "tests/fixtures/native/video-codec/extensionless": {
+      "input_sha256": "a6062ced6f8609a0351c511282d589b59361ea66849ee2681fe522e3eee1797a",
+      "frame_bytes": 163840,
+      "rgba_sha256": "afa3b7714ac0e34f10d8fd16b71d933f8b1c2c315f38f1c64b5e051e8903d54e"
+    },
+    "tests/fixtures/native/video-codec/vp8.webm": {
+      "input_sha256": "25002b26244c4a3a5ff62a862152c15a67e88b2a33ef4c8825c216be1ca30db7",
+      "frame_bytes": 163840,
+      "rgba_sha256": "84d1bb12fe3276c9952e4de8aa1095d4b76ca97de47491700d6a53fe50849970"
+    },
+    "tests/fixtures/native/video-codec/single.webm": {
+      "input_sha256": "09b6b934a16829435db84a9791672ff05f3a975a6e59af5ad352480a5a378252",
+      "frame_bytes": 16384,
+      "rgba_sha256": "89e8f31b2bb200478c5470b2a3cccfb6532d311cb1c06db97d076f31334fe3a7"
+    },
+    "tests/fixtures/native/video-fingerprint/fast30.webm": {
+      "input_sha256": "9bbe7eb2e975eb1f325a733fba5e5f97918e3423bb19e5e10d25942aff78ef57",
+      "frame_bytes": 65536,
+      "rgba_sha256": "3df0ad03a14fbafad5d3a29d739113097f520536a58af1932c3a4f391eb1ece8"
+    },
+    "tests/fixtures/native/video-fingerprint/fast15.webm": {
+      "input_sha256": "91baf8d30ae00bc60584ed617bf355933885b8c7a4a493f573cc60fb560ba04e",
+      "frame_bytes": 81920,
+      "rgba_sha256": "5b6ca0d6a27c1345826cda6cfc46135873b685bf32d7b5de0cb96ae6df1cf154"
+    },
+    "tests/fixtures/native/video-fingerprint/short30.webm": {
+      "input_sha256": "dfdb3fc6a36583d08dbccdcdb77abf5b912c305d4e66197a53cdb549d90e45ca",
+      "frame_bytes": 16384,
+      "rgba_sha256": "820a574ce5f123a9555fa66b438bfecb04f22b02af0f4b1c9891ff616696a0d0"
+    }
+  }
+}
