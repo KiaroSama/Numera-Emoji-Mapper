@@ -47,8 +47,8 @@ fn select_allocator(relative: &Path, private: EvidenceAllocator) -> EvidenceAllo
 use windows::private_directory;
 
 pub(crate) fn describe_for_data(root: &Path, data: &Path) -> Result<Option<PathBuf>, String> {
-    let root = crate::tooling_environment::workspace_root(root, false)?;
-    let data = crate::tooling_environment::workspace_root(data, false)?;
+    let root = crate::tooling_environment::physical_root(root)?;
+    let data = crate::tooling_environment::describe_directory(data)?;
     if data.starts_with(&root) {
         return Ok(None);
     }

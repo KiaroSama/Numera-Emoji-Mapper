@@ -98,7 +98,7 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
         let raw = config.value("EMOJI_DATA_DIR");
         let data = config.path(if raw.is_empty() { "collection" } else { raw });
         let secrets = config.secret_values();
-        let catalog = tooling_environment::workspace_root(&data, false).map_or_else(
+        let catalog = tooling_environment::describe_directory(&data).map_or_else(
             |error| format!("unresolved ({error})"),
             |path| path.join("catalog.db").display().to_string(),
         );

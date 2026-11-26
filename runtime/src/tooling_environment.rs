@@ -68,6 +68,21 @@ pub(crate) fn workspace_root(path: &Path, create: bool) -> Result<PathBuf, Strin
     Ok(path)
 }
 
+/// Resolve an existing or not-yet-created catalog directory for read-only diagnostics
+/// without creating it on disk, while still rejecting symlinks and reparse points.
+pub(crate) fn describe_directory(path: &Path) -> Result<PathBuf, String> {
+    let original = absolute(path)?;
+    let normalized = original.components().as_path();
+    reject_links(
+        normalized,
+        "Catalog storage cannot use a linked/reparse directory",
+    )?;
+    if normalized.exists() {
+        return physical_root(normalized);
+    }
+    canonical_existing_prefix(normalized)
+}
+
 pub fn physical_root(root: &Path) -> Result<PathBuf, String> {
     reject_links(
         root,
