@@ -1,6 +1,8 @@
 // Retained supplemental native regression from native/tests/media_native_lifecycle.rs.
 // Source SHA256: 206c9a1ec533a331871f3aeb4805733f48e09a508f0b9b7f54c8746a19f5d101; separate from the1516 baseline IDs.
 //! Native fixture process verifies parent safety; these are not source media-parity claims.
+#[path = "../support/private_codec_evidence.rs"]
+mod evidence_access;
 use _native::media_native_adapter::NativeMediaAdapter;
 use serde_json::json;
 use std::path::{Path, PathBuf};
@@ -214,7 +216,10 @@ fn actual_worker_nested_capture_stays_inside_envelope_and_stops_on_cancellation(
     let adapter = NativeMediaAdapter {
         executable: PathBuf::from(env!("CARGO_BIN_EXE_numera-emoji")),
         root: control.clone(),
-        scratch: control.join("envelopes"),
+        scratch: _native::config::Config::load(control.clone())
+            .unwrap()
+            .codec_directory(&root, "tmp/envelopes", false)
+            .unwrap(),
     };
     let source = root.join("tests/fixtures/native/video-fingerprint/fast30.webm");
     let original = std::fs::read(&source).unwrap();
@@ -323,6 +328,13 @@ fn actual_worker_nested_capture_stays_inside_envelope_and_stops_on_cancellation(
                 .is_file()
         );
         assert_eq!(names(&captures[0]), ["owner", "stderr.bin", "stdout.bin"]);
+        for file in [
+            envelope.join("request.json"),
+            captures[0].join("stderr.bin"),
+            captures[0].join("stdout.bin"),
+        ] {
+            evidence_access::assert_private(&retained, &file);
+        }
         // The outer session reaped the acknowledged inner child before moving its evidence.
         clean_diagnostic(retained);
         assert_eq!(std::fs::read_dir(&adapter.scratch).unwrap().count(), 0);

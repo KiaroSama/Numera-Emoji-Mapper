@@ -169,11 +169,8 @@ pub fn run_with_codec<M: MediaCodec>(
     if files.is_empty() {
         return Err("no input files (use --in FOLDER or list files)".into());
     }
-    let data = config.path(&data);
-    std::fs::create_dir_all(&data).map_err(|e| e.to_string())?;
-    let data = data.canonicalize().map_err(|e| e.to_string())?;
-    let temporary = data.join("tmp");
-    std::fs::create_dir_all(&temporary).map_err(|e| e.to_string())?;
+    let data = crate::tooling_environment::workspace_root(&config.path(&data), true)?;
+    let temporary = config.codec_directory(&data, "tmp", true)?;
     let workspace = loop {
         let path = temporary.join(format!(
             "local-{}-{}",

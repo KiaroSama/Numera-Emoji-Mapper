@@ -89,13 +89,20 @@ impl<M: MediaCodec> Publisher<'_, M> {
         }
     }
     pub fn same(&self, sticker: &Value, source: &Path, fmt: &str) -> Result<Option<bool>, String> {
-        self.effects().same(sticker, source, fmt)
+        let base = self.download_base()?;
+        self.effects(&base).same(sticker, source, fmt)
     }
-    fn effects(&self) -> crate::upload_effect::UploadEffect<'_, M> {
+    fn download_base(&self) -> Result<PathBuf, String> {
+        match self.config {
+            Some(config) => config.codec_workspace_base(&self.data, "tmp"),
+            None => Ok(self.data.clone()),
+        }
+    }
+    fn effects<'a>(&'a self, base: &'a Path) -> crate::upload_effect::UploadEffect<'a, M> {
         crate::upload_effect::UploadEffect {
             tg: self.tg,
             media: self.media,
-            data: &self.data,
+            data: base,
             runtime: self.runtime,
         }
     }
@@ -127,7 +134,8 @@ impl<M: MediaCodec> Publisher<'_, M> {
             .tg
             .download_bytes(text(sticker, "file_id")?, 5)
             .map_err(|e| e.to_string())?;
-        let scratch = crate::publication_download::Download::new(&self.data, "resolve", &bytes)?;
+        let scratch =
+            crate::publication_download::Download::new(&self.download_base()?, "resolve", &bytes)?;
         let media = self.media.with_scratch(scratch.codec());
         let resolved = (|| {
             let fingerprint = self.runtime.block_on(media.call(json!({
@@ -278,6 +286,8 @@ impl<M: MediaCodec> Publisher<'_, M> {
         user_id: u64,
         repaint: bool,
     ) -> Result<Value, ApiError> {
-        self.effects().mutate(item, name, title, user_id, repaint)
+        let base = self.download_base().map_err(ApiError::Invalid)?;
+        self.effects(&base)
+            .mutate(item, name, title, user_id, repaint)
     }
 }

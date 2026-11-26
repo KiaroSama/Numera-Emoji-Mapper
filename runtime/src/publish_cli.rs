@@ -123,7 +123,7 @@ pub(crate) fn run_with_factories<M: crate::media_adapter::MediaCodec>(
     if !data.join("catalog.db").is_file() {
         return Err("no catalog; run a collector first".into());
     }
-    let data = data.canonicalize().map_err(|e| e.to_string())?;
+    let data = crate::tooling_environment::workspace_root(&data, false)?;
     let state_path = data.join(format!("publish_{base}.json"));
     let plan_path = data.join(format!("publish_plan_{base}.json"));
     let (logo_bots, logo_path) =
@@ -252,7 +252,10 @@ pub(crate) fn run_with_factories<M: crate::media_adapter::MediaCodec>(
             (user_id, log),
         );
     }
-    let media = make_media(config, data.join("tmp/native-codec"))?;
+    let media = make_media(
+        config,
+        config.codec_directory(&data, "tmp/native-codec", false)?,
+    )?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

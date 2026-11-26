@@ -75,6 +75,36 @@ impl Config {
             self.root.join(path)
         }
     }
+    /// Keep private codec work inside the installation while preserving internal catalog layouts.
+    pub(crate) fn codec_workspace_base(
+        &self,
+        data: &Path,
+        relative: &str,
+    ) -> Result<PathBuf, String> {
+        use crate::tooling_environment::workspace_root;
+        let root = workspace_root(&self.root, false)?;
+        let data = workspace_root(data, false)?;
+        if data.starts_with(&root) {
+            Ok(data)
+        } else {
+            crate::private_codec_workspace::external_base(&root, relative)
+        }
+    }
+    pub fn codec_directory(
+        &self,
+        data: &Path,
+        relative: &str,
+        create: bool,
+    ) -> Result<PathBuf, String> {
+        let base = self.codec_workspace_base(data, relative)?;
+        let directory = crate::tooling_environment::confined_directory(&base, relative, create)?;
+        match std::fs::metadata(&directory) {
+            Ok(metadata) if metadata.is_dir() => Ok(directory),
+            Err(error) if !create && error.kind() == std::io::ErrorKind::NotFound => Ok(directory),
+            Ok(_) => Err("codec workspace must be a physical directory".into()),
+            Err(error) => Err(error.to_string()),
+        }
+    }
     pub fn logo_bots(&self, strict: bool) -> Result<Vec<String>, String> {
         if !self.values.contains_key("BRAND_LOGO_BOTS") && strict {
             return Err("not configured: BRAND_LOGO_BOTS".into());

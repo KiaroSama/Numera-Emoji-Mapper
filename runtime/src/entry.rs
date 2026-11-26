@@ -511,7 +511,7 @@ fn start_panel_with_browser(
         NativeMediaAdapter {
             executable: std::env::current_exe().map_err(|e| e.to_string())?,
             root: config.root.clone(),
-            scratch: data.join("tmp/native-codec"),
+            scratch: config.codec_directory(&data, "tmp/native-codec", false)?,
         },
         &data,
         2,

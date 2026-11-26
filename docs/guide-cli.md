@@ -94,6 +94,11 @@ run continues without recreating existing sets. Use `--dry-run` first.
 | `--limit <n>` | `0` (all) | Max new items per pack. |
 | `--repaintable` | `ask` | What to do with emoji Telegram REPAINTS (`ask`/`skip`/`keep`). The client overrides their colours, so the source pack does not show the stored art: in one of ours they render that art instead — sometimes flat black, sometimes full colour. Look before you decide; with no terminal to answer, `ask` skips them. |
 
+An absolute `--data-dir` can point outside the installation. The catalog,
+media, preview cache and publication state stay in that directory. Private
+codec work for an external catalog runs under the installation’s
+`logs/tmp/external-data` directory.
+
 Re-running is cheap: stickers whose `file_unique_id` was already ingested are
 skipped without downloading; identical media collapse to one catalog row.
 
@@ -475,7 +480,8 @@ emoji waiting to be published are a to-do, not staleness. An archive whose
 `--base` selects the publication family. Use `--data-dir` to override the
 `collection` directory. The audit reads the
 publication state and SQLite catalog without writing either file or contacting
-Telegram. It reports malformed entries, duplicate content keys, missing catalog
-rows, and conflicting publication records. Exit 0 means no findings, 1 means
-findings were reported, and 2 means the inputs were invalid or the audit could
-not read the required files. Use `--help` for command help.
+Telegram. It applies the same state validation and defaults as the publisher.
+It reports malformed entries, duplicate content keys, missing catalog rows, and
+conflicting publication records. Exit 0 means no findings, 1 means findings were
+reported, and 2 means invalid arguments or required inputs the audit could not
+inspect. Use `--help` for command help.

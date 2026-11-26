@@ -51,6 +51,23 @@ pub fn project_root() -> Result<PathBuf, String> {
     Err("cannot locate project assets beside native executable".into())
 }
 
+/// Validate the original directory before resolving it. Keep parent components for link checks,
+/// but remove trailing separators and dots that can make lstat inspect a link's target.
+pub(crate) fn workspace_root(path: &Path, create: bool) -> Result<PathBuf, String> {
+    let original = absolute(path)?;
+    let path = original.components().as_path();
+    if create {
+        reject_links(
+            path,
+            "Catalog storage cannot use a linked/reparse directory",
+        )?;
+        std::fs::create_dir_all(path).map_err(|error| error.to_string())?;
+    }
+    let path = physical_root(path)?;
+    std::fs::read_dir(&path).map_err(|error| error.to_string())?;
+    Ok(path)
+}
+
 pub fn physical_root(root: &Path) -> Result<PathBuf, String> {
     reject_links(
         root,

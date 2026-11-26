@@ -86,10 +86,11 @@ pub(crate) fn run_with_codec_factory<M: MediaCodec>(
         .with_log(log);
     tg.read_call("getMe", &BTreeMap::new())
         .map_err(|e| e.to_string())?;
-    let data = config.path(&data);
-    std::fs::create_dir_all(&data).map_err(|e| e.to_string())?;
-    let data = data.canonicalize().map_err(|e| e.to_string())?;
-    let media = factory(config, data.join("tmp/native-codec"))?;
+    let data = crate::tooling_environment::workspace_root(&config.path(&data), true)?;
+    let media = factory(
+        config,
+        config.codec_directory(&data, "tmp/native-codec", false)?,
+    )?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

@@ -5,6 +5,8 @@ mod archive_commands;
 mod archive_freshness;
 #[path = "supplemental_cli_product_support/bot_commands.rs"]
 mod bot_commands;
+#[path = "supplemental_cli_product_support/external_catalog.rs"]
+mod external_catalog;
 #[path = "supplemental_cli_product_support/family_merge.rs"]
 mod family_merge;
 #[path = "supplemental_cli_product_support/fetch_ids_commands.rs"]

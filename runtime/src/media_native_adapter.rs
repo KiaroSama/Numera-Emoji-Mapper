@@ -1,4 +1,5 @@
 //! Same-binary codec IPC used by panel previews and the native media acceptance suite.
+use crate::private_codec_workspace::EvidenceAllocator;
 use serde_json::{Value, json};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -51,13 +52,17 @@ pub(crate) fn native_executable(root: &Path, current: &Path) -> Result<PathBuf, 
     .ok_or_else(|| "Standalone native executable is missing; install a standalone package or explicitly build runtime/Cargo.toml".into())
 }
 struct Workspace {
+    create_directory: EvidenceAllocator,
     directory: PathBuf,
     diagnostics_root: Option<PathBuf>,
     cleanup_attempted: bool,
     retained_in_place: bool,
 }
 
-fn diagnostic_directory(root: &Path) -> Result<PathBuf, String> {
+fn diagnostic_directory(
+    root: &Path,
+    create_directory: EvidenceAllocator,
+) -> Result<PathBuf, String> {
     let parent = crate::tooling_environment::confined_directory(root, "logs", true)?;
     loop {
         let id = NEXT.fetch_add(1, Ordering::Relaxed);
@@ -65,7 +70,7 @@ fn diagnostic_directory(root: &Path) -> Result<PathBuf, String> {
             "native-codec-diagnostics-{}-{id}",
             std::process::id()
         ));
-        match std::fs::create_dir(&path) {
+        match create_directory(&path) {
             Ok(()) => return crate::tooling_environment::physical_root(&path),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
             Err(_) => return Err("cannot create codec diagnostics; scratch retained".into()),
@@ -91,9 +96,10 @@ impl Workspace {
         result
     }
 
-    fn witness(root: &Path) -> Result<Self, String> {
+    fn witness(root: &Path, create_directory: EvidenceAllocator) -> Result<Self, String> {
         let witness = Self {
-            directory: diagnostic_directory(root)?,
+            create_directory,
+            directory: diagnostic_directory(root, create_directory)?,
             diagnostics_root: None,
             cleanup_attempted: false,
             retained_in_place: true,
@@ -144,7 +150,7 @@ impl Workspace {
         if !source.starts_with(root) {
             return Err("codec diagnostics escaped project; scratch retained".into());
         }
-        let destination = diagnostic_directory(root)?;
+        let destination = diagnostic_directory(root, self.create_directory)?;
         let retained = destination.join("envelope");
         // Move the whole envelope only after the later-declared process owner has finished.
         // Its response may deliberately be malformed or a link: never read or rewrite it here.
@@ -244,7 +250,7 @@ fn finalize(
     response: &[u8],
 ) -> Result<(), String> {
     let mut witness = if publication.is_some() {
-        let witness = Workspace::witness(root)?;
+        let witness = Workspace::witness(root, workspace.create_directory)?;
         witness.persist(request, response)?;
         Some(witness)
     } else {
@@ -330,18 +336,23 @@ impl NativeMediaAdapter {
             .map_err(|_| "cannot resolve native codec executable")?;
         regular(&executable)?;
         crate::codec_worker::physical_directory(&root, &self.scratch)?;
+        // External envelopes may move intact under logs. Protect their files at creation
+        // because a same-volume rename can retain the original DACL.
+        let create_directory =
+            crate::private_codec_workspace::evidence_allocator(&root, &self.scratch)?;
         let directory = loop {
             let id = NEXT.fetch_add(1, Ordering::Relaxed);
             let path = self
                 .scratch
                 .join(format!("native-codec-{}-{id}", std::process::id()));
-            match std::fs::create_dir(&path) {
+            match create_directory(&path) {
                 Ok(()) => break path,
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
                 Err(_) => return Err("cannot create native codec workspace".into()),
             }
         };
         let mut workspace = Workspace {
+            create_directory,
             directory: directory.clone(),
             diagnostics_root: None,
             cleanup_attempted: false,
@@ -519,6 +530,10 @@ impl crate::media_adapter::MediaCodec for NativeMediaAdapter {
 }
 
 #[cfg(test)]
+#[path = "../tests/support/private_codec_evidence.rs"]
+mod evidence_access;
+
+#[cfg(test)]
 mod publication_evidence_tests {
     use super::*;
     const REQUEST: &[u8] = br#"{"operation":"preview","output":"owned-render.webp"}"#;
@@ -543,6 +558,7 @@ mod publication_evidence_tests {
         std::fs::write(directory.join("request.json"), REQUEST).unwrap();
         std::fs::write(directory.join("response.json"), RESPONSE).unwrap();
         Workspace {
+            create_directory: crate::private_codec_workspace::create_private_evidence,
             directory,
             diagnostics_root: Some(root.into()),
             cleanup_attempted: false,
@@ -630,6 +646,9 @@ mod publication_evidence_tests {
                         std::fs::read(envelope.join("response.json")).unwrap(),
                         RESPONSE
                     );
+                    for name in ["request.json", "response.json"] {
+                        evidence_access::assert_private(&retained[0], &envelope.join(name));
+                    }
                     assert_eq!(std::fs::read_dir(envelope).unwrap().count(), 2);
                 }
                 if matches!(mode, "cleanup-blocked" | "persistence-blocked") {
@@ -672,7 +691,7 @@ mod publication_evidence_tests {
     fn partial_witness_persistence_never_overwrites_or_deletes_original_evidence() {
         let root = root();
         let mut workspace = original(&root);
-        let mut witness = Workspace::witness(&root).unwrap();
+        let mut witness = Workspace::witness(&root, workspace.create_directory).unwrap();
         let retained = witness.directory.clone();
         assert!(
             witness

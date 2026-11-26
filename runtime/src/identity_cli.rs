@@ -91,7 +91,10 @@ pub(crate) fn run_with_codec_factory<M: crate::media_adapter::MediaCodec>(
             data.join(path)
         }
     });
-    let media = factory(config, data.join("tmp/identity-codec"))?;
+    let media = factory(
+        config,
+        config.codec_directory(&data, "tmp/identity-codec", false)?,
+    )?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

@@ -61,7 +61,7 @@ fn options(
 }
 
 fn text(value: &Value) -> Option<&str> {
-    value.as_str().filter(|s| !s.trim().is_empty())
+    value.as_str().filter(|s| !s.is_empty())
 }
 
 pub fn inspect(data: &Path, base: &str) -> Result<Vec<String>, String> {
@@ -70,9 +70,21 @@ pub fn inspect(data: &Path, base: &str) -> Result<Vec<String>, String> {
     let bytes = std::fs::read(&path).map_err(|e| format!("state {}: {e}", path.display()))?;
     let state: Value =
         serde_json::from_slice(&bytes).map_err(|e| format!("malformed state: {e}"))?;
-    let sets = state["sets"]
-        .as_array()
-        .ok_or("malformed state: sets must be an array")?;
+    let document = state
+        .as_object()
+        .ok_or("malformed state: expected an object")?;
+    if document.get("sets").is_some_and(|sets| !sets.is_array()) {
+        return Err("malformed state: sets must be an array".into());
+    }
+    let mut findings = Vec::new();
+    let state = match crate::resume::collection(state.clone(), base) {
+        Ok(normalized) => normalized,
+        Err(error) => {
+            findings.push(format!("MALFORMED_STATE: {error}"));
+            state
+        }
+    };
+    let sets = state.get("sets").and_then(Value::as_array);
     let path = data.join("catalog.db");
     let catalog = |e: rusqlite::Error| format!("catalog {}: {e}", path.display());
     let db =
@@ -84,21 +96,20 @@ pub fn inspect(data: &Path, base: &str) -> Result<Vec<String>, String> {
         WHERE i.content_key=?2",
         )
         .map_err(catalog)?;
-    let mut findings = Vec::new();
     let mut seen = BTreeSet::new();
-    for (index, set) in sets.iter().enumerate() {
+    for (index, set) in sets.into_iter().flatten().enumerate() {
         let name = text(&set["name"]);
-        let keys = set["keys"].as_array();
+        let keys = set.get("keys");
         if name.is_none()
-            || keys.is_none()
-            || set["live"].as_u64().is_none()
-            || !set["logo"].is_boolean()
+            || keys.is_some_and(|v| !v.is_array())
+            || set.get("live").is_some_and(|v| v.as_u64().is_none())
+            || set.get("logo").is_some_and(|v| !v.is_boolean())
         {
             findings.push(format!(
-                "MALFORMED_SET: sets[{index}] requires name, keys, live and logo"
+                "MALFORMED_SET: sets[{index}] has a missing or invalid name or an invalid keys, live or logo field"
             ));
         }
-        for value in keys.into_iter().flatten() {
+        for value in keys.and_then(Value::as_array).into_iter().flatten() {
             let Some(key) = text(value) else {
                 findings.push(format!(
                     "MALFORMED_SET: sets[{index}] contains an invalid key"

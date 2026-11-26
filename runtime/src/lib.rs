@@ -179,6 +179,7 @@ pub mod plan_apply;
 pub mod plan_remove;
 pub mod plan_status;
 pub mod plan_steps;
+mod private_codec_workspace;
 pub mod process_owner;
 pub mod publication;
 pub mod publication_audit;

@@ -143,10 +143,11 @@ pub(crate) fn run_with_codec_factory<M: crate::media_adapter::MediaCodec>(
     }) {
         return Err("invalid pack name".into());
     }
-    let data = config.path(&data);
-    std::fs::create_dir_all(&data).map_err(|e| e.to_string())?;
-    let data = data.canonicalize().map_err(|e| e.to_string())?;
-    let adapter = factory(config, data.join("tmp/native-codec"))?;
+    let data = crate::tooling_environment::workspace_root(&config.path(&data), true)?;
+    let adapter = factory(
+        config,
+        config.codec_directory(&data, "tmp/native-codec", false)?,
+    )?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

@@ -126,6 +126,7 @@ fn run_with(
     }
     let token = config.require(&token_key)?;
     let (logo_bots, logo_path) = config.brand_logo(false, None)?;
+    let scratch = config.codec_directory(&data, "tmp/native-codec", false)?;
     let mut cat = Catalog::open(&db, &crate::logging::utc(), &config.root)?;
     let _family = crate::locks::Lease::acquire(
         &data.join(format!("publish_{base}.lock")),
@@ -191,7 +192,7 @@ fn run_with(
             )?;
             budget -= 1;
         }
-        let media = media(&config.root, data.join("tmp/native-codec"))?;
+        let media = media(&config.root, scratch)?;
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
