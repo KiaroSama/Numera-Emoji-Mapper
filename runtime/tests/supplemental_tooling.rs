@@ -3,6 +3,8 @@
 mod build;
 #[path = "supplemental_tooling_support/commands.rs"]
 mod commands;
+#[path = "supplemental_tooling_support/compiler_storage.rs"]
+mod compiler_storage;
 #[path = "supplemental_tooling_support/convert_cli.rs"]
 mod convert_cli;
 #[path = "supplemental_tooling_support/launch.rs"]
@@ -14,6 +16,8 @@ mod policy;
 #[path = "supplemental_native_support/process_liveness.rs"]
 #[allow(unsafe_code)]
 mod process_liveness;
+#[path = "support/retained_compiler_directory.rs"]
+mod retained_directory;
 #[path = "supplemental_tooling_support/runner.rs"]
 mod runner;
 #[path = "supplemental_tooling_support/sandbox.rs"]

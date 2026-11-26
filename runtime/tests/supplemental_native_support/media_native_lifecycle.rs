@@ -426,6 +426,15 @@ fn native_adapter_scrubs_bounds_reaps_and_refuses_hostile_outputs() {
     std::fs::create_dir(&root).unwrap();
     let executable = super::fixture::worker();
     assert!(executable.is_absolute() && executable.is_file());
+    assert_eq!(super::fixture::worker(), executable);
+    if let Some(configured) = std::env::var_os("NUMERA_MEDIA_FIXTURE_WORKER") {
+        assert_eq!(executable, PathBuf::from(configured));
+    } else {
+        assert_ne!(
+            executable.parent().unwrap(),
+            parent.join(format!("supplemental-codec-worker-{}", std::process::id()))
+        );
+    }
     let mut environment = std::env::vars_os().collect::<std::collections::BTreeMap<_, _>>();
     for key in [
         "GENERAL_BOT_TOKEN",

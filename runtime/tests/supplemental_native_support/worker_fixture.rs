@@ -1,4 +1,6 @@
 //! Real, owned Rust fixture compilation shared by supplemental media regressions.
+#[path = "../support/retained_compiler_directory.rs"]
+mod retained_directory;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -23,10 +25,8 @@ pub fn worker() -> PathBuf {
     WORKER
         .get_or_init(|| {
             let root = project();
-            let directory = root
-                .join("logs/tmp")
-                .join(format!("supplemental-codec-worker-{}", std::process::id()));
-            std::fs::create_dir(&directory).unwrap();
+            let directory =
+                retained_directory::allocate(&root, "supplemental-codec-worker").unwrap();
             let output = directory.join(format!("media-worker{}", std::env::consts::EXE_SUFFIX));
             let source =
                 root.join("runtime/tests/supplemental_native_support/fixtures/media_worker.rs");

@@ -1,5 +1,6 @@
 //! Exercise the actual runner binary, then load its observed environment with the real Config API.
 use crate::process_liveness;
+use crate::retained_directory;
 use crate::tooling_fixture;
 use numera_runtime::{logging::RunLog, tooling_environment, tooling_process};
 use std::{
@@ -26,10 +27,7 @@ fn runtime() -> tokio::runtime::Runtime {
 fn observer() -> &'static Path {
     static OBSERVER: OnceLock<PathBuf> = OnceLock::new();
     OBSERVER.get_or_init(|| {
-        let directory = project()
-            .join("logs/tmp")
-            .join(format!("runner-observer-{}", std::process::id()));
-        std::fs::create_dir(&directory).unwrap();
+        let directory = retained_directory::allocate(&project(), "runner-observer").unwrap();
         let output = directory.join(format!("observer{}", std::env::consts::EXE_SUFFIX));
         let compiler = env!("NUMERA_BASELINE_RUSTC");
         let args = vec![
@@ -120,6 +118,15 @@ fn run(root: &Path, mode: &str) -> tooling_process::Completed {
 fn actual_runner_scrubs_before_config_preserves_paths_and_parent_environment() {
     let root = Root::new("actual runner environment café");
     let before = std::env::vars_os().collect::<BTreeMap<_, _>>();
+    let cached = observer().to_path_buf();
+    assert_eq!(observer(), cached.as_path());
+    assert!(cached.is_file());
+    assert_ne!(
+        cached.parent().unwrap(),
+        project()
+            .join("logs/tmp")
+            .join(format!("runner-observer-{}", std::process::id()))
+    );
     for bytes in [b"GENERAL_BOT_TOKEN=synthetic-dotenv-token\nPACK_OWNER_USER_ID=222222222\nUNLISTED_VALUE=synthetic-dotenv-only\n".as_slice(), b"GENERAL_BOT_TOKEN=\xff".as_slice()] {
         std::fs::write(root.0.join(".env"),bytes).unwrap();
         let actual = run(&root.0,"environment");

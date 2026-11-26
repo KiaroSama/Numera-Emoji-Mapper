@@ -256,6 +256,54 @@ Emulated reference capture and local target compilation do not replace real
 Linux ARM64 execution. The revised published head must pass the complete
 native matrix, including the restored exact ARM assertions, before integration.
 
+## R20: retained compiler fixture names collide across processes
+
+The follow-up head `952a3bc16b8f1b42de94234d7a62475351d5f3c8` passed all
+four Linux native suites, both Windows x64 suites and push Windows ARM64.
+PR Windows ARM64 completed all 131 parent harnesses with 1886 passed,
+4 failed, 4 ignored and 0 filtered tests. All four failures occurred at
+`supplemental_native_support/worker_fixture.rs:29`, where `create_dir`
+returned Windows error 183 (`AlreadyExists`) before the shared worker
+initialized. Three lifecycle tests and one process-policy test never reached
+their intended assertions. Push browser passed all 156 cases; PR browser
+was explicitly skipped because its native matrix failed.
+
+The retained compiler path used only `supplemental-codec-worker-{pid}`.
+An occupied name makes initialization panic, and `OnceLock` remains
+uninitialized after that panic, causing the later tests to repeat the same
+failure. Earlier successful compiler logs remain under worker PIDs 6088 and
+11072 and observer PIDs 4092 and 7628. The failed harness PID was not logged:
+the occupied-name error is observed, while PID reuse across retained owners
+is the supported causal inference rather than an identified particular PID.
+
+A finite inventory found two equivalent persistent compiler caches: the
+shared media worker and `supplemental_tooling_support/runner.rs::observer`.
+The worker module is included by four harness roots; its current compiler
+allocations occur in library test compositions and `supplemental_native`,
+while the other two consumers use its environment helper. The observer is
+invoked by `supplemental_tooling`. Other compiler fixtures have per-test
+owners and are outside this correction.
+
+Both persistent caches must allocate a fresh directory exclusively below
+their physical fixture parent, using the existing pinned `tempfile`
+dependency and explicit retention for compiler diagnostics and executable
+lifetime. Preserve per-process `OnceLock` reuse and the validated worker
+override. Never use `create_dir_all` to adopt old contents, delete an
+occupied PID directory, execute a retained earlier worker or weaken the
+original lifecycle/process assertions.
+
+The regression contract deliberately occupies legacy directory/file/link
+names for both namespaces, preserves sentinel bytes, entry type and link target,
+requires distinct fresh allocations including concurrent requests, and
+checks invalid or linked parent refusal. Existing real worker/observer
+tests must continue to execute the compiled fixtures and prove cache reuse.
+The ordinary mechanism probe independently reproduced both old allocation
+collisions and four fresh allocations; its receipt is
+`cf18ebc0057636a049e8ba0fe8dcdb3221b8ca19e865203d62511a0554b0ff30`.
+That probe is mechanism evidence, not protected Rust test execution.
+The corrected final source must pass the complete hosted matrix and the
+previously blocked lifecycle/process cases before integration.
+
 ## Verification and integration gates
 
 Local release builds, supplemental target compilation, formatting and Clippy
@@ -297,3 +345,7 @@ uses the owner's normal new-version procedure and dynamic tag badge.
 - [Spec Kit command chain](https://github.github.com/spec-kit/reference/agentic-sdd.html)
 - [Windows file security and inheritance](https://learn.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights)
 - [Security descriptors for new Windows objects](https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptors-for-new-objects)
+- [Rust directory creation errors](https://doc.rust-lang.org/std/fs/fn.create_dir.html)
+- [OnceLock initialization and panic behavior](https://doc.rust-lang.org/std/sync/struct.OnceLock.html#method.get_or_init)
+- [Pinned tempfile directory allocation and retention](https://docs.rs/tempfile/3.27.0/tempfile/struct.Builder.html)
+- [Windows process identifier lifetime](https://learn.microsoft.com/en-us/windows/win32/procthread/process-handles-and-identifiers)
