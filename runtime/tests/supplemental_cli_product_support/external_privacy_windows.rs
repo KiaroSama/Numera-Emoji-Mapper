@@ -23,27 +23,30 @@ impl Drop for Local {
         }
     }
 }
-fn permissions(path: &Path, text: &str) {
-    let text = text.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
+pub fn permissions(path: &Path, text: Option<&str>) {
     let mut descriptor = Local(null_mut());
     let (mut present, mut defaulted, mut acl) = (0, 0, null_mut());
     // The fixture owns these directories and both native allocations outlive the API calls.
+    // None deliberately installs a null DACL to exercise the production refusal path.
     unsafe {
-        assert_ne!(
-            ConvertStringSecurityDescriptorToSecurityDescriptorW(
-                text.as_ptr(),
-                SDDL_REVISION_1,
-                &mut descriptor.0,
-                null_mut()
-            ),
-            0
-        );
-        assert_ne!(
-            GetSecurityDescriptorDacl(descriptor.0, &mut present, &mut acl, &mut defaulted),
-            0
-        );
-        assert_ne!(present, 0);
-        assert!(!acl.is_null());
+        if let Some(text) = text {
+            let text = text.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
+            assert_ne!(
+                ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                    text.as_ptr(),
+                    SDDL_REVISION_1,
+                    &mut descriptor.0,
+                    null_mut()
+                ),
+                0
+            );
+            assert_ne!(
+                GetSecurityDescriptorDacl(descriptor.0, &mut present, &mut acl, &mut defaulted),
+                0
+            );
+            assert_ne!(present, 0);
+            assert!(!acl.is_null());
+        }
         assert_eq!(
             SetNamedSecurityInfoW(
                 wide(path).as_ptr(),
@@ -59,10 +62,10 @@ fn permissions(path: &Path, text: &str) {
     }
 }
 pub fn share(path: &Path) {
-    permissions(path, "D:P(A;OICI;FA;;;OW)(A;OICI;FR;;;WD)");
+    permissions(path, Some("D:P(A;OICI;FA;;;OW)(A;OICI;FR;;;WD)"));
 }
 pub fn restrict(path: &Path) {
-    permissions(path, "D:P(A;OICI;FA;;;OW)");
+    permissions(path, Some("D:P(A;OICI;FA;;;OW)"));
 }
 pub fn snapshot(path: &Path) -> String {
     let info = DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION;

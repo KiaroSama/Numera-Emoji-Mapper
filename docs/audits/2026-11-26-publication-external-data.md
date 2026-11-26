@@ -304,6 +304,81 @@ That probe is mechanism evidence, not protected Rust test execution.
 The corrected final source must pass the complete hosted matrix and the
 previously blocked lifecycle/process cases before integration.
 
+## R21: explicit Windows FFI validity and bounded ACL inspection
+
+At `da5e830b156899027628301e1b25cbc4a97897cd`, all eight native jobs,
+both 156-case browser jobs, packages and the CodeQL analysis jobs passed.
+The separate GitHub Advanced Security `CodeQL` aggregate nevertheless failed
+with three High `rust/access-invalid-pointer` findings. Alerts 12, 13 and 14
+trace null-initialized native output cells to the raw ACL count, ACE header
+and allowed-ACE reads in `private_codec_workspace_windows.rs`. Successful
+analysis upload is therefore not evidence of a clean security result.
+
+These paths alone do not establish an exploitable null dereference. The
+original ACL branch already rejected null, successful `GetAce` documents
+an initialized ACE address, and the descriptor allocation stayed alive
+under its `LocalFree` guard. The pinned query recognizes null-check barriers
+through resolved `is_null` calls, while Linux extraction of this Windows
+module reports incomplete semantic analysis. The repair makes the native
+postconditions, ownership and bounds explicit without dismissing alerts,
+suppressing a query or inventing an observed API-contract violation.
+
+The process-token handle is checked before `OwnedHandle` construction;
+`GetTokenInformation` output length and token SID are checked before use.
+Private creation rejects an unexpected null `SetEntriesInAclW` allocation
+before it could be attached as an unrestricted null DACL. Verification checks
+the returned descriptor, owner and DACL before calling pointer-consuming
+APIs. The descriptor and aligned token buffer continue to own their borrowed
+components for the complete use interval.
+
+`GetAclInformation(AclSizeInformation)` replaces the raw ACL count read and
+supplies the used-byte extent. A successful `GetAce` result is converted
+through checked `NonNull::new`, expressing its non-null postcondition as a
+type invariant. Before any typed reference is formed, checked subtraction
+establishes the ACE's offset and available bytes, excludes the ACL header,
+and verifies alignment and the complete ACE header. The declared ACE size
+must contain the fixed grant and SID header and fit within the ACL extent.
+The variable SID derives from the original ACE allocation pointer; its
+validity and complete length are checked before comparison. Legal trailing
+padding remains accepted. `NonNull` is non-owning and does not replace these
+extent, alignment or lifetime checks.
+
+The policy remains exact: current-account owner, persistent volume ACLs,
+protected DACL, one allow ACE, inheritable to files and subdirectories,
+`FILE_ALL_ACCESS`, and the exact token SID. Physical directory handles,
+reparse refusal, atomic private creation, retained diagnostics and ordinary
+internal allocator compatibility remain unchanged.
+
+The Windows-only regression
+`null_empty_and_inexact_external_dacls_are_refused_without_changes`
+exercises five actual native descriptors: null DACL, empty DACL, missing
+inheritance, read-only owner grant and an Everyone grant. Each case begins
+with a production-created private workspace, changes only its owned fixture,
+and independently snapshots the descriptor before and after production
+refusal. It requires identical descriptors, retained sentinel bytes, no
+created codec child and an empty external catalog. Fixture permissions are
+restored only after both snapshots so cleanup cannot conceal product changes.
+Existing positive creation/reuse/import and ACL/junction/privacy tests remain.
+
+Strict MSVC-target Clippy compiles the actual production module and Windows
+fixture helper; local Linux integration compilation excludes the Windows-only
+test body. Neither is Windows execution. Local CodeQL used the same CLI
+2.27.6 and Rust query pack 0.1.48 as hosted analysis. An initial full query
+and a later fully extracted baseline query were killed with exit 137 before
+SARIF. The latter resolved all three manifests and 609 Rust inputs. Its
+heap and growing tmpfs-backed intermediate cache are consistent with resource
+exhaustion; no kernel OOM record was available to prove the kill origin. A smaller
+database returned zero on the known flagged baseline and was rejected as an
+invalid positive control. No local clean-scan or candidate-clearance claim
+is made, and those attempts are not repeated to manufacture acceptance.
+
+The published correction must pass the complete new-head native/browser
+matrix, execute the five-variant Windows regression on both architectures,
+and obtain a successful separate Advanced Security aggregate with no current
+head instances of alerts 12–14. Preserve the earlier failed security snapshot
+and all source, compile and query receipts. The final PR Conversation receipt
+records actual hosted acceptance without another source-only evidence commit.
+
 ## Verification and integration gates
 
 Local release builds, supplemental target compilation, formatting and Clippy
@@ -335,6 +410,12 @@ blindly rerun, create empty commits or leave required fixes for another
 prompt. Existing signed tags/releases remain immutable; a later release
 uses the owner's normal new-version procedure and dynamic tag badge.
 
+Inspect the complete Checks collection for the exact source commit, including
+GitHub Advanced Security's separate CodeQL aggregate and external app checks.
+An Actions workflow or analysis job marked successful does not override a
+failed aggregate. Report genuine conditional skips and automatic supersession
+cancellations separately; never count skipped native/browser work as executed.
+
 ## Primary references
 
 - [Cargo configuration and explicit runner paths](https://doc.rust-lang.org/stable/cargo/reference/config.html)
@@ -349,3 +430,11 @@ uses the owner's normal new-version procedure and dynamic tag badge.
 - [OnceLock initialization and panic behavior](https://doc.rust-lang.org/std/sync/struct.OnceLock.html#method.get_or_init)
 - [Pinned tempfile directory allocation and retention](https://docs.rs/tempfile/3.27.0/tempfile/struct.Builder.html)
 - [Windows process identifier lifetime](https://learn.microsoft.com/en-us/windows/win32/procthread/process-handles-and-identifiers)
+- [CodeQL invalid-pointer query](https://codeql.github.com/codeql-query-help/rust/rust-access-invalid-pointer/)
+- [Pinned CodeQL null-check barriers](https://github.com/github/codeql/blob/ddc0325ff08acb437bfaf503904ab96360fb169a/rust/ql/lib/codeql/rust/security/Barriers.qll)
+- [Windows security descriptor ownership](https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-getsecurityinfo)
+- [Windows GetAce output contract](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-getace)
+- [Windows GetAclInformation](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-getaclinformation)
+- [Windows ACL used-byte extent](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-acl_size_information)
+- [Windows SID length preconditions](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-getlengthsid)
+- [Rust NonNull validity and ownership obligations](https://doc.rust-lang.org/std/ptr/struct.NonNull.html)

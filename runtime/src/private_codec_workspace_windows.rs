@@ -4,26 +4,27 @@ use std::{
     ffi::c_void,
     fs::File,
     io,
-    mem::{size_of, size_of_val},
+    mem::{offset_of, size_of, size_of_val},
     os::windows::{
         ffi::OsStrExt,
         fs::{MetadataExt, OpenOptionsExt},
         io::{AsRawHandle, FromRawHandle, OwnedHandle},
     },
     path::Path,
-    ptr::{addr_of_mut, null, null_mut},
+    ptr::{NonNull, addr_of_mut, null, null_mut},
 };
 use windows_sys::Win32::{
-    Foundation::LocalFree,
+    Foundation::{INVALID_HANDLE_VALUE, LocalFree},
     Security::{
-        ACCESS_ALLOWED_ACE, ACL,
+        ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, ACL_SIZE_INFORMATION, AclSizeInformation,
         Authorization::{
             EXPLICIT_ACCESS_W, GetSecurityInfo, SE_FILE_OBJECT, SET_ACCESS, SetEntriesInAclW,
             TRUSTEE_IS_SID, TRUSTEE_IS_USER, TRUSTEE_W,
         },
-        DACL_SECURITY_INFORMATION, EqualSid, GetAce, GetSecurityDescriptorControl,
-        GetTokenInformation, InitializeSecurityDescriptor, OWNER_SECURITY_INFORMATION, PSID,
-        SE_DACL_PROTECTED, SECURITY_ATTRIBUTES, SECURITY_DESCRIPTOR, SECURITY_MAX_SID_SIZE,
+        DACL_SECURITY_INFORMATION, EqualSid, GetAce, GetAclInformation, GetLengthSid,
+        GetSecurityDescriptorControl, GetTokenInformation, InitializeSecurityDescriptor,
+        IsValidAcl, IsValidSid, OWNER_SECURITY_INFORMATION, PSID, SE_DACL_PROTECTED,
+        SECURITY_ATTRIBUTES, SECURITY_DESCRIPTOR, SECURITY_MAX_SID_SIZE, SID,
         SUB_CONTAINERS_AND_OBJECTS_INHERIT, SetSecurityDescriptorControl,
         SetSecurityDescriptorDacl, SetSecurityDescriptorOwner, TOKEN_QUERY, TOKEN_USER, TokenUser,
     },
@@ -75,6 +76,11 @@ pub(super) fn private_directory(path: &Path, reuse: bool) -> io::Result<()> {
             &mut handle,
         ))?;
     }
+    if handle.is_null() || handle == INVALID_HANDLE_VALUE {
+        return Err(io::Error::other(
+            "Windows returned an invalid process token handle",
+        ));
+    }
     let token = unsafe { OwnedHandle::from_raw_handle(handle) };
     const WORDS: usize =
         (size_of::<TOKEN_USER>() + SECURITY_MAX_SID_SIZE as usize).div_ceil(size_of::<usize>());
@@ -88,7 +94,20 @@ pub(super) fn private_directory(path: &Path, reuse: bool) -> io::Result<()> {
             size_of_val(&user) as u32,
             &mut length,
         ))?;
+        if (length as usize) < size_of::<TOKEN_USER>() || length as usize > size_of_val(&user) {
+            return Err(io::Error::other(
+                "Windows returned an invalid token user length",
+            ));
+        }
         let sid = (*user.as_ptr().cast::<TOKEN_USER>()).User.Sid;
+        if sid.is_null() {
+            return Err(io::Error::other("Windows returned no token user SID"));
+        }
+        if IsValidSid(sid) == 0 {
+            return Err(io::Error::other(
+                "Windows returned an invalid token user SID",
+            ));
+        }
         match create(path, sid) {
             Err(error) if reuse && error.kind() == io::ErrorKind::AlreadyExists => {}
             result => result?,
@@ -129,6 +148,12 @@ fn create(path: &Path, sid: PSID) -> io::Result<()> {
     unsafe {
         status(SetEntriesInAclW(1, &entry, null(), &mut acl))?;
         let _storage = Local(acl.cast());
+        // A null DACL would grant unrestricted access, so never attach an absent output.
+        if acl.is_null() {
+            return Err(io::Error::other(
+                "Windows returned no private ACL allocation",
+            ));
+        }
         checked(InitializeSecurityDescriptor(
             sd,
             SECURITY_DESCRIPTOR_REVISION,
@@ -190,31 +215,75 @@ fn verify(path: &Path, sid: PSID) -> io::Result<()> {
             null_mut(),
             &mut sd.0,
         ))?;
+        // The allocation owns each borrowed component until this function returns.
+        // Check outputs separately before passing them to any pointer-consuming API.
+        if sd.0.is_null() {
+            return Err(refusal());
+        }
+        if owner.is_null() {
+            return Err(refusal());
+        }
+        if acl.is_null() {
+            return Err(refusal());
+        }
         checked(GetSecurityDescriptorControl(
             sd.0,
             &mut control,
             &mut revision,
         ))?;
-        if owner.is_null()
+        if IsValidSid(owner) == 0
             || EqualSid(owner, sid) == 0
             || control & SE_DACL_PROTECTED == 0
-            || acl.is_null()
-            || (*acl).AceCount != 1
+            || IsValidAcl(acl) == 0
         {
+            return Err(refusal());
+        }
+        let mut info = ACL_SIZE_INFORMATION::default();
+        checked(GetAclInformation(
+            acl,
+            addr_of_mut!(info).cast(),
+            size_of_val(&info) as u32,
+            AclSizeInformation,
+        ))?;
+        if info.AceCount != 1 {
             return Err(refusal());
         }
         let mut ace = null_mut();
         checked(GetAce(acl, 0, &mut ace))?;
-        let header = &*ace.cast::<windows_sys::Win32::Security::ACE_HEADER>();
+        let ace = NonNull::new(ace).ok_or_else(refusal)?;
+        let ace_ptr = ace.as_ptr();
+        // GetAce borrows a DWORD-aligned entry inside this validated ACL. Establish
+        // its extent before constructing references, including the variable SID.
+        let offset = ace_ptr.addr().checked_sub(acl.addr()).ok_or_else(refusal)?;
+        let available = (info.AclBytesInUse as usize)
+            .checked_sub(offset)
+            .ok_or_else(refusal)?;
+        if offset < size_of::<ACL>()
+            || available < size_of::<ACE_HEADER>()
+            || !ace_ptr.cast::<ACCESS_ALLOWED_ACE>().is_aligned()
+        {
+            return Err(refusal());
+        }
+        let header = ace.cast::<ACE_HEADER>().as_ref();
+        let bytes = usize::from(header.AceSize);
+        const SID_OFFSET: usize = offset_of!(ACCESS_ALLOWED_ACE, SidStart);
+        if bytes < SID_OFFSET + offset_of!(SID, SubAuthority) || bytes > available {
+            return Err(refusal());
+        }
         if u32::from(header.AceType) != ACCESS_ALLOWED_ACE_TYPE
             || u32::from(header.AceFlags) != SUB_CONTAINERS_AND_OBJECTS_INHERIT
         {
             return Err(refusal());
         }
-        let allowed = &*ace.cast::<ACCESS_ALLOWED_ACE>();
-        if allowed.Mask != FILE_ALL_ACCESS
-            || EqualSid((&raw const allowed.SidStart).cast_mut().cast(), sid) == 0
-        {
+        let allowed = ace.cast::<ACCESS_ALLOWED_ACE>().as_ref();
+        // Keep the original allocation provenance for the SID's variable-length tail.
+        let trustee = ace_ptr.cast::<u8>().add(SID_OFFSET).cast();
+        // IsValidSid checks the already-bounded SID header. Bound the complete SID
+        // before EqualSid can compare its variable-length subauthority array.
+        if IsValidSid(trustee) == 0 || GetLengthSid(trustee) as usize > bytes - SID_OFFSET {
+            return Err(refusal());
+        }
+        if allowed.Mask != FILE_ALL_ACCESS || EqualSid(trustee, sid) == 0 {
             return Err(refusal());
         }
     }

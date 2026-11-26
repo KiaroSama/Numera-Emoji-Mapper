@@ -107,6 +107,64 @@ fn a_shared_child_dacl_is_refused_even_beneath_a_private_external_workspace() {
     assert!(!tmp.join("native-codec").exists());
 }
 
+#[cfg(windows)]
+#[test]
+fn null_empty_and_inexact_external_dacls_are_refused_without_changes() {
+    for variant in [
+        "null",
+        "empty",
+        "no-inheritance",
+        "read-only",
+        "other-trustee",
+    ] {
+        let app = Installation::new();
+        let config =
+            numera_runtime::config::Config::load_with_environment(app.project.clone(), &app.env)
+                .unwrap();
+        let tmp = config.codec_directory(&app.data, "tmp", true).unwrap();
+        let base = tmp.parent().unwrap();
+        let descriptor = access::snapshot(base);
+        let owner = descriptor
+            .strip_prefix("O:")
+            .unwrap()
+            .split_once("D:")
+            .unwrap()
+            .0;
+        let private = format!("D:P(A;OICI;FA;;;{owner})");
+        let unsafe_dacl = match variant {
+            "null" => None,
+            "empty" => Some("D:P".to_owned()),
+            "no-inheritance" => Some(format!("D:P(A;;FA;;;{owner})")),
+            "read-only" => Some(format!("D:P(A;OICI;FR;;;{owner})")),
+            "other-trustee" => Some("D:P(A;OICI;FA;;;WD)".to_owned()),
+            _ => unreachable!(),
+        };
+        let retained = base.join("retained private input");
+        fs::write(&retained, b"preserve the owned fixture").unwrap();
+        access::permissions(base, unsafe_dacl.as_deref());
+        let before = access::snapshot(base);
+        let result = config.codec_directory(&app.data, "tmp/native-codec", false);
+        let after = access::snapshot(base);
+        // Restore only our fixture after recording the production call's unmodified DACL.
+        // An empty DACL denies data access, so reads and cleanup follow this restoration.
+        access::permissions(base, Some(&private));
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("private external codec workspace"),
+            "{variant}: {err}"
+        );
+        assert_eq!(after, before, "{variant}");
+        assert_eq!(
+            fs::read(&retained).unwrap(),
+            b"preserve the owned fixture",
+            "{variant}"
+        );
+        assert_eq!(fs::read_dir(base).unwrap().count(), 2, "{variant}");
+        assert!(!tmp.join("native-codec").exists(), "{variant}");
+        assert_eq!(fs::read_dir(&app.data).unwrap().count(), 0, "{variant}");
+    }
+}
+
 #[test]
 fn installed_import_preserves_failed_request_and_response_inside_private_diagnostics() {
     let app = Installation::new();
