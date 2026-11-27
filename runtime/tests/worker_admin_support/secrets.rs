@@ -297,6 +297,6 @@ fn optional_allowed_channels_secret_is_uploaded_only_when_configured() {
     assert!(
         uploaded
             .iter()
-            .any(|row| row.get("name").and_then(|v| v.as_str()) == Some("BOT_ALLOWED_CHANNEL_IDS"))
+            .any(|row| row["key"] == "BOT_ALLOWED_CHANNEL_IDS")
     );
 }

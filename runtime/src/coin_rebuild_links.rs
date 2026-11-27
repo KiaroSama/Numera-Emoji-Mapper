@@ -54,7 +54,7 @@ pub fn final_links(
         .iter()
         .map(|set| json!({"name":set["name"],"title":set["index"].to_string()}))
         .collect::<Vec<_>>();
-    let destination = announce(&packs, &format!("📦 {title}: all packs:"))?;
+    let destination = announce(&packs, &format!("📦 {title} — all packs:"))?;
     state["final_sent"] = json!(true);
     save(state)?;
     report(&format!(
