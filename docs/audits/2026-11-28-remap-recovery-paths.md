@@ -38,7 +38,9 @@ for that ID. The shared `signature_ready` predicate verifies an encoded
 1024-byte signature and absence of a current error. The digest shortcut,
 per-ID reuse and final completeness check all use that predicate. Missing or
 invalid signatures and unresolved current errors must be fetched again.
-Failure remains incomplete and candidate-only with exit 3; success clears the
+Failure remains incomplete and prevents canonical apply. The existing
+partial-data route returns exit 3 when matching data remains available; empty
+artwork or signatures retain the existing exit-4 refusal. Success clears the
 error and durably checkpoints the proven cache. An unchanged complete cache
 still performs no unnecessary download or write.
 
@@ -54,10 +56,11 @@ silently suppressing incomplete counts do not satisfy this repair.
 ## R33 — Implicit backup and lock paths can corrupt durable data (P1)
 
 **Observed failure.** The old collision check compared only explicitly named
-paths. Selecting the implicit `map.prebroken.json` as cache or state allowed
-exit 0 while replacing the recovery backup with another artifact. Selecting
-it as candidates overwrote a valid backup even when partial application was
-refused. Selecting a family-lock path as state let lease metadata overwrite
+paths. Using the implicit `map.prebroken.json` as cache or state allowed
+exit 0 without retaining a genuine pre-apply canonical backup. Cache writes
+replaced it with cache data; state aliasing mistook the existing state object
+for an already present backup. Selecting it as candidates overwrote a valid
+backup even when partial application was refused. Selecting a family-lock path as state let lease metadata overwrite
 the state; selecting the canonical-lock path as output put lease metadata in
 the backup. A malformed existing backup or a directory at that path could
 also be accepted while the canonical map changed.
