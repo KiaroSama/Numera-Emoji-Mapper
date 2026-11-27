@@ -1,12 +1,13 @@
 # Upstream refresh for the Rust migration
 
-Reviewed November 17, 2026; direct dependencies refreshed November 27, 2026.
+Reviewed November 17, 2026; direct dependencies refreshed November 27, 2026;
+compiler and direct-package versions rechecked November 28, 2026.
 Versions below are pinned in the committed Cargo or
 npm lockfiles; this review does not certify a build or test result.
 
 | Component | Adopted version | Official source |
 | --- | --- | --- |
-| Rust | 1.100.0 | [November 12 release](https://blog.rust-lang.org/2026/11/12/Rust-1.100.0/) |
+| Rust | 1.100.1 | [Official patch release](https://github.com/rust-lang/rust/releases/tag/1.100.1) |
 | rusqlite | 0.43.0 | [Release notes](https://github.com/rusqlite/rusqlite/releases/tag/v0.43.0) |
 | serde_json | 1.0.154 | [Published crate](https://crates.io/crates/serde_json/1.0.154) |
 | sha2 | 0.11.2 | [Published crate](https://crates.io/crates/sha2/0.11.2) |
@@ -37,6 +38,14 @@ closure. This is not a claim that every transitive package is independently
 on its latest major version. The `sharp` override and Worker compatibility
 date are retained. Existing weekly Dependabot covers all five manifests and
 GitHub Actions.
+
+The November 28 recheck found no newer stable version among those 39 direct
+packages. Rust 1.100.1 was published at 2026-11-27 19:31:41 UTC and repairs an
+Iterator implementation inference regression. The toolchain file, all actual
+workflow compiler selections and current contributor documentation now use
+1.100.1. Historical audit records and illustrative test fixtures retain their
+original values. Four-platform native tests, linting and packaging remain
+required; a compiler version update alone is not acceptance evidence.
 
 Zip 9.8.2 repairs archive end-record validation and duplicate ZIP64 metadata.
 SHA-2 0.11.2 repairs backend selection and updates internal implementations;

@@ -114,6 +114,18 @@ pub fn download<I: CacheIo>(
         .map(|(incomplete, _)| incomplete)
 }
 
+fn signature_ready(cache: &Value, cid: &str) -> bool {
+    cache["errors"].get(cid).is_none()
+        && cache["sigs"]
+            .get(cid)
+            .and_then(Value::as_str)
+            .is_some_and(|encoded| {
+                STANDARD
+                    .decode(encoded)
+                    .is_ok_and(|bytes| bytes.len() == 1024)
+            })
+}
+
 pub(crate) fn reconcile_inventory<'a>(
     cache: &mut Value,
     set_names: impl IntoIterator<Item = Option<&'a str>>,
@@ -144,11 +156,14 @@ pub(crate) fn reconcile_inventory<'a>(
             })
             .collect::<Result<Vec<_>, _>>()?;
         live.extend(cids.iter().cloned());
-        if cache["sets"][name].as_str() == Some(&digest) {
+        // A retired signature or unresolved error can outlive the set's last complete digest.
+        if cache["sets"][name].as_str() == Some(&digest)
+            && cids.iter().all(|cid| signature_ready(cache, cid))
+        {
             continue;
         }
         for (cid, sticker) in cids.iter().zip(&stickers) {
-            if cache["sigs"].get(cid).is_some() {
+            if signature_ready(cache, cid) {
                 continue;
             }
             match io.signature(sticker) {
@@ -168,7 +183,7 @@ pub(crate) fn reconcile_inventory<'a>(
             }
             io.wait(Duration::from_millis(20));
         }
-        if cids.iter().any(|cid| cache["sigs"].get(cid).is_none()) {
+        if cids.iter().any(|cid| !signature_ready(cache, cid)) {
             incomplete.push(name.into());
         } else {
             cache["sets"][name] = json!(digest);

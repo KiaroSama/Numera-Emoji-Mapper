@@ -263,7 +263,7 @@ fn contributor_environment_scrubs_operator_credentials_and_preserves_installed_t
     let env = developer::environment(&root.0, &input).unwrap();
     assert_eq!(env["PATH"], "installed tools");
     assert_eq!(env["RUSTUP_HOME"], "installed toolchains");
-    assert_eq!(env["RUSTUP_TOOLCHAIN"], "1.100.0");
+    assert_eq!(env["RUSTUP_TOOLCHAIN"], "1.100.1");
     assert_eq!(env["RUSTUP_AUTO_INSTALL"], "0");
     assert_eq!(env["NUMERA_EMOJI_MAPPER_NO_DOTENV"], "1");
     assert_eq!(env["TELEGRAM_API_BASE"], "http://127.0.0.1:9");
@@ -470,7 +470,7 @@ fn contributor_builder_help_and_missing_compiler_are_real_bounded_commands() {
     let log = RunLog::open(&root.0, "developer-cli-test", vec![]);
     for (args, code, text) in [
         (vec!["--help"], 0, "benchmark-similarity"),
-        (vec!["build"], 2, "Rust 1.100.0"),
+        (vec!["build"], 2, "Rust 1.100.1"),
         (
             vec!["__execute", "benchmark-similarity", "--count=4"],
             2,

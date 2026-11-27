@@ -28,6 +28,53 @@ pub fn pack_family_path(root: &Path, base: &str) -> std::path::PathBuf {
     ))
 }
 
+pub(crate) fn existing_file_identity(path: &Path) -> io::Result<Option<(u64, u128)>> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_file() => {}
+        Ok(_) => return Ok(None),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    }
+    let file = match File::open(path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let metadata = file.metadata()?;
+        Ok(Some((metadata.dev(), u128::from(metadata.ino()))))
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::io::AsRawHandle;
+        use windows_sys::Win32::Storage::FileSystem::{
+            FILE_ID_INFO, FileIdInfo, GetFileInformationByHandleEx,
+        };
+        let mut info = std::mem::MaybeUninit::<FILE_ID_INFO>::uninit();
+        // The owned handle and correctly sized output buffer live through the call.
+        // FileIdInfo supplies the full 128-bit identity on both NTFS and ReFS.
+        if unsafe {
+            GetFileInformationByHandleEx(
+                file.as_raw_handle(),
+                FileIdInfo,
+                info.as_mut_ptr().cast(),
+                std::mem::size_of::<FILE_ID_INFO>() as u32,
+            )
+        } == 0
+        {
+            return Err(io::Error::last_os_error());
+        }
+        // A successful call initialized every field of FILE_ID_INFO.
+        let info = unsafe { info.assume_init() };
+        Ok(Some((
+            info.VolumeSerialNumber,
+            u128::from_le_bytes(info.FileId.Identifier),
+        )))
+    }
+}
+
 pub struct Lease {
     file: File,
     unlock_on_drop: bool,

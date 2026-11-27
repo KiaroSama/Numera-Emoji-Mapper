@@ -597,12 +597,12 @@ fn standalone_runtime_builds_and_packages_on_every_retained_platform_without_pyt
     assert!(
         compiler
             .lines()
-            .any(|line| line == "rustup default 1.100.0")
+            .any(|line| line == "rustup default 1.100.1")
     );
     assert!(
         compiler
             .lines()
-            .any(|line| line == "rustup component add rustfmt clippy --toolchain 1.100.0")
+            .any(|line| line == "rustup component add rustfmt clippy --toolchain 1.100.1")
     );
     assert!(
         production.find("name: Select Rust compiler").unwrap()

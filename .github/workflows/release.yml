@@ -68,7 +68,7 @@ jobs:
       - name: Select supported Rust toolchain
         shell: bash
         run: |
-          rustup default 1.100.0
+          rustup default 1.100.1
           host="$(rustc -vV | awk '/^host: / {print $2}')"
           test "$host" = "${{ matrix.triple }}"
       - name: Cache Cargo dependency downloads

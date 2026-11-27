@@ -23,7 +23,7 @@ use sandbox::sandbox;
 pub use similarity::{Benchmark, benchmark, generated_hashes, load_hashes, median};
 use similarity::{cardinality, repetitions};
 
-const HELP: &str = "Usage: numera-dev COMMAND [OPTIONS]\nCommands:\n  panel-sandbox [--source DIR] [--port N]  Serve an isolated catalog clone (bounded, credential-free)\n  build [--debug]                         Build the locked standalone application\n  check [--skip-format] [--skip-lint]      Rust formatting, Clippy and guarded tests\n  test [--test NAME | --tests NAME,...]    Guarded serial runtime Cargo tests\n  benchmark-similarity [--catalog PATH]   Read-only catalog or deterministic Rust timings\nSandbox: --all --with-pack N --bot-username NAME --timeout-seconds N (default 1800; maximum 7200).\nCheck/test: --timeout-seconds N (1..7200 per step), --test NAME, --tests NAME,...\nCheck: --no-web skips optional already-installed browser/Worker checks.\nBenchmark: --count N (default 1500, 1..10000), --seed N (default 321), --repeats N (default 5, odd 1..21).\nRequires the installed Rust 1.100.0 toolchain for build/check/test. No prerequisite installation.";
+const HELP: &str = "Usage: numera-dev COMMAND [OPTIONS]\nCommands:\n  panel-sandbox [--source DIR] [--port N]  Serve an isolated catalog clone (bounded, credential-free)\n  build [--debug]                         Build the locked standalone application\n  check [--skip-format] [--skip-lint]      Rust formatting, Clippy and guarded tests\n  test [--test NAME | --tests NAME,...]    Guarded serial runtime Cargo tests\n  benchmark-similarity [--catalog PATH]   Read-only catalog or deterministic Rust timings\nSandbox: --all --with-pack N --bot-username NAME --timeout-seconds N (default 1800; maximum 7200).\nCheck/test: --timeout-seconds N (1..7200 per step), --test NAME, --tests NAME,...\nCheck: --no-web skips optional already-installed browser/Worker checks.\nBenchmark: --count N (default 1500, 1..10000), --seed N (default 321), --repeats N (default 5, odd 1..21).\nRequires the installed Rust 1.100.1 toolchain for build/check/test. No prerequisite installation.";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Options {
@@ -309,8 +309,8 @@ fn work(root: &Path, args: &[String], log: &RunLog) -> Result<i32, String> {
         Duration::from_secs(5),
         log,
     ))?;
-    if version.code != 0 || version.stdout.split_whitespace().nth(1) != Some("1.100.0") {
-        return Err("Rust 1.100.0 must already be installed; no toolchain was installed".into());
+    if version.code != 0 || version.stdout.split_whitespace().nth(1) != Some("1.100.1") {
+        return Err("Rust 1.100.1 must already be installed; no toolchain was installed".into());
     }
     if let Command::Build { release } = command {
         let binary = crate::package::build(root, release)?;
@@ -372,7 +372,7 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
         Ok(code) => code,
         Err(error) => {
             log.event("ERROR", "developer", &error);
-            if error.contains("Rust 1.100.0") { 2 } else { 1 }
+            if error.contains("Rust 1.100.1") { 2 } else { 1 }
         }
     };
     log.finish(code);

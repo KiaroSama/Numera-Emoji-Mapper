@@ -35,7 +35,7 @@ real browser execution remain separate acceptance requirements.
 ## Build and guarded Rust tests
 
 Supported application platforms are Linux and Windows on x64 and arm64. Install the exact
-compiler in `rust-toolchain.toml` (Rust 1.100.0), rustfmt, Clippy, CMake and the
+compiler in `rust-toolchain.toml` (Rust 1.100.1), rustfmt, Clippy, CMake and the
 platform C/C++ build tools. Video tests require FFmpeg and FFprobe.
 
 Both full native CI workflows use the shared

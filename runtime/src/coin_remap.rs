@@ -14,6 +14,61 @@ pub struct Files {
     pub candidates: PathBuf,
     pub base: String,
 }
+
+fn durable_path_identity(path: &Path) -> Result<PathBuf, String> {
+    crate::coin_manifest::output_path(path)?;
+    let resolved = crate::tooling_environment::canonical_existing_prefix(path)
+        .map_err(|_| "cannot resolve remap durable path")?;
+    #[cfg(windows)]
+    let resolved = PathBuf::from(
+        resolved
+            .to_str()
+            .ok_or("remap durable path is not UTF-8")?
+            .to_lowercase(),
+    );
+    Ok(resolved)
+}
+
+fn distinct_durable_paths(root: &Path, paths: &[&Path]) -> Result<(), String> {
+    let locks = durable_path_identity(&root.join(".locks"))?;
+    let mut protected = std::collections::BTreeSet::new();
+    match std::fs::read_dir(&locks) {
+        Ok(entries) => {
+            for entry in entries {
+                let entry = entry.map_err(|_| "cannot inspect remap lock storage")?;
+                let path = entry.path();
+                crate::coin_provider_stage::physical(&path)?;
+                if entry
+                    .file_type()
+                    .map_err(|_| "cannot inspect remap lock entry")?
+                    .is_file()
+                    && let Some(identity) = crate::locks::existing_file_identity(&path)
+                        .map_err(|_| "cannot identify remap lock storage")?
+                {
+                    protected.insert(identity);
+                }
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(_) => return Err("cannot inspect remap lock storage".into()),
+    }
+    let mut destinations = std::collections::BTreeSet::new();
+    for path in paths {
+        let resolved = durable_path_identity(path)?;
+        if resolved.starts_with(&locks)
+            || crate::locks::existing_file_identity(&resolved)
+                .map_err(|_| "cannot identify remap durable file")?
+                .is_some_and(|identity| protected.contains(&identity))
+        {
+            return Err("remap durable paths must not use lock storage".into());
+        }
+        if !destinations.insert(resolved) {
+            return Err("remap durable paths and backup must be distinct".into());
+        }
+    }
+    Ok(())
+}
+
 struct Disk<'a> {
     tg: &'a crate::telegram::Telegram,
     path: &'a Path,
@@ -112,6 +167,9 @@ fn persist_with_lease(
     let Some(destination) = decision.destination else {
         return Ok(());
     };
+    let backup = output.with_extension("prebroken.json");
+    distinct_durable_paths(root, &[output, candidates, &backup])?;
+    crate::coin_provider_recover::object(&backup, true)?;
     let target = if destination == "candidate" {
         candidates
     } else {
@@ -129,8 +187,8 @@ fn persist_with_lease(
     if std::fs::symlink_metadata(output).is_ok() {
         crate::coin_provider_stage::physical(output)?;
         crate::coin_provider_recover::object(output, false)?;
-        let backup = output.with_extension("prebroken.json");
         crate::coin_manifest::output_path(&backup)?;
+        crate::coin_provider_recover::object(&backup, true)?;
         if !backup.exists() {
             let bytes = std::fs::read(output).map_err(|_| "cannot read map for remap backup")?;
             // Exclusive sibling publication refuses a competing backup, never overwrites one.
@@ -180,17 +238,18 @@ fn run_with_effects(
     if !files.images.is_dir() {
         return Err("remap image source must be a directory".into());
     }
-    for path in [&files.cache, &files.output, &files.candidates] {
-        crate::coin_manifest::output_path(path)?;
-    }
-    if [&files.cache, &files.output, &files.candidates]
-        .iter()
-        .enumerate()
-        .any(|(i, path)| [&files.cache, &files.output, &files.candidates][..i].contains(path))
-        || [&files.cache, &files.output, &files.candidates].contains(&&files.state)
-    {
-        return Err("remap durable paths must be distinct".into());
-    }
+    let backup = files.output.with_extension("prebroken.json");
+    distinct_durable_paths(
+        &files.root,
+        &[
+            &files.state,
+            &files.cache,
+            &files.output,
+            &files.candidates,
+            &backup,
+        ],
+    )?;
+    crate::coin_provider_recover::object(&backup, true)?;
     let family = crate::locks::pack_family_path(&files.root, &files.base);
     crate::coin_manifest::output_path(&family)?;
     let _family = match crate::locks::Lease::acquire(&family, &crate::logging::utc()) {
@@ -201,8 +260,9 @@ fn run_with_effects(
         }
     };
     let state = crate::coin_provider_recover::object(&files.state, false)?;
-    let mut sets = state["sets"]
-        .as_array()
+    let mut sets = state
+        .get("sets")
+        .and_then(Value::as_array)
         .ok_or("remap state has no sets")?
         .clone();
     if sets.iter().any(|set| set["index"].as_i64().is_none()) {

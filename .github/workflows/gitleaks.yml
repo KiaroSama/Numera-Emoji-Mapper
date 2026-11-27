@@ -54,8 +54,8 @@ jobs:
           test "$(cat logs/checkpoint/source-revision.log)" = "$NUMERA_SOURCE_REVISION"
       - name: Select supported Rust compiler
         run: |
-          rustup default 1.100.0
-          rustup component add rustfmt clippy --toolchain 1.100.0
+          rustup default 1.100.1
+          rustup component add rustfmt clippy --toolchain 1.100.1
 
       - name: Format and lint security tooling
         run: |
@@ -99,8 +99,8 @@ jobs:
           test "$(cat logs/checkpoint/source-revision.log)" = "$NUMERA_SOURCE_REVISION"
       - name: Select supported Rust compiler
         run: |
-          rustup default 1.100.0
-          rustup component add rustfmt clippy --toolchain 1.100.0
+          rustup default 1.100.1
+          rustup component add rustfmt clippy --toolchain 1.100.1
 
       # Scanner orchestration, private output capture, metadata-only summaries,
       # and exact Git-proven historical triage are implemented in Rust.

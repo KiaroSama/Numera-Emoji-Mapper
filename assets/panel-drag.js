@@ -187,6 +187,7 @@ function stopEdgeScroll(){
 document.addEventListener('dragover',e=>{
   if(dragKey===null) return;
   e.preventDefault();
+  if(!e.target.closest('#grid')) clearDragTarget();
   edgeScroll(e.clientY);
 });
 document.addEventListener('dragend',()=>endDrag(false));

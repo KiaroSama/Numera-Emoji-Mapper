@@ -60,6 +60,17 @@ export async function runForwardDestinationScenarios(panel) {
     await expect(indicator).toBeVisible();
     await expect(indicator).toHaveText('Drop -> Pack 2 (3/200)');
     await page.locator('#selCount').hover();
+    await page.locator('#selCount').hover();
+    await expect(indicator).toBeHidden();
+    await expect(indicator).toBeEmpty();
+    // Re-entering a valid target must restore the feedback for the same gesture.
+    await target.hover({position: {x: 10, y: 80}});
+    await target.hover({position: {x: 10, y: 80}});
+    await expect(indicator).toBeVisible();
+    await expect(indicator).toHaveText('Drop -> Pack 2 (3/200)');
+    await page.locator('#selCount').hover();
+    await page.locator('#selCount').hover();
+    await expect(indicator).toBeHidden();
     await page.mouse.up();
     await expect(indicator).toBeHidden();
     await expect(indicator).toBeEmpty();
@@ -67,5 +78,38 @@ export async function runForwardDestinationScenarios(panel) {
     await page.clock.runFor(500);
     assert.deepEqual(await page.evaluate("__sent('/api/order')"), [], 'a cancelled drag must not queue its preview');
     assert.deepEqual(await page.evaluate("__sent('/api/save')"), []);
+  });
+
+  await test.step('entering Holding clears pack feedback before the drop parks the original item', async () => {
+    log('INFO', 'Checking destination feedback while a grid drag enters Holding');
+    const items = synth(4, {packs: [7, undefined, 2, 3]});
+    const page = await panel.open(items, {clock: true});
+    const before = await page.evaluate('snapshot()');
+    const source = page.locator(`#grid .card[data-key="${items[0].key}"]`);
+    const target = page.locator(`#grid .card[data-key="${items[1].key}"]`);
+    await source.hover();
+    await page.mouse.down();
+    await target.hover({position: {x: 10, y: 80}});
+    await target.hover({position: {x: 10, y: 80}});
+    const indicator = page.locator('#dragTarget');
+    await expect(indicator).toBeVisible();
+    await expect(indicator).toHaveText('Drop -> Pack 2 (3/200)');
+    await page.locator('#holding').hover({position: {x: 15, y: 15}});
+    await page.locator('#holding').hover({position: {x: 15, y: 15}});
+    await expect(indicator).toBeHidden();
+    await expect(indicator).toBeEmpty();
+    await page.mouse.up();
+    const after = await page.evaluate('snapshot()');
+    assert.deepEqual(after.order, before.order, 'Holding must discard the transient grid reorder');
+    assert.deepEqual(after.packs, before.packs, 'Holding must retain the original pack stamp');
+    assert.deepEqual(after.included, before.included.filter(key => key !== items[0].key));
+    await page.click('#undo');
+    assert.deepEqual(await page.evaluate('snapshot()'), before);
+    await page.click('#redo');
+    assert.deepEqual(await page.evaluate('snapshot()'), after);
+    await page.click('#save');
+    const saved = await page.evaluate("__sent('/api/save')[0].body");
+    assert.ok(saved.excluded.includes(items[0].key));
+    assert.equal(new Map(saved.packs).get(items[0].key), 7);
   });
 }

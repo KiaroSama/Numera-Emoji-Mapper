@@ -10,7 +10,7 @@
 [![GNU General Public License v3.0 or later](https://img.shields.io/github/license/KiaroSama/Numera-Emoji-Mapper?style=flat-square&color=2563eb)](LICENSE)
 [![Latest Git tag release](https://img.shields.io/github/v/tag/KiaroSama/Numera-Emoji-Mapper?style=flat-square&label=release&color=ea580c)](https://github.com/KiaroSama/Numera-Emoji-Mapper/tags)
 [![1516 preserved test identities across Rust and browser suites](https://img.shields.io/badge/tests-1516%20cases-0d9488)](tests/fixtures/migration/reference-cases.json)
-[![Rust 1.100.0 toolchain measured via rustc](https://img.shields.io/badge/Rust-1.100.0-8b5cf6)](rust-toolchain.toml)
+[![Rust 1.100.1 toolchain measured via rustc](https://img.shields.io/badge/Rust-1.100.1-8b5cf6)](rust-toolchain.toml)
 [![Runs on Linux x64, Linux arm64, Windows x64, and Windows arm64](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%2064--bit-0891b2)](.github/workflows/release.yml)
 [![Prebuilt signed standalone archives](https://img.shields.io/badge/install-Prebuilt%20ZIP-4f46e5)](.github/workflows/release.yml)
 [![Signed with pinned RSA-3072 publisher key and Windows Authenticode](https://img.shields.io/badge/signing-RSA--3072%20%7C%20Authenticode-7c3aed)](docs/SIGNING.md)
@@ -44,7 +44,7 @@ Python packages, virtual environment or Rust compiler. FFmpeg/FFprobe remain
 external tools for video.
 
 All first-party application code, contributor commands and backend tests use
-Rust 1.100.0. The browser panel keeps JavaScript/HTML/CSS, and the Cloudflare
+Rust 1.100.1. The browser panel keeps JavaScript/HTML/CSS, and the Cloudflare
 Worker keeps TypeScript. Ready-made native codec dependencies are statically
 linked where appropriate; their source and redistribution notices are retained.
 
@@ -152,7 +152,7 @@ linked/path traversal refusals apply before installation.
 
 ### Developer source build
 
-Production contributors need the pinned Rust 1.100.0 toolchain, CMake and a platform C/C++ linker (MSVC
+Production contributors need the pinned Rust 1.100.1 toolchain, CMake and a platform C/C++ linker (MSVC
 build tools on Windows). Python is unnecessary for this build:
 
 ```bash
