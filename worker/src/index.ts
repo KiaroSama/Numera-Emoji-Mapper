@@ -174,7 +174,12 @@ async function onLogTest(request: Request, env: Env): Promise<Response> {
   }
   let bot: BotName = "general";
   let note = "Manual connectivity check";
-  const text = await request.text();
+  let text: string;
+  try {
+    text = await request.text();
+  } catch {
+    return new Response("bad request", { status: 400 });
+  }
   if (text.trim()) {
     let parsed: unknown;
     try {

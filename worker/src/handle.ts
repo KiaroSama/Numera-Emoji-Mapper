@@ -9,7 +9,7 @@ import { escapeHtml, Telegram, TEXT_LIMIT } from "./telegram";
 import { extractCustomEmojiIds, parseIdList } from "./emoji";
 import { isAdmin } from "./auth";
 import { type LogLevel, normalizeChatId } from "./logging";
-import type { PublishRequest, TgMessage, TgUpdate } from "./types";
+import type { PublishRequest, TgChat, TgMessage, TgUpdate } from "./types";
 
 const DENIED_TEXT =
   "This bot is private and your account is not on its access list.\n" +
@@ -21,7 +21,7 @@ const START_TEXT =
   "You can also <b>send emoji IDs</b> (one per line, comma-separated, or a single ID) " +
   "and I will show the matching emoji.";
 
-/** Outcome meaning our own log-channel post arrived back as a `channel_post`. */
+/** Our log-channel post returned directly or through its automatic discussion mirror. */
 export const LOG_ECHO = "log-echo";
 
 export interface HandleResult {
@@ -112,6 +112,13 @@ function userFields(msg: TgMessage): Record<string, unknown> {
   return fields;
 }
 
+/** Match either supported configured address without trusting message text. */
+function isLogChannel(chat: TgChat | undefined, logChatId: string | undefined): boolean {
+  const logChat = normalizeChatId(logChatId);
+  return Boolean(chat && logChat && (String(chat.id) === logChat
+    || (chat.username && logChat.toLowerCase() === `@${chat.username.toLowerCase()}`)));
+}
+
 /**
  * Handle one update and return structured non-text metadata for logging.
  * Never includes tokens or raw user message text.
@@ -125,6 +132,12 @@ export async function handleUpdateDetailed(
 ): Promise<HandleResult> {
   const msg: TgMessage | undefined = update.message ?? update.edited_message;
   if (msg) {
+    // Telegram mirrors channel posts into linked discussion groups. Logging a
+    // denial for that automatic mirror would send our log back into its source.
+    if (msg.is_automatic_forward === true && msg.sender_chat?.type === "channel"
+        && isLogChannel(msg.sender_chat, logChatId)) {
+      return { outcome: LOG_ECHO, event: "log.echo", level: "INFO", fields: {} };
+    }
     const sender = msg.from?.id;
     const base = userFields(msg);
     if (!isAdmin(sender, admins)) {
@@ -175,9 +188,7 @@ export async function handleUpdateDetailed(
 
   const post = update.channel_post;
   if (post) {
-    const logChat = normalizeChatId(logChatId);
-    if (logChat && (String(post.chat.id) === logChat
-        || (post.chat.username && logChat.toLowerCase() === `@${post.chat.username.toLowerCase()}`))) {
+    if (isLogChannel(post.chat, logChatId)) {
       return { outcome: LOG_ECHO, event: "log.echo", level: "INFO", fields: {} };
     }
     const chFields: Record<string, unknown> = { chat_id: post.chat.id };

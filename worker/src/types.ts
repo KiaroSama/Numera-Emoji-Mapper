@@ -57,6 +57,10 @@ export interface TgMessageEntity {
 export interface TgMessage {
   message_id: number;
   from?: TgUser;
+  /** Channel identity supplied by Telegram for a linked-discussion mirror. */
+  sender_chat?: TgChat;
+  /** True only for Telegram's automatic channel-to-discussion forwarding. */
+  is_automatic_forward?: boolean;
   chat: TgChat;
   text?: string;
   caption?: string;

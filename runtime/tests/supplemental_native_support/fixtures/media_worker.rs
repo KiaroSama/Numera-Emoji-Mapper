@@ -13,6 +13,64 @@ fn hold() -> ! {
         std::thread::park();
     }
 }
+
+#[cfg(windows)]
+mod quiet_event {
+    use std::ffi::c_void;
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn CreateEventW(
+            attributes: *const c_void,
+            manual_reset: i32,
+            initial_state: i32,
+            name: *const u16,
+        ) -> *mut c_void;
+        fn WaitForSingleObject(handle: *mut c_void, milliseconds: u32) -> u32;
+    }
+
+    pub(super) struct QuietEvent(OwnedHandle);
+
+    impl QuietEvent {
+        pub(super) fn new() -> Self {
+            // SAFETY: unnamed, initially nonsignaled event; null attributes prohibit inheritance.
+            let raw = unsafe { CreateEventW(std::ptr::null(), 1, 0, std::ptr::null()) };
+            assert!(
+                !raw.is_null(),
+                "cannot create quiet fixture event: {}",
+                std::io::Error::last_os_error()
+            );
+            // SAFETY: the successful creation transfers one fresh handle to this fixture.
+            Self(unsafe { OwnedHandle::from_raw_handle(raw) })
+        }
+
+        pub(super) fn hold(self) -> ! {
+            // SAFETY: the owned event remains live, is never signaled, and is never inherited.
+            // Unlike thread::park, this non-alertable infinite wait has no spurious return.
+            let result = unsafe { WaitForSingleObject(self.0.as_raw_handle(), u32::MAX) };
+            panic!(
+                "quiet fixture wait returned unexpectedly: {result:#x}; {}",
+                std::io::Error::last_os_error()
+            );
+        }
+    }
+}
+
+fn retained_quiet(control: &Path) -> ! {
+    // Finish native wait setup and durable file writes before publishing readiness.
+    #[cfg(windows)]
+    let event = quiet_event::QuietEvent::new();
+    let pending = control.join("ready.pending");
+    persist(&pending, b"ready");
+    // persist has synchronized and closed its handle before this atomic publication.
+    std::fs::rename(pending, control.join("ready")).unwrap();
+    #[cfg(windows)]
+    event.hold();
+    #[cfg(not(windows))]
+    hold();
+}
+
 fn string_field<'a>(text: &'a str, field: &str) -> &'a str {
     // This fixture accepts only compact serde envelopes and an enumerated ASCII tag.
     let prefix = format!("\"{field}\":\"");
@@ -350,8 +408,7 @@ fn main() {
     if args == ["--retained-quiet"] {
         let control = PathBuf::from(std::env::var_os("NUMERA_RETAINED_CONTROL").unwrap());
         assert!(control.is_absolute() && control.is_dir());
-        persist(&control.join("ready"), b"ready");
-        hold();
+        retained_quiet(&control);
     }
     if args.first().map(String::as_str) == Some("make-emoji-pngs")
         && let Ok(variant) = std::env::var("NUMERA_CONVERT_FIXTURE")
