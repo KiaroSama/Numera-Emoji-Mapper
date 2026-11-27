@@ -310,12 +310,12 @@ describe("publishing a finished pack", () => {
 });
 
 describe("logging", () => {
-  it("puts the bot on its own line, then level+event, detail, UTC stamp", async () => {
+  it("formats entries in Numera HTML style with six orbs, bot field, detail, and UTC stamp", async () => {
     const at = Date.UTC(2026, 7, 19, 0, 45, 12);
     expect(formatLine({ bot: "coin", level: "ERROR", event: "publish" }, at))
-      .toBe("[coin]\n❌ ERROR publish\n2026-08-19 00:45:12 UTC");
+      .toBe("<b>🔴 ERROR · publish</b>\nbot: <code>coin</code>\n🕒 2026-08-19 00:45:12 UTC");
     expect(formatLine({ bot: "general", level: "INFO", event: "webhook", detail: "x" }, at))
-      .toBe("[general]\nℹ️ INFO webhook\nx\n2026-08-19 00:45:12 UTC");
+      .toBe("<b>🔵 webhook</b>\nbot: <code>general</code>\ndetail: <code>x</code>\n🕒 2026-08-19 00:45:12 UTC");
     expect(formatLine({ bot: "coin", level: "WARNING", event: "unauthorized" }, at, 3))
       .toContain("(+3 suppressed by rate limit)");
   });
@@ -445,7 +445,7 @@ describe("logging", () => {
     expect(runs[0].args[3]).toBe("publish");
   });
 
-  it("sends an ERROR to the log channel and an INFO nowhere near it", async () => {
+  it("sends an ERROR to the log channel and routine INFO webhook noise nowhere near it", async () => {
     const calls = stubApi();
     await log({ ...ENV, LOG_CHAT_ID: "-1001" },
               { bot: "general", level: "INFO", event: "webhook" });
@@ -454,8 +454,9 @@ describe("logging", () => {
               { bot: "general", level: "ERROR", event: "webhook", detail: "boom" });
     expect(calls).toHaveLength(1);
     expect(calls[0].body.chat_id).toBe("-1001");
+    expect(calls[0].body.parse_mode).toBe("HTML");
     expect(String(calls[0].body.text)).toMatch(
-      /^\[general\]\n❌ ERROR webhook\nboom\n\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$/);
+      /^<b>🔴 ERROR · webhook<\/b>\nbot: <code>general<\/code>\ndetail: <code>boom<\/code>\n🕒 \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$/);
   });
 
   it("posts a bot's own lines with that bot's token", async () => {
@@ -564,7 +565,8 @@ describe("logging", () => {
     await settle();
     expect(calls).toHaveLength(1);
     expect(calls[0].body.chat_id).toBe("-1001");
-    expect(String(calls[0].body.text)).toMatch(/^\[general\]\n❌ ERROR webhook\n/);
+    expect(calls[0].body.parse_mode).toBe("HTML");
+    expect(String(calls[0].body.text)).toMatch(/^<b>🔴 ERROR · webhook<\/b>\nbot: <code>general<\/code>\n/);
   });
 });
 

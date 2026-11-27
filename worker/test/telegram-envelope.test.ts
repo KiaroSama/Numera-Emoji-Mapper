@@ -94,8 +94,8 @@ describe("malformed API success is never published as success", () => {
     expect(await response.json()).toMatchObject({ ok: false });
     expect(outgoing).toHaveBeenCalledTimes(1);
     const logs = output.mock.calls.flat().join("\n");
-    expect(logs).toContain("ERROR publish");
-    expect(logs).not.toContain("INFO publish");
+    expect(logs).toContain("🔴 ERROR · publish");
+    expect(logs).not.toContain("🟢 Pack announced");
   });
 
   it.each(["general", "coin"])("does not tell a %s user that a malformed lookup proves an unknown id", async bot => {

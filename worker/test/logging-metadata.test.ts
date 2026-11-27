@@ -1,4 +1,4 @@
-/** Log shortening must preserve diagnostics and valid Unicode at every sink. */
+/** Log shortening must preserve HTML integrity, diagnostics, and valid Unicode at every sink. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatLine, log, redact } from "../src/logging";
 import type { Env } from "../src/types";
@@ -11,10 +11,11 @@ describe("bounded log diagnostics", () => {
       bot: "coin", level: "ERROR", event: "publish", detail: "x".repeat(2000),
     }, Date.UTC(2026, 10, 22, 12, 30, 15), 7);
 
-    expect(line.length).toBeLessThanOrEqual(700);
-    expect(line).toContain("[coin]\n❌ ERROR publish\n");
+    expect(line.length).toBeLessThanOrEqual(1500);
+    expect(line).toContain("<b>🔴 ERROR · publish</b>");
+    expect(line).toContain("bot: <code>coin</code>");
     expect(line).toContain("…");
-    expect(line).toContain("2026-11-22 12:30:15 UTC");
+    expect(line).toContain("🕒 2026-11-22 12:30:15 UTC");
     expect(line.endsWith("(+7 suppressed by rate limit)")).toBe(true);
   });
 
@@ -29,9 +30,10 @@ describe("bounded log diagnostics", () => {
       bot: "general", level: "ERROR", event: "webhook", detail: prefix + "😀".repeat(1000),
     }, Date.UTC(2026, 10, 22));
 
-    expect(line.length).toBeLessThanOrEqual(700);
+    expect(line.length).toBeLessThanOrEqual(1500);
     expect(line).not.toMatch(/\p{Surrogate}/u);
-    expect(line.endsWith("2026-11-22 00:00:00 UTC")).toBe(true);
+    expect(line).toContain("</code>");
+    expect(line.endsWith("🕒 2026-11-22 00:00:00 UTC")).toBe(true);
   });
 
   it("timestamps a failed sink without losing the bot, severity, or error", async () => {
@@ -44,9 +46,9 @@ describe("bounded log diagnostics", () => {
     })).resolves.toBeUndefined();
 
     const output = error.mock.calls.map(args => args.join(" ")).join("\n");
-    expect(output).toContain("[coin]");
-    expect(output).toContain("ERROR log-sink");
+    expect(output).toContain("bot: <code>coin</code>");
+    expect(output).toContain("🔴 ERROR · log-sink");
     expect(output).toContain("D1 is unavailable");
-    expect(output).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC/);
+    expect(output).toMatch(/🕒 \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC/);
   });
 });

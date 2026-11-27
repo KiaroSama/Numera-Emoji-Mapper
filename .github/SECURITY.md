@@ -6,12 +6,12 @@ Numera Emoji Mapper talks to the Telegram Bot API and (optionally) CoinMarketCap
 secrets are read from environment variables or a local `.env` file and are
 never hard-coded in source:
 
-- `TELEGRAM_BOT_TOKEN` — crypto-coin bot token
-- `GENERAL_BOT_TOKEN` — general (non-coin) bot token
-- `CMC_API_KEY` — optional CoinMarketCap Pro API key
-- `PACK_OWNER_USER_ID` — numeric Telegram user id (pack owner)
-- `WORKER_PUBLISH_SECRET` — bearer the local build sends to the Worker's `/publish`
-- `GENERAL_WEBHOOK_SECRET`, `COIN_WEBHOOK_SECRET` — per-bot secrets Telegram
+- `TELEGRAM_BOT_TOKEN`: crypto-coin bot token
+- `GENERAL_BOT_TOKEN`: general (non-coin) bot token
+- `CMC_API_KEY`: optional CoinMarketCap Pro API key
+- `PACK_OWNER_USER_ID`: numeric Telegram user id (pack owner)
+- `WORKER_PUBLISH_SECRET`: bearer the local build sends to the Worker's `/publish`
+- `GENERAL_WEBHOOK_SECRET`, `COIN_WEBHOOK_SECRET`: per-bot secrets Telegram
   echoes on every webhook delivery, so the Worker can reject forged updates
 
 Rules:
@@ -27,7 +27,7 @@ Rules:
   `logging::RunLog`, with configured secrets registered before validation.
 - A leaked bot token should be revoked immediately via @BotFather (`/revoke`),
   then update `.env`. Removing a secret from a file does **not** remove it from
-  git history — rotate the credential as well.
+  git history: rotate the credential as well.
 
 ## Supported application platforms
 

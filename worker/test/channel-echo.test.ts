@@ -68,7 +68,11 @@ describe.each(["general", "coin"])("%s log-channel echoes", bot => {
     }), { ...ENV, LOG_CHAT_ID: "@FixtureLogs" }, ctx);
 
     expect(response.status).toBe(200);
-    expect(sent.map(message => message.chat_id)).toEqual([42, 77]);
-    for (const message of sent) expect(message.text).toContain("5893098741073715471");
+    const adminMessages = sent.filter(message => message.chat_id !== "@FixtureLogs");
+    const logMessages = sent.filter(message => message.chat_id === "@FixtureLogs");
+    expect(adminMessages.map(message => message.chat_id)).toEqual([42, 77]);
+    for (const message of adminMessages) expect(message.text).toContain("5893098741073715471");
+    expect(logMessages).toHaveLength(1);
+    expect(String(logMessages[0].text)).toContain("<b>🟣 Channel emoji forwarded</b>");
   });
 });

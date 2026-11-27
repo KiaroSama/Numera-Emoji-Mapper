@@ -69,6 +69,7 @@ pub fn worker(
         return Err("native tests may connect only to numeric loopback hosts".into());
     }
     let mut builder = reqwest::blocking::Client::builder()
+        .user_agent(concat!("numera-emoji/", env!("CARGO_PKG_VERSION")))
         .timeout(timeout)
         .connect_timeout(Duration::from_secs(15).min(timeout))
         .redirect(reqwest::redirect::Policy::none())

@@ -9,7 +9,7 @@ A Rust Tokio/Axum HTTP server bound to `127.0.0.1`. Routes:
 | `GET /` | The page (`assets/panel.html`: markup, CSS, items embedded as JSON, the per-run values). |
 | `GET /img/<key>` | The media bytes (webp/png/webm) with correct MIME. |
 | `GET /preview/<key>?fps=N&size=S` | Cached animated WebP for TGS; `still=1` returns a still for static/video/TGS. Sizes: 52, 72 or 104; rates: 1–30, bounded by `--preview-fps`. |
-| `GET /static/<file>` | Static assets (logo, favicon, and the panel scripts, `asset_version::PANEL_SCRIPTS`), traversal-guarded. The scripts are requested as `panel-grid.js?v=<hash>` — the hash is the scripts' content (`asset_version::versions`), because the route is immutable-cached and an edited script would otherwise be served stale. The logo is requested the same way, as `logo-128.png?v=<hash>` of its own bytes (the icon result from `asset_version::versions`), so a replaced logo is not served stale either. The query is stripped before the file lookup. |
+| `GET /static/<file>` | Static assets (logo, favicon, and the panel scripts, `asset_version::PANEL_SCRIPTS`), traversal-guarded. The scripts are requested as `panel-grid.js?v=<hash>`: the hash is the scripts' content (`asset_version::versions`), because the route is immutable-cached and an edited script would otherwise be served stale. The logo is requested the same way, as `logo-128.png?v=<hash>` of its own bytes (the icon result from `asset_version::versions`), so a replaced logo is not served stale either. The query is stripped before the file lookup. |
 | `GET /api/ping` | `{"ok":true}`. The page polls it to tell you when the panel process is gone; it touches neither the lock nor the catalog. |
 | `GET /api/session` | Which catalog and view this panel serves (a hash of the catalog path, `all`, `packs`). A second launch on the same port reads it to reopen this panel instead of starting another. |
 | `POST /api/save` | Body `{"excluded":[keys], "known":[keys], "packs":[[key, pack], …]}` → `catalog.set_inclusion(...)`, **restricted to `known`**; `packs` (optional) is the intended pack per emoji, written to `pack_plan.json`. |
@@ -31,7 +31,7 @@ All POST routes are guarded: loopback-only `Host`/
 the order, a content-type check and a body cap (the native panel regression cohort).
 
 **`known` is the save's scope, and it is mandatory.** A save carries the FULL
-selection — every key it does not name becomes *included* — so a request with no
+selection, every key it does not name becomes *included*, so a request with no
 notion of scope speaks for the whole catalog. The panel re-reads the catalog on
 every page load, so a tab opened before `fetch-emoji-ids` added an emoji, or
 before the owner deselected one in a second tab, held a stale snapshot; saving
@@ -66,10 +66,10 @@ Front-end:
   Deselect all on a thousand cards, ~60 ms became a few). The two jump buttons scroll the
   **document**, not `scrollIntoView`: that aligns an element with the top of
   the viewport, which sits behind the sticky header, so Top stopped a
-  header-height short — hiding the Pack 1 marker — and Bottom stopped short for
+  header-height short, hiding the Pack 1 marker, and Bottom stopped short for
   the same reason. Select all / Deselect all / Invert are mode-dependent: while
   selection mode is on they drive `picked` (`pickAll`/`clearPicked`/
-  `invertPicked`), otherwise `included` (`setAll`) — before this they only ever
+  `invertPicked`), otherwise `included` (`setAll`): before this they only ever
   touched `included`, so picking several emoji looked broken because nothing
   on screen responded to them.
 - **Selection and history** (`assets/panel-holding.js`). Selection mode hides
@@ -93,12 +93,12 @@ Front-end:
   grid card does, click plus shift-click takes a run of them, dragging one
   picked card carries every picked held emoji, and **Unhold** on a picked card
   returns the whole picked set. Without it a held emoji was pickable nowhere —
-  the pick box lives on a grid card and a held emoji has none — so the tray was
+  the pick box lives on a grid card and a held emoji has none: so the tray was
   the one place selection mode could not reach.
 - **An emoji dropped into another pack joins it.** The panel states the
   INTENDED layout; it is not a mirror of what is live on Telegram. Drag an
   emoji into the pack you want it to end up in, save, and the emoji is
-  re-stamped into that pack — the grid redraws with it inside the destination
+  re-stamped into that pack: the grid redraws with it inside the destination
   run. Nothing moves on Telegram at that moment and nothing can: the Bot API
   has no move-between-sets call, so a real move is a delete plus a re-add that
   mints a new `custom_emoji_id`. **Save writes the decision to
@@ -107,12 +107,12 @@ Front-end:
   The re-stamp is the load-bearing half: without it `packStarts()` re-groups
   the card by the pack number it arrived carrying, it becomes a one-card run
   still labelled with the pack it came from, and the drag reads as having
-  snapped back — which is exactly how this was first reported.
+  snapped back: which is exactly how this was first reported.
   **The pack comes from the card the pointer was aimed at**, recorded while the
   drag is live, never from whatever ends up above the card once it lands. Those
   two answers differ at every pack boundary, and the difference was measurable:
   a held emoji dropped on pack 4's FIRST card landed stamped pack 3. Every drop
-  re-stamps, from the tray and from inside the grid alike — a grid-to-grid drag
+  re-stamps, from the tray and from inside the grid alike: a grid-to-grid drag
   used to keep its old pack number and cut the destination pack in two. A drop
   that never passed over any card stamps nothing: an unknown destination is not
   a destination. A drop into a run that has no pack number yet leaves the emoji
@@ -120,7 +120,7 @@ Front-end:
 - **A full pack takes nothing, and the holding tray is how you make room.**
   Packs are fixed 200-emoji buckets, logo included. A drop into a pack already
   at 200 is refused with `Pack N is full (200/200). Hold one of its emoji
-  first, then bring this one in.` — park one of that pack's own emoji in the
+  first, then bring this one in.`: park one of that pack's own emoji in the
   tray, then bring the replacement in. Capacity is asked of the DESTINATION,
   not of the emoji's own pack; asking the wrong one refused moves OUT of a full
   pack and allowed moves INTO one.
@@ -152,7 +152,7 @@ Front-end:
   below. Every card is the same fixed height and every row offset is integer
   arithmetic on numbers JavaScript computes and hands to CSS as variables
   (`--cols`, `--cardH`, `--sepH`, `--gap`, `--z`), written only when a value
-  changes — each write restyled every card, even an unchanged one — so a render
+  changes, each write restyled every card, even an unchanged one, so a render
   is a binary search plus ~100 node moves, whatever the catalog holds. Measured on the
   1 063-card catalog in headless Chromium: a drag step cost 24–46 ms per
   pointer move on the old page (every one re-laid-out 1 062 cards; 40 % of
@@ -169,7 +169,7 @@ Front-end:
   Ctrl+plus/minus/0 are intercepted (`passive:false`) so the browser's own page
   zoom does not fire as well. `zoomReset` is a typeable `<input>`, not a
   reset-only button: Enter parses and applies a percentage, double-click still
-  resets to 100 %. `paintZoom()` writes `.value`, not `.textContent` — the
+  resets to 100 %. `paintZoom()` writes `.value`, not `.textContent`: the
   latter is silently inert on an `<input>`, which is exactly why the click
   handler that used to live there moved to `panel-holding.js` instead of
   growing in place.
@@ -216,8 +216,8 @@ offline.
 ### The move plan (`<data-dir>/pack_plan.json`)
 
 `.\numera-emoji.exe plan-status [--live]` shows, read-only, what applying the
-saved plan would change — per pack: target count and logo slot against the cap,
-emoji moving in and out, held emoji still live, never-published candidates — and
+saved plan would change: per pack: target count and logo slot against the cap,
+emoji moving in and out, held emoji still live, never-published candidates: and
 every `custom_emoji_id` a move would retire. Exit 3 when the plan asks for work.
 
 `.\numera-emoji.exe plan-apply` applies it (design: `docs/design/plan-applier.md`):
@@ -246,7 +246,7 @@ no move call, so a move is a delete plus a re-add and the emoji gets a **new
 `<data-dir>/plan_apply_<base>.json`. Owner decisions of 2026-09-29:
 
 - a cross-pack move is allowed even though the id changes;
-- a **held** emoji that is still live is never removed — it stays until placed;
+- a **held** emoji that is still live is never removed: it stays until placed;
 - at most **20 counted changes** (removals and adds; creating the next pack with
   its logo is one more) per run. Reordering keeps ids and is not counted.
   Reaching the cap ends the run with exit 3; the next run continues.
@@ -295,19 +295,19 @@ later is a decision nobody made.
 | Field | What it is |
 |-------|------------|
 | `targets` | **The authoritative intent**: every emoji the panel has an opinion about, paired with the pack it should end up in. The server reads this back on load, so a saved move survives a reload. |
-| `moves` | The subset of `targets` whose intended pack differs from the one the emoji is live in — the work, derived for the reader's convenience. `targets` is the source of truth; `moves` is what it means today. |
-| `held` | Every emoji parked in the tray, with the pack it came out of. Not a move — the owner took it out and has not said where it goes; parking one is how room is made for an arriving emoji. |
+| `moves` | The subset of `targets` whose intended pack differs from the one the emoji is live in: the work, derived for the reader's convenience. `targets` is the source of truth; `moves` is what it means today. |
+| `held` | Every emoji parked in the tray, with the pack it came out of. Not a move: the owner took it out and has not said where it goes; parking one is how room is made for an arriving emoji. |
 | `known` | Every key any save has spoken for. A page shows only part of the catalog, so this records the scope decisions were made in and lets a later partial save merge instead of overwrite. |
-| `excluded` | Every key currently held out of a pack, across all saves — not only the ones the last page could see. |
+| `excluded` | Every key currently held out of a pack, across all saves: not only the ones the last page could see. |
 | `counts` | Emoji per pack in the intended layout. |
 | `logo_slots` | Packs whose brand logo consumes one of the 200 slots. The logo is emoji 0 of **each** pack, not once per family, so capacity has to count it per pack. |
-| `over_capacity` | Packs whose `counts` plus `logo_slots` exceed `per_set`. Normally empty, because a drop over the cap is refused while curating — but a plan read back later must be able to say so rather than look healthy and fail at publish. |
+| `over_capacity` | Packs whose `counts` plus `logo_slots` exceed `per_set`. Normally empty, because a drop over the cap is refused while curating: but a plan read back later must be able to say so rather than look healthy and fail at publish. |
 
 A **partial save merges**: a page that can see only some of the catalog replaces
 the decisions inside its own scope and keeps every other decision in the file.
 That is why `targets`, `known` and `excluded` are whole-catalog while `moves`
 and `held` read as a to-do list. A plan written by an older panel that carries
-only `moves` is still understood — its moves are read as the intent.
+only `moves` is still understood: its moves are read as the intent.
 
 The one thing a save does drop is a decision about an emoji the catalog no
 longer holds. The keys are checked against the database under the same lease
@@ -324,7 +324,7 @@ reload.
 An emoji the page carried no pack for is **absent** from the plan entirely:
 saying nothing and saying "leave it" are different claims, and only the first
 is true. A candidate that was never published has no `from_pack`, so it is
-counted but never a move — there is nothing to move it out of. The brand logo
+counted but never a move: there is nothing to move it out of. The brand logo
 is skipped: it is emoji 0 of every pack and does not travel.
 
 The file is written atomically, because the step that reads it may start at any

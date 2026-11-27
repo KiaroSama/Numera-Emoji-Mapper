@@ -1,6 +1,6 @@
 [Complete guide index](GUIDE.md)
 
-## Appendix A — Command cheat-sheet
+## Appendix A: Command cheat-sheet
 
 Run commands from the package root. Examples use `.\numera-emoji.exe`; on
 Linux use `./numera-emoji`. No Python environment is required.
@@ -56,7 +56,7 @@ operator targets you intend to change. Use `COMMAND --help` for current flags.
 
 ---
 
-## Appendix B — Example session transcripts (illustrative)
+## Appendix B: Example session transcripts (illustrative)
 
 ### B.1 Fetch + curate + publish
 
@@ -99,7 +99,7 @@ DUPLICATE image groups: 0 (extra duplicate stickers: 0)
 
 ---
 
-## Appendix C — Conventions for contributors / agents
+## Appendix C: Conventions for contributors / agents
 
 - Keep code, comments, filenames, logs and documentation in English.
 - First-party local Rust belongs in `runtime/src/`;
@@ -112,7 +112,7 @@ DUPLICATE image groups: 0 (extra duplicate stickers: 0)
   Preserve independent historical fixtures and test provenance.
 - Keep documentation current and follow the repository's review workflow.
 
-## Appendix D — Building the next pack: the fast path
+## Appendix D: Building the next pack: the fast path
 
 Distilled from the first full 200-emoji pack. The steps are the short version of
 §6; the traps below each cost real time, and every one of them is now either
@@ -148,7 +148,7 @@ with `.\numera-emoji.exe build-collection --base <Base> --title "<T>" --prefligh
 
 `uploadStickerFile` runs the **same validator** as `addStickerToSet` and touches
 no pack, so it answers "will Telegram take this file?" in one call. Worth doing
-for anything unusual before starting a long publish — a single refused emoji
+for anything unusual before starting a long publish: a single refused emoji
 cost a whole run here.
 
 **A `.tgs` Telegram happily *plays* can still be refused on *upload*.** The
@@ -162,7 +162,7 @@ so the artwork is unchanged, and `format=video` never goes near the `.tgs` path.
 
 **And the mirror case: a video source can UNDER-DECLARE its own length.** One
 sticker served by Telegram carried a `duration=3.000` container header over
-3.916 s of packets — 94 frames ending at 3.875 s. Telegram's uploader reads the
+3.916 s of packets: 94 frames ending at 3.875 s. Telegram's uploader reads the
 header, so the original was accepted; our `-c copy` remux recomputes duration
 from the packets, wrote the truthful 3.916 s, and came back
 `STICKER_VIDEO_LONG`. The picture was identical, frame for frame. Here our
@@ -171,7 +171,7 @@ re-encode is the honest one and the source is not.
 `reencode_in_place` therefore keeps the original whenever a remux would cross
 `WEBM_MAX_SECONDS`, exactly as it already does for the byte caps: a byte-clone
 is a lesser failure than an upload that cannot happen. To publish such a source
-as our own bytes, re-time it first — speeding the whole loop to fit keeps the
+as our own bytes, re-time it first: speeding the whole loop to fit keeps the
 animation, where trimming the tail does not.
 
 ### Expect flood waits, and read the log
@@ -206,13 +206,13 @@ catalog cannot identify.
 ### Two things that will mislead a measurement
 
 - **Telegram re-encodes what it stores.** Never confirm an upload by exact
-  content key — the key is a SHA of exact pixels, so a lossy re-encode changes
+  content key: the key is a SHA of exact pixels, so a lossy re-encode changes
   it for a picture that is visually identical. the native media comparator owns this
   comparison for every caller: exact key first, then **both** a dHash and a
   colour check, since neither alone is safe. dHash survives the re-encode but
   is grayscale, so a stranger's green square sits 4 bits from our red one; the
   mean channel delta sees colour but not structure. Measured over 30 known-same
-  and 30 known-different pairs across three live packs — dHash 0–3 vs 12–47
+  and 30 known-different pairs across three live packs: dHash 0–3 vs 12–47
   bits, mean delta 0.02–2.35 vs 35.46–188.22.
   A false negative costs a halted publish and is recoverable; a false positive
   attributes a stranger's sticker to our item and is not. That asymmetry is why

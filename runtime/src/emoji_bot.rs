@@ -9,8 +9,8 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
-const DENIED: &str = "This is a private bot and you are not on its access list.\nIf you should have access, ask the owner to add your numeric Telegram user id.";
-const START: &str = "<b>Numera Emoji Mapper</b> — premium custom-emoji ID extractor\n\n• Send me one or more <b>premium emoji</b> in a row (spaces/newlines don't matter) → I reply with a collapsed quote of <i>emoji + ID</i> (tap an ID to copy just it) and a <b>Copy all</b> button to copy every ID at once.\n• Send or forward a <b>post with premium emoji</b> → same reply.\n• Or go the other way: <b>send me ids</b> and I show you the emoji. One per line, comma-separated, or a single id, all work.\n• <b>Add me to a channel/group</b> (as admin) → I DM you the premium emoji IDs from new posts there.\n\nNote: I can only read posts I receive after joining (Telegram doesn't let bots read past channel history).";
+const DENIED: &str = "This bot is private and your account is not on its access list.\nAsk the owner to add your numeric Telegram user ID if you need access.";
+const START: &str = "<b>Numera Emoji Mapper</b> (premium custom-emoji ID extractor)\n\n• Send one or more <b>premium emoji</b> in a row (spaces and newlines do not matter), and I will reply with an expandable list of <i>emoji + ID</i> (tap an ID to copy it) plus a <b>Copy all</b> button.\n• Send or forward a <b>post with premium emoji</b> for the same reply.\n• Send <b>emoji IDs</b> (one per line, comma-separated, or a single ID), and I will show the matching emoji.\n• <b>Add me to a channel or group</b> (as admin), and I will DM you the premium emoji IDs from new posts there.\n\nNote: Telegram only delivers posts sent after a bot joins a channel.";
 fn call(tg: &Telegram, method: &str, data: &Value, retries: u32) -> ApiResult<Value> {
     let data = data
         .as_object()

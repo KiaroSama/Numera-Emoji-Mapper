@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-11-27
+
+### Added
+- Structured HTML log-channel formatting in the Cloudflare Worker matching Numera Group Bot: six circle orbs (`🔴🟠🟡🟢🔵🟣`), `bot` and structured `key: <code>value</code>` fields with folded `(@username)` annotations, raw text filtering, and UTC timestamps.
+- Bearer-authenticated `POST /log-test` endpoint and boolean `log_channel` / `pack_links` readiness flags on `GET /health`.
+- Optional `BOT_ALLOWED_CHANNEL_IDS` secret upload in `numera-worker-admin secrets`.
+
+### Changed
+- Route warnings, access denials, pack announcements, emoji lookups, greetings, and allowed channel forwards to `LOG_CHAT_ID` while keeping D1 writes lean and external webhook-secret probes console-only.
+- Normalize bare positive channel IDs for `PACK_LINKS_CHAT_ID` and `BOT_ALLOWED_CHANNEL_IDS` in the Worker, and attach an explicit `User-Agent` header to Rust Worker announcement requests.
+- Polish documentation and bot copy for plain, natural English, update README badges to live GitHub endpoints, and align README ending sections (`Author`, `License`, `Donate`).
+
+### Fixed
+- Resolve relative and not-yet-created catalog paths accurately in `doctor` and redact effective configured secrets in diagnostics (#111, closes #110).
+
 ## [3.3.0] - 2026-11-26
 
 ### Added

@@ -283,3 +283,20 @@ fn generated_key_commit_preserves_a_real_concurrent_unrelated_env_edit() {
         );
     }
 }
+
+#[test]
+fn optional_allowed_channels_secret_is_uploaded_only_when_configured() {
+    let (root, settings) = fixture();
+    let env_path = root.path().join("owned.env");
+    let mut text = std::fs::read_to_string(&env_path).unwrap();
+    text.push_str("\nBOT_ALLOWED_CHANNEL_IDS=-1002052830618\n");
+    std::fs::write(&env_path, text).unwrap();
+    assert_eq!(invoke(root.path(), &settings, &[]).0.unwrap(), 0);
+    let uploaded = records(root.path());
+    assert_eq!(uploaded.len(), 9);
+    assert!(
+        uploaded
+            .iter()
+            .any(|row| row.get("name").and_then(|v| v.as_str()) == Some("BOT_ALLOWED_CHANNEL_IDS"))
+    );
+}

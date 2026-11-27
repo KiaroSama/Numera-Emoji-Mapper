@@ -1,64 +1,50 @@
 /**
- * Who may talk to this Worker, and who the bots answer.
+ * Request authentication and bot allowlists.
  *
- * Two separate gates, and they are not interchangeable:
- *   - `verifyWebhook` proves a request really came from Telegram.
- *   - `isAdmin` decides whether the human behind an update gets a reply.
+ * Two separate gates:
+ *   - `verifyWebhook` proves a request came from Telegram.
+ *   - `isAdmin` decides whether the sender behind an update gets a reply.
  *
- * Both fail CLOSED. An unset or malformed allowlist means "nobody", never
- * "everybody" -- the same rule the Python bot's `allowed_user_ids()` follows,
- * because a misconfiguration must not silently open the bot to the world.
+ * Both fail closed. An unset or malformed allowlist means nobody, never
+ * everybody, so a configuration typo cannot expose a private bot.
  */
 
-/** Constant-time string compare, so a wrong secret cannot be found byte by byte. */
+import { normalizeChatId } from "./logging";
+
+/** Constant-time string compare so a wrong secret cannot leak byte by byte. */
 function timingSafeEqual(a: string, b: string): boolean {
   const ab = new TextEncoder().encode(a);
   const bb = new TextEncoder().encode(b);
-  // Length is not secret (and differing lengths cannot match), but the compare
-  // below must still run over a fixed number of bytes.
   if (ab.length !== bb.length) return false;
   let diff = 0;
   for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
   return diff === 0;
 }
 
-/**
- * True when the request carries the secret Telegram was told to send.
- *
- * Telegram echoes `secret_token` from setWebhook in this header on every
- * delivery. Without it the webhook URL alone is the only thing standing between
- * a stranger and a forged update, and URLs leak (logs, proxies, screenshots).
- */
+/** True when the request carries the secret Telegram sends on webhook delivery. */
 export function verifyWebhook(request: Request, expected: string | undefined): boolean {
-  if (!expected) return false;   // not configured -> refuse, do not wave through
+  if (!expected) return false;
   const got = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
   return got !== null && timingSafeEqual(got, expected);
 }
 
-/** Bearer check for the local publisher endpoint. */
+/** Bearer check for the local publisher and diagnostic endpoints. */
 export function verifyBearer(request: Request, expected: string | undefined): boolean {
   if (!expected) return false;
   const header = request.headers.get("Authorization") ?? "";
-  // HTTP auth schemes are case-insensitive and use one or more spaces. Only
-  // the scheme is normalized: the credential still has to match exactly.
   const prefix = /^Bearer +/i.exec(header);
   return prefix !== null && timingSafeEqual(header.slice(prefix[0].length), expected);
 }
 
 /**
- * Parse the admin allowlist.
- *
- * Accepts commas or semicolons, ignores blanks, and drops anything that is not
- * a positive integer id. Returns an empty set when unset -- callers must treat
- * that as "answer nobody".
+ * Parse the admin allowlist (`ADMIN_USER_IDS`).
+ * Accepts commas or semicolons, ignores blanks, and keeps plain positive integers.
  */
 export function parseAdmins(raw: string | undefined): Set<number> {
   const out = new Set<number>();
   for (const part of (raw ?? "").replace(/;/g, ",").split(",")) {
     const t = part.trim();
     if (!t) continue;
-    // Number() would accept "12.5", "0x10", " 12 " and "1e3"; a bot allowlist
-    // must only ever hold plain positive integers.
     if (!/^\d+$/.test(t)) continue;
     const n = Number(t);
     if (Number.isSafeInteger(n) && n > 0) out.add(n);
@@ -67,19 +53,18 @@ export function parseAdmins(raw: string | undefined): Set<number> {
 }
 
 /**
- * Parse the channel allowlist (BOT_ALLOWED_CHANNEL_IDS).
- *
- * A channel_post has no sender to check against the admin list, so the
- * channel itself has to be listed. Ids are negative ("-100..."), which the
- * admin parser rightly rejects, and they are kept as strings: compared with
- * `String(chat.id)`, so no digit of a long id is lost to float precision.
- * Unset or malformed means "no channel", never "every channel".
+ * Parse the channel allowlist (`BOT_ALLOWED_CHANNEL_IDS`).
+ * Accepts `-100...` IDs and bare positive channel IDs (normalized to `-100...`),
+ * keeping them as strings so long IDs never lose precision. Unset or malformed
+ * values resolve to an empty set.
  */
 export function parseChannels(raw: string | undefined): Set<string> {
   const out = new Set<string>();
   for (const part of (raw ?? "").replace(/;/g, ",").split(",")) {
     const t = part.trim();
-    if (/^-?\d+$/.test(t)) out.add(t);
+    if (!t || t.startsWith("@")) continue;
+    const normalized = normalizeChatId(t);
+    if (normalized) out.add(normalized);
   }
   return out;
 }

@@ -2,11 +2,11 @@
 
 This Rust tool checks the structural migration inventory. It does not execute product tests or prove their behavioral assertions. Runtime, browser, fault-process and platform CI remain separate requirements.
 
-The public source manifest is `tests/fixtures/migration/reference-cases.json`. Its1516 identities were collected with the original `unittest.defaultTestLoader`, including26 inherited executions, at reference `a39a049c02f8dcc90d18fe8771869f82dd655221`. The actual main revision `9c3cbb43305b0e507085003d4a33806e4a60b677` has1515; the reference adds `tests.test_pack_locks_exclusion.JournalRecordsAreComplete.test_separate_child_journals_keep_overlapping_owners_visible`.
+The public source manifest is `tests/fixtures/migration/reference-cases.json`. Its 1,516 identities were collected with the original `unittest.defaultTestLoader`, including 26 inherited executions, at reference `a39a049c02f8dcc90d18fe8771869f82dd655221`. The actual main revision `9c3cbb43305b0e507085003d4a33806e4a60b677` has 1,515; the reference adds `tests.test_pack_locks_exclusion.JournalRecordsAreComplete.test_separate_child_journals_keep_overlapping_owners_visible`.
 
-The manifest pins each original identity, defining class, inheritance, source-file SHA256, method-source SHA256, test category and genuine platform skip. The sorted original ID digest and immutable source receipt digest are pinned in the Rust tool. Updating target wiring cannot silently replace originals or change the84 browser,13 browser-performance,59 served-source contract and1360 backend boundaries.
+The manifest pins each original identity, defining class, inheritance, source-file SHA256, method-source SHA256, test category, and genuine platform skip. The sorted original ID digest and immutable source receipt digest are pinned in the Rust tool. Updating target wiring cannot silently replace originals or change the 84 browser, 13 browser-performance, 59 served-source contract, and 1,360 backend boundaries.
 
-The separate `original-main-rust.json` records35 original Rust declarations:34 applicable declarations (32 product behaviors and2 technical subprocess entrypoints) and the explicitly retired macOS-only test. These declarations never inflate the1516 Python identity count. Linux and Windows each originally collect32 of those Rust declarations. The separate inventory preserves their original platform gates.
+The separate `original-main-rust.json` records 35 original Rust declarations: 34 applicable declarations (32 product behaviors and 2 technical subprocess entrypoints) and the explicitly retired macOS-only test. These declarations never inflate the 1,516 Python identity count. Linux and Windows each originally collect 32 of those Rust declarations. The separate inventory preserves their original platform gates.
 
 Run from the repository root:
 
@@ -23,7 +23,7 @@ cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- \
   --mode language --output logs/checkpoint/language-policy.json
 ```
 
-The browser input must be actual `playwright test --list --reporter=json` output from the unfiltered156-case collection. All mode requires that input; Rust mode explicitly leaves JavaScript collection unverified. Discovery containing skipped specs, duplicate/missing identities, different files, or repeated project executions fails.
+The browser input must be actual `playwright test --list --reporter=json` output from the unfiltered 156-case collection. All mode requires that input; Rust mode explicitly leaves JavaScript collection unverified. Discovery containing skipped specs, duplicate/missing identities, different files, or repeated project executions fails.
 
 The tool obtains actual runtime test crate roots from offline, locked Cargo metadata. It follows their Rust modules with `syn`, including `#[path]`, inline modules, platform cfg and conditional ignore reasons. Helpers, comments, fixture strings, and unwired source files cannot supply a test declaration. Every mapped Rust original needs its own actual nonempty `#[test]` function with matching target, module identity and body-token hash. Item cfg must not remove a Python-origin identity on either supported OS: use a genuine conditional ignore and preserve the platform body. A documented reviewed native adaptation is explicit manifest data.
 

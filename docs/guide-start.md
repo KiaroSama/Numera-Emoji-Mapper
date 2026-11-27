@@ -164,7 +164,7 @@ The collector stores everything in a **content-addressed catalog**
 (`collection/catalog.db`, SQLite, managed by the native catalog). Each emoji
 is one row keyed by a normalized **content hash**.
 
-Guarantees (root-cause fixes — do not regress these):
+Guarantees (root-cause fixes: do not regress these):
 
 - **No duplicates**: identical media (same normalized pixels for static; sampled
   frames for video; canonical Lottie JSON for animated) collapse to one row.
@@ -214,7 +214,7 @@ source-mode distinction; provider identity explicitly converts to RGBA.
     --token-env GENERAL_BOT_TOKEN [--data-dir collection] [--limit N] [--phash-threshold -1]
 ```
 
-Or name the pack by one of its emoji — an id fetches the whole pack it belongs to.
+Or name the pack by one of its emoji: an id fetches the whole pack it belongs to.
 
 ```powershell
 .\numera-emoji.exe fetch-pack 5283254221590787816 --token-env GENERAL_BOT_TOKEN
@@ -228,7 +228,7 @@ Or name the pack by one of its emoji — an id fetches the whole pack it belongs
 # (animated emoji are VECTOR only; a GIF/video becomes a VIDEO emoji, not animated)
 ```
 
-### 6.3 Curate — pick what to publish (web panel)
+### 6.3 Curate: pick what to publish (web panel)
 
 ```powershell
 .\numera-emoji.exe panel [--data-dir collection] [--port 9450] [--preview-fps 15] [--no-open]
@@ -256,12 +256,12 @@ The header's switches are remembered across reloads and undoable:
 (keeps every card still until you hover or focus it, the lightest interactive
 mode while sorting), **All visible** (by
 default at most 24 cards animate, the ones nearest the centre of the screen; on,
-every visible card animates — heavier), and **Real video** (video cards are
+every visible card animates: heavier), and **Real video** (video cards are
 light animated WebP previews by default; on, they are real `<video>` players).
 **Import draft**, next to **Reset all**, reads a draft exported earlier: keys
 this catalog still holds take the draft's order, inclusion, pack and hold,
 keys it no longer holds are dropped, and emoji added since the draft keep their
-state at the end. It never posts — review, then Save — and it is one undo step;
+state at the end. It never posts, review, then Save, and it is one undo step;
 the toast reports how many were kept, not in this catalog, and new.
 
 **Selection mode** (the pill next to Zoom) is for moving several emoji as one
@@ -273,7 +273,7 @@ all / Deselect all / Invert act on the picks instead of on publish inclusion.
 **Holding** (the strip under the count line) is a place to park emoji out of
 the way: drag one onto it to exclude it from the next publish without hunting
 for its tick in a long grid, drag a parked one back in to re-include it at
-the exact position dropped — a pack short a few emoji still auto-fills from
+the exact position dropped: a pack short a few emoji still auto-fills from
 whatever candidates follow it, same as unticking one in place always has.
 
 ### 6.4 Publish the catalog into new packs
@@ -288,7 +288,7 @@ whatever candidates follow it, same as unticking one in place always has.
 ```
 
 Sets are named `<base>s<n>_by_<bot>` (static), `<base>v<n>` (video),
-`<base>a<n>` (animated) — split by format for organization (since Bot API 7.2 a
+`<base>a<n>` (animated): split by format for organization (since Bot API 7.2 a
 set *may* mix formats, so this is a choice, not a requirement). Each finished
 pack's `t.me/addemoji/...` link goes to `PACK_LINKS_CHAT_ID` (or the owner's
 private chat when that is unset), directly or through the Worker, and a per-pack manifest
@@ -382,7 +382,7 @@ Long-polling bot (run it and leave it running; only one instance at a time):
   Telegram itself). As many IDs as fit in one message (~4096-char Telegram limit)
   are batched together, so a 50-id result is ~2 messages, not one-message-per-12.
   (The quote is collapsed by height, so long lists show a few lines until
-  expanded — expected, not missing data.)
+  expanded: expected, not missing data.)
 - Send/forward a **post with premium emoji** → same two-format reply.
 - **Add it to a channel/group** (as admin) → DMs the owner the premium-emoji IDs
   from *new* posts (Bot API cannot read past channel history).
@@ -402,7 +402,7 @@ split across multiple messages (each under 4096 chars).
   animation → **video** emoji.
 - Video: VP9, 100×100, ≤3 s, 30 fps, no audio, ≤256 KB.
 - A bot can `getStickerSet`/`getFile` for any pack it can see, but **cannot read
-  channel history** — only posts received after it joined.
+  channel history**: only posts received after it joined.
 - Sending custom emoji in messages and reading their keywords back is limited:
   the Bot API exposes `custom_emoji_id`/`emoji`/`set_name` (via
   `getCustomEmojiStickers`) but **not** a sticker's search keywords.

@@ -1,54 +1,46 @@
 /**
- * What each bot does with an update, and how a finished pack reaches the
- * channel.
+ * Update handling for both bots and pack announcement rendering.
  *
- * Both bots run the same handler. The coin bot has never had an interactive
- * side -- it exists as the identity that owns the cryptoemoji* packs -- but
- * giving it the same behaviour costs nothing and means a message sent to the
- * wrong bot still gets an answer instead of silence.
+ * Both bots share this handler so a message sent to either bot gets a clear
+ * response instead of silence.
  */
 
 import { escapeHtml, Telegram, TEXT_LIMIT } from "./telegram";
 import { extractCustomEmojiIds, parseIdList } from "./emoji";
 import { isAdmin } from "./auth";
-import { normalizeChatId } from "./logging";
+import { type LogLevel, normalizeChatId } from "./logging";
 import type { PublishRequest, TgMessage, TgUpdate } from "./types";
 
 const DENIED_TEXT =
-  "This is a private bot and you are not on its access list.\n" +
-  "If you should have access, ask the owner to add your numeric Telegram user id.";
+  "This bot is private and your account is not on its access list.\n" +
+  "Ask the owner to add your numeric Telegram user ID if you need access.";
 
 const START_TEXT =
-  "Send me any message containing <b>premium (custom) emoji</b> and I will " +
-  "reply with their ids.\n\nWorks with emoji in the text, in a caption, and " +
-  "inside a quoted reply.\n\nOr the other way round: <b>send me ids</b> and I " +
-  "show you the emoji. One per line, comma-separated, or a single id.";
+  "Send a message with <b>premium (custom) emoji</b> and I will reply with their IDs.\n\n" +
+  "This works with emoji in plain text, in a caption, or inside a quoted reply.\n\n" +
+  "You can also <b>send emoji IDs</b> (one per line, comma-separated, or a single ID) " +
+  "and I will show the matching emoji.";
 
-/**
- * Outcome meaning "this was our own log line coming back; record nothing".
- *
- * Exported so the router matches a constant instead of a repeated string
- * literal -- a typo there would silently reinstate the noise.
- */
+/** Outcome meaning our own log-channel post arrived back as a `channel_post`. */
 export const LOG_ECHO = "log-echo";
 
-/** Split ids into messages that stay under the limit. */
+export interface HandleResult {
+  outcome: string;
+  event: string;
+  level: LogLevel;
+  fields: Record<string, unknown>;
+}
+
+/** Split IDs into HTML messages that stay under Telegram's character limit. */
 export function renderIdMessages(ids: string[], header?: string,
                                  glyphs?: Map<string, string>): string[] {
   if (ids.length === 0) {
-    return [header ? `${header}\nNo premium emoji in that message.`
-                   : "No premium emoji in that message."];
+    return [header ? `${header}\nNo premium emoji found in that message.`
+                   : "No premium emoji found in that message."];
   }
   const out: string[] = [];
   let buf = header ? `${header}\n` : "";
   for (const id of ids) {
-    // <tg-emoji> renders the emoji itself; the <code> block is what you copy.
-    // The sticker's OWN emoji when we know it. This text is the FALLBACK the
-    // tag carries: it is what shows up wherever the custom emoji cannot be
-    // rendered -- notification previews, copied-out text, older clients, and
-    // the pack being deleted later. A column of identical stars says nothing
-    // in any of those places. (Viewing custom emoji does NOT need Premium;
-    // only sending them does.)
     const glyph = escapeHtml(glyphs?.get(id) ?? "⭐");
     const line = `<tg-emoji emoji-id="${id}">${glyph}</tg-emoji> <code>${id}</code>\n`;
     if (buf.length + line.length > TEXT_LIMIT) {
@@ -67,25 +59,16 @@ async function reply(tg: Telegram, chatId: number | string, ids: string[],
   for (const [i, text] of parts.entries()) {
     await tg.sendMessage(chatId, text, {
       parse_mode: "HTML",
-      // Only the first part answers the original message; the rest follow it.
       ...(i === 0 && opts.replyTo ? { reply_to_message_id: opts.replyTo } : {}),
     });
   }
 }
 
-/** Telegram resolves at most 200 ids per call. */
+/** Telegram resolves at most 200 custom-emoji IDs per call. */
 const RESOLVE_CHUNK = 200;
 
-/**
- * Reverse lookup: the user typed ids, so show them the emoji.
- *
- * Resolved through getCustomEmojiStickers rather than rendered straight into a
- * <tg-emoji> tag, because Telegram silently falls back to the placeholder glyph
- * for an id that does not exist -- so a typo would come back looking exactly
- * like a success. An id it cannot resolve is named instead.
- */
 async function replyToTypedIds(tg: Telegram, chatId: number | string,
-                               ids: string[], replyTo?: number): Promise<string> {
+                               ids: string[], replyTo?: number): Promise<{ known: number; total: number }> {
   const glyphs = new Map<string, string>();
   for (let i = 0; i < ids.length; i += RESOLVE_CHUNK) {
     const found = await tg.getCustomEmojiStickers(ids.slice(i, i + RESOLVE_CHUNK));
@@ -99,145 +82,158 @@ async function replyToTypedIds(tg: Telegram, chatId: number | string,
   if (unknown.length) {
     const shown = unknown.slice(0, 10).map((id) => `<code>${id}</code>`).join(", ");
     const more = unknown.length > 10 ? ` (+${unknown.length - 10} more)` : "";
-    header = `⚠️ Telegram does not know ${unknown.length} of these: ${shown}${more}`;
+    header = `Telegram does not know: ${shown}${more}`;
   }
   if (known.length === 0) {
-    await tg.sendMessage(chatId, header ?? "No usable ids in that message.", {
+    await tg.sendMessage(chatId, header ?? "No usable IDs found in that message.", {
       parse_mode: "HTML",
       ...(replyTo ? { reply_to_message_id: replyTo } : {}),
     });
-    return `typed:0/${ids.length}`;
+    return { known: 0, total: ids.length };
   }
-  for (const [n, text] of renderIdMessages(known, header, glyphs).entries()) {
+  const parts = renderIdMessages(known, header, glyphs);
+  for (const [i, text] of parts.entries()) {
     await tg.sendMessage(chatId, text, {
       parse_mode: "HTML",
-      ...(n === 0 && replyTo ? { reply_to_message_id: replyTo } : {}),
+      ...(i === 0 && replyTo ? { reply_to_message_id: replyTo } : {}),
     });
   }
-  return `typed:${known.length}/${ids.length}`;
+  return { known: known.length, total: ids.length };
+}
+
+function userFields(msg: TgMessage): Record<string, unknown> {
+  const fields: Record<string, unknown> = { chat_type: msg.chat.type };
+  if (msg.from?.id !== undefined) fields.user_id = msg.from.id;
+  if (msg.from?.username) fields.username = msg.from.username;
+  if (msg.chat.type !== "private") {
+    fields.chat_id = msg.chat.id;
+    if (msg.chat.username) fields.chat_username = msg.chat.username;
+  }
+  return fields;
 }
 
 /**
- * Handle one update.
- *
- * Returns a short string describing what happened, for logging. Nothing here
- * ever includes a token or the full message text.
+ * Handle one update and return structured non-text metadata for logging.
+ * Never includes tokens or raw user message text.
  */
-export async function handleUpdate(tg: Telegram, update: TgUpdate,
-                                   admins: Set<number>,
-                                   logChatId?: string,
-                                   channels: Set<string> = new Set()): Promise<string> {
+export async function handleUpdateDetailed(
+  tg: Telegram,
+  update: TgUpdate,
+  admins: Set<number>,
+  logChatId?: string,
+  channels: Set<string> = new Set(),
+): Promise<HandleResult> {
   const msg: TgMessage | undefined = update.message ?? update.edited_message;
   if (msg) {
     const sender = msg.from?.id;
+    const base = userFields(msg);
     if (!isAdmin(sender, admins)) {
-      // Answer once in private so a real person is not left guessing; stay
-      // silent in groups, so the bot cannot be used to spam them.
       if (msg.chat.type === "private") {
         try {
           await tg.sendMessage(msg.chat.id, DENIED_TEXT);
         } catch {
-          // A denial is best-effort: failing to send one must not retry the
-          // update, which would just try to deny the same person again.
+          // Best-effort denial; do not force Telegram to retry the update.
         }
       }
-      return `denied:${msg.chat.type}`;
+      return {
+        outcome: `denied:${msg.chat.type}`,
+        event: "access.denied",
+        level: "WARNING",
+        fields: base,
+      };
     }
     const text = msg.text ?? "";
     if (/^\/(start|help|menu)\b/.test(text)) {
       await tg.sendMessage(msg.chat.id, START_TEXT, { parse_mode: "HTML" });
-      return "greeted";
+      return {
+        outcome: "greeted",
+        event: "bot.greeted",
+        level: "INFO",
+        fields: base,
+      };
     }
-    // Ids typed as text and premium emoji cannot both be the subject of one
-    // message: a message that is nothing but digits and separators carries no
-    // custom_emoji entity to extract.
     const typed = parseIdList(text);
     if (typed.length) {
-      return await replyToTypedIds(tg, msg.chat.id, typed, msg.message_id);
+      const { known, total } = await replyToTypedIds(tg, msg.chat.id, typed, msg.message_id);
+      const partial = known < total;
+      return {
+        outcome: `typed:${known}/${total}`,
+        event: partial ? "emoji.partial_lookup" : "emoji.reverse_lookup",
+        level: "INFO",
+        fields: { ...base, resolved: `${known}/${total}` },
+      };
     }
     const ids = extractCustomEmojiIds(msg);
     await reply(tg, msg.chat.id, ids, { replyTo: msg.message_id });
-    return `ids:${ids.length}`;
+    return {
+      outcome: `ids:${ids.length}`,
+      event: ids.length > 0 ? "emoji.lookup" : "emoji.empty",
+      level: "INFO",
+      fields: { ...base, count: ids.length },
+    };
   }
 
   const post = update.channel_post;
   if (post) {
-    // Both bots administer the log channel, so every line this Worker posts
-    // there comes straight back as a channel_post -- to BOTH of them. Handling
-    // it writes two more rows about a message we just wrote, and if channel
-    // handling ever grows a path that logs an ERROR, that is a feedback loop
-    // fed by its own output. Found by watching real traffic, not by reasoning.
     const logChat = normalizeChatId(logChatId);
     if (logChat && (String(post.chat.id) === logChat
         || (post.chat.username && logChat.toLowerCase() === `@${post.chat.username.toLowerCase()}`))) {
-      return LOG_ECHO;
+      return { outcome: LOG_ECHO, event: "log.echo", level: "INFO", fields: {} };
     }
-    // A channel post has no sender to authorise, so the channel itself must be
-    // listed. Answering ANY channel let whoever made the bot an admin of their
-    // own channel push messages, with a title they chose, to every operator
-    // admin. Unset means "no channel", never "every channel".
-    if (!channels.has(String(post.chat.id))) return "channel:not-allowed";
+    const chFields: Record<string, unknown> = { chat_id: post.chat.id };
+    if (post.chat.username) chFields.chat_username = post.chat.username;
+    if (!channels.has(String(post.chat.id))) {
+      return {
+        outcome: "channel:not-allowed",
+        event: "channel.not_allowed",
+        level: "INFO",
+        fields: chFields,
+      };
+    }
     const ids = extractCustomEmojiIds(post);
-    if (ids.length === 0) return "channel:none";
-    // Channel posts have no sender to authorise, so the answer goes to the
-    // admins rather than back into the channel.
+    if (ids.length === 0) {
+      return { outcome: "channel:none", event: "channel.none", level: "INFO", fields: chFields };
+    }
     const title = escapeHtml(post.chat.title ?? "");
     for (const admin of admins) {
       await reply(tg, admin, ids, { header: `From channel <b>${title}</b>:` });
     }
-    return `channel:${ids.length}`;
+    return {
+      outcome: `channel:${ids.length}`,
+      event: "channel.forwarded",
+      level: "INFO",
+      fields: { ...chFields, count: ids.length, admins: admins.size },
+    };
   }
-  return "ignored";
+
+  return { outcome: "ignored", event: "webhook.ignored", level: "INFO", fields: {} };
 }
 
-/**
- * A title long enough to matter is a bug upstream, not something to render.
- * Cut it rather than let one pack push a whole announcement over the limit.
- */
+/** Backwards-compatible wrapper returning only the short outcome string. */
+export async function handleUpdate(tg: Telegram, update: TgUpdate,
+                                   admins: Set<number>,
+                                   logChatId?: string,
+                                   channels: Set<string> = new Set()): Promise<string> {
+  const res = await handleUpdateDetailed(tg, update, admins, logChatId, channels);
+  return res.outcome;
+}
+
 const TITLE_LIMIT = 200;
 
-/**
- * Cut raw text to at most `max` UTF-16 units -- what Telegram counts.
- *
- * Applied to the text BEFORE it is escaped, because cutting escaped HTML can
- * leave half an entity (`&am`) behind, which Telegram either renders raw or
- * rejects. The surrogate check keeps the cut off the middle of an astral
- * emoji: an emoji costs two units, so a limit landing inside one would emit a
- * lone surrogate, which is not valid text at all.
- */
 function clampText(s: string, max: number): string {
   if (s.length <= max) return s;
   return s.slice(0, /[\uD800-\uDBFF]/.test(s[max - 1]) ? max - 1 : max);
 }
 
-/**
- * The announcement(s) the local builder asks this Worker to post.
- *
- * Returns a LIST for the same reason renderIdMessages does: the coin rebuild
- * announces its whole family in one call (30+ packs today) and a collector run
- * can publish more, so a single message would eventually hit the 4096-character
- * limit and Telegram would reject the entire announcement -- losing every link,
- * not just the overflow. Packs are never split mid-entry: a half-written
- * t.me/addemoji link is worse than a second message.
- */
+/** Render one or more HTML announcement messages staying under Telegram's limit. */
 export function renderAnnouncement(req: PublishRequest): string[] {
   const blocks: string[] = [];
   const list = req.style === "list";
-  // Bounded here, not only at the /publish gate: the loop below splits BETWEEN
-  // blocks, so whatever one block holds goes out as one message. A 5000-
-  // character note used to become exactly that -- a 5000-character sendMessage
-  // Telegram rejects. Every block has to fit before the loop can guarantee
-  // anything.
   const note = clampText(String(req.note ?? ""), TEXT_LIMIT);
-  // A blank standalone note is rejected by Telegram before any pack can send.
   if (note.trim()) blocks.push(escapeHtml(note));
   for (const p of req.packs) {
     const title = escapeHtml(clampText(String(p.title ?? p.name), TITLE_LIMIT));
-    // Escaped at the sink. The validator keeps this a number, but this
-    // function is exported and a string `count` used to land in the HTML
-    // Telegram parses without ever passing an escape.
-    const count = p.count !== undefined ? ` — ${escapeHtml(String(p.count))}` : "";
-    // addemoji is the install link for a custom-emoji set.
+    const count = p.count !== undefined ? ` (${escapeHtml(String(p.count))})` : "";
     const url = `https://t.me/addemoji/${encodeURIComponent(p.name)}`;
     blocks.push(list ? `${title}. ${url}`
                      : `✅ <b>${title}</b>${count}\n${url}`);
@@ -258,14 +254,7 @@ export function renderAnnouncement(req: PublishRequest): string[] {
   return out;
 }
 
-/**
- * Post the announcement and return every message id.
- *
- * Not transactional, and cannot be: if part 2 fails after part 1 landed, the
- * caller's `state["sent"]` has not recorded the pack, so a re-run announces it
- * again. That is the deliberate trade -- a duplicate link is visible and
- * harmless, a silently missing one is not.
- */
+/** Post the announcement to the configured channel and return every message ID. */
 export async function announce(tg: Telegram, chatId: number | string,
                                req: PublishRequest): Promise<number[]> {
   const ids: number[] = [];

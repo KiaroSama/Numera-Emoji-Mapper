@@ -22,8 +22,8 @@
 | Publication reports `OS lock acquisition failed: ...` | The error detail distinguishes a held lease from another filesystem or I/O failure. A lease owner releases it explicitly or when its owning handles close; a surviving owned child can still hold it. | If the error reports a held lease, let the owning process tree finish, then re-run the same command; there is no age-based reclamation delay. If it reports a filesystem or I/O condition, resolve that condition before retrying. Do not delete or replace the lock file to bypass ownership. |
 | `the pending replacement … was recorded against map A, not this run's map B` | A `verify_logos --fix` was interrupted; its intent is bound to the exact `--map`/`--state` it started against. | Re-run with the **original** `--map`/`--state` so it can be resolved, and inspect the retained intent/source evidence if recovery refuses. Do not delete unresolved intent as a shortcut. |
 | `… exists but its first sticker is not <x>.png; refusing to adopt` | A set of that name exists but this run did not create it (leftover family, or someone else's). Existence is not identity. | Rename the family, or delete the stale set, then re-run. |
-| `position N could not be examined …` from `build-collection` | A live sticker could not be downloaded or hashed, so the publisher cannot tell whether it is one of ours. Guessing "not ours" is what publishes a second copy. | Usually transient — re-run. If it repeats on **video or animated** sets, ffmpeg is off PATH: content hashing needs it, and without it every such sticker is unexaminable. Install ffmpeg (see [§3 Setup](guide-start.md#3-setup-one-time)). |
-| `Bad Request: wrong file type` on an **animated** item | Telegram's **uploader** refuses a subtract mask (`masksProperties[].mode == "s"`); its **player** renders one happily. So a sticker can be live in a published pack for years and still be refused when you upload the same bytes -- proven by downloading one from a live pack and sending it straight back untouched. Add masks (`"a"`) are fine. Nothing local can see it: the file is valid gzip, valid Lottie, 512x512, in-spec fps and duration. | `validate_tgs` now refuses it at ingest and names the layer, so this should no longer reach a publish. If it does, the publisher records it as a **skip** with the reason rather than retrying it on every future run. The only repair is re-exporting the animation without that mask, which changes the artwork -- an owner decision, never automatic. |
+| `position N could not be examined …` from `build-collection` | A live sticker could not be downloaded or hashed, so the publisher cannot tell whether it is one of ours. Guessing "not ours" is what publishes a second copy. | Usually transient: re-run. If it repeats on **video or animated** sets, ffmpeg is off PATH: content hashing needs it, and without it every such sticker is unexaminable. Install ffmpeg (see [§3 Setup](guide-start.md#3-setup-one-time)). |
+| `Bad Request: wrong file type` on an **animated** item | Telegram's **uploader** refuses a subtract mask (`masksProperties[].mode == "s"`); its **player** renders one happily. So a sticker can be live in a published pack for years and still be refused when you upload the same bytes: proven by downloading one from a live pack and sending it straight back untouched. Add masks (`"a"`) are fine. Nothing local can see it: the file is valid gzip, valid Lottie, 512x512, in-spec fps and duration. | `validate_tgs` now refuses it at ingest and names the layer, so this should no longer reach a publish. If it does, the publisher records it as a **skip** with the reason rather than retrying it on every future run. The only repair is re-exporting the animation without that mask, which changes the artwork: an owner decision, never automatic. |
 | CI red on push | A Rust, browser, package, inventory or Worker check failed. | `gh run view <id> --log-failed`; reproduce the failing job's exact command. Use the guarded Rust commands in [tests/README.md](../tests/README.md); do not bypass the runner. |
 | A Python/NumPy import error appears during ordinary operation | A retired helper was launched instead of the standalone application. | Use the root `numera-emoji` executable. Native coin remapping needs no NumPy or Python installation. |
 
@@ -54,7 +54,7 @@ Only to Telegram, via your bots. `collection/`, `logs/`, `.env`, `secrets.md`
 stay local and are gitignored.
 
 **Q: Can one set hold both static and animated emoji?**
-Yes — since Bot API 7.2 (March 2024) a single custom-emoji set may mix static,
+Yes: since Bot API 7.2 (March 2024) a single custom-emoji set may mix static,
 video and animated stickers (each `InputSticker` carries its own `format`;
 verified live). `build-collection` still splits into `s`/`v`/`a` sets by default
 for organization, but the static brand logo is added as the first emoji of every
@@ -64,16 +64,16 @@ set regardless of the set's format.
 
 ## 23. Glossary
 
-- **custom_emoji_id** — Telegram's id for a premium emoji; what consumers store.
-- **file_unique_id** — stable per-sticker id used for fast pre-dedup.
-- **content_key** — our normalized content hash; the catalog primary key.
-- **dHash / perceptual hash** — 64-bit fingerprint of an image's gradient; close
+- **custom_emoji_id**: Telegram's id for a premium emoji; what consumers store.
+- **file_unique_id**: stable per-sticker id used for fast pre-dedup.
+- **content_key**: our normalized content hash; the catalog primary key.
+- **dHash / perceptual hash**: 64-bit fingerprint of an image's gradient; close
   Hamming distance ≈ visually similar.
-- **TGS** — gzip-compressed Lottie JSON = an animated sticker/emoji.
-- **set / pack** — a Telegram sticker set (≤200 custom emoji).
-- **plan** — the append-only list of items queued for a pack family; they upload in the panel's current order.
-- **included flag** — per-item publish toggle set by the Curate panel.
-- **drift** — when live sticker order ≠ assumed order, scrambling a position map.
+- **TGS**: gzip-compressed Lottie JSON = an animated sticker/emoji.
+- **set / pack**: a Telegram sticker set (≤200 custom emoji).
+- **plan**: the append-only list of items queued for a pack family; they upload in the panel's current order.
+- **included flag**: per-item publish toggle set by the Curate panel.
+- **drift**: when live sticker order ≠ assumed order, scrambling a position map.
 
 ---
 
@@ -119,12 +119,12 @@ added, counts as the first of those 200).
 | `coins/keywords.csv` | **yes** | ticker → name/keywords. |
 | `coins/currency-emoji-inventory.md` | no | Inventory source. Names live custom-emoji ids, so it stays local. |
 | `coins/currency-emoji-inventory.filled.md` | no | Generated, id-filled inventory. |
-| `coins/rebuild_dedup_state.json` | no | Live coin pack set names/order. Written by `coin-rebuild` **and** by the providers when they top the family up — they add their own `provider_in_flight` intent and `provider_added` tally beside the rebuild's keys, under the same pack-family lock. |
+| `coins/rebuild_dedup_state.json` | no | Live coin pack set names/order. Written by `coin-rebuild` **and** by the providers when they top the family up: they add their own `provider_in_flight` intent and `provider_added` tally beside the rebuild's keys, under the same pack-family lock. |
 | `coins/rebuild_dedup_plan.json` | no | Frozen coin upload plan. |
 | `coins/remap_live_cache.json` | no | remap signature cache. |
 | `coins/ticker_to_id.<date>.bak.json` | no | Dated snapshot taken before a remap. **This is the revert target.** |
 | `coins/unresolved_logos.json` | no | Tickers deliberately left unmapped because their source PNG is not their own logo. |
-| `coins/ticker_to_id.prebroken.json` | no | Historic, and **not** a usable restore point despite the name — measured against the live stickers it scores the same as the map it was supposed to repair. |
+| `coins/ticker_to_id.prebroken.json` | no | Historic, and **not** a usable restore point despite the name: measured against the live stickers it scores the same as the map it was supposed to repair. |
 | `logs/*.log` | no | Per-run UTC logs. |
 | `state_<base>.json` | no | `build_pack` resume state. |
 
@@ -149,91 +149,91 @@ These are historical records found with real data. Implementation filenames and
 Python/library names below describe the fix at that checkpoint, not current
 installation commands. The corresponding native guards must not regress.
 
-1. **Scrambled ticker→id map** — position-based mapping shifted by skipped
+1. **Scrambled ticker→id map**: position-based mapping shifted by skipped
    uploads. Fix: content-based `remap_ids.py`; builds now record actual upload
    order. (§17)
-2. **Wrong source logo (e.g. Solana)** — a ticker collision pulled a different
+2. **Wrong source logo (e.g. Solana)**: a ticker collision pulled a different
    token's logo. Fix: `verify_logos --fix --only`, plus replacing the source
    asset. (§7.2)
-3. **64-bit phash overflow** — unsigned dHash exceeded SQLite's signed range and
+3. **64-bit phash overflow**: unsigned dHash exceeded SQLite's signed range and
    dropped rows. Fix: signed storage + restore. (§13.4)
-4. **Over-aggressive dedup** — perceptual merge (threshold 5) collapsed 80
+4. **Over-aggressive dedup**: perceptual merge (threshold 5) collapsed 80
    distinct emoji to 70. Fix: near-dup merging **off by default**. (§16.2)
-5. **Blank emoji from gradient SVG** — the old svglib backend could not paint
+5. **Blank emoji from gradient SVG**: the old svglib backend could not paint
    gradients and returned a fully transparent image. Fix: blank detection +
    raster fallback, then replacing the backend with resvg, which renders them.
    (§15.1)
-6. **reportlab 3.12 wheel** — `reportlab<4` had no cp312 wheel, which pinned the
+6. **reportlab 3.12 wheel**: `reportlab<4` had no cp312 wheel, which pinned the
    whole project to Python 3.11. Fix: the reportlab/svglib stack was removed.
    (§3)
-7. **Token in logs** — urllib3 DEBUG logged the bot-token URL. Fix: silence those
+7. **Token in logs**: urllib3 DEBUG logged the bot-token URL. Fix: silence those
    loggers + `redact()`. (§26)
-8. **Panel image 404** — `/img/<key>` wasn't URL-decoded. Fix: `unquote`. (§20)
-9. **Resume duplicate** — positional resume could re-upload after a skip. Fix:
+8. **Panel image 404**: `/img/<key>` wasn't URL-decoded. Fix: `unquote`. (§20)
+9. **Resume duplicate**: positional resume could re-upload after a skip. Fix:
    dedup by the per-item committed `uploaded` flag + persisted `skipped`. (§6.4)
-10. **Two publishers, one lock** — the pack-family lock decided ownership by
+10. **Two publishers, one lock**: the pack-family lock decided ownership by
     reading a file, comparing a token and *unlinking* it, so its own stale-lock
     recovery could seat two processes at once; two real processes held one lock
     for 1.54 s. Fix: an OS-level lock (`msvcrt.locking` / `flock`) held for the
     whole critical section, and the lock file is never unlinked. (§12.5)
-11. **A stranger's picture given our identity** — recovery accepted the single
+11. **A stranger's picture given our identity**: recovery accepted the single
     nearest candidate by perceptual hash, and dHash is a *grayscale structure*
     hash: an opaque red square and an opaque blue one are zero apart. Fix: a
     perceptual match may only NOMINATE; content verification decides, and
     "more than one" and "could not examine" stay distinct from "no match".
     (§13.6)
-12. **Preflight claimed an acceptance it never got** — the counter counted
+12. **Preflight claimed an acceptance it never got**: the counter counted
     attempts, so a run in which every check failed at the transport printed
     "all accepted" and exited 0. Fix: four counters, and an unreachable
     Telegram is its own outcome. (§12.5)
-13. **Alpha applied twice** — `fit_100` pasted the image using itself as the
+13. **Alpha applied twice**: `fit_100` pasted the image using itself as the
     mask, which composites against the transparent canvas beneath: colour came
     back multiplied by alpha and alpha squared. `(255,0,0,128)` fitted to
     `(128,0,0,64)`. Fix: an unmasked copy onto a fully transparent
     destination. (§14.1)
-14. **Video identity ignored alpha, and disagreed with itself** — the default
+14. **Video identity ignored alpha, and disagreed with itself**: the default
     `vp9` decoder drops the alpha layer in silence, so two clips differing only
     in opacity shared one content key; and the two fingerprint APIs sampled
     differently, so one clip had two hashes. Fix: one `video_decode` module
     that picks the decoder from the probed codec. Existing rows are migrated
     deliberately by `scripts/identity_repair.py`, never implicitly. (§14.2,
     §13.6)
-15. **A stale tab spoke for the whole catalog** — `/api/save` carries the full
+15. **A stale tab spoke for the whole catalog**: `/api/save` carries the full
     selection, so a page opened before another change silently re-included rows
     it had never seen, and answered `{"ok": true}`. Fix: the request states its
     scope; a page too old to say gets 409. (§20)
-16. **A Lottie timeline that was not a number** — `fr = NaN` passed
+16. **A Lottie timeline that was not a number**: `fr = NaN` passed
     `validate_tgs`, because every comparison against NaN is False. Fix: an
     explicit `math.isfinite` check on `fr`/`ip`/`op`. (§14.3)
-17. **Video identity degraded open, and cached the degradation** — a missing
+17. **Video identity degraded open, and cached the degradation**: a missing
     `libvpx-vp9`, a failed codec probe and a container naming no codec all
     answered "no decoder needed", which drops VP9's separate alpha layer; one
     transient probe error was then cached, so every later decode of that file
     in the process lost its alpha silently. Two clips differing only in opacity
     share one key, and `Catalog.add` merges them and deletes the file it merged
-    away. Fix: `UndecodableVideo` — establish fidelity or refuse. (§14.2)
-18. **A video was compared at one frame** — two clips sharing ten opening frames
+    away. Fix: `UndecodableVideo`: establish fidelity or refuse. (§14.2)
+18. **A video was compared at one frame**: two clips sharing ten opening frames
     compared equal, and so did two differing in exactly one frame. Fix: walk the
     timeline at 30 fps, and stop treating content-key equality as proof for
     video. (§14.3)
-19. **A migration moved three tables and stopped** — the owner's state file was
+19. **A migration moved three tables and stopped**: the owner's state file was
     left naming 51 keys the catalog no longer had, which `reconcile_set` reads
     as a reordered pack; the derived hashes stayed stale; the archived filenames
     kept the old key. Fix: one versioned migration over every durable reference,
     with a journal. (§13.6)
-20. **The migration backup was not WAL-safe** — `copy2` of the `.db` alone
+20. **The migration backup was not WAL-safe**: `copy2` of the `.db` alone
     opened as a database with `no such table: items`. Fix: SQLite's online
     backup API, verified before anything is changed. (§13.6)
-21. **One verified candidate beat an unreadable rival** — with two candidates
+21. **One verified candidate beat an unreadable rival**: with two candidates
     matching, deleting one candidate's FILE made the resolver answer "unique"
     with the survivor. Removing evidence must not promote a guess. (§13.6)
 22. **The panel confused "a save is in flight" with "there is unsaved work"** —
     an acknowledgement of an older snapshot cleared the dirty state, said
     "Saved" and let the tab close on newer ticks. (§20)
-23. **A refusal retrying could not fix was retried forever** — and the
+23. **A refusal retrying could not fix was retried forever**: and the
     five-second heartbeat walked past the backoff, while a fetch that never
     resolved claimed the queue for the life of the page. (§20)
-24. **A Worker error could echo a bot token** — every Bot API URL embeds it and
+24. **A Worker error could echo a bot token**: every Bot API URL embeds it and
     a transport failure names the URL, which reached the HTTP 502 body and every
     log sink. (§12.9)
 

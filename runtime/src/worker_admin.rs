@@ -236,6 +236,7 @@ fn diagnostic_key_label(name: &str) -> &'static str {
         "PUBLISH_SECRET" => "PUBLISH_SECRET",
         "GENERAL_WEBHOOK_SECRET" => "GENERAL_WEBHOOK_SECRET",
         "COIN_WEBHOOK_SECRET" => "COIN_WEBHOOK_SECRET",
+        "BOT_ALLOWED_CHANNEL_IDS" => "BOT_ALLOWED_CHANNEL_IDS",
         _ => "[redacted]",
     }
 }
@@ -320,6 +321,16 @@ fn secret_plan(env: &Environment, report: &mut impl FnMut(&str)) -> Result<Vec<S
         } else {
             secret.generated = false;
         }
+    }
+    let allowed_channels = env.get("BOT_ALLOWED_CHANNEL_IDS").trim().to_owned();
+    if !allowed_channels.is_empty() {
+        plan.push(Secret {
+            name: "BOT_ALLOWED_CHANNEL_IDS",
+            env_key: "BOT_ALLOWED_CHANNEL_IDS",
+            value: allowed_channels,
+            source: "BOT_ALLOWED_CHANNEL_IDS".into(),
+            generated: false,
+        });
     }
     Ok(plan)
 }

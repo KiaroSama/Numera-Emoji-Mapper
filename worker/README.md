@@ -1,8 +1,8 @@
-# Numera Emoji Mapper bots — Cloudflare Worker
+# Numera Emoji Mapper bots (Cloudflare Worker)
 
-Both bots in one Worker, answering only the admins you name, plus the endpoint
-the local builder calls so a finished pack is announced **by the bot** in your
-channel.
+Both bots run inside one Worker, answer only the admins you list, and expose the
+announcement endpoint that the local Rust publisher calls when a finished pack
+is ready for your channel.
 
 ```
 local build (Rust)  ──POST /publish (bearer)──►  Worker  ──Bot API──►  channel
@@ -13,7 +13,7 @@ local build (Rust)  ──POST /publish (bearer)──►  Worker  ──Bot API
 
 ## Read this before deploying
 
-**A Telegram bot token can use `getUpdates` (polling) or a webhook — never
+**A Telegram bot token can use `getUpdates` (polling) or a webhook: never
 both.** The moment you register a webhook for a token, `numera-emoji emoji-bot` stops
 receiving anything on it. That is not a bug and it is not this Worker's choice;
 it is how the Bot API works. Run one or the other per token.
@@ -31,34 +31,35 @@ and sends messages.
 |---|---|---|
 | `POST /tg/general` | `X-Telegram-Bot-Api-Secret-Token` | Webhook for the general bot |
 | `POST /tg/coin` | `X-Telegram-Bot-Api-Secret-Token` | Webhook for the coin bot |
-| `POST /publish` | `Authorization: Bearer …` | Announce finished packs in the channel |
-| `GET /health` | none | Liveness + whether the log store is bound. No secrets. |
+| `POST /publish` | `Authorization: Bearer …` | Announce finished packs in the Pack Links channel |
+| `POST /log-test` | `Authorization: Bearer …` | Send a live `🟢 Log channel test` entry to `LOG_CHAT_ID` |
+| `GET /health` | none | Liveness plus boolean `log_db`, `log_channel`, and `pack_links` readiness. No secrets. |
 
 Each bot has its **own** path and its **own** webhook secret. One shared secret
 would mean a leak from either bot could forge updates for the other.
 
-The `/publish` Bearer scheme follows HTTP authentication syntax: scheme names
+The `/publish` and `/log-test` Bearer scheme follows HTTP authentication syntax: scheme names
 are case-insensitive and permit one or more separating spaces. The secret itself
 must match exactly. An authentication failure returns a `WWW-Authenticate: Bearer`
 challenge with its 401 response.
 
 ## The two directions
 
-Send the bot **premium emoji** and it replies with their ids. Send it **ids**
-and it replies with the emoji — one per line, comma-separated, `, `-separated,
-or a single id.
+Send the bot **premium emoji** and it replies with their IDs. Send it **IDs**
+and it replies with the emoji: one per line, comma-separated, `, `-separated,
+or a single ID.
 
-The whole message has to be ids and separators for the reverse direction to
-trigger. A long number inside a sentence is far more likely to be a chat id or
+The whole message has to be IDs and separators for the reverse direction to
+trigger. A long number inside a sentence is far more likely to be a chat ID or
 a timestamp than something to look up.
 
-Ids are resolved with `getCustomEmojiStickers` before anything is rendered.
-A `<tg-emoji>` tag falls back to its placeholder glyph when the id does not
-exist, so rendering an unchecked id makes a typo indistinguishable from a hit;
+IDs are resolved with `getCustomEmojiStickers` before anything is rendered.
+A `<tg-emoji>` tag falls back to its placeholder glyph when the ID does not
+exist, so rendering an unchecked ID makes a typo indistinguishable from a hit;
 anything Telegram cannot resolve is named instead. Resolving also yields each
 sticker's own emoji, which is the tag's fallback text: what shows up wherever
-the custom emoji cannot be rendered - notification previews, copied-out text,
-older clients - and better there than a column of identical stars. Viewing
+the custom emoji cannot be rendered (notification previews, copied text,
+older clients), better than a column of identical stars. Viewing
 custom emoji does not require Premium; only sending them does.
 
 The Rust poller carries the same ID-list parsing and typed-ID reply behavior.
@@ -66,76 +67,83 @@ Shared contract fixtures keep its output aligned with the Worker.
 
 ## Logs
 
-The channel line puts the bot tag on its own first line, then a level emoji and
-the event:
+The Telegram log channel uses a structured HTML layout with six colored circle
+orbs (`🔴🟠🟡🟢🔵🟣`), structured `key: <code>value</code>` fields, folded
+`(@username)` annotations on numeric user and chat IDs, and a UTC footer:
 
 ```
-[general]
-❌ ERROR webhook
-update 42: sendMessage failed (400): chat not found
-2026-08-19 00:45:12 UTC
+🟢 Pack announced
+bot: general
+packs: 1
+messages: 1
+style: cards
+pack_names: sample_by_bot
+🕒 2026-11-27 12:00:00 UTC
 ```
 
-Every line starts with the bot that produced it — `[general]` or `[coin]` —
-because both bots share this Worker, one log table and one channel, and a line
-that does not say which one wrote it is not worth keeping.
+```
+🔴 ERROR · webhook
+bot: general
+update_id: 42
+detail: update 42: sendMessage failed (400): chat not found
+🕒 2026-11-27 12:00:00 UTC
+```
+
+Each orb maps to a distinct state:
+- `🔴` errors and critical failures (`ERROR`, `CRITICAL`, `misconfigured`)
+- `🟠` warnings and access denials (`WARNING`, `access.denied`)
+- `🟢` pack announcements, log tests, and recovery (`publish`, `log_channel.test`)
+- `🔵` emoji ID extraction and full reverse lookups (`emoji.lookup`, `emoji.reverse_lookup`)
+- `🟡` greetings and partial lookups with unknown IDs (`bot.greeted`, `emoji.partial_lookup`)
+- `🟣` allowed channel forwards and configuration events (`channel.forwarded`, `settings.changed`)
+
+Every entry names the bot first (`bot: general` or `bot: coin`) because both
+bots share this Worker, one log table, and one log channel. User-authored text
+fields (`text`, `caption`, `message`, etc.) are never forwarded to the channel.
 
 The channel is capped at **12 messages a minute**. Over budget it drops and
-*counts* rather than queueing — a queue inside a Worker isolate outlives the
-request it belongs to and loses the messages anyway, just later and holding the
-memory — and the dropped count rides on the next message that gets through, so
-a burst is visible instead of silently swallowed. That budget is per isolate,
+*counts* rather than queueing (a queue inside a Worker isolate outlives the
+request it belongs to and loses the messages anyway), and the dropped count
+rides on the next message that gets through. That budget is per isolate,
 not global: it bounds one isolate handling a burst of redeliveries, not a fleet.
 
-Long details are shortened without splitting emoji. The UTC timestamp and any
-suppressed count remain visible even when the line reaches its length cap. A
-failed log sink also writes a timestamped, redacted diagnostic to the console.
+Field values are capped at 80 characters (400 characters for `error`, `detail`,
+and `reason`) and messages at 1,500 characters, shortened cleanly without
+splitting surrogate pairs or HTML tags. The UTC timestamp and any suppressed
+count remain visible even when a field hits its length cap. A failed log sink
+also writes a timestamped, redacted diagnostic to the console.
 
-`LOG_CHAT_ID` accepts a channel id copied bare out of the Telegram UI
-(`4211401345`) and adds the `-100` prefix the Bot API needs. Without that, the
-failure is a bare "chat not found" far away from the setting that caused it.
+`LOG_CHAT_ID`, `PACK_LINKS_CHAT_ID`, and `BOT_ALLOWED_CHANNEL_IDS` all accept a
+bare positive channel ID copied from the Telegram UI (`4211401345`) and add the
+`-100` prefix the Bot API requires.
 
 **A channel post from the log channel is ignored.** Both bots administer it, so
-every line posted there returns as a `channel_post` to both, and handling it
-wrote another row about a message we had just written. Not a loop today — a
-plain-text log line carries no custom emoji, so the handler returns before
-sending — but it becomes one the moment channel handling grows a path that logs
-an ERROR.
+every line posted there returns as a `channel_post` to both; echo detection uses
+the same normalized channel-ID matching (and case-insensitive `@username`
+matching) to suppress feedback loops.
 
-Echo detection uses the same numeric channel-ID normalization as outgoing logs.
-When `LOG_CHAT_ID` is a username, it matches the incoming chat's username without
-case sensitivity.
-
-**D1** stores **warnings, errors and publishes only** — the routine
-`update N: …` line of every handled message, 91% of the old rows, goes to
-`console.log` and so to Workers Logs (`[observability]` in `wrangler.toml`),
-never to D1. Unauthorised webhook hits are not stored either: D1's free
-allowance (100 000 rows written, 5 000 000 read, per day) is shared by the whole
-account, and a scanner must not be able to spend it. A call can override the
-default with `store: true/false`.
+**D1** stores **warnings, errors, and publishes only**. Routine handled updates
+go to `console.log` (Workers Logs via `[observability]` in `wrangler.toml`) and,
+when important, to the Telegram log channel without spending D1 writes.
+Unauthenticated webhook-secret mismatches stay console-only (`store: false`,
+`toChannel: false`) so external scanners cannot flood the log channel or exhaust
+the account's daily D1 write quota (100,000 rows written, 5,000,000 read per day).
 
 The table (`migrations/0002_lean_logs.sql`) has **no secondary index and no
-AUTOINCREMENT**, so one stored line costs **1 row written and 0 read** — it was
-4 and 2 (each index and `sqlite_sequence` added its own). It is capped at the
-**newest 5 000 rows**: once every 250 rows, keyed off the `last_row_id` the
-insert just returned (not a counter in the isolate, which would reset before it
-reached its threshold), one `DELETE … WHERE id <= ?` removes everything older.
-That is a range on the rowid, so it reads only the rows it deletes; the old
-byte budget summed every row with a window function instead. Ids keep rising
-because eviction never deletes the newest row. One line's detail is capped at
-2000 characters — a publish announcing 120 packs listed every name and cost
-~6 KB by itself.
+AUTOINCREMENT**, so one stored line costs **1 row written and 0 read**. It is
+capped at the **newest 5,000 rows**: once every 250 rows, keyed off the
+`last_row_id` the insert just returned, one `DELETE … WHERE id <= ?` removes
+older rows. Stored detail text is capped at 2,000 characters.
 
-**Channel** (`LOG_CHAT_ID`), errors only. Level-based routing with WARNING
-included was the obvious design and the wrong one: an unauthorised hit on a
-public webhook URL is a WARNING, and a scanner walking the internet would turn
-the channel into a firehose. Both bots must be administrators of it — each
-posts its own lines, so the poster matches the tag.
+**Channel** (`LOG_CHAT_ID`) receives warnings, errors, critical failures, and
+important business events (pack announcements, access denials, emoji lookups,
+greetings, allowed channel forwards, and `/log-test` checks). Both bots must be
+administrators of the channel so each posts its own lines.
 
 Logging can never take the bots down: every sink failure is swallowed and
 reported to `console`, which `wrangler tail` reads. `GET /health` reports
-`log_db`, so a missing binding is visible without waiting for a line that will
-never arrive.
+`log_db`, `log_channel`, and `pack_links` booleans so a missing binding or
+secret is visible without waiting for a missing message.
 
 ```bash
 npx wrangler d1 execute numera-emoji-mapper-logs --remote \
@@ -146,12 +154,12 @@ npx wrangler d1 execute numera-emoji-mapper-logs --remote \
 
 First deploy for a new operator, in order:
 
-1. `npx wrangler login` — once per machine, for your Cloudflare account.
+1. `npx wrangler login`: once per machine, for your Cloudflare account.
 2. `npx wrangler d1 create numera-emoji-mapper-logs`, then paste the printed
    `database_id` into `wrangler.toml`. The id there is the original
    installation's; a database belongs to one account.
 3. `npx wrangler d1 migrations apply numera-emoji-mapper-logs --remote`
-4. `numera-worker-admin secrets --env-file .env` from the repository root — the
+4. `numera-worker-admin secrets --env-file .env` from the repository root: the
    secrets from your local configuration (below).
 5. `npx wrangler deploy`
 6. `numera-worker-admin webhooks --base-url https://<your-worker>.workers.dev`
@@ -182,7 +190,7 @@ Two configuration details require care:
   `BOT_ALLOWED_USER_IDS`. The list fails closed, so a typo means the bots answer
   nobody and nothing tells you why.
 - `GENERAL_WEBHOOK_SECRET`, `COIN_WEBHOOK_SECRET` and `PUBLISH_SECRET` are
-  generated (32 random bytes) if `.env` has none — and written **back** to
+  generated (32 random bytes) if `.env` has none: and written **back** to
   `.env`, because a second run that minted different ones would break every
   webhook delivery's secret check.
 
@@ -199,13 +207,13 @@ wrangler secret put PACK_LINKS_CHAT_ID       # "@yourchannel" or "-100…"
 wrangler secret put BOT_ALLOWED_CHANNEL_IDS  # optional: "-100…,-100…"
 ```
 
-The channel is a secret rather than a `[vars]` entry — not because it is a
+The channel is a secret rather than a `[vars]` entry: not because it is a
 credential, but because `wrangler.toml` is committed and that would publish the
 channel name. Both arrive as `env.PACK_LINKS_CHAT_ID` at runtime, so it costs
 nothing.
 
 `ADMIN_USER_IDS` **fails closed**: unset, empty, or all-invalid means the bots
-answer nobody. That is deliberate — a misconfiguration must not open the bots to
+answer nobody. That is deliberate: a misconfiguration must not open the bots to
 everyone. Only plain positive integers are accepted, so `0x10`, `12.5` and `1e3`
 are ignored rather than silently coerced.
 
@@ -224,7 +232,7 @@ npx wrangler d1 migrations apply numera-emoji-mapper-logs --remote
 npx wrangler deploy
 ```
 
-Then point Telegram at it — one webhook per bot:
+Then point Telegram at it: one webhook per bot:
 
 ```sh
 numera-worker-admin webhooks --base-url https://<your-worker>.workers.dev
@@ -263,7 +271,7 @@ silently bypassing Worker routing.
 
 The duplicate guard does not move: `state["sent"]` is what stops a re-run
 announcing the same pack twice, and it holds whichever route sent it. A failed
-announcement is **not** recorded as sent, so the next run retries it — and
+announcement is **not** recorded as sent, so the next run retries it: and
 neither route retries a `sendMessage` internally, because it is not idempotent
 and has no dedup key, so a timeout after Telegram accepted the post cannot be
 told from one before it.
@@ -284,7 +292,7 @@ Body shape:
 ```
 
 `style` picks the layout. **`cards`** (default) gives each pack a bold title
-line with its link below — right for announcing one or two finished packs.
+line with its link below: right for announcing one or two finished packs.
 **`list`** is one line per pack, `title. url`, which is what a whole family of
 29 reads as; as cards it is three screens of scrolling. It is explicit rather
 than inferred from the pack count: the caller knows which it is announcing, and
@@ -300,25 +308,25 @@ the handler instead of answering 400; a misspelt `"genreal"` fell through the
 `=== "general" ? … : "coin"` default and announced a general pack from the coin
 bot's identity; and a string `count` reached the HTML Telegram parses.
 
-Anything below is **400**, with a reason naming the field and the rule — and
+Anything below is **400**, with a reason naming the field and the rule: and
 nothing else happens: no token lookup, no message built, not even a log line
 (which would itself be a `sendMessage` to the log channel).
 
 | Field | Rule |
 |---|---|
-| the body | must be a JSON object — `null`, an array and a bare string are not |
+| the body | must be a JSON object: `null`, an array and a bare string are not |
 | `packs` | a non-empty array, at most **500** entries |
 | `packs[i]` | must be an object |
-| `packs[i].name` | **required**, `[A-Za-z0-9_]{1,64}` — it becomes a public `t.me/addemoji/` link |
+| `packs[i].name` | **required**, `[A-Za-z0-9_]{1,64}`: it becomes a public `t.me/addemoji/` link |
 | `packs[i].title` / `.format` | absent, or a string of at most 4096 characters |
-| `packs[i].count` | absent, or a non-negative safe integer — never a string |
+| `packs[i].count` | absent, or a non-negative safe integer: never a string |
 | `bot` | absent (→ coin, the documented default), `"general"` or `"coin"` |
 | `style` | absent (→ cards), `"cards"` or `"list"` |
 | `note` | absent, or a string of at most 4096 characters |
 
 `null` is refused rather than read as "unset": every caller sends real values, so
 a `null` is a bug upstream and a loud 400 finds it. The `note` cap matters
-because the note is one block and the renderer only splits *between* blocks — an
+because the note is one block and the renderer only splits *between* blocks: an
 over-long one used to leave as a single message Telegram rejects, so half the
 announcement landed and the rest was dropped mid-send. Empty or whitespace-only
 notes are omitted so they cannot become a standalone empty Telegram message.
@@ -340,7 +348,7 @@ nobody. From the repository root,
 in git-ignored `worker/.dev.vars` for `npm run dev`, without printing values.
 Confirm this mode in the built administration tool before using the new interface.
 
-The tests stub `fetch`, so nothing in them can reach Telegram — the same rule
+The tests stub `fetch`, so nothing in them can reach Telegram: the same rule
 the guarded Rust suite enforces, for the same reason: a historical test once reached live
 Telegram and replaced a sticker in a published pack.
 
@@ -354,7 +362,7 @@ against a local in-memory database.
 Every Bot API request URL embeds the bot token (`/bot<token>/sendMessage`), and
 a transport failure names the URL it was attempting. That message travelled out
 of `Telegram.call`, through the publish handler's catch, into the HTTP 502 body
-**and** into every log sink — so a caller holding only the publish bearer could
+**and** into every log sink: so a caller holding only the publish bearer could
 be handed the bot token instead.
 
 `src/redact.ts` is the one redactor, and everything on its way out goes through
@@ -362,7 +370,7 @@ it. Three independent rules, because each covers a hole the others do not:
 
 | rule | catches |
 |---|---|
-| `/bot…/` URL shape | a token this Worker never had in `env` — another bot, a stale deployment, a token quoted inside an upstream description |
+| `/bot…/` URL shape | a token this Worker never had in `env`: another bot, a stale deployment, a token quoted inside an upstream description |
 | bare `digits:secret` shape | a token outside a URL |
 | the configured `env` literals | a secret with no recognisable shape, such as a webhook secret echoed back |
 
@@ -370,14 +378,14 @@ The credential env values are listed explicitly rather than derived by scanning
 `env`: a binding added later must be considered rather than assumed harmless,
 and a chat id or api base must stay readable in the messages that need it.
 
-`errText` also flattens an error's `cause` chain before redacting — `String(err)`
+`errText` also flattens an error's `cause` chain before redacting: `String(err)`
 hides a cause and `JSON.stringify` of an Error yields `{}`, so an unsanitised
 cause is both invisible and liable to surface wherever something serialises it
 more thoroughly. `logging.ts` keeps its own length cap, which is a storage-budget
 concern and nothing to do with credentials.
 
 `test/redaction.test.ts` asserts that a synthetic, correctly-shaped token appears
-in no response body, no log line and no nested cause — while a successful
+in no response body, no log line and no nested cause: while a successful
 publish and an ordinary refusal still read normally.
 
 ## Behaviour worth knowing
@@ -390,7 +398,7 @@ publish and an ordinary refusal still read normally.
   missing message IDs. A malformed emoji lookup is logged as a failure instead
   of telling the user that their IDs are unknown. Neither path retries the API
   call internally.
-- **A stranger gets one reply in private and silence in a group** — answering in
+- **A stranger gets one reply in private and silence in a group**: answering in
   groups would make the bot a spam vector.
 - **`custom_emoji_id` is shape-checked** before it reaches the HTML that
   Telegram parses. It is inbound data interpolated into a `tg-emoji` attribute;

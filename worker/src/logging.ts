@@ -1,140 +1,170 @@
 /**
- * Where this Worker's log lines go: a D1 table held under a row cap, and --
- * for the ones worth interrupting someone for -- a Telegram channel.
+ * Worker log sinks: a row-capped D1 table for durable history and a Telegram
+ * HTML log channel modeled on Numera Group Bot's structured six-orb layout.
  *
- * Two rules shape everything here:
- *
- * 1. LOGGING MUST NEVER BREAK THE BOT. Every failure in this file is swallowed.
- *    A D1 outage or a misconfigured log channel must not turn a working reply
- *    into a dropped update, and it must not make the webhook return non-2xx --
- *    Telegram would redeliver, and the reply would be posted twice.
- * 2. EVERY LINE NAMES ITS BOT FIRST. Both bots share this Worker, this table
- *    and this channel; a line that does not say which one produced it is not
- *    worth storing.
+ * Logging never breaks bot replies or pack announcements. Every sink failure is
+ * caught and reported as a redacted console line so webhooks still return 2xx.
  */
 
 import { errText, redact as sanitise } from "./redact";
-import { Telegram } from "./telegram";
+import { escapeHtml, Telegram } from "./telegram";
 import type { BotName, Env } from "./types";
 
-/**
- * Row cap for the log table, oldest evicted first.
- *
- * A ROW count, not the byte budget it used to be. Holding a byte budget meant
- * summing every row's size with a window function -- a read of the whole table
- * each time it ran. A row count needs no read at all: the id the insert just
- * returned says how many rows sit below it. Only warnings, errors and publishes
- * are stored (see `store`), and one detail is capped at DETAIL_LIMIT, so this
- * is years of history in a few megabytes.
- */
-export const LOG_ROWS_CAP = 5000;
+/** Row cap for the D1 log table, oldest evicted first. */
+export const LOG_ROWS_CAP = 5_000;
+const EVICT_EVERY = 250;
+const DETAIL_LIMIT = 2_000;
 
-export type LogLevel = "INFO" | "WARNING" | "ERROR";
+export type LogLevel = "INFO" | "WARNING" | "ERROR" | "CRITICAL";
 
 export interface LogEntry {
   bot: BotName;
   level: LogLevel;
-  /** Short, stable, greppable. e.g. "webhook", "publish", "unauthorized". */
   event: string;
-  /** Free text. Never a token -- see redact(). */
   detail?: string;
-  /**
-   * Force channel delivery on or off. Default: ERROR only.
-   *
-   * Level-based routing with WARNING included was the obvious design and the
-   * wrong one: an unauthorised hit on a public webhook URL is a WARNING, and a
-   * scanner walking the internet would have turned the log channel into a
-   * firehose. The channel is for things a person must see.
-   */
+  /** Structured fields rendered as `key: <code>value</code>` in the channel. */
+  fields?: Record<string, unknown>;
+  /** Override channel delivery. Default: `isImportantLogEvent(level, event)`. */
   toChannel?: boolean;
-  /**
-   * Force storage in D1 on or off. Default: everything but INFO.
-   *
-   * D1's free allowance is per ACCOUNT, per day, and every project on the
-   * account draws on it. Routine INFO lines were 91% of the rows and nothing
-   * ever read them; console.log (and so Workers Logs) still carries them.
-   */
+  /** Override D1 storage. Default: warnings, errors, and critical entries. */
   store?: boolean;
 }
 
-/**
- * Delete every row older than the cap in one range on the rowid.
- *
- * Reads and writes only the rows it deletes -- no index to update (the table
- * has none) and no scan. Correct because ids only rise: the table is a plain
- * rowid table, a new row gets max(rowid)+1, and eviction never deletes the
- * newest row, so "lower id" still means "older".
- */
+const INSERT_SQL =
+  "INSERT INTO logs (ts, bot, level, event, detail) VALUES (?1, ?2, ?3, ?4, ?5)";
 const EVICT_SQL = "DELETE FROM logs WHERE id <= ?1";
 
-const INSERT_SQL =
-  "INSERT INTO logs (ts, bot, level, event, detail) VALUES (?1,?2,?3,?4,?5)";
+/**
+ * Business events routed to the Telegram log channel at INFO level so the
+ * operator sees pack announcements, bot usage, and test probes on their phone
+ * without flooding D1.
+ */
+export const IMPORTANT_LOG_EVENTS: ReadonlySet<string> = new Set([
+  "publish",
+  "access.denied",
+  "emoji.lookup",
+  "emoji.reverse_lookup",
+  "emoji.partial_lookup",
+  "bot.greeted",
+  "channel.forwarded",
+  "log_channel.test",
+  "bot.started",
+  "worker.configured",
+  "settings.changed",
+]);
+
+/** Human-readable titles for important INFO events in the log channel. */
+export const CHANNEL_EVENT_TITLES: Readonly<Record<string, string>> = {
+  publish: "Pack announced",
+  "access.denied": "Access denied",
+  "emoji.lookup": "Emoji IDs extracted",
+  "emoji.reverse_lookup": "Reverse ID lookup",
+  "emoji.partial_lookup": "Partial ID lookup",
+  "bot.greeted": "Bot greeted",
+  "channel.forwarded": "Channel emoji forwarded",
+  "log_channel.test": "Log channel test",
+  "bot.started": "Bot started",
+  "worker.configured": "Worker configured",
+  "settings.changed": "Settings changed",
+};
+
+const LEVEL_MARKER: Record<"WARNING" | "ERROR" | "CRITICAL", string> = {
+  WARNING: "🟠 WARNING",
+  ERROR: "🔴 ERROR",
+  CRITICAL: "🔴 CRITICAL",
+};
 
 /**
- * Run the eviction once every N rows, keyed off the row id the insert just
- * returned.
- *
- * Keyed off the ID rather than a counter in the isolate: a Worker isolate is
- * short-lived, so a per-isolate counter would reset before it ever reached its
- * threshold and the eviction would simply never run -- the table would grow
- * without bound. `last_row_id` is durable, monotonic and free (the insert
- * already returns it), so the cadence holds no matter how the isolates come
- * and go. Between runs the table may sit up to N rows over the cap.
+ * Pick one of the six circle orbs (`🔴🟠🟡🟢🔵🟣`) matching severity and action.
+ * Never emits satellite glyphs such as ❌, ⚠️, or ℹ️.
  */
-const EVICT_EVERY = 250;
+export function logChannelEmoji(level: LogLevel, event: string): string {
+  if (level === "ERROR" || level === "CRITICAL") return "🔴";
+  if (level === "WARNING") return "🟠";
+  const e = event.trim().toLowerCase();
+  if (/denied|blocked|throttled|unauth/.test(e)) return "🟠";
+  if (e.startsWith("channel.") || e.startsWith("settings.") || e.startsWith("worker.")) {
+    return "🟣";
+  }
+  if (e.includes("greet") || e.includes("partial") || e.includes("empty") || e.includes("review")) {
+    return "🟡";
+  }
+  if (e === "publish" || e === "log_channel.test" || e === "bot.started"
+      || e.includes("recovered") || e.includes("completed") || e.endsWith(".ok")) {
+    return "🟢";
+  }
+  return "🔵";
+}
 
-/**
- * Anything token-shaped, in case a Bot API error echoes a URL back at us.
- *
- * NO `\b` before the digits. A token reaches us as `.../bot123456789:AAH...`,
- * and `t` and `1` are both word characters -- so a word boundary is exactly
- * what is NOT there in the one position that matters. The first version had it
- * and passed every test until one used a real URL shape.
- */
-// The token shape this used to hold now lives in `redact.ts`.
+/** True when an entry merits a Telegram log-channel message. */
+export function isImportantLogEvent(level: LogLevel, event: string): boolean {
+  if (level === "WARNING" || level === "ERROR" || level === "CRITICAL") return true;
+  return IMPORTANT_LOG_EVENTS.has(event);
+}
 
-/**
- * Cap on one line's detail.
- *
- * A publish announcing 120 packs listed every name: ~6 KB for a single INFO
- * row. The cap belongs here rather than at each call site, so the next caller that
- * builds a long string cannot reintroduce it.
- */
-const DETAIL_LIMIT = 2000;
+/** Fields that may carry user-authored text and must never reach the log channel. */
+const TEXT_FIELD_RE = /(^|_)(text|caption|preview|content|body|snippet|message)$/i;
+const NOISE_FIELDS: ReadonlySet<string> = new Set([
+  "stack", "runtime", "request_id", "utc", "level", "event", "bot",
+]);
+const DETAIL_FIELD_RE = /^(?:error|detail|reason)/i;
 
-/** Keep a UTF-16 length cap from leaving half of an astral character behind. */
+const MAX_FIELDS = 6;
+const MAX_FIELD_CHARS = 80;
+const MAX_DETAIL_FIELD_CHARS = 400;
+const MAX_MESSAGE_CHARS = 1_500;
+
+const HANDLE_FIELDS = [
+  ["chat_id", "chat_username"],
+  ["user_id", "user_username", "username"],
+  ["target_user_id", "target_username"],
+  ["actor_id", "actor_username"],
+  ["sender_id", "sender_username"],
+  ["owner_id", "owner_username"],
+] as const;
+
+const NON_ID_FIELD_RE =
+  /message_?ids?$|count|^(?:utc|date|time|ts|at)$|(?:duration|timestamp|_at$|_epoch$)|(?:time|date|epoch|until)(?:_?ms|_?seconds)?$/i;
+const TELEGRAM_HANDLE_RE = /^[A-Za-z0-9_]{3,64}$/;
+
 function clampText(text: string, max: number): string {
-  return text.slice(0, /[\uD800-\uDBFF]/.test(text[max - 1]) ? max - 1 : max);
+  if (text.length <= max) return text;
+  let end = Math.max(0, max);
+  if (end > 0 && /[\uD800-\uDBFF]/.test(text[end - 1])) end -= 1;
+  return text.slice(0, end);
+}
+
+function truncatePlain(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value;
+  return `${clampText(value, maxChars)}…`;
+}
+
+function normalizeTelegramHandle(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  const bare = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
+  return TELEGRAM_HANDLE_RE.test(bare) ? `@${bare}` : null;
 }
 
 export function redact(s: string, env?: Partial<Env>): string {
-  // Secrecy lives in `redact.ts` -- one redactor, so a rule added for the HTTP
-  // response body also protects the log line. What stays here is the LENGTH
-  // cap, which is a storage-budget concern and nothing to do with credentials.
   const out = sanitise(s, env);
   if (out.length <= DETAIL_LIMIT) return out;
   const head = clampText(out, DETAIL_LIMIT);
   return `${head}… (+${out.length - head.length} chars)`;
 }
 
-const LEVEL_EMOJI: Record<LogLevel, string> = { INFO: "ℹ️", WARNING: "⚠️", ERROR: "❌" };
-
-/** Telegram's limit is 4096; a log line longer than this is not readable on a phone. */
-const MAX_CHANNEL_CHARS = 700;
-
 /**
- * Telegram shows a channel's *internal* id (4211401345) in several places, but
- * the Bot API only accepts the -100-prefixed form. Accepting the bare number
- * means a copy-paste out of the Telegram UI works instead of failing later with
- * a bare "chat not found". Borrowed from the Ad Timer Bot, which hit exactly
- * that. Returns null when the value is unusable or logging is off.
+ * Normalize a configured Telegram channel ID into the form the Bot API accepts.
+ * Bare positive channel IDs copied from Telegram UI gain the `-100` prefix;
+ * `@username` and already-negative IDs pass through. Returns null when disabled
+ * or invalid.
  */
 export function normalizeChatId(value: string | undefined | null): string | null {
   const text = String(value ?? "").trim();
   if (!text || text === "0") return null;
   if (text.startsWith("@")) return text.length > 1 ? text : null;
   if (!/^-?\d+$/.test(text)) return null;
-  if (text.startsWith("-")) return text;          // already a channel/group id
+  if (text.startsWith("-")) return text;
   return `-100${text}`;
 }
 
@@ -143,46 +173,108 @@ function utcStamp(atMs: number): string {
 }
 
 /**
- * One rendered entry, in the Ad Timer Bot's log-channel shape.
- *
- *   [general]
- *   ❌ ERROR webhook
- *   update 42: sendMessage failed (400): chat not found
- *   2026-08-19 00:45:12 UTC
- *
- * The bot tag is its own line by owner request: two bots share this channel and
- * the tag is the first thing you look for when scanning it on a phone.
+ * Render one log entry in Numera Group Bot's Telegram HTML layout:
+ * - Header: `<b>🔴 ERROR · event</b>` / `<b>🟠 WARNING · event</b>` / `<b>{orb} {Title}</b>`
+ * - Fields: `bot: <code>general</code>` followed by redacted, HTML-escaped `key: <code>value</code>`
+ *   lines with companion `(@username)` annotations folded onto matching numeric IDs
+ * - Footer: `🕒 YYYY-MM-DD HH:mm:ss UTC` (+ rate-limit suppression notice when applicable)
  */
 export function formatLine(e: LogEntry, atMs: number = Date.now(),
                            suppressed = 0, env?: Partial<Env>): string {
-  const lines = [`[${e.bot}]`, `${LEVEL_EMOJI[e.level]} ${e.level} ${e.event}`];
-  // `env` is threaded in so the CONFIGURED secrets are masked too, not just
-  // anything that happens to look like a token. Optional because the shape
-  // rules stand on their own wherever a caller has no env to hand.
-  if (e.detail) lines.push(redact(e.detail, env));
-  // Reserve the diagnostic footer before shortening the detail. Truncating
-  // the complete line hid both its timestamp and the carried drop count.
-  let footer = utcStamp(atMs);
-  if (suppressed > 0) footer += `\n(+${suppressed} suppressed by rate limit)`;
-  const text = lines.join("\n");
-  const available = MAX_CHANNEL_CHARS - footer.length - 1;
-  const content = text.length > available
-    ? `${clampText(text, available - 1)}…` : text;
-  return `${content}\n${footer}`;
+  const titleText = e.level === "INFO"
+    ? `${logChannelEmoji(e.level, e.event)} ${CHANNEL_EVENT_TITLES[e.event] ?? e.event}`
+    : `${LEVEL_MARKER[e.level]} · ${e.event}`;
+  const headerLine = `<b>${escapeHtml(truncatePlain(titleText, 120))}</b>`;
+  const footerLine = escapeHtml(`🕒 ${utcStamp(atMs)}`);
+  const suppressedLine = suppressed > 0
+    ? escapeHtml(`(+${suppressed} suppressed by rate limit)`)
+    : null;
+
+  const rawFields: Record<string, unknown> = { ...(e.fields ?? {}) };
+  if (e.detail && rawFields.detail === undefined) rawFields.detail = e.detail;
+
+  const knownHandles = new Map<string, string>();
+  const directHandles = new Map<string, string>();
+  const foldedFields = new Set<string>();
+  for (const [idField, ...companions] of HANDLE_FIELDS) {
+    const id = String(rawFields[idField] ?? "").trim();
+    if (!/^-?\d+$/.test(id)) continue;
+    for (const field of companions) {
+      foldedFields.add(field);
+      const handle = normalizeTelegramHandle(rawFields[field]);
+      if (!handle) continue;
+      if (!knownHandles.has(id)) knownHandles.set(id, handle);
+      if (!directHandles.has(idField)) directHandles.set(idField, handle);
+    }
+  }
+
+  const entries: Array<[string, string, string[]]> = [["bot", sanitise(e.bot, env), []]];
+  let omitted = false;
+  for (const [key, value] of Object.entries(rawFields)) {
+    if (NOISE_FIELDS.has(key) || foldedFields.has(key)
+        || (TEXT_FIELD_RE.test(key) && key !== "error_message")) continue;
+    if (value === null || value === undefined || value === "") continue;
+    if (entries.length >= MAX_FIELDS + 1) {
+      omitted = true;
+      break;
+    }
+    const raw = sanitise(typeof value === "object" ? JSON.stringify(value) : String(value), env);
+    const cap = DETAIL_FIELD_RE.test(key) ? MAX_DETAIL_FIELD_CHARS : MAX_FIELD_CHARS;
+    const handles = new Map<string, string>();
+    if (!NON_ID_FIELD_RE.test(key)) {
+      const id = raw.trim();
+      const direct = directHandles.get(key) ?? knownHandles.get(id);
+      if (direct) handles.set(direct.toLowerCase(), direct);
+      else if (typeof value === "string") {
+        for (const token of raw.matchAll(/-?\d+/g)) {
+          const handle = knownHandles.get(token[0]);
+          if (handle && !handles.has(handle.toLowerCase())) {
+            handles.set(handle.toLowerCase(), handle);
+          }
+        }
+      }
+    }
+    entries.push([key, truncatePlain(raw, cap), [...handles.values()]]);
+  }
+
+  const lines = [headerLine];
+  const tailBudget = 1 + footerLine.length + (suppressedLine ? 1 + suppressedLine.length : 0) + 2;
+  let used = headerLine.length;
+  for (const [key, rendered, handles] of entries) {
+    const escapedKey = escapeHtml(key);
+    const prefix = `${escapedKey}: <code>`;
+    const suffix = "</code>"
+      + handles.map((h) => ` (${escapeHtml(sanitise(h, env))})`).join("");
+    const candidate = `${prefix}${escapeHtml(rendered)}${suffix}`;
+    if (used + 1 + candidate.length + tailBudget <= MAX_MESSAGE_CHARS) {
+      lines.push(candidate);
+      used += 1 + candidate.length;
+      continue;
+    }
+    const avail = MAX_MESSAGE_CHARS - used - 1 - prefix.length - suffix.length - tailBudget - 1;
+    if (avail <= 0) {
+      omitted = true;
+      break;
+    }
+    let trimmed = truncatePlain(rendered, avail);
+    while (trimmed.length > 1 && escapeHtml(trimmed).length > avail + 1) {
+      trimmed = truncatePlain(rendered, Math.max(0, trimmed.length - 2));
+    }
+    const partial = `${prefix}${escapeHtml(trimmed)}${suffix}`;
+    if (used + 1 + partial.length + tailBudget <= MAX_MESSAGE_CHARS) {
+      lines.push(partial);
+      used += 1 + partial.length;
+    }
+    omitted = true;
+    break;
+  }
+  if (omitted) lines.push("…");
+  lines.push(footerLine);
+  if (suppressedLine) lines.push(suppressedLine);
+  return lines.join("\n");
 }
 
-/**
- * Telegram allows roughly 20 messages a minute to one chat; stay well under it.
- *
- * Over budget the sink DROPS and counts rather than queueing -- an unbounded
- * queue inside a Worker isolate outlives the request it belongs to and still
- * loses the messages, just later and with the memory held. The dropped count
- * rides along on the next message that gets through, so a burst is visible
- * rather than silently swallowed. Also borrowed from the Ad Timer Bot.
- *
- * Honest limit: this state is per ISOLATE, not global. It bounds the realistic
- * flood -- one isolate handling a burst of redeliveries -- not a fleet of them.
- */
+/** Telegram allows roughly 20 messages/minute to a channel; stay well under it. */
 const CHANNEL_MAX_PER_WINDOW = 12;
 const CHANNEL_WINDOW_MS = 60_000;
 const rate = { windowStartMs: 0, sentInWindow: 0, suppressed: 0 };
@@ -202,8 +294,6 @@ async function writeToD1(env: Env, e: LogEntry): Promise<void> {
 async function writeToChannel(env: Env, e: LogEntry, atMs: number): Promise<void> {
   const chat = normalizeChatId(env.LOG_CHAT_ID);
   if (!chat) return;
-  // The bot that produced the line posts it, so the channel shows the same
-  // origin the line claims. Both bots are administrators of it.
   const token = e.bot === "general" ? env.GENERAL_BOT_TOKEN : env.COIN_BOT_TOKEN;
   if (!token) return;
 
@@ -216,39 +306,54 @@ async function writeToChannel(env: Env, e: LogEntry, atMs: number): Promise<void
     return;
   }
   rate.sentInWindow += 1;
-  // Claim the carried count BEFORE the send: if the send fails the count is
-  // lost, which is the right trade -- carrying it forever would make the next
-  // successful message claim suppressions that never happened.
   const carried = rate.suppressed;
   rate.suppressed = 0;
   const tg = new Telegram(token, env.TELEGRAM_API_BASE);
-  await tg.sendMessage(chat, formatLine(e, atMs, carried, env));
+  await tg.sendMessage(chat, formatLine(e, atMs, carried, env), {
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+  });
 }
 
 /**
- * Record one line. Returns a promise the caller should hand to
- * `ctx.waitUntil()` so the response is not delayed by a database round trip.
- *
- * Never rejects.
+ * Send one entry directly to the Telegram log channel and return its message ID.
+ * Used by authenticated diagnostic probes (`POST /log-test`) that need delivery
+ * confirmation instead of best-effort swallowing.
+ */
+export async function sendLogChannelDirect(env: Env, e: LogEntry): Promise<number> {
+  const chat = normalizeChatId(env.LOG_CHAT_ID);
+  if (!chat) throw new Error("LOG_CHAT_ID not configured");
+  const token = e.bot === "general" ? env.GENERAL_BOT_TOKEN : env.COIN_BOT_TOKEN;
+  if (!token) throw new Error(`${e.bot} bot not configured`);
+  const tg = new Telegram(token, env.TELEGRAM_API_BASE);
+  const sent = await tg.sendMessage(chat, formatLine(e, Date.now(), 0, env), {
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+  });
+  return sent.message_id;
+}
+
+/**
+ * Record one log event. Hand the returned promise to `ctx.waitUntil()` so
+ * webhook responses never block on D1 or Telegram delivery. Never rejects.
  */
 export function log(env: Env, e: LogEntry): Promise<void> {
-  const toChannel = e.toChannel ?? e.level === "ERROR";
   const atMs = Date.now();
-  // console.log stays as well: it is the only sink that survives a D1 outage,
-  // and `wrangler tail` reads it.
   console.log(formatLine(e, atMs, 0, env));
   const store = e.store ?? e.level !== "INFO";
+  const toChannel = e.toChannel ?? isImportantLogEvent(e.level, e.event);
   const jobs: Promise<void>[] = [];
   if (store) jobs.push(writeToD1(env, e));
   if (toChannel) jobs.push(writeToChannel(env, e, atMs));
   return Promise.allSettled(jobs).then((results) => {
     for (const r of results) {
       if (r.status === "rejected") {
-        // Redacted like every other sink. A D1 or channel failure reports the
-        // request it was making, and this is the LAST place a credential could
-        // still slip out -- an error path nobody reads until it matters.
-        console.error(formatLine({ bot: e.bot, level: "ERROR", event: "log-sink",
-                                   detail: errText(r.reason, env) }, Date.now(), 0, env));
+        console.error(formatLine({
+          bot: e.bot,
+          level: "ERROR",
+          event: "log-sink",
+          detail: errText(r.reason, env),
+        }, Date.now(), 0, env));
       }
     }
   });

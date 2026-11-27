@@ -8,7 +8,7 @@ from the project root with `.\numera-emoji.exe` on Windows or
 [§12.8](guide-cli-panel-coin.md#128-coins-commands) use the same standalone
 executable. No Python environment is required.
 
-### `doctor` — offline installation and catalog diagnostics
+### `doctor`: offline installation and catalog diagnostics
 
 ```powershell
 .\numera-emoji.exe doctor
@@ -38,7 +38,7 @@ normal run log, redacts configured credentials, and does not install tools or
 contact Telegram. `doctor --help` and invalid arguments are handled before
 configuration is loaded.
 
-### 12.1 `make-emoji-pngs` — image → 100×100 PNG
+### 12.1 `make-emoji-pngs`: image → 100×100 PNG
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -58,7 +58,7 @@ Behaviour:
 - **Legacy coin mode** (no `--in`): reads `coins/logos/svg/*.svg` then
   `coins/logos/png/*.png` and writes `coins/logos/emoji/<ticker>.png`.
 - **Blank guard**: if an SVG renders blank (e.g. an unsupported gradient), it is
-  **not** saved — the loop falls back to the raster `png/` source; a blank raster
+  **not** saved: the loop falls back to the raster `png/` source; a blank raster
   is skipped too. No blank emoji is ever produced.
 - **`logos/.incoming/<run>/`** is staging, not a source folder. Each fetcher run
   gets its OWN subdirectory: the download happens before any lock is taken, so a
@@ -78,7 +78,7 @@ Behaviour:
   logo for a sticker made from the original image. It is removed once the
   unresolved upload is settled. If it is ever lost anyway, the next run still
   identifies the live sticker and updates the map, but says plainly that
-  `logos/emoji/<ticker>.png` was **not** updated — re-fetch the ticker to refresh
+  `logos/emoji/<ticker>.png` was **not** updated: re-fetch the ticker to refresh
   it.
 
 Examples:
@@ -89,7 +89,7 @@ Examples:
 .\numera-emoji.exe make-emoji-pngs            # legacy coin mode
 ```
 
-### 12.2 `build-pack` — upload a folder of PNGs to emoji sets
+### 12.2 `build-pack`: upload a folder of PNGs to emoji sets
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -113,16 +113,16 @@ run continues without recreating existing sets. Use `--dry-run` first.
     --source-dir build\myset --token-env GENERAL_BOT_TOKEN --emoji 😀 --dry-run
 ```
 
-### 12.3 `fetch-pack` — download a Telegram pack into the catalog
+### 12.3 `fetch-pack`: download a Telegram pack into the catalog
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `packs...` | *(required)* | One or more pack short-names, `t.me/addemoji/<name>` links, or emoji ids (digits or `premium-id:<id>`) — an id fetches the whole pack it belongs to. Each pack is fetched once; an id that names no pack is reported and counts as a failure (exit 3 when something else succeeded). |
+| `packs...` | *(required)* | One or more pack short-names, `t.me/addemoji/<name>` links, or emoji ids (digits or `premium-id:<id>`): an id fetches the whole pack it belongs to. Each pack is fetched once; an id that names no pack is reported and counts as a failure (exit 3 when something else succeeded). |
 | `--token-env` | `GENERAL_BOT_TOKEN` | Bot token env var. |
 | `--data-dir` | `collection` | Catalog/media directory. |
 | `--phash-threshold` | `-1` (off) | Hamming distance `0..16` for near-dup merging; `-1` keeps look-alikes. Out-of-range values are usage errors before pack lookup. |
 | `--limit <n>` | `0` (all) | Max new items per pack. |
-| `--repaintable` | `ask` | What to do with emoji Telegram REPAINTS (`ask`/`skip`/`keep`). The client overrides their colours, so the source pack does not show the stored art: in one of ours they render that art instead — sometimes flat black, sometimes full colour. Look before you decide; with no terminal to answer, `ask` skips them. |
+| `--repaintable` | `ask` | What to do with emoji Telegram REPAINTS (`ask`/`skip`/`keep`). The client overrides their colours, so the source pack does not show the stored art: in one of ours they render that art instead: sometimes flat black, sometimes full colour. Look before you decide; with no terminal to answer, `ask` skips them. |
 
 An absolute `--data-dir` can point outside the installation. The catalog,
 media, preview cache and publication state stay in that directory. Private
@@ -132,10 +132,10 @@ codec work for an external catalog runs under the installation’s
 Re-running is cheap: stickers whose `file_unique_id` was already ingested are
 skipped without downloading; identical media collapse to one catalog row.
 
-### 12.3b `fetch-emoji-ids` — download *specific* emoji by ID (not whole packs)
+### 12.3b `fetch-emoji-ids`: download *specific* emoji by ID (not whole packs)
 
-Downloads only the individual premium custom-emoji you name — e.g. the
-`premium-id:<n>` entries inside bot inventory files — and nothing else from
+Downloads only the individual premium custom-emoji you name: e.g. the
+`premium-id:<n>` entries inside bot inventory files: and nothing else from
 their packs. Only **real entry lines** that start with `premium-id:` are taken;
 example/prose mentions like `(e.g. premium-id: 123)` are skipped so example IDs
 are never fetched by mistake. IDs are then **de-duplicated** so each real emoji
@@ -149,8 +149,8 @@ is fetched at most once, resolved via `getCustomEmojiStickers` (batched,
 | `--token-env` | `GENERAL_BOT_TOKEN` | Bot token env var (any bot can resolve IDs). |
 | `--data-dir` | `collection` | Catalog/media directory. |
 | `--phash-threshold` | `-1` (off) | Near-dup merge threshold; `-1` keeps look-alikes. |
-| `--repaintable` | `ask` | What to do with emoji Telegram REPAINTS (`ask`/`skip`/`keep`). The client overrides their colours, so the source pack does not show the stored art: in one of ours they render that art instead — sometimes flat black, sometimes full colour. Look before you decide; with no terminal to answer, `ask` skips them. |
-| `--tint <#RRGGBB>` | *(off)* | Bake the repaint into the asset: flatten every REPAINTABLE emoji to this colour, keeping its silhouette — the same thing a client does, done by us because the flag itself cannot be set on an existing set. Answers `--repaintable`, so nothing is skipped. Animated goes through the Lottie so the animation survives; static fills through the alpha; video is refused. Recorded on the item as `tint:#RRGGBB`. |
+| `--repaintable` | `ask` | What to do with emoji Telegram REPAINTS (`ask`/`skip`/`keep`). The client overrides their colours, so the source pack does not show the stored art: in one of ours they render that art instead: sometimes flat black, sometimes full colour. Look before you decide; with no terminal to answer, `ask` skips them. |
+| `--tint <#RRGGBB>` | *(off)* | Bake the repaint into the asset: flatten every REPAINTABLE emoji to this colour, keeping its silhouette: the same thing a client does, done by us because the flag itself cannot be set on an existing set. Answers `--repaintable`, so nothing is skipped. Animated goes through the Lottie so the animation survives; static fills through the alpha; video is refused. Recorded on the item as `tint:#RRGGBB`. |
 
 Two levels of de-duplication protect you: **ID-level** (repeated IDs across
 files fetched once) and **content-level** (two different IDs pointing at the
@@ -166,7 +166,7 @@ are accepted and recorded as uppercase `tint:#RRGGBB`. Malformed UTF-8 is refuse
 it is not silently replaced. See [test inventories](../tests/README.md) for
 original identities and execution boundaries.
 
-Example — pull only the emoji referenced by four bot inventory files:
+Example: pull only the emoji referenced by four bot inventory files:
 
 ```powershell
 .\numera-emoji.exe fetch-emoji-ids `
@@ -178,7 +178,7 @@ Example — pull only the emoji referenced by four bot inventory files:
 # -> Done. unique_ids=101 new=100 dedup=1 failed=0 missing=0
 ```
 
-### 12.4 `add-media` — build emoji from local files into the catalog
+### 12.4 `add-media`: build emoji from local files into the catalog
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -192,7 +192,7 @@ Example — pull only the emoji referenced by four bot inventory files:
 
 Auto format: still image → static; animated GIF/APNG/MP4/WEBM/MOV → **video**
 (ffmpeg); Lottie `.json`/`.tgs` → **animated**. Remember: a raster animation
-cannot become an *animated* emoji (those are vector-only) — it becomes a *video*
+cannot become an *animated* emoji (those are vector-only): it becomes a *video*
 emoji.
 
 Folder discovery is nonrecursive and sorted. It ignores the converter's exact
@@ -209,11 +209,11 @@ After creating `build\myset` with the conversion example in §12.1, import it:
 .\numera-emoji.exe add-media --in build\myset --as static
 ```
 
-### 12.5 `build-collection` — publish the catalog into new packs
+### 12.5 `build-collection`: publish the catalog into new packs
 
 **`--mixed` publishes every format into ONE family**, named `<base><n>_by_<bot>`
 with no format letter, in the curate panel's order. Without it each format gets
-its own sets — which was this tool's default from before Bot API 7.2 allowed
+its own sets: which was this tool's default from before Bot API 7.2 allowed
 mixed sets, and it costs the curation: the panel's order runs *across* formats,
 so splitting regroups a hand-arranged pack into format blocks. It is a flag
 rather than the new default for one concrete reason: `state["sets"]` and the
@@ -223,7 +223,7 @@ the other, with a usage error rather than a stranded set.
 
 `--base` follows Telegram's own rule for a set name: letters, digits and
 **single** underscores, beginning with a letter. The `_by_<bot_username>` tail
-is appended and is **not optional** — Telegram rejects a name without it. The
+is appended and is **not optional**: Telegram rejects a name without it. The
 64-character limit is checked against the real bot username before the first
 upload, not discovered as a Bot API error after the plan is frozen.
 
@@ -242,7 +242,7 @@ whatever format each set holds. They used to carry the format word and count
 per format (`… Animated 1`, `… Static 1`), so two different packs were both
 called "1". The number counts every set already recorded, which is also what
 makes it resumable: a restarted run continues the count instead of restarting
-it. Set **names** are unchanged — `<base>s<n>` / `<base>v<n>` / `<base>a<n>`
+it. Set **names** are unchanged: `<base>s<n>` / `<base>v<n>` / `<base>a<n>`
 remain the identity, and only the human title moved.
 
 | Flag | Default | Meaning |
@@ -270,24 +270,24 @@ it never performed:
 
 | Outcome | Meaning | Effect on the exit code |
 |---------|---------|-------------------------|
-| accepted | Telegram said the file is uploadable. | — |
+| accepted | Telegram said the file is uploadable. |: |
 | refused | Telegram rejected it; the message is printed. | exit 4 |
 | missing | The catalog row points at a file that is not on disk. | exit 4 |
 | not checked | The request never reached Telegram (transport). | exit 3 |
 
 The last row is the one that matters, and the count of unreachable files does
 not change it. A dropped connection is **not** a verdict on the artwork, so it
-is never reported as a refusal — exit 4 is what a refusal returns, and
+is never reported as a refusal: exit 4 is what a refusal returns, and
 answering a lost connection with it sends someone editing artwork that was
 never the problem. It is not reported as an acceptance either: the old counter
 counted attempts, so a run in which every single check failed at the transport
-printed "all accepted" and exited 0. Exit 3 says the one true thing — the run
+printed "all accepted" and exited 0. Exit 3 says the one true thing: the run
 did not finish asking. `tests/test_preflight_outcomes.py` pins each of the four.
 
 **Leaving a pack unfinished (`--new-set`).** Normally set *N+1* opens only when
 set *N* reaches `--per-set`, so a pack you want to stop early has no way
 forward. `--new-set` rolls this run into a fresh set and leaves the current one
-at whatever size it has — that is how you start pack 3 while pack 2 is still
+at whatever size it has: that is how you start pack 3 while pack 2 is still
 half empty. It is consulted **once per run**: later items in the same run fill
 the new set normally, so pass it on the run that should open the pack, not on
 every run afterwards (each one would open another set). The two workarounds it
@@ -297,13 +297,13 @@ table is empty, so the entire catalog would be re-uploaded into it.
 
 **Topping up an older pack (`--into-pack N`).** Publishing always appended to
 the newest set, so once pack 3 existed there was no way to put anything back
-into a half-empty pack 1 — its remaining room was unreachable. `--into-pack 1`
+into a half-empty pack 1: its remaining room was unreachable. `--into-pack 1`
 aims this run at that pack instead.
 
 It fails loudly rather than falling back, because a silent fallback would fill
 some *other* pack and still look like success: an unknown number, a full pack,
 or one holding a sticker this publisher cannot identify each stop the run. That
-last case is not fussiness — appending past an unattributable sticker is what
+last case is not fussiness: appending past an unattributable sticker is what
 hands a new key someone else's `custom_emoji_id`.
 
 `--new-set` and `--into-pack` together are rejected: one opens a fresh pack and
@@ -312,7 +312,7 @@ the other fills an existing one, so there is no sensible combined meaning.
 The subtle part is bookkeeping, not upload. The live count and the recorded key
 order used to be written to the *last* set's record, which is the same thing as
 the target only while you are filling the newest pack. Filling a middle one
-would have credited the upload to the wrong record — state describing a set the
+would have credited the upload to the wrong record: state describing a set the
 sticker never entered, which is exactly the drift `reconcile_set` exists to
 catch. Both now follow the pack actually being written to, and a test pins it.
 
@@ -320,7 +320,7 @@ Only **included** (panel-selected), not-yet-uploaded, non-skipped items are
 published. Per-format sets, drift-proof resume, per-pack manifests.
 
 **Brand logo (first emoji of every set).** Your own logo, configured in
-`.env` -- the repository ships none, because it names no operator:
+`.env`: the repository ships none, because it names no operator:
 
 | Key | Meaning |
 |-----|---------|
@@ -337,7 +337,7 @@ leads a static, video *or* animated set alike (verified live). Leave the coin
 bot out of `BRAND_LOGO_BOTS` to keep it exempt. Disable with `--no-brand-logo`.
 The logo occupies position 0, so item `custom_emoji_id`s are read from position 1 onward (handled automatically).
 
-### 12.5b `sync-order` — reorder an ALREADY PUBLISHED pack
+### 12.5b `sync-order`: reorder an ALREADY PUBLISHED pack
 
 | Flag | Default | Meaning |
 |------|---------|---------|
@@ -358,7 +358,7 @@ uses one is affected, and no upload happens.
 ```
 
 It is the one set mutation in this project that is genuinely idempotent —
-setting the same sticker to the same index twice leaves the same set — so it
+setting the same sticker to the same index twice leaves the same set: so it
 may be re-run, and an interrupted run simply continues. Moves are planned as a
 selection sort (one API call each, ~120 ms apart), which means a run stopped
 halfway leaves a set that is correct up to where it stopped rather than
@@ -370,7 +370,7 @@ Two refusals, both about identity:
   once every sticker is identified; shuffling around an unknown one would move
   a stranger's emoji into the middle of the pack.
 - **The brand logo stays at position 0.** It is not a catalog item, so it is
-  the one legitimately unknown sticker — and only at index 0.
+  the one legitimately unknown sticker: and only at index 0.
 
 It takes the same pack-family lock as the publisher: reordering while a publish
 appends would move stickers out from under it.
@@ -382,16 +382,16 @@ set, so a reorder that left the record behind made the family unpublishable:
 `position N now holds a sticker this publisher cannot identify`. A report-only
 run writes nothing.
 
-### 12.5c `pack-manifest` — the roster of what is in every published pack
+### 12.5c `pack-manifest`: the roster of what is in every published pack
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--refresh` | — | Read the live sets and rewrite `packs/`. |
-| `--check` | — | Is `packs/` still current? Exit 3 if not. Touches no network. |
+| `--refresh` |: | Read the live sets and rewrite `packs/`. |
+| `--check` |: | Is `packs/` still current? Exit 3 if not. Touches no network. |
 | `--family` | `all` | With `--refresh` only: `general` or `coins`. The other family's packs and id lookups in `index.json` are kept, with the input fingerprint they were built from. |
 
 Writes three files per set, named after it: `.json` to parse, `.md` to read, and
-`.html` to LOOK at — one self-contained page, every thumbnail inlined as a
+`.html` to LOOK at: one self-contained page, every thumbnail inlined as a
 `data:` URI so animation plays with no player, no CDN and no network, and the
 whole roster repeated in a `<script type="application/json">` block so a parser
 never has to scrape the markup.
@@ -399,24 +399,24 @@ never has to scrape the markup.
 **The page is the curate panel, minus everything that mutates.** Same grid, card,
 per-format accent, position pill and checkerboard thumb, and the same view-only
 header: ↑ Top, ↓ Bottom, the four-way backdrop cycle and the animation switch.
-What is absent is everything that writes — no `draggable`, no tick, no selection,
+What is absent is everything that writes: no `draggable`, no tick, no selection,
 no save, no form field at all.
 
 **It gates its media like the curate panel.** Every animated card inlines a still as
 well as the animation, starts frozen, and only what is on screen is swapped to
 the moving version; scrolling freezes everything until 180 ms after it settles,
-and `Animation: Off` freezes it permanently. Thumbnails are 88px at 9fps — fps
+and `Animation: Off` freezes it permanently. Thumbnails are 88px at 9fps: fps
 is the biggest lever on the inlined weight, and a roster is for telling emoji
 apart rather than admiring the motion. It is a record; a control that
 looks live but saves nothing is worse than none. Each card carries all THREE ids,
 labelled and separately click-to-copy: **this pack**, **original pack** where
-the emoji came from someone else's, and **this pack, before** — every id the
+the emoji came from someone else's, and **this pack, before**: every id the
 emoji held in OUR packs earlier, oldest first. Only a replace mints a new
 `custom_emoji_id` (`setStickerPositionInSet` and `setStickerEmojiList` leave it
 alone), and the retired one is exactly what an external map still points at, so
 it is kept rather than overwritten. The catalog cannot supply it: `publications`
 is keyed `(base, content_key)`, so a replace overwrites the old id and it is
-gone. The roster is therefore its own archive — each `--refresh` reads the
+gone. The roster is therefore its own archive: each `--refresh` reads the
 previous roster and carries the trail forward, keyed by `history_key`
 (`ck:<content_key>`, `logo:<set>`, or `coin:<tickers>`) so the history survives
 both a new id and a move to another pack. `packs/index.json` adds
@@ -426,8 +426,8 @@ took its place) over every live pack, plus an `id_changes` count.
 Every row gives the emoji's `custom_emoji_id`, its `#` numbered **from 0** (the
 brand logo is emoji 0) beside the 1-based `slot` Telegram shows, its format, the
 **glyph the sticker carries** (shown under the artwork in this page and in the
-curate panel — Telegram never displays it, so these two grids are the only place
-the label can be checked against the art), a name, and — when it came from someone else's pack — **the id it had
+curate panel: Telegram never displays it, so these two grids are the only place
+the label can be checked against the art), a name, and, when it came from someone else's pack, **the id it had
 there**. The coin family carries no brand logo (that bot is exempt), so its
 emoji 0 is a real coin and the page says so.
 
@@ -437,7 +437,7 @@ state-derived roster confidently wrong, and a roster that is quietly wrong is
 worse than none.
 
 Thumbnails are cached in `packs/.thumbs/<custom_emoji_id>.<ext>`, keyed on the
-id rather than the path because a replaced sticker gets a new id — exactly when
+id rather than the path because a replaced sticker gets a new id: exactly when
 its picture must be re-made. `packs/` is git-ignored: it is derived data, and one
 refresh rewrites ~79 MB.
 
@@ -445,12 +445,12 @@ Coin artwork lives outside the repo; point `COIN_EMOJI_DIR` at it, or the coin
 pages come out without pictures (the data is unaffected).
 
 **Keep it current.** `--check` is cheap and offline; it exits 3 when the
-roster no longer matches its inputs — a new download, a replaced or recoloured
+roster no longer matches its inputs: a new download, a replaced or recoloured
 sticker, a reorder, a coin remap. Run it after anything that changes a pack (or
 wire it into your own automation); `--refresh` rebuilds the roster.
 `.\numera-emoji.exe status` (§12.5e) runs this check and the archive's together.
 
-### 12.5d `pack-archive` — the finished pack's media leaves the project
+### 12.5d `pack-archive`: the finished pack's media leaves the project
 
 Once a pack is FULL its media moves out to the owner's archive, one folder per
 pack, and the project keeps no copy. A pack still being filled is left alone on
@@ -459,9 +459,9 @@ still be reordered, which would make every name in its folder wrong.
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--check` | — | Does the archive still describe the packs? Exit 3 if not. Local only, no network. |
-| `--sync` | — | Archive every FULL pack and regenerate its metadata from the live set. |
-| `--export PACK --zip PATH` | — | Copy one pack of the general family (its number or set name, full or not) into a zip, in slot order, named like the archive, with its `_manifest.md`. Moves and changes nothing. Refused while the roster is stale (run `pack_manifest --refresh`), and refused -- nothing written -- when any file of the pack cannot be found. Needs `COLLECTION_PACK_BASE` only. |
+| `--check` |: | Does the archive still describe the packs? Exit 3 if not. Local only, no network. |
+| `--sync` |: | Archive every FULL pack and regenerate its metadata from the live set. |
+| `--export PACK --zip PATH` |: | Copy one pack of the general family (its number or set name, full or not) into a zip, in slot order, named like the archive, with its `_manifest.md`. Moves and changes nothing. Refused while the roster is stale (run `pack_manifest --refresh`), and refused: nothing written: when any file of the pack cannot be found. Needs `COLLECTION_PACK_BASE` only. |
 
 `EMOJI_ARCHIVE_DIR` is the archive root and `COLLECTION_PACK_BASE` the pack
 family it follows; both are required, with no default. Each folder holds:
@@ -480,7 +480,7 @@ their artwork starts at slot 1. Branded packs keep the logo in slot 1.
 path is what the roster gallery reads to draw the artwork; dedup is unaffected,
 since a `content_key` hashes normalised pixels held in the database rather than
 the file. It **renames** anything whose slot moved and regenerates the three
-metadata files every run — a recolour mints a new id and a reorder moves slots,
+metadata files every run: a recolour mints a new id and a reorder moves slots,
 so an archive written once and never revisited stops describing its pack. It
 never deletes: a file the live pack no longer knows is reported, not removed.
 
@@ -488,7 +488,7 @@ never deletes: a file the live pack no longer knows is reported, not removed.
 run it after anything that changes a full pack, and `--sync` to catch up.
 `.\numera-emoji.exe status` (§12.5e) runs it together with the roster check.
 
-### 12.5e `status` — is everything current?
+### 12.5e `status`: is everything current?
 
 ```powershell
 .\numera-emoji.exe status

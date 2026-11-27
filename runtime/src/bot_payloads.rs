@@ -108,7 +108,7 @@ pub fn payloads(ids: &[String], labels: &Value, rich: bool) -> Result<Value, Str
     for (i, batch) in batches.iter().enumerate() {
         let mut head = format!("Found <b>{}</b> premium emoji", ids.len());
         if batches.len() > 1 {
-            head += &format!(" — part {}/{}", i + 1, batches.len());
+            head += &format!(", part {}/{}", i + 1, batches.len());
         }
         let rows = batch
             .iter()
@@ -132,7 +132,7 @@ pub fn payloads(ids: &[String], labels: &Value, rich: bool) -> Result<Value, Str
             .collect::<Vec<_>>()
             .join("\n");
         let text = format!(
-            "{head} — tap to expand; tap an ID to copy it, or use the “Copy” button(s) below:\n<blockquote expandable>{rows}</blockquote>"
+            "{head}: tap to expand, tap an ID to copy it, or use the \"Copy\" button(s) below:\n<blockquote expandable>{rows}</blockquote>"
         );
         out.push(json!([text, keyboard(batch)]));
     }

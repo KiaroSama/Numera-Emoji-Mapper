@@ -9,12 +9,12 @@ SQLite, created/managed by the native `catalog` responsibility. Four tables: `it
 project folder left 68 rows pointing at a folder that no longer existed, and the
 panel showed each as a broken thumbnail. Opening a catalog now converts it once
 (`_migrate_media_paths`): every path inside the data folder becomes `./<path>`,
-relative to it. The `./` marks the row itself -- older code never wrote a leading
+relative to it. The `./` marks the row itself: older code never wrote a leading
 `./`, so its relative rows (project-root relative) stay distinguishable without
 looking at any other table. `meta.media_paths = data-relative` only records that
 the scan is done, so an already converted catalog's open writes nothing.
 
-### 13.1 `items` — one row per distinct emoji
+### 13.1 `items`: one row per distinct emoji
 
 | Column | Type | Meaning |
 |--------|------|---------|
@@ -33,7 +33,7 @@ the scan is done, so an already converted catalog's open writes nothing.
 
 Indexes: `idx_items_format`, `idx_items_uploaded`.
 
-### 13.2 `seen_files` — fast pre-dedup
+### 13.2 `seen_files`: fast pre-dedup
 
 | Column | Type | Meaning |
 |--------|------|---------|
@@ -43,9 +43,9 @@ Indexes: `idx_items_format`, `idx_items_uploaded`.
 If a sticker's `file_unique_id` is already here, `fetch_pack` skips the download
 entirely and just merges labels.
 
-### 13.3 `meta` — key/value (e.g. `schema_version`).
+### 13.3 `meta`: key/value (e.g. `schema_version`).
 
-### 13.3b `publications` — what is live, per pack family
+### 13.3b `publications`: what is live, per pack family
 
 | Column | Type | Meaning |
 |--------|------|---------|
@@ -270,7 +270,7 @@ native announcer directly or the configured Cloudflare publish endpoint.
 
 - File: `.tgs` = **gzip-compressed Lottie JSON** (vector animation).
 - Hard cap **64 KB**; canvas **512×512**; ≤3 s; at most 60 fps.
-- **Vector only.** You cannot turn a GIF/MP4 into an animated emoji — that path
+- **Vector only.** You cannot turn a GIF/MP4 into an animated emoji: that path
   produces a *video* emoji. Native animated conversion only packages/validates an
   existing Lottie (`.json` or `.tgs`): load → **refuse** a canvas that is not
   512×512 (rescaling only the top-level layer moves and clips the artwork, so
@@ -314,13 +314,13 @@ The native identity engine produces the catalog primary key:
   ≤3 s at 64×64 RGBA; visually identical videos match regardless of container.
   **A single-frame video is shorter than one sampling interval and yields no
   frames**, so an empty resample retries at the file's own frames rather than
-  falling through to a byte hash — which is not a content key, and which made
+  falling through to a byte hash: which is not a content key, and which made
   two containers of the same frame fail to dedup while a `-c copy` remux moved
   the key (WebM randomises its SegmentUID). `fingerprint()` shares this exact
   decode; it must never grow its own copy again.
 - **animated** → `"a:" + sha256(<canonical Lottie JSON>)`. The `.tgs` is
   gunzipped, parsed, re-serialized with sorted keys; re-gzipped copies match.
-- unknown → `"r:" + sha256(raw bytes)` — reached only when ffmpeg renders
+- unknown → `"r:" + sha256(raw bytes)`: reached only when ffmpeg renders
   nothing at all. A ffmpeg **failure or timeout** is not that case: it raises
   `MediaError` and the ingest site fails that one item, because a byte-hash key
   looks valid, never dedups, and hides the timeout.
@@ -336,7 +336,7 @@ Near-dup merging is controlled by `Catalog.phash_threshold`:
 - `-1` (**default**) → OFF. Only exact content + `file_unique_id` dedup. This is
   what you want when faithfully copying a pack (distinct-but-similar emoji are
   kept). *History: the old default of 5 wrongly merged 80 distinct RMaccs emoji
-  down to 70 — see §27.*
+  down to 70: see §27.*
 - `>= 0` → merge rows whose dHash is within that Hamming distance. Use only when
   you intentionally want look-alikes collapsed.
 
@@ -354,7 +354,7 @@ coin packs audited **0 blank / 0 duplicate** across 5,791 stickers.
 
 The coin packs were built by uploading a frozen plan in order. A handful of plan
 items **failed to upload and were skipped**. The id map was then derived by
-*position* (`live[i] = plan[i]`), but every skip shifted later positions — so
+*position* (`live[i] = plan[i]`), but every skip shifted later positions: so
 from the first skip onward, `ticker_to_id.json` pointed many tickers at the
 **wrong** sticker (e.g. USDT showed another coin's logo).
 
@@ -368,7 +368,7 @@ see below for why alpha is not optional), and match each local source logo
 native L2 matching. Drop matches above `--max-distance` (coins never
 uploaded). This is the canonical way to (re)build the map; a correct run scores
 100% against the live stickers (`--max-distance 200 --min-margin 0` is the
-calibration that has worked in practice — recheck the distance histogram the
+calibration that has worked in practice: recheck the distance histogram the
 dry run prints before trusting it on a changed corpus).
 
 ```powershell
@@ -383,18 +383,18 @@ Things `coin-remap-ids` does **not** do for you, each learned the hard way:
 * It writes only tickers that have a `<ticker>.png`, so letting it replace the
   map outright **deletes every alias** that has no file of its own (`1inchbsc`,
   `avaxc`, …). Re-derive them before writing, either from a sibling that shares
-  the old map's id, or — for an alias that was never in any prior map, such as
-  a chain-suffixed ticker added straight to the inventory — via
+  the old map's id, or: for an alias that was never in any prior map, such as
+  a chain-suffixed ticker added straight to the inventory: via
   the native base-ticker resolver shared by `coin-alias-map` and
   `coin-enhance-map`.
 * **The signature must carry shape, not just colour.** RGB-on-black alone is
   blind to any logo drawn in black on transparency: it flattens to a uniformly
   black square, so Aptos/Arkham/NEAR/Worldcoin/Bittensor and every other
-  black-wordmark coin measured pairwise distance **0.0** — indistinguishable
+  black-wordmark coin measured pairwise distance **0.0**: indistinguishable
   from each other. That produced a confident, entirely wrong diagnosis once
-  ("128 coins have the wrong logo file"; they did not — the files were fine,
+  ("128 coins have the wrong logo file"; they did not: the files were fine,
   the metric was blind). **A distance of 0.0 between two files is a claim about
-  the metric before it is a claim about the files** — look at the images before
+  the metric before it is a claim about the files**: look at the images before
   trusting the number. `SHARED_GROUP_LIMIT` (20) still earns its place as a
   safety net for a *genuinely* corrupt or duplicated source file; just don't
   assume that is the only thing it can mean.
@@ -406,7 +406,7 @@ it is drifted too, and scores the same as the map it was meant to repair.
 
 Both `coin-rebuild` and `build-collection` record the **actual
 upload order** and mark each item uploaded as they go, then assign real
-`custom_emoji_id`s from that recorded order — never from positions. `coin-verify-logos
+`custom_emoji_id`s from that recorded order: never from positions. `coin-verify-logos
 --fix` is the safe tool for individual wrong logos.
 
 ### 17.4 Chain-variant / alias tickers
@@ -477,7 +477,7 @@ dies on a single bad message.
 
 Pure, unit-tested helpers:
 
-- `extract_custom_emoji_ids(message)` — ordered, de-duplicated `custom_emoji_id`s
+- `extract_custom_emoji_ids(message)`: ordered, de-duplicated `custom_emoji_id`s
   from `entities`, `caption_entities`, **and `quote.entities` /
   `external_reply.quote.entities`**. The `quote` field (Bot API `TextQuote`) is
   set when the user manually quotes part of a message they're replying to; per
@@ -486,7 +486,7 @@ Pure, unit-tested helpers:
   `quote.entities`, premium emoji inside a quoted reply were silently dropped
   (only entities on the reply's own text were seen). Repeats (same id, whether
   inside the quote, the reply text, or both) are de-duplicated to one occurrence.
-- `build_payloads(ids, labels, rich=True)` — returns a **list of
+- `build_payloads(ids, labels, rich=True)`: returns a **list of
   `(html_text, inline_keyboard)`** payloads. Each message has a single collapsed
   `<blockquote expandable>` where every line is
   `<tg-emoji emoji-id=id>fallback</tg-emoji> <code>id</code>` when `rich`
@@ -497,13 +497,13 @@ Pure, unit-tested helpers:
   that together cover all of it.
   `_batch_ids` splits the id list by the **message**-length budget
   (`MSG_MAX`=3500 chars, mode-independent ~110 chars/id) so as many ids as
-  possible share one message — batching by the smaller button limit was tried
+  possible share one message: batching by the smaller button limit was tried
   and reverted because it fragmented a 50-id reply into 5 short messages instead
   of ~2; rich/plain renders still align 1:1 batch-for-batch. Multi-message
   replies are labelled "part i/n". `send_reply` sends the rich version and, if a
   message is rejected (a custom emoji the bot can't render), automatically
   re-sends that message with `rich=False` (fallback chars only).
-- `enrich_labels(tg, ids)` — `getCustomEmojiStickers` (≤200/call) → `id → emoji char`.
+- `enrich_labels(tg, ids)`: `getCustomEmojiStickers` (≤200/call) → `id → emoji char`.
 
 Behaviour by chat type:
 
@@ -515,11 +515,11 @@ Behaviour by chat type:
 | Channel post with premium emoji | DM the **owner** the IDs (header = channel title). |
 
 "Tap to copy" = Telegram `InlineKeyboardButton.copy_text` (Bot API 9.0); no
-callback is needed — the client copies locally. `setMyCommands` registers
+callback is needed: the client copies locally. `setMyCommands` registers
 `/start` and `/help` in the bot's menu.
 
 The same extraction is ported to TypeScript in `worker/src/emoji.ts` (§12.9),
-including the `quote` / `external_reply.quote` entities — among the few that
+including the `quote` / `external_reply.quote` entities: among the few that
 survive into a partial quote, and missing them silently drops premium emoji
 inside quoted replies. **A token can serve `getUpdates` or a webhook, never
 both**: point a webhook at the Worker and this poller goes deaf on that token.

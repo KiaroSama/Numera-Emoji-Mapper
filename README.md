@@ -7,7 +7,7 @@
 **Build Telegram premium custom-emoji packs from any collection of images.**
 
 [![GitHub Actions CI status on main](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
-[![GNU General Public License v3.0 or later](https://img.shields.io/badge/license-GPL--3.0--or--later-2563eb)](LICENSE)
+[![GNU General Public License v3.0 or later](https://img.shields.io/github/license/KiaroSama/Numera-Emoji-Mapper?style=flat-square&color=2563eb)](LICENSE)
 [![Latest Git tag release](https://img.shields.io/github/v/tag/KiaroSama/Numera-Emoji-Mapper?style=flat-square&label=release&color=ea580c)](https://github.com/KiaroSama/Numera-Emoji-Mapper/tags)
 [![1516 preserved test identities across Rust and browser suites](https://img.shields.io/badge/tests-1516%20cases-0d9488)](tests/fixtures/migration/reference-cases.json)
 [![Rust 1.100.0 toolchain measured via rustc](https://img.shields.io/badge/Rust-1.100.0-8b5cf6)](rust-toolchain.toml)
@@ -15,7 +15,7 @@
 [![Prebuilt signed standalone archives](https://img.shields.io/badge/install-Prebuilt%20ZIP-4f46e5)](.github/workflows/release.yml)
 [![Signed with pinned RSA-3072 publisher key and Windows Authenticode](https://img.shields.io/badge/signing-RSA--3072%20%7C%20Authenticode-7c3aed)](docs/SIGNING.md)
 [![Complete operator guide in docs/GUIDE.md](https://img.shields.io/badge/docs-GUIDE-0284c7)](docs/GUIDE.md)
-[![Measured tracked repository tree size](https://img.shields.io/badge/repo%20size-15.7%20MB-ca8a04)](README.md)
+[![Live GitHub repository size](https://img.shields.io/github/repo-size/KiaroSama/Numera-Emoji-Mapper?style=flat-square&color=ca8a04)](https://github.com/KiaroSama/Numera-Emoji-Mapper)
 [![Native Rust media codecs with embedded logo verification](https://img.shields.io/badge/media-native%20codecs-15803d)](runtime/Cargo.toml)
 [![FFmpeg and FFprobe for video custom emoji](https://img.shields.io/badge/video-FFmpeg-b45309)](docs/GUIDE.md)
 [![SQLite local catalog with WAL backup](https://img.shields.io/badge/catalog-SQLite-334155)](runtime/Cargo.toml)
@@ -541,35 +541,24 @@ runtime. See [SECURITY.md](.github/SECURITY.md) for reporting policy and
 [docs/SIGNING.md](docs/SIGNING.md) for release signature verification. Revoke a
 leaked token via @BotFather and update `.env`.
 
-## License
-
-Numera Emoji Mapper — builds Telegram premium custom-emoji packs.
-Copyright (C) 2026 KiaroSama
-
-This program is free software: you can redistribute it and/or modify it under
-the terms of the **GNU General Public License** as published by the Free
-Software Foundation, either version 3 of the License, or (at your option) any
-later version. See [LICENSE](LICENSE) for the full text.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details. If you
-did not receive a copy along with this program, see
-<https://www.gnu.org/licenses/>.
-
-The GPL covers this project's own source. Third-party logos and data keep their
-own providers' licenses, which the GPL does not and cannot change (see below).
-
 ## Sources & attribution
 
 Coin vector logos come from open icon sets
 ([spothq/cryptocurrency-icons](https://github.com/spothq/cryptocurrency-icons),
 [Cryptofonts/cryptoicons](https://github.com/Cryptofonts/cryptoicons)); raster
-logos from [CoinGecko](https://www.coingecko.com/),
-[CoinPaprika](https://coinpaprika.com/) and
+logos come from [CoinGecko](https://www.coingecko.com/),
+[CoinPaprika](https://coinpaprika.com/), and
 [CoinMarketCap](https://coinmarketcap.com/). Respect each source's license and
 terms when redistributing. For general packs, only use images you have the right
 to use.
+
+## Author
+
+Maintained by [KiaroSama](https://github.com/KiaroSama) (`Kiaro.Sama.Dev@gmail.com`).
+
+## License
+
+Copyright (C) 2026 KiaroSama. Numera Emoji Mapper is licensed under the GNU General Public License v3.0 or later; see [LICENSE](LICENSE).
 
 ## Donate
 
