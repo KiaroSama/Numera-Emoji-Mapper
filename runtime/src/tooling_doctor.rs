@@ -46,13 +46,43 @@ fn codec_roundtrip() -> Result<(), String> {
     Ok(())
 }
 
+fn data_argument(args: &[String]) -> Result<&str, &'static str> {
+    let mut data = None;
+    let mut arguments = args.iter();
+    while let Some(argument) = arguments.next() {
+        if argument != "--data-dir" {
+            return Err("doctor accepts only --data-dir DIR");
+        }
+        if data.is_some() {
+            return Err("doctor --data-dir must be supplied only once");
+        }
+        let value = arguments
+            .next()
+            .ok_or("doctor --data-dir requires a directory")?;
+        if value.trim_matches(crate::emoji_ids::whitespace).is_empty() || value.starts_with('-') {
+            return Err(
+                "doctor --data-dir requires a nonempty directory; prefix a dash-leading relative path with ./",
+            );
+        }
+        data = Some(value.as_str());
+    }
+    Ok(data.unwrap_or("collection"))
+}
+
 pub fn run(root: &Path, args: &[String]) -> i32 {
     if args == ["--help"] || args == ["-h"] {
         println!(
-            "Usage: numera-emoji doctor\nCheck native codecs, panel assets and local configuration. No installation or network access."
+            "Usage: numera-emoji doctor [--data-dir DIR]\nCheck native codecs, panel assets and local configuration. Catalog selection defaults to collection, relative to the installation. No installation or network access."
         );
         return 0;
     }
+    let data = match data_argument(args) {
+        Ok(data) => data,
+        Err(error) => {
+            eprintln!("[{}] [ERROR] [doctor] {error}", crate::logging::utc());
+            return 1;
+        }
+    };
     let config = match Config::load(root.into()) {
         Ok(config) => config,
         Err(error) => {
@@ -63,9 +93,6 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
     let log = std::sync::Arc::new(RunLog::open(root, "doctor", config.secret_values()));
     log.install_panic_hook();
     let result = (|| -> Result<(), String> {
-        if !args.is_empty() {
-            return Err("doctor accepts no arguments".into());
-        }
         let root = tooling_environment::physical_root(root)?;
         let panel = root.join("assets/panel.html");
         tooling_environment::reject_links(&panel, "panel asset cannot follow links")?;
@@ -95,8 +122,7 @@ pub fn run(root: &Path, args: &[String]) -> i32 {
                 println!("[!] unset: {key}");
             }
         }
-        let raw = config.value("EMOJI_DATA_DIR");
-        let data = config.path(if raw.is_empty() { "collection" } else { raw });
+        let data = config.path(data);
         let secrets = config.secret_values();
         let catalog = tooling_environment::describe_directory(&data).map_or_else(
             |error| format!("unresolved ({error})"),

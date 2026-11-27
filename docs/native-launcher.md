@@ -50,12 +50,20 @@ literal values, call the script from an existing PowerShell session with an
 array, or call `.\bin\numera-emoji.exe` directly:
 
 ```powershell
-.\run.ps1 -CommandArguments @('panel', '--data-dir=C:\path with spaces')
+.\run.ps1 -CommandArguments @('panel', '--data-dir', 'C:\path with spaces')
 ```
 
 `doctor` checks native codecs, physical paths, assets and package hashes. It
 reports missing optional video tools and configuration key names without printing
-secret values. It does not install dependencies or contact Telegram.
+secret values. Select the catalog with `doctor --data-dir DIR`, using the same
+`--data-dir` value as the media command being diagnosed. The default is
+`collection`, relative to the installation; `EMOJI_DATA_DIR` does not select a
+catalog for these commands. Doctor describes existing or planned catalog and
+private codec workspace paths without creating them. Existing links, reparse
+points and regular files in directory positions are reported as unresolved.
+These location diagnostics do not guarantee future writability or repair
+permissions. Normal per-run diagnostic logs are still written. Doctor does not
+install dependencies or contact Telegram.
 
 ## Manual Windows desktop acceptance checklist
 
@@ -70,9 +78,13 @@ separately from automated CI results.
 - Check the intended GPU and media settings with `run.ps1 -Check`, then convert
   a small fixture and inspect the output and log for the selected codec or a
   reported fallback.
-- If a second physical volume is available, point `EMOJI_DATA_DIR` to a
-  disposable external catalog there and repeat the media check. Sibling
-  directories on `C:` test the project boundary, not separate physical volumes.
+- If a second physical volume is available, select a disposable catalog there
+  with the same explicit path in both commands, for example:
+  `./numera-emoji.exe doctor --data-dir 'D:\Numera-Test\catalog'`, then
+  `./numera-emoji.exe add-media 'C:\Numera-Test\fixture.png' --as static --data-dir 'D:\Numera-Test\catalog'`.
+  Check the reported catalog location and the actual database/media destination.
+  Sibling directories on `C:` test the project boundary, not separate physical
+  volumes.
 
 ## Installation and updates
 

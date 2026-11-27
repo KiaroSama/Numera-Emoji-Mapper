@@ -4,6 +4,9 @@ use numera_runtime::{logging::RunLog, tooling_environment, tooling_process};
 use std::{collections::BTreeMap, ffi::OsString, path::Path, time::Duration};
 use tooling_fixture::Root;
 
+#[path = "doctor_paths.rs"]
+mod doctor_paths;
+
 fn invoke(
     root: &Path,
     executable: &Path,
@@ -223,8 +226,8 @@ fn doctor_describes_catalog_and_external_workspace_without_creating_it() {
     let outside = invoke(
         &root.0,
         &executable,
-        &["doctor"],
-        &[("EMOJI_DATA_DIR", external.0.to_str().unwrap())],
+        &["doctor", "--data-dir", external.0.to_str().unwrap()],
+        &[("NUMERA_EMOJI_MAPPER_NO_DOTENV", "0")],
     );
     assert_eq!(outside.code, 0, "{}", outside.stderr);
     assert!(

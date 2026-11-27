@@ -52,7 +52,8 @@ pub(crate) fn describe_for_data(root: &Path, data: &Path) -> Result<Option<PathB
     if data.starts_with(&root) {
         return Ok(None);
     }
-    confined_directory(&root, &format!("logs/tmp/{EXTERNAL_DATA}"), false).map(Some)
+    let workspace = confined_directory(&root, &format!("logs/tmp/{EXTERNAL_DATA}"), false)?;
+    crate::tooling_environment::describe_directory(&workspace).map(Some)
 }
 
 pub(crate) fn external_base(root: &Path, relative: &str) -> Result<PathBuf, String> {
