@@ -117,10 +117,15 @@ also writes a timestamped, redacted diagnostic to the console.
 bare positive channel ID copied from the Telegram UI (`4211401345`) and add the
 `-100` prefix the Bot API requires.
 
-**A channel post from the log channel is ignored.** Both bots administer it, so
-every line posted there returns as a `channel_post` to both; echo detection uses
-the same normalized channel-ID matching (and case-insensitive `@username`
-matching) to suppress feedback loops.
+**Posts from the log channel and their automatic discussion mirrors are ignored.**
+Both bots administer the channel, so each posted line returns as a `channel_post`.
+Telegram also forwards channel posts into a linked discussion group as a
+`message` or `edited_message`. Echo detection uses normalized channel-ID matching
+(and case-insensitive `@username` matching); discussion mirrors additionally need
+`is_automatic_forward: true` and a matching channel-type `sender_chat`. Detection
+runs before authorization and logging so a mirrored log cannot generate another
+access-denial log. Manual forwards, messages from other channels and unmatched
+sources retain their normal authorization and handling.
 
 **D1** stores **warnings, errors, and publishes only**. Routine handled updates
 go to `console.log` (Workers Logs via `[observability]` in `wrangler.toml`) and,

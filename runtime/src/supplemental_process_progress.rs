@@ -210,3 +210,31 @@ fn actual_idle_file_progress_error_and_wall_keep_original_owner_contracts() {
     assert!(!crate::process_owner::cleanup_pending(&root));
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[cfg(windows)]
+#[test]
+fn windows_quiet_progress_fixture_keeps_accounting_stable_across_four_owned_runs() {
+    let project = worker_fixture::project();
+    let outer = project.join("logs/tmp").join(format!(
+        "supplemental-progress-stress-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir(&outer).unwrap();
+    let worker = worker_fixture::worker();
+    let argv = [worker.into_os_string(), "--retained-quiet".into()];
+    let environment = worker_fixture::test_environment();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    // Every independent run must pass all three original real-owner contracts.
+    // A failed repetition is a failure, never a retry or a discarded sample.
+    for iteration in 0..4 {
+        let root = outer.join(format!("run-{iteration}"));
+        std::fs::create_dir_all(root.join("logs/tmp")).unwrap();
+        runtime.block_on(exercise(&root, &argv, &environment));
+        assert!(!crate::process_owner::cleanup_pending(&root));
+    }
+    assert!(!crate::process_owner::cleanup_pending(&outer));
+    std::fs::remove_dir_all(outer).unwrap();
+}
