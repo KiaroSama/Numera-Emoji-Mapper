@@ -8,6 +8,36 @@ from the project root with `.\numera-emoji.exe` on Windows or
 [§12.8](guide-cli-panel-coin.md#128-coins-commands) use the same standalone
 executable. No Python environment is required.
 
+### `doctor` — offline installation and catalog diagnostics
+
+```powershell
+.\numera-emoji.exe doctor
+.\numera-emoji.exe doctor --data-dir 'G:\Numera-Test\catalog'
+```
+
+The selected directory defaults to `collection` beneath the installation,
+matching catalog commands such as `add-media`. Pass the same explicit
+`--data-dir DIR` to doctor and the operation being diagnosed. The environment
+variable `EMOJI_DATA_DIR` is not a catalog selector. Supply this option once with
+a nonempty directory; prefix dash-leading relative names with `./`.
+
+Doctor reports the planned catalog database and, for external catalogs, the
+private codec workspace under the installation. It resolves existing physical
+ancestors and missing components, including parent components, without creating
+the selected directory or workspace. It refuses existing links, reparse points
+and files where directories are required, reporting an unresolved location.
+Use drive-absolute or installation-relative Windows paths; drive-relative paths
+such as `C:catalog` are reported as unresolved rather than guessed from another
+drive's current directory. Root-relative paths such as `\catalog` use the
+installation's drive. An unresolved location is diagnostic information; it
+does not itself change doctor's existing exit status.
+
+The location report is not a guarantee of future write access or valid private
+workspace permissions, and doctor does not repair permissions. It writes its
+normal run log, redacts configured credentials, and does not install tools or
+contact Telegram. `doctor --help` and invalid arguments are handled before
+configuration is loaded.
+
 ### 12.1 `make-emoji-pngs` — image → 100×100 PNG
 
 | Flag | Default | Meaning |

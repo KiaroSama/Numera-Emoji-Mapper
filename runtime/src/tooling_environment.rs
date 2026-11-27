@@ -75,12 +75,42 @@ pub(crate) fn describe_directory(path: &Path) -> Result<PathBuf, String> {
     let normalized = original.components().as_path();
     reject_links(
         normalized,
-        "Catalog storage cannot use a linked/reparse directory",
+        "Diagnostic storage cannot use a linked/reparse directory",
     )?;
-    if normalized.exists() {
-        return physical_root(normalized);
+    if !normalized.is_absolute() {
+        return Err("Diagnostic storage requires an absolute or installation-relative path".into());
     }
-    canonical_existing_prefix(normalized)
+    let mut resolved = PathBuf::new();
+    for component in normalized.components() {
+        match component {
+            Component::Prefix(prefix) => {
+                resolved.push(prefix.as_os_str());
+                // A Windows drive/UNC prefix is not a traversable directory until RootDir.
+                continue;
+            }
+            Component::RootDir => resolved.push(component.as_os_str()),
+            Component::CurDir => continue,
+            Component::ParentDir => {
+                // Absolute filesystem roots keep their root when traversing another parent.
+                resolved.pop();
+            }
+            Component::Normal(name) => resolved.push(name),
+        }
+        // A parent component can leave a missing suffix and expose a real directory or link.
+        // Inspect again at each step rather than collapsing the original path lexically.
+        match std::fs::symlink_metadata(&resolved) {
+            Ok(metadata) if linked(&metadata) => {
+                return Err("Diagnostic storage cannot use a linked/reparse directory".into());
+            }
+            Ok(metadata) if !metadata.is_dir() => {
+                return Err("Diagnostic storage path must be a directory".into());
+            }
+            Ok(_) => resolved = crate::migration_bundle::resolved(&resolved)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    Ok(resolved)
 }
 
 pub fn physical_root(root: &Path) -> Result<PathBuf, String> {

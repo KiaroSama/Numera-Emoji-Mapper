@@ -164,16 +164,20 @@ impl Config {
         }
     }
     pub fn secret_values(&self) -> Vec<String> {
-        self.values
-            .iter()
-            .filter(|(key, _)| {
-                ["TOKEN", "SECRET", "PASSWORD", "API_KEY"]
-                    .iter()
-                    .any(|part| key.contains(part))
-            })
-            .filter(|(_, value)| !value.is_empty())
-            .map(|(_, value)| value.clone())
-            .collect()
+        let mut secrets = std::collections::BTreeSet::new();
+        for (key, raw) in self.values.iter().filter(|(key, _)| {
+            ["TOKEN", "SECRET", "PASSWORD", "API_KEY"]
+                .iter()
+                .any(|part| key.contains(part))
+        }) {
+            // Consumers use the normalized value; diagnostics must protect both forms.
+            let effective = self.value(key);
+            if !effective.is_empty() {
+                secrets.insert(raw.clone());
+                secrets.insert(effective.to_owned());
+            }
+        }
+        secrets.into_iter().collect()
     }
     pub fn integer(&self, key: &str, default: i64, minimum: i64, maximum: i64) -> i64 {
         let (value, warning) = crate::config_integer::resolve(
@@ -195,6 +199,68 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn configured_secrets_redact_raw_and_effective_values_without_changing_configuration() {
+        let environment = BTreeMap::from([
+            ("NUMERA_EMOJI_MAPPER_NO_DOTENV".into(), "1".into()),
+            (
+                "GENERAL_BOT_TOKEN".into(),
+                " \topaque-fixture-token\r\n".into(),
+            ),
+            (
+                "SERVICE_API_KEY".into(),
+                "\u{1c}\u{85}opaque-fixture-key\u{1f}".into(),
+            ),
+            (
+                "SERVICE_PASSWORD".into(),
+                "\u{2003}opaque-fixture-password\u{a0}".into(),
+            ),
+            ("SERVICE_SECRET".into(), " opaque-fixture-secret ".into()),
+        ]);
+        let config = Config::load_with_environment(
+            PathBuf::from("not-read-secret-configuration"),
+            &environment,
+        )
+        .unwrap();
+        let secrets = config.secret_values();
+        for (key, effective) in [
+            ("GENERAL_BOT_TOKEN", "opaque-fixture-token"),
+            ("SERVICE_API_KEY", "opaque-fixture-key"),
+            ("SERVICE_PASSWORD", "opaque-fixture-password"),
+            ("SERVICE_SECRET", "opaque-fixture-secret"),
+        ] {
+            assert_eq!(config.require(key).unwrap(), effective);
+            assert_eq!(
+                crate::logging::redact(&format!("catalog/{effective}/catalog.db"), &secrets),
+                "catalog/[REDACTED]/catalog.db",
+                "effective configured credential must be redacted: {key}"
+            );
+            assert_eq!(
+                crate::logging::redact(&environment[key], &secrets),
+                "[REDACTED]",
+                "raw configured credential must remain redacted: {key}"
+            );
+        }
+        assert_eq!(config.values, environment);
+    }
+
+    #[test]
+    fn effectively_blank_secrets_do_not_corrupt_unrelated_diagnostics() {
+        let config = Config::load_with_environment(
+            PathBuf::from("not-read-blank-secret-configuration"),
+            &BTreeMap::from([
+                ("NUMERA_EMOJI_MAPPER_NO_DOTENV".into(), "1".into()),
+                ("EMPTY_TOKEN".into(), String::new()),
+                ("BLANK_SECRET".into(), " \t\u{1c}\u{85}".into()),
+                ("DISPLAY_LABEL".into(), "not-a-secret".into()),
+            ]),
+        )
+        .unwrap();
+        let text = "normal \t\u{1c}\u{85} directory/not-a-secret/catalog.db";
+        assert!(config.require("BLANK_SECRET").is_err());
+        assert_eq!(crate::logging::redact(text, &config.secret_values()), text);
+    }
 
     #[test]
     fn original_numeric_configuration_preserves_defaults_unicode_bounds_and_warnings() {
