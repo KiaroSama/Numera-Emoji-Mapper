@@ -153,6 +153,31 @@ independent media oracles, admission guards and security boundaries remain.
 The existing workflows already execute these bodies; no dependency, workflow,
 version, tag or badge churn is required for this repair.
 
+### Correction found by the first Windows CI execution
+
+Initial published head `4ed02b24fa9ae10f42e50e5c62440e7f1a128538` is not an
+accepted final source. Both Windows x64 events reproducibly failed three new
+doctor fixture assertions. The first [failed job and original log](https://github.com/KiaroSama/Numera-Emoji-Mapper/actions/runs/45917843275/job/140241250739)
+are retained. Actual doctor output showed the intended physical destinations;
+the two path comparisons incorrectly treated mixed Windows separator spelling
+as a different location. A third failure occurred when `create_dir` encountered
+the empty directory left after `junction::delete` cleared its reparse point.
+The pinned junction 2.1.0 implementation and its own `exists_verify` test confirm
+that deletion contract.
+
+The corrective delta is confined to the new test module and this audit record.
+It parses exactly one complete diagnostic field and compares full native `Path`
+values against independently specified absolute paths. It rejects missing and
+duplicate fields and preserves every component and filename; it neither uses
+doctor's resolver as its oracle nor compares only suffixes. Windows teardown
+checks that the owned entry is a reparse point, clears it, verifies a physical
+empty directory, removes only that directory nonrecursively and checks absence.
+Immediate assertions preserve the outside target sentinel throughout teardown.
+All six doctor test functions and their cases remain; no skip, timeout, guard,
+production or dependency change is used to obtain acceptance. The corrected
+source requires fresh complete supported-platform CI and all final-source
+Checks before delivery. The failed head is not relabeled successful.
+
 ## Final integration acceptance
 
 The implementation PR's final verification comment must bind the published

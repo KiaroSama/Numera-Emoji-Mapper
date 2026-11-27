@@ -21,22 +21,69 @@ fn remove_directory_link(link: &Path) {
     #[cfg(unix)]
     std::fs::remove_file(link).unwrap();
     #[cfg(windows)]
-    junction::delete(link).unwrap();
+    {
+        use std::os::windows::fs::MetadataExt;
+        assert_ne!(
+            std::fs::symlink_metadata(link).unwrap().file_attributes() & 0x400,
+            0,
+            "owned junction must still be a reparse point before teardown"
+        );
+        // Deleting the reparse point leaves its owned directory entry on Windows.
+        junction::delete(link).unwrap();
+        let metadata = std::fs::symlink_metadata(link).unwrap();
+        assert!(metadata.is_dir());
+        assert!(!metadata.file_type().is_symlink());
+        assert_eq!(metadata.file_attributes() & 0x400, 0);
+        assert!(std::fs::read_dir(link).unwrap().next().is_none());
+        // Remove only the now-empty local entry, never the junction's target tree.
+        std::fs::remove_dir(link).unwrap();
+    }
+    assert!(matches!(
+        std::fs::symlink_metadata(link),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound
+    ));
+}
+
+fn diagnostic_value<'a>(text: &'a str, label: &str) -> &'a str {
+    let prefix = format!("[INFO] {label}: ");
+    let mut fields = text.lines().filter_map(|line| line.strip_prefix(&prefix));
+    let value = fields
+        .next()
+        .unwrap_or_else(|| panic!("missing {label} diagnostic: {text}"));
+    assert!(
+        fields.next().is_none(),
+        "duplicate {label} diagnostic: {text}"
+    );
+    value
+}
+
+fn diagnostic_path(text: &str, label: &str, expected: &Path) {
+    let actual = Path::new(diagnostic_value(text, label));
+    assert!(actual.is_absolute(), "{label} must be absolute: {text}");
+    // Compare the complete independent path using native separator semantics.
+    // This does not canonicalize either side or derive expectations from doctor.
+    assert_eq!(actual, expected, "unexpected {label} diagnostic: {text}");
+}
+
+fn unresolved(text: &str, label: &str) {
+    let value = diagnostic_value(text, label);
+    assert!(
+        value.starts_with("unresolved (") && value.ends_with(')'),
+        "expected unresolved {label} diagnostic: {text}"
+    );
 }
 
 fn locations(text: &str, catalog: &Path, workspace: Option<&Path>) {
-    assert!(
-        text.contains(&format!("Catalog path: {}", catalog.display())),
-        "{text}"
-    );
-    let expected = workspace.map_or_else(
-        || "not required (data directory is inside project root)".into(),
-        |path| path.display().to_string(),
-    );
-    assert!(
-        text.contains(&format!("Private codec workspace: {expected}")),
-        "{text}"
-    );
+    diagnostic_path(text, "Catalog path", catalog);
+    if let Some(path) = workspace {
+        diagnostic_path(text, "Private codec workspace", path);
+    } else {
+        assert_eq!(
+            diagnostic_value(text, "Private codec workspace"),
+            "not required (data directory is inside project root)",
+            "{text}"
+        );
+    }
     assert!(!text.contains("unresolved ("), "{text}");
 }
 
@@ -227,12 +274,8 @@ fn doctor_refuses_linked_or_file_directories_without_repairing_them() {
             &[],
         );
         assert_eq!(actual.code, 0, "{}", actual.stderr);
-        assert!(actual.stdout.contains("Catalog path: unresolved ("));
-        assert!(
-            actual
-                .stdout
-                .contains("Private codec workspace: unresolved (")
-        );
+        unresolved(&actual.stdout, "Catalog path");
+        unresolved(&actual.stdout, "Private codec workspace");
         assert!(!root.0.join("missing").exists());
         assert!(!root.0.join("catalog").exists());
         assert!(!outside.0.join("catalog").exists());
@@ -240,6 +283,7 @@ fn doctor_refuses_linked_or_file_directories_without_repairing_them() {
         assert_eq!(std::fs::read(outside.0.join("sentinel")).unwrap(), sentinel);
     }
     remove_directory_link(&link);
+    assert_eq!(std::fs::read(outside.0.join("sentinel")).unwrap(), sentinel);
     #[cfg(unix)]
     {
         std::os::unix::fs::symlink(root.0.join("absent"), &link).unwrap();
@@ -249,7 +293,7 @@ fn doctor_refuses_linked_or_file_directories_without_repairing_them() {
             &["doctor", "--data-dir", link.to_str().unwrap()],
             &[],
         );
-        assert!(actual.stdout.contains("Catalog path: unresolved ("));
+        unresolved(&actual.stdout, "Catalog path");
         assert!(!root.0.join("absent").exists());
         remove_directory_link(&link);
     }
@@ -267,21 +311,19 @@ fn doctor_refuses_linked_or_file_directories_without_repairing_them() {
             &[],
         );
         assert_eq!(actual.code, 0, "{}", actual.stderr);
-        assert!(actual.stdout.contains(&format!(
-            "Catalog path: {}",
-            outside.0.join("catalog.db").display()
-        )));
-        assert!(
-            actual
-                .stdout
-                .contains("Private codec workspace: unresolved (")
+        diagnostic_path(
+            &actual.stdout,
+            "Catalog path",
+            &outside.0.join("catalog.db"),
         );
+        unresolved(&actual.stdout, "Private codec workspace");
         if !linked {
             assert_eq!(std::fs::read(&workspace).unwrap(), sentinel);
         }
         assert_eq!(std::fs::read(outside.0.join("sentinel")).unwrap(), sentinel);
     }
     remove_directory_link(&workspace);
+    assert_eq!(std::fs::read(outside.0.join("sentinel")).unwrap(), sentinel);
     std::fs::create_dir(&workspace).unwrap();
     let actual = invoke(
         &root.0,
@@ -297,6 +339,7 @@ fn doctor_refuses_linked_or_file_directories_without_repairing_them() {
     );
     assert!(std::fs::read_dir(&workspace).unwrap().next().is_none());
     assert!(!outside.0.join("catalog.db").exists());
+    assert_eq!(std::fs::read(outside.0.join("sentinel")).unwrap(), sentinel);
     outside.clean().unwrap();
     root.clean().unwrap();
 }
