@@ -3,6 +3,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
+import { freemem, totalmem } from 'node:os';
+import { stripVTControlCharacters } from 'node:util';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { PNG } from 'pngjs';
@@ -137,6 +139,9 @@ class Harness {
     const context = await this.browser.newContext({ viewport: { width: 1200, height: 900 }, ...options });
     owner.contexts.push(context);
     const page = await context.newPage();
+    owner.crashed ??= false;
+    owner.crashCount ??= 0;
+    page.on('crash', () => { owner.crashed = true; owner.crashCount += 1; });
     page.on('pageerror', error => owner.errors.push(String(error)));
     if (clock) await page.clock.install();
     await page.addInitScript(STUB);
@@ -167,12 +172,34 @@ export const test = base.extend({
     const h = new Harness(browser, catalogSize);
     try { await h.start(); await use(h); } finally { await h.stop(); }
   }, { scope: 'worker' }],
-  panel: async ({ harness }, use) => {
+  panel: async ({ harness }, use, testInfo) => {
     const owner = { contexts: [], errors: [] };
     const panel = { open: (items, options) => harness.open(items, options, owner),
       dbOrder: () => harness.dbOrder(), excludedInDb: () => harness.excludedInDb(), reset: () => harness.reset(),
       packPlan: () => harness.packPlan(), withCatalogLabels: (labels, run) => harness.withCatalogLabels(labels, run), errors: owner.errors };
     try { await use(panel); } finally {
+      if (testInfo.status !== testInfo.expectedStatus) {
+        try {
+          const serverOutputTail = stripVTControlCharacters(harness.output ?? '')
+            .replaceAll('\\', '/')
+            .replaceAll(ROOT.replaceAll('\\', '/'), '<project>')
+            .replace(/\b[0-9a-f]{48}\b|\b\d{6,12}:[A-Za-z0-9_-]{30,}/gi, '[REDACTED]')
+            .slice(-4096);
+          await testInfo.attach('browser-diagnostics.json', {
+            contentType: 'application/json',
+            body: JSON.stringify({
+              crashed: owner.crashed ?? false,
+              crashCount: owner.crashCount ?? 0,
+              serverExitCode: harness.process?.exitCode ?? null,
+              serverSignal: harness.process?.signalCode ?? null,
+              serverOutputTail,
+              nodeMemory: process.memoryUsage(),
+              hostFreeMem: freemem(),
+              hostTotalMem: totalmem(),
+            }),
+          });
+        } catch { /* Diagnostics must not mask the test failure. */ }
+      }
       for (const context of owner.contexts.reverse()) await context.close();
       expect(owner.errors, 'the page threw during the scenario').toEqual([]);
     }

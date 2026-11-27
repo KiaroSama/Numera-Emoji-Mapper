@@ -81,11 +81,44 @@ pub fn manifest(stickers: &[Value]) -> Result<String, String> {
         .collect::<String>()[..32]
         .into())
 }
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct ReconcileStats {
+    pub retired_sigs: usize,
+    pub retired_errors: usize,
+    pub retained_errors: usize,
+}
+
+pub fn reconcile(
+    cache: &mut Value,
+    set_names: &[String],
+    io: &mut dyn CacheIo,
+) -> Result<(), String> {
+    reconcile_with_stats(cache, set_names, io).map(|_| ())
+}
+
+pub fn reconcile_with_stats(
+    cache: &mut Value,
+    set_names: &[String],
+    io: &mut dyn CacheIo,
+) -> Result<ReconcileStats, String> {
+    reconcile_inventory(cache, set_names.iter().map(|name| Some(name.as_str())), io)
+        .map(|(_, stats)| stats)
+}
+
 pub fn download<I: CacheIo>(
     sets: &[Value],
     cache: &mut Value,
     io: &mut I,
 ) -> Result<Vec<String>, String> {
+    reconcile_inventory(cache, sets.iter().map(|set| set["name"].as_str()), io)
+        .map(|(incomplete, _)| incomplete)
+}
+
+pub(crate) fn reconcile_inventory<'a>(
+    cache: &mut Value,
+    set_names: impl IntoIterator<Item = Option<&'a str>>,
+    io: &mut dyn CacheIo,
+) -> Result<(Vec<String>, ReconcileStats), String> {
     for key in ["sets", "sigs", "errors"] {
         if !cache[key].is_object() {
             return Err("invalid remap cache fields".into());
@@ -93,9 +126,8 @@ pub fn download<I: CacheIo>(
     }
     let mut live = BTreeSet::new();
     let mut incomplete = Vec::new();
-    for set in sets {
-        let name = set["name"]
-            .as_str()
+    for name in set_names {
+        let name = name
             .filter(|name| {
                 !name.is_empty() && name.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_')
             })
@@ -143,32 +175,26 @@ pub fn download<I: CacheIo>(
         }
         io.save(cache)?;
     }
-    // Only a complete live inventory can retire a failed download with no cached signature.
-    let mut stale = BTreeSet::new();
-    for field in ["sigs", "errors"] {
-        stale.extend(
-            cache[field]
-                .as_object()
-                .ok_or("invalid remap cache")?
-                .keys()
-                .filter(|cid| !live.contains(*cid))
-                .cloned(),
-        );
-    }
-    if !stale.is_empty() {
-        for cid in stale {
-            cache["sigs"]
-                .as_object_mut()
-                .ok_or("invalid remap signatures")?
-                .shift_remove(&cid);
-            cache["errors"]
-                .as_object_mut()
-                .ok_or("invalid remap errors")?
-                .shift_remove(&cid);
-        }
+    // Only a complete live inventory can retire cache entries.
+    let mut retire = |field: &str| -> Result<(usize, usize), String> {
+        let entries = cache[field].as_object_mut().ok_or("invalid remap cache")?;
+        let before = entries.len();
+        entries.retain(|cid, _| live.contains(cid));
+        Ok((before - entries.len(), entries.len()))
+    };
+    let (retired_sigs, _) = retire("sigs")?;
+    let (retired_errors, retained_errors) = retire("errors")?;
+    if retired_sigs > 0 || retired_errors > 0 {
         io.save(cache)?;
     }
-    Ok(incomplete)
+    Ok((
+        incomplete,
+        ReconcileStats {
+            retired_sigs,
+            retired_errors,
+            retained_errors,
+        },
+    ))
 }
 
 fn ascii_json_string(text: &str) -> String {

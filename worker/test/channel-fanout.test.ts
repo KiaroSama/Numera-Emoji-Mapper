@@ -31,7 +31,7 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-function sinks(failedAdmins: number[], failPart = 1, transport = false) {
+function sinks(failedAdmins: number[], failPart = 1, transport = false, stall?: "request" | "body") {
   const sent: Array<Record<string, unknown>> = [];
   const stored: unknown[][] = [];
   const attempts = new Map<unknown, number>();
@@ -41,9 +41,19 @@ function sinks(failedAdmins: number[], failPart = 1, transport = false) {
     const part = (attempts.get(body.chat_id) ?? 0) + 1;
     attempts.set(body.chat_id, part);
     if (failedAdmins.includes(Number(body.chat_id)) && part === failPart) {
+      if (stall) {
+        const wait = () => new Promise<never>((_, reject) => {
+          const signal = init.signal;
+          if (!signal) reject(new Error("missing timeout signal"));
+          else if (signal.aborted) reject(signal.reason);
+          else signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+        });
+        if (stall === "request") return wait();
+        return Object.assign(new Response(), { json: wait });
+      }
       if (transport) throw new Error(`Synthetic transport failure ${ENV.PUBLISH_SECRET}`);
       return Response.json({ ok: false, error_code: 403,
-        description: `Forbidden: bot was blocked by the user ${ENV.PUBLISH_SECRET}` });
+        description: `Forbidden: bot was blocked by user ${body.chat_id} ${ENV.PUBLISH_SECRET}` });
     }
     return Response.json({ ok: true, result: {
       message_id: sent.length, date: 1795802400,
@@ -93,6 +103,12 @@ describe.each(["general", "coin"])("%s channel delivery", bot => {
     expect(stored[0][2]).toBe("ERROR");
     expect(stored[0][3]).toBe("webhook");
     expect(String(stored[0][4])).toContain(`${failures.length}/3`);
+    expect(String(stored[0][4])).toContain(`delivered=${3 - failures.length}`);
+    for (const admin of ["42", "77", "99"]) {
+      expect(JSON.stringify(stored)).not.toContain(admin);
+      expect(String(sent[3].text)).not.toContain(admin);
+      expect(JSON.stringify(output.mock.calls)).not.toContain(admin);
+    }
     const diagnostics = JSON.stringify({ sent, stored, console: output.mock.calls });
     expect(diagnostics).toContain("[REDACTED]");
     expect(diagnostics).not.toContain(ENV.PUBLISH_SECRET);
@@ -110,6 +126,20 @@ describe.each(["general", "coin"])("%s channel delivery", bot => {
     expect(stored).toHaveLength(1);
     expect(JSON.stringify(stored)).toContain("transport failure");
     expect(JSON.stringify({ sent, stored })).not.toContain(ENV.PUBLISH_SECRET);
+  });
+
+  it.each(["request", "body"] as const)("continues after the first recipient's %s times out", async (stall) => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const timeout = AbortSignal.timeout.bind(AbortSignal);
+    vi.spyOn(AbortSignal, "timeout").mockImplementationOnce(() => timeout(20));
+    const { sent, stored, db } = sinks([42], 1, false, stall);
+    const response = await deliver(bot, db);
+
+    expect(response.status).toBe(200);
+    expect(sent.map(body => body.chat_id)).toEqual([42, 77, 99, "@FixtureLogs"]);
+    expect(stored).toHaveLength(1);
+    expect(String(stored[0][4])).toContain("1/3 admin(s) (delivered=2)");
+    expect(String(stored[0][4])).toMatch(/failed \(0\): transport failure: .*timed? ?out/i);
   });
 
   it("does not replay a delivered chunk when a later chunk fails for one administrator", async () => {

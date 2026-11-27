@@ -92,6 +92,7 @@ fn directory() -> tempfile::TempDir {
 
 #[test]
 fn malformed_markets_leave_cached_art_and_names_available_but_report_incomplete() {
+    assert_completion_log_contract();
     const SVG: &[u8] = b"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"><rect width=\"10\" height=\"10\"/></svg>";
     const CSV: &[u8] = b"ticker,name,format,file,keywords\r\nbtc,Bitcoin,svg,logos/svg/btc.svg,\"btc, Bitcoin\"\r\n";
     for payload in invalid_markets() {
@@ -160,6 +161,16 @@ fn empty_and_legacy_null_market_pages_remain_compatible_completion() {
         assert!(complete);
         assert_eq!(json!(names), json!({"btc":"Bitcoin"}));
     }
+}
+
+fn assert_completion_log_contract() {
+    // These CLI adapters hardcode the provider URL. Check their log fields offline.
+    let logos = include_str!("../src/coin_gecko_cli.rs");
+    assert!(logos.contains("logo_fetch_pages={} status={} exit={code}"));
+    assert!(logos.contains("if code == 0 { \"complete\" } else { \"partial\" }"));
+    let keywords = include_str!("../src/coin_keywords_cli.rs");
+    assert!(keywords.contains("keyword_rows={} complete={complete} status={}"));
+    assert!(keywords.contains("if complete { \"complete\" } else { \"partial\" }"));
 }
 
 #[path = "support/test_admission.rs"]

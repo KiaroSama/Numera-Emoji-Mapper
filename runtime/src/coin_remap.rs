@@ -211,15 +211,23 @@ fn run_with_effects(
     sets.sort_by_key(|set| set["index"].as_i64());
     let raw = Value::Object(crate::coin_provider_recover::object(&files.cache, true)?);
     let mut cache = crate::coin_remap_cache::load(&raw)?;
-    let incomplete = crate::coin_remap_cache::download(
-        &sets,
+    let (incomplete, stats) = crate::coin_remap_cache::reconcile_inventory(
         &mut cache,
+        sets.iter().map(|set| set["name"].as_str()),
         &mut Disk {
             tg,
             path: &files.cache,
             log,
         },
     )?;
+    log.event(
+        "INFO",
+        "coins",
+        &format!(
+            "remap_cache retired_sigs={} retired_errors={} retained_errors={}",
+            stats.retired_sigs, stats.retired_errors, stats.retained_errors
+        ),
+    );
     let (tickers, local) = local(&files.images, log)?;
     let sigs = cache["sigs"]
         .as_object()
@@ -243,10 +251,7 @@ fn run_with_effects(
     let nearest = nearest(&local, &live)?;
     let matches = crate::coin_remap_policy::matches(&tickers, &cids, nearest)?;
     options.incomplete_sets = incomplete.len();
-    options.failed_images = cache["errors"]
-        .as_object()
-        .ok_or("invalid remap error cache")?
-        .len();
+    options.failed_images = stats.retained_errors;
     let decision = crate::coin_remap_policy::decide(&matches, options)?;
     log.event(
         "INFO",

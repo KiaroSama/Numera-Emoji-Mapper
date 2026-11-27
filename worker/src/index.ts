@@ -97,7 +97,7 @@ async function onWebhook(request: Request, env: Env, ctx: ExecutionContext,
       bot,
       level: "ERROR",
       event: "webhook",
-      detail: `update ${update.update_id}: ${errText(err, env)}`,
+      detail: `update ${update.update_id}: ${errText(err, env, update.channel_post ? admins : undefined)}`,
       fields: { update_id: update.update_id },
     }));
   }

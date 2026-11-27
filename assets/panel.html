@@ -34,6 +34,7 @@ h1 .dot{color:var(--neon)}
 .status{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center;
   color:var(--muted);font-size:13px;margin-top:-4px}
 .count b{color:var(--neon2)}
+.drag-target{color:var(--neon);font-weight:600}
 /* Everything except Save selection sits together in the middle; Save stays
    alone on the right, where a button that writes belongs. */
 .hleft{display:flex;align-items:center;gap:12px;min-width:0}
@@ -337,7 +338,9 @@ body.compact .glyph,body.compact .lbl,body.compact .sub{display:none}
     <span class="hint">· click = toggle · drag = reorder · click the id = copy · Ctrl+wheel = zoom</span>
     <span id="hiddenNote" class="hint"></span>
     <span id="staleNote" class="warn"></span>
-    <span id="capWarn" class="warn" style="display:none"></span></div>
+    <span id="capWarn" class="warn" style="display:none"></span>
+    <span id="dragTarget" class="drag-target" aria-live="polite" hidden></span>
+  </div>
   <div id="holding">
     <span class="htitle">Holding (<b id="holdCount">0</b>) — drag an emoji here to park it; drag a parked one out to place it in a pack</span>
     <button id="unholdAll" type="button">Unhold all</button>

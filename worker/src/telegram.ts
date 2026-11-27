@@ -10,6 +10,7 @@
 import { redact } from "./redact";
 
 const DEFAULT_API = "https://api.telegram.org";
+const DEFAULT_TIMEOUT_MS = 10_000;
 
 /**
  * Telegram rejects a sendMessage over this many characters -- counted AFTER
@@ -34,7 +35,8 @@ export class BotApiError extends Error {
 
 export class Telegram {
   constructor(private readonly token: string,
-              private readonly apiBase: string = DEFAULT_API) {}
+              private readonly apiBase = DEFAULT_API,
+              private readonly timeoutMs = DEFAULT_TIMEOUT_MS) {}
 
   /**
    * POST one Bot API method.
@@ -47,27 +49,28 @@ export class Telegram {
    * silently diverge.
    */
   async call<T = unknown>(method: string, payload: Record<string, unknown>): Promise<T> {
-    let res: Response;
+    let res: Response | undefined;
+    let signal: AbortSignal | undefined;
+    let body: unknown;
     try {
+      if (this.timeoutMs > 0 && typeof AbortSignal !== "undefined" && typeof AbortSignal?.timeout === "function") {
+        signal = AbortSignal.timeout(this.timeoutMs);
+      }
       res = await fetch(`${this.apiBase}/bot${this.token}/${method}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal,
       });
-    } catch (err) {
-      // The URL embeds the token and a transport failure names the URL it was
-      // attempting, so this message reached the HTTP response body and every
-      // log sink with the credential still in it. The cause is dropped rather
-      // than attached: nothing downstream needs it, and an unsanitised cause
-      // is exactly what a thorough serialiser would surface again.
-      throw new BotApiError(method, `transport failure: ${redact(String(
-        err instanceof Error ? err.message : err))}`, 0);
-    }
-    let body: unknown;
-    try {
       body = await res.json();
-    } catch {
-      throw new BotApiError(method, `non-JSON response (HTTP ${res.status})`, res.status);
+    } catch (err) {
+      if (res && !signal?.aborted) {
+        throw new BotApiError(method, `non-JSON response (HTTP ${res.status})`, res.status);
+      }
+      // The request URL carries the token. Drop the raw cause and redact the message.
+      const failure = signal?.aborted ? signal.reason : err;
+      throw new BotApiError(method, `transport failure: ${redact(String(
+        failure instanceof Error ? failure.message : failure))}`, 0);
     }
     if (!isRecord(body) || typeof body.ok !== "boolean"
         || (body.ok && !("result" in body))) {

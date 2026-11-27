@@ -81,7 +81,11 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     log.event(
         "INFO",
         "coins",
-        &format!("keyword_rows={} complete={complete}", rows.len()),
+        &format!(
+            "keyword_rows={} complete={complete} status={}",
+            rows.len(),
+            if complete { "complete" } else { "partial" }
+        ),
     );
     if !complete {
         println!(

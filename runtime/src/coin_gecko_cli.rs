@@ -88,7 +88,11 @@ pub fn run(config: &Config, args: &[String], log: &RunLog) -> Result<u8, String>
     log.event(
         "INFO",
         "coins",
-        &format!("logo_fetch_pages={} exit={code}", pages.unwrap_or(40)),
+        &format!(
+            "logo_fetch_pages={} status={} exit={code}",
+            pages.unwrap_or(40),
+            if code == 0 { "complete" } else { "partial" }
+        ),
     );
     println!("Coin logo fetch finished; keywords.csv written.");
     if code == 3 {

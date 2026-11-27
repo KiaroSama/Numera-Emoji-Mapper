@@ -1,7 +1,7 @@
 //! Complete live inventories retire failures belonging to stickers that no longer exist.
 extern crate numera_runtime as production;
 
-use production::coin_remap_cache::{self, CacheIo};
+use production::coin_remap_cache::{self, CacheIo, ReconcileStats};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
@@ -50,9 +50,10 @@ fn sticker(cid: &str) -> Value {
 #[test]
 fn removed_failed_sticker_no_longer_blocks_a_fully_proven_remap() {
     let mut observer = Observer::default();
-    observer
-        .members
-        .insert("fixture1".into(), vec![sticker("kept"), sticker("removed")]);
+    observer.members.insert(
+        "fixture1".into(),
+        vec![sticker("kept"), sticker("removed"), sticker("stale")],
+    );
     observer.unavailable_images.insert("removed".into());
     let sets = [json!({"name":"fixture1"})];
     let mut cache = coin_remap_cache::load(&json!({})).unwrap();
@@ -69,8 +70,17 @@ fn removed_failed_sticker_no_longer_blocks_a_fully_proven_remap() {
         .insert("fixture1".into(), vec![sticker("kept")]);
     observer.fetched.clear();
     observer.saved.clear();
-    let incomplete = coin_remap_cache::download(&sets, &mut cache, &mut observer).unwrap();
-    assert!(incomplete.is_empty());
+    let stats =
+        coin_remap_cache::reconcile_with_stats(&mut cache, &["fixture1".into()], &mut observer)
+            .unwrap();
+    assert_eq!(
+        stats,
+        ReconcileStats {
+            retired_sigs: 1,
+            retired_errors: 1,
+            retained_errors: 0
+        }
+    );
     assert!(
         observer.fetched.is_empty(),
         "valid cached artwork must remain reusable"
@@ -93,7 +103,7 @@ fn removed_failed_sticker_no_longer_blocks_a_fully_proven_remap() {
             apply: true,
             max_distance: Some(1.0),
             min_margin: None,
-            incomplete_sets: incomplete.len(),
+            incomplete_sets: usize::from(cache["sets"]["fixture1"].is_null()),
             failed_images: cache["errors"].as_object().unwrap().len(),
         },
     )
@@ -107,10 +117,16 @@ fn error_only_cache_is_pruned_after_a_complete_empty_inventory() {
     let mut observer = Observer::default();
     observer.members.insert("fixture1".into(), vec![]);
     let mut cache = coin_remap_cache::load(&json!({"errors":{"removed":"old failure"}})).unwrap();
-    assert!(
-        coin_remap_cache::download(&[json!({"name":"fixture1"})], &mut cache, &mut observer)
-            .unwrap()
-            .is_empty()
+    let stats =
+        coin_remap_cache::reconcile_with_stats(&mut cache, &["fixture1".into()], &mut observer)
+            .unwrap();
+    assert_eq!(
+        stats,
+        ReconcileStats {
+            retired_sigs: 0,
+            retired_errors: 1,
+            retained_errors: 0
+        }
     );
     assert_eq!(cache["sigs"], json!({}));
     assert_eq!(cache["errors"], json!({}));
@@ -129,10 +145,16 @@ fn current_failed_sticker_remains_retryable_while_removed_failures_are_retired()
         &json!({"errors":{"removed":"old failure","current":"old failure"}}),
     )
     .unwrap();
+    let stats =
+        coin_remap_cache::reconcile_with_stats(&mut cache, &["fixture1".into()], &mut observer)
+            .unwrap();
     assert_eq!(
-        coin_remap_cache::download(&[json!({"name":"fixture1"})], &mut cache, &mut observer)
-            .unwrap(),
-        ["fixture1"]
+        stats,
+        ReconcileStats {
+            retired_sigs: 0,
+            retired_errors: 1,
+            retained_errors: 1
+        }
     );
     assert_eq!(
         cache["errors"],

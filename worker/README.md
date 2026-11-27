@@ -115,7 +115,10 @@ also writes a timestamped, redacted diagnostic to the console.
 
 `LOG_CHAT_ID`, `PACK_LINKS_CHAT_ID`, and `BOT_ALLOWED_CHANNEL_IDS` all accept a
 bare positive channel ID copied from the Telegram UI (`4211401345`) and add the
-`-100` prefix the Bot API requires.
+`-100` prefix the Bot API requires. For a log channel with multiple collectible
+usernames, set `LOG_CHAT_ID` to its numeric `-100…` ID: webhook updates carry only
+its primary `username`. Partial channel fan-out errors report delivered and failed
+administrator counts without logging their IDs.
 
 **Posts from the log channel and their automatic discussion mirrors are ignored.**
 Both bots administer the channel, so each posted line returns as a `channel_post`.

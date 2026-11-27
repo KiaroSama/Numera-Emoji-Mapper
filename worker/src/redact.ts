@@ -74,11 +74,15 @@ export function redact(text: string, env?: Partial<Env>): string {
  * makes what we are redacting explicit, and the depth bound keeps a cyclic
  * cause from spinning.
  */
-export function errText(err: unknown, env?: Partial<Env>): string {
+export function errText(err: unknown, env?: Partial<Env>, recipientIds?: ReadonlySet<number>): string {
   const parts: string[] = [];
   let cur: unknown = err;
   for (let depth = 0; cur !== undefined && cur !== null && depth < 5; depth++) {
-    parts.push(cur instanceof Error ? cur.message : String(cur));
+    const message = cur instanceof Error ? cur.message : String(cur);
+    // Upstream causes can quote a recipient ID. Keep the outer delivery counts intact.
+    parts.push(depth > 0 && recipientIds
+      ? redact(message, env).replace(/\d+/g, id => recipientIds.has(Number(id)) ? MASK : id)
+      : message);
     cur = cur instanceof Error ? (cur as Error & { cause?: unknown }).cause : undefined;
   }
   return redact(parts.join(": "), env);

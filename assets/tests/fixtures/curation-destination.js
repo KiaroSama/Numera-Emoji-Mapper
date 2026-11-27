@@ -1,6 +1,6 @@
 // Real drag regressions for destination lookup at the first settled boundary.
 import assert from 'node:assert/strict';
-import { test, synth } from '../browser-fixture.js';
+import { expect, test, synth } from '../browser-fixture.js';
 
 const LEVELS = new Set(['INFO', 'WARNING', 'ERROR', 'DEBUG']);
 function log(level, message) {
@@ -56,8 +56,13 @@ export async function runForwardDestinationScenarios(panel) {
     await page.mouse.down();
     await target.hover({position: {x: 10, y: 80}});
     await target.hover({position: {x: 10, y: 80}});
+    const indicator = page.locator('#dragTarget');
+    await expect(indicator).toBeVisible();
+    await expect(indicator).toHaveText('Drop -> Pack 2 (3/200)');
     await page.locator('#selCount').hover();
     await page.mouse.up();
+    await expect(indicator).toBeHidden();
+    await expect(indicator).toBeEmpty();
     assert.deepEqual(await page.evaluate('snapshot()'), before);
     await page.clock.runFor(500);
     assert.deepEqual(await page.evaluate("__sent('/api/order')"), [], 'a cancelled drag must not queue its preview');

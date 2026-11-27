@@ -27,7 +27,32 @@ let aimedPack;
  *  only when it carries no pack number of its own. A named function rather than
  *  an inline assignment because a test has no pointer -- it calls this and
  *  exercises the real arithmetic instead of copying it. */
-function aimAt(j){ aimedPack = runPackAt(j + 1, carried); }
+function aimAt(j, slot = undefined){
+  aimedPack = runPackAt(j + 1, carried);
+  if(slot!==undefined) moveCarried(slot);
+  updateDragTarget();
+}
+
+const dragTarget = document.getElementById('dragTarget');
+function updateDragTarget(){
+  let label = 'Drop -> Unstamped';
+  if(typeof aimedPack==='number'){
+    const pack = aimedPack;
+    const keys = holdDragKeys || carried;
+    // Count inferred members and the logo in the same proposed layout as canUnhold.
+    const items = ITEMS.map(it=>keys.has(it.key)&&!it.isLogo&&(it.included||holdDragKeys?.has(it.key))
+      ? {...it, pack, included:true} : it);
+    const used = (countsByPack(items).get(pack)||0)
+      + Number(items.some(it=>it.isLogo&&(it.pack==null||it.pack===pack)));
+    label = `Drop -> Pack ${pack} (${used}/${PER_SET})`;
+  }
+  if(dragTarget.textContent!==label) dragTarget.textContent=label;
+  dragTarget.hidden=false;
+}
+function clearDragTarget(){
+  dragTarget.textContent='';
+  dragTarget.hidden=true;
+}
 
 grid.addEventListener('dragstart',e=>{
   const card=e.target.closest('.card'); if(!card){e.preventDefault();return;}
@@ -53,15 +78,15 @@ grid.addEventListener('dragover',e=>{
   const card=e.target.closest('.card');
   if(!card || carried.has(card.dataset.key)) return;   // over a card being carried
   const j = ITEMS.findIndex(x=>x.key===card.dataset.key);
-  if(j < 0 || ITEMS[j].isLogo) return;      // never ahead of the brand logo
+  if(j < 0) return;
+  if(ITEMS[j].isLogo){ clearDragTarget(); return; } // never ahead of the brand logo
   // Which SIDE of the tile the pointer is on decides before-or-after, so the
   // last slot of a row is reachable and the gesture reads the way it looks.
   const r = card.getBoundingClientRect();
   // The pack comes from the card the pointer is ON, the position from which
   // half of it. Read it BEFORE the move, while the list still says where this
   // card sits.
-  aimAt(j);
-  moveCarried((e.clientX > r.left + r.width/2) ? j + 1 : j);
+  aimAt(j, (e.clientX > r.left + r.width/2) ? j + 1 : j);
 });
 
 /** Put the carried run in front of the item now at `slot`, keeping its own
@@ -111,6 +136,7 @@ function endDrag(committed){
   if(!committed && dragKey !== null){ applySnapshot(dragSnap,false); }
   for(const k of carried){ const n = cards.get(k); if(n) n.classList.remove('drag'); }
   carried.clear(); dragKey=null; dragSnap=null; aimedPack=undefined;
+  clearDragTarget();
   // The tray refuses to re-render while a drag is in progress, and the drop
   // (which moves a held emoji back into the grid) runs BEFORE this point -- so
   // without this the card stayed in the tray after it had landed in a pack.

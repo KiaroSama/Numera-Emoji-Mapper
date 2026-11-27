@@ -8,6 +8,12 @@ from the project root with `.\numera-emoji.exe` on Windows or
 [§12.8](guide-cli-panel-coin.md#128-coins-commands) use the same standalone
 executable. No Python environment is required.
 
+The coin logo fetch and keyword build write `status=complete` or `status=partial`
+to the run log (exit codes `0` and `3`, respectively). The remap command logs
+`remap_cache retired_sigs=… retired_errors=… retained_errors=…` after it checks
+the complete live inventory. While you drag a card, the Curate header shows its
+projected destination and how many slots the drop would use.
+
 ### `doctor`: offline installation and catalog diagnostics
 
 ```powershell
