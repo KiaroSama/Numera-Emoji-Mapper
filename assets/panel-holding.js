@@ -598,7 +598,7 @@ function runPackAt(index,ignore){
     return it.pack??null;
   };
   for(let i=index-1;i>=0;i--){const p=settled(i);if(p!=null)return p;}
-  for(let i=index+1;i<ITEMS.length;i++){const p=settled(i);if(p!=null)return p;}
+  for(let i=index;i<ITEMS.length;i++){const p=settled(i);if(p!=null)return p;}
   return null;
 }
 /** Accept a drop on the grid: every drop, from the tray or from the grid.

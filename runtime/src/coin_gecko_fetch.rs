@@ -83,9 +83,16 @@ where
                 break;
             }
         };
-        let Some(coins) = payload.as_array().filter(|v| !v.is_empty()) else {
+        let Some(coins) = payload.as_array() else {
+            // Preserve the legacy null end marker without accepting malformed market replies.
+            if !payload.is_null() {
+                complete = false;
+            }
             break;
         };
+        if coins.is_empty() {
+            break;
+        }
         for coin in coins {
             let ticker = safe_ticker(coin["symbol"].as_str().unwrap_or(""));
             if ticker.is_empty() || rows.contains_key(&ticker) {

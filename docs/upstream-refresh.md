@@ -1,6 +1,7 @@
 # Upstream refresh for the Rust migration
 
-Reviewed November 17, 2026. Versions below are pinned in the committed Cargo or
+Reviewed November 17, 2026; direct dependencies refreshed November 27, 2026.
+Versions below are pinned in the committed Cargo or
 npm lockfiles; this review does not certify a build or test result.
 
 | Component | Adopted version | Official source |
@@ -8,14 +9,15 @@ npm lockfiles; this review does not certify a build or test result.
 | Rust | 1.100.0 | [November 12 release](https://blog.rust-lang.org/2026/11/12/Rust-1.100.0/) |
 | rusqlite | 0.43.0 | [Release notes](https://github.com/rusqlite/rusqlite/releases/tag/v0.43.0) |
 | serde_json | 1.0.154 | [Published crate](https://crates.io/crates/serde_json/1.0.154) |
-| sha2 | 0.11.1 | [Published crate](https://crates.io/crates/sha2/0.11.1) |
+| sha2 | 0.11.2 | [Published crate](https://crates.io/crates/sha2/0.11.2) |
 | Tokio | 1.54.1 | [Published crate](https://crates.io/crates/tokio/1.54.1) |
-| zip | 9.6.1 | [Changelog](https://github.com/zip-rs/zip2/blob/master/CHANGELOG.md) |
+| zip | 9.8.2 | [Changelog](https://github.com/zip-rs/zip2/blob/master/CHANGELOG.md) |
+| find-msvc-tools | 0.1.16 | [Published crate](https://crates.io/crates/find-msvc-tools/0.1.16) |
 | ctor (test admission only) | 1.0.14 | [Published crate](https://crates.io/crates/ctor/1.0.14) |
 | tempfile | 3.27.0 | [Published crate](https://crates.io/crates/tempfile/3.27.0) |
-| Cloudflare Workers types | 5.20261117.1 | [npm package](https://www.npmjs.com/package/@cloudflare/workers-types) |
-| Wrangler | 4.163.0 | [npm package](https://www.npmjs.com/package/wrangler) |
-| TypeScript / Vitest | 7.0.2 / 5.1.0 | [Worker manifest](../worker/package.json) |
+| Cloudflare Workers types | 5.20261127.1 | [npm package](https://www.npmjs.com/package/@cloudflare/workers-types) |
+| Wrangler | 4.169.0 | [npm package](https://www.npmjs.com/package/wrangler) |
+| TypeScript / Vitest | 7.0.2 / 5.1.2 | [Worker manifest](../worker/package.json) |
 | Gitleaks | 8.30.1 | [Latest official release](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1) |
 | Playwright test | 1.65.1 | [Official release notes](https://github.com/microsoft/playwright/blob/v1.65.1/docs/src/release-notes-js.md) |
 
@@ -25,6 +27,23 @@ storage, archive traversal, replacement, identity and offline installation
 regressions therefore remain required checks. Worker dependency updates keep the
 existing compatibility date and require type checking, Vitest and dry-run
 packaging. They do not deploy the Worker.
+
+The November 27 review queried official crates.io and npm metadata for all 39
+distinct direct packages in the three Cargo manifests and two npm manifests.
+Six had newer stable releases: the three Rust packages and Workers types,
+Vitest and Wrangler listed above. Targeted Cargo updates change only those
+three package versions; Worker lockfile changes also update their dependency
+closure. This is not a claim that every transitive package is independently
+on its latest major version. The `sharp` override and Worker compatibility
+date are retained. Existing weekly Dependabot covers all five manifests and
+GitHub Actions.
+
+Zip 9.8.2 repairs archive end-record validation and duplicate ZIP64 metadata.
+SHA-2 0.11.2 repairs backend selection and updates internal implementations;
+see its [upstream changelog](https://github.com/RustCrypto/hashes/blob/master/sha2/CHANGELOG.md).
+Archive/package, hash/inventory and four-platform build tests therefore remain
+mandatory. The refreshed crates' upstream license files were byte-identical
+to the previous versions, so notices retain the existing full texts.
 
 Axum 0.8.9, the current direct release, requires exactly `matchit =0.8.4`.
 Matchit's newer releases cannot replace that transitive pin without changing

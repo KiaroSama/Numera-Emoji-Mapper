@@ -206,8 +206,25 @@ export async function handleUpdateDetailed(
       return { outcome: "channel:none", event: "channel.none", level: "INFO", fields: chFields };
     }
     const title = escapeHtml(post.chat.title ?? "");
+    const failedAdmins: number[] = [];
+    let firstFailure: unknown;
     for (const admin of admins) {
-      await reply(tg, admin, ids, { header: `From channel <b>${title}</b>:` });
+      try {
+        await reply(tg, admin, ids, { header: `From channel <b>${title}</b>:` });
+      } catch (err) {
+        // A blocked or unreachable recipient must not discard later deliveries.
+        // Never retry: some chunks may already have reached this administrator.
+        if (failedAdmins.length === 0) firstFailure = err;
+        failedAdmins.push(admin);
+      }
+    }
+    if (failedAdmins.length) {
+      // Preserve the webhook's single redacted error report after every
+      // independent recipient has been attempted, without logging false success.
+      throw new Error(
+        `channel forwarding failed for ${failedAdmins.length}/${admins.size} admin(s): ${failedAdmins.join(", ")}`,
+        { cause: firstFailure },
+      );
     }
     return {
       outcome: `channel:${ids.length}`,

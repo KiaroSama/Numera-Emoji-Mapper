@@ -143,13 +143,18 @@ pub fn download<I: CacheIo>(
         }
         io.save(cache)?;
     }
-    let stale = cache["sigs"]
-        .as_object()
-        .ok_or("invalid remap cache")?
-        .keys()
-        .filter(|cid| !live.contains(*cid))
-        .cloned()
-        .collect::<Vec<_>>();
+    // Only a complete live inventory can retire a failed download with no cached signature.
+    let mut stale = BTreeSet::new();
+    for field in ["sigs", "errors"] {
+        stale.extend(
+            cache[field]
+                .as_object()
+                .ok_or("invalid remap cache")?
+                .keys()
+                .filter(|cid| !live.contains(*cid))
+                .cloned(),
+        );
+    }
     if !stale.is_empty() {
         for cid in stale {
             cache["sigs"]
