@@ -28,6 +28,11 @@ dependencies and procedural macros; test-only dependencies are excluded.
 Original SPDX expressions remain in this table. A chosen license text satisfies
 an upstream alternative without changing the declared expression.
 
+The November 27, 2026 patch refresh updates `find-msvc-tools`, `sha2` and `zip`
+version references after byte-for-byte comparison of their old and new upstream
+license files. Their declared license expressions and included license texts
+are unchanged.
+
 Regenerate from the repository root:
 
 ```bash
@@ -76,7 +81,7 @@ cargo about generate --manifest-path runtime/Cargo.toml --locked --config runtim
 | [fastrand 2.5.0](https://crates.io/crates/fastrand/2.5.0) | Apache-2.0 OR MIT |
 | [fax 0.2.7](https://crates.io/crates/fax/0.2.7) | MIT |
 | [fdeflate 0.3.7](https://crates.io/crates/fdeflate/0.3.7) | MIT OR Apache-2.0 |
-| [find-msvc-tools 0.1.15](https://crates.io/crates/find-msvc-tools/0.1.15) | MIT OR Apache-2.0 |
+| [find-msvc-tools 0.1.16](https://crates.io/crates/find-msvc-tools/0.1.16) | MIT OR Apache-2.0 |
 | [flate2 1.1.11](https://crates.io/crates/flate2/1.1.11) | MIT OR Apache-2.0 |
 | [float-cmp 0.9.0](https://crates.io/crates/float-cmp/0.9.0) | MIT |
 | [foldhash 0.2.0](https://crates.io/crates/foldhash/0.2.0) | Zlib |
@@ -181,7 +186,7 @@ cargo about generate --manifest-path runtime/Cargo.toml --locked --config runtim
 | [serde_spanned 1.1.3](https://crates.io/crates/serde_spanned/1.1.3) | MIT OR Apache-2.0 |
 | [serde_urlencoded 0.7.1](https://crates.io/crates/serde_urlencoded/0.7.1) | MIT OR Apache-2.0 |
 | [sha1 0.11.0](https://crates.io/crates/sha1/0.11.0) | MIT OR Apache-2.0 |
-| [sha2 0.11.1](https://crates.io/crates/sha2/0.11.1) | MIT OR Apache-2.0 |
+| [sha2 0.11.2](https://crates.io/crates/sha2/0.11.2) | MIT OR Apache-2.0 |
 | [shlex 2.0.1](https://crates.io/crates/shlex/2.0.1) | MIT OR Apache-2.0 |
 | [signal-hook-registry 1.4.8](https://crates.io/crates/signal-hook-registry/1.4.8) | MIT OR Apache-2.0 |
 | [simd-adler32 0.3.10](https://crates.io/crates/simd-adler32/0.3.10) | MIT |
@@ -258,7 +263,7 @@ cargo about generate --manifest-path runtime/Cargo.toml --locked --config runtim
 | [zerotrie 0.2.5](https://crates.io/crates/zerotrie/0.2.5) | Unicode-3.0 |
 | [zerovec 0.11.9](https://crates.io/crates/zerovec/0.11.9) | Unicode-3.0 |
 | [zerovec-derive 0.11.7](https://crates.io/crates/zerovec-derive/0.11.7) | Unicode-3.0 |
-| [zip 9.8.1](https://crates.io/crates/zip/9.8.1) | MIT |
+| [zip 9.8.2](https://crates.io/crates/zip/9.8.2) | MIT |
 | [zlib-rs 0.6.8](https://crates.io/crates/zlib-rs/0.6.8) | Zlib |
 | [zmij 1.0.23](https://crates.io/crates/zmij/1.0.23) | MIT |
 | [zune-core 0.5.3](https://crates.io/crates/zune-core/0.5.3) | MIT OR Apache-2.0 OR Zlib |
@@ -1331,7 +1336,7 @@ Used by:
 - cc 1.11.2
 - cfg-if 1.0.5
 - cmake 0.1.58
-- find-msvc-tools 0.1.15
+- find-msvc-tools 0.1.16
 - jobserver 0.1.35
 - openssl-probe 0.2.2
 - pkg-config 0.3.34
@@ -2146,7 +2151,7 @@ THE SOFTWARE.
 
 Used by:
 - sha1 0.11.0
-- sha2 0.11.1
+- sha2 0.11.2
 
 ````text
 Copyright (c) 2016-2026 The RustCrypto Project Developers
@@ -4254,7 +4259,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Used by:
 - tracing-core 0.1.36
-- zip 9.8.1
+- zip 9.8.2
 
 ````text
 The MIT License (MIT)

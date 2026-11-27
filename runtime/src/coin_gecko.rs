@@ -68,9 +68,16 @@ where
                 break;
             }
         };
-        let Some(coins) = payload.as_array().filter(|coins| !coins.is_empty()) else {
+        let Some(coins) = payload.as_array() else {
+            // Preserve the legacy null end marker without accepting malformed market replies.
+            if !payload.is_null() {
+                complete = false;
+            }
             break;
         };
+        if coins.is_empty() {
+            break;
+        }
         add(&mut names, coins)?;
         wait(delay)?;
     }

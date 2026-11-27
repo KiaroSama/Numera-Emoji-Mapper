@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { test, expect, synth } from "./browser-fixture.js";
 import { runDropCapacityScenarios, runUnholdCapacityScenarios } from "./fixtures/curation-capacity.js";
 import { runUnholdPlacementScenarios } from "./fixtures/curation-unhold.js";
+import { runForwardDestinationScenarios } from "./fixtures/curation-destination.js";
 test.use({ catalogSize: 4 });
 test.skip(process.env.NUMERA_EMOJI_MAPPER_NO_BROWSER_TESTS === '1', 'Explicit browser opt-out');
 
@@ -671,6 +672,7 @@ test("test_panel_curation.ADroppedEmojiJoinsThePackItWasAimedAt.test_a_drop_into
   assert.ok(after["accepted"]);
   assert.equal(after["aimed"] ?? null, null, "an unnumbered run has no number to aim at");
   assert.equal(after["now"] ?? null, null, "the emoji joins the run, it does not keep a number");
+  await runForwardDestinationScenarios(panel);
 });
 
 test("test_panel_curation.TheGridIsSelectableByClick.test_clicking_a_cards_face_selects_it_and_shift_takes_the_range", async ({ panel }) => {

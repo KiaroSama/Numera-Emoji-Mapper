@@ -33,12 +33,12 @@ rusqlite = { version = "=0.43.0", features = ["bundled", "backup"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 csv = "=1.4.0"
 base64 = "=0.23.1"
-zip = { version = "=9.8.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+zip = { version = "=9.8.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 reqwest = { version = "=0.13.5", default-features = false, features = ["blocking", "form", "json", "multipart", "rustls"] }
 axum = "=0.8.9"
 chrono = { version = "=0.4.45", default-features = false, features = ["clock", "std"] }
 sha1 = "=0.11.0"
-sha2 = "=0.11.1"
+sha2 = "=0.11.2"
 percent-encoding = "=2.3.2"
 getrandom = "=0.4.3"
 tokio = { version = "=1.54.1", features = ["rt-multi-thread", "net", "signal", "time", "sync", "process"] }
@@ -51,7 +51,7 @@ ryu = "=1.0.23"
 
 [build-dependencies]
 cmake = "=0.1.58"
-find-msvc-tools = "=0.1.15"
+find-msvc-tools = "=0.1.16"
 
 [target.'cfg(windows)'.build-dependencies]
 winresource = "=0.1.34"
