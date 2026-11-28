@@ -108,11 +108,10 @@ function userFields(msg: TgMessage): Record<string, unknown> {
     if (msg.from.username) {
       fields.username = msg.from.username;
     } else {
+      // Preserve complete raw name parts until the logger redacts configured secrets.
       const displayName = [msg.from.first_name, msg.from.last_name]
         .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
-        .join(" ")
-        .replace(/[\r\n\t]+/g, " ")
-        .trim();
+        .join(" ");
       if (displayName) fields.user_name = displayName;
       fields.no_username = true;
     }

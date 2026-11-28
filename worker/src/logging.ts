@@ -211,7 +211,7 @@ export function formatLine(e: LogEntry, atMs: number = Date.now(),
   foldedFields.add("no_username");
   if (!directHandles.has("user_id") && /^-?\d+$/.test(String(rawFields.user_id ?? "").trim())) {
     const rawName = typeof rawFields.user_name === "string"
-      ? truncatePlain(rawFields.user_name.replace(/[\r\n\t]+/g, " ").trim(), 48)
+      ? truncatePlain(sanitise(rawFields.user_name, env).replace(/[\r\n\t]+/g, " ").trim(), 48)
       : "";
     if (rawName) {
       directHandles.set("user_id", `${rawName} · no @username`);

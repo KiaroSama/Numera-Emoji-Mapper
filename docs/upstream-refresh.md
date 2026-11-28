@@ -12,11 +12,12 @@ npm lockfiles; this review does not certify a build or test result.
 | serde_json | 1.0.154 | [Published crate](https://crates.io/crates/serde_json/1.0.154) |
 | sha2 | 0.11.2 | [Published crate](https://crates.io/crates/sha2/0.11.2) |
 | Tokio | 1.54.1 | [Published crate](https://crates.io/crates/tokio/1.54.1) |
-| zip | 9.8.2 | [Changelog](https://github.com/zip-rs/zip2/blob/master/CHANGELOG.md) |
+| zip | 9.9.0 | [Release notes](https://github.com/zip-rs/zip2/releases/tag/v9.9.0) |
+| libwebp-sys | 0.14.5 | [Published source revision](https://github.com/NoXF/libwebp-sys/commit/13c6aa7589a151f50d20bff705f698eb1f0a4ee5) |
 | find-msvc-tools | 0.1.16 | [Published crate](https://crates.io/crates/find-msvc-tools/0.1.16) |
 | ctor (test admission only) | 1.0.14 | [Published crate](https://crates.io/crates/ctor/1.0.14) |
 | tempfile | 3.27.0 | [Published crate](https://crates.io/crates/tempfile/3.27.0) |
-| Cloudflare Workers types | 5.20261127.1 | [npm package](https://www.npmjs.com/package/@cloudflare/workers-types) |
+| Cloudflare Workers types | 5.20261128.1 | [npm package](https://www.npmjs.com/package/@cloudflare/workers-types) |
 | Wrangler | 4.169.0 | [npm package](https://www.npmjs.com/package/wrangler) |
 | TypeScript / Vitest | 7.0.2 / 5.1.2 | [Worker manifest](../worker/package.json) |
 | Gitleaks | 8.30.1 | [Latest official release](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1) |
@@ -39,13 +40,34 @@ on its latest major version. The `sharp` override and Worker compatibility
 date are retained. Existing weekly Dependabot covers all five manifests and
 GitHub Actions.
 
-The November 28 recheck found no newer stable version among those 39 direct
+The early November 28 recheck found no newer stable version among those 39 direct
 packages. Rust 1.100.1 was published at 2026-11-27 19:31:41 UTC and repairs an
 Iterator implementation inference regression. The toolchain file, all actual
 workflow compiler selections and current contributor documentation now use
 1.100.1. Historical audit records and illustrative test fixtures retain their
 original values. Four-platform native tests, linting and packaging remain
 required; a compiler version update alone is not acceptance evidence.
+
+The next November 28 recheck at 11:24:46 UTC examined those 39 direct packages
+and the existing `sharp` override. Three newer stable releases were available:
+zip 9.9.0, libwebp-sys 0.14.5 and Workers types 5.20261128.1. Targeted lockfile
+updates adopt those versions without changing other package versions, native
+feature selections or the Worker's compatibility date. Rust 1.100.1 and the six
+used GitHub Action release lines remain current. Weekly Dependabot already
+covers every manifest and Actions; no duplicate updater is needed.
+
+Zip 9.9.0 adds optional `jiff` 1.x support; that feature is not enabled here.
+Its Rust 1.89 minimum is below the pinned compiler, and the retained compression
+feature is `deflate-flate2-zlib-rs`. Libwebp-sys 0.14.5 adds Emscripten SIMD build
+flags and frees resources in its own unit tests, as shown in the
+[complete published-source comparison](https://github.com/NoXF/libwebp-sys/compare/11b096bd65f0d51326673ae3e2e5af2dae02368f...13c6aa7589a151f50d20bff705f698eb1f0a4ee5).
+This project retains `default-features = false` and `std`; it does not opt into
+new CPU instructions or change the vendored codec revision. Archive traversal,
+package installation, codec pixels, signatures and all four native platforms
+remain acceptance gates. The published old/new zip license and libwebp native
+copyright/patent texts compare byte-for-byte equal; the source comparison also
+leaves the binding license unchanged. Third-party notice version references
+are refreshed while their complete texts are retained.
 
 Zip 9.8.2 repairs archive end-record validation and duplicate ZIP64 metadata.
 SHA-2 0.11.2 repairs backend selection and updates internal implementations;

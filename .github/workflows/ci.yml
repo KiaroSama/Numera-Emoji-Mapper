@@ -173,6 +173,8 @@ jobs:
             --test supplemental_panel_http --test supplemental_bot_resolution \
             --test supplemental_binary_artifact --test supplemental_local_inputs \
             --test supplemental_binary_version \
+            --test supplemental_coin_remap_recovery --test supplemental_coin_remap_paths \
+            --test supplemental_coin_remap_completeness \
             --test baseline_tooling --test supplemental_tooling \
             --test baseline_recovery \
             -- --test-threads=1 2>&1 | tee logs/checkpoint/boundary-regressions.log
