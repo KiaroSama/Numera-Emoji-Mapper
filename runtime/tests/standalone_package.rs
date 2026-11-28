@@ -164,7 +164,7 @@ fn extracted_installed_runtime_converts_offline_without_python_or_build_sources(
     for component in [
         "image 0.25.10",
         "resvg 0.50.0",
-        "libwebp-sys 0.14.4",
+        "libwebp-sys 0.14.5",
         "mozjpeg 0.10.13",
         "mozjpeg-sys 2.2.3",
         "Google hereby grants",

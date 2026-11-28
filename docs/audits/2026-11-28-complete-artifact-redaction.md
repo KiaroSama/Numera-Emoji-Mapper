@@ -178,6 +178,19 @@ on stderr with valid Playwright JSON. The already successful discovery output
 was parsed separately without rerunning tests. Neither harness problem required
 a project-source or policy change; the original failure logs are retained.
 
+The first published candidate `4c9200df` exposed one stale package expectation:
+the standalone installation test still required `libwebp-sys 0.14.4` after the
+manifest, lock and shipped notice had correctly moved to `0.14.5`. Push package
+run `46152121207`, Linux x64 job `141000815453`, recorded three passes and this
+one failure before the conversion assertions. The follow-up updates that single
+current-version expectation to `0.14.5`; no assertion is removed or relaxed.
+A bounded search found no other active stale assertion for these upgrades.
+The two supplementary libwebp version labels in the notice-generation template
+are updated as well, so regeneration cannot restore stale attribution labels.
+Wrangler's compatible Workers-types peer minimum in the lockfile remains intact.
+The original failure is retained and the corrected commit requires fresh ordinary
+CI; the failed run is not retried or credited as acceptance.
+
 The local browser run used the matching official Chromium revision after the
 normal CDN download returned 403. It ran once with one worker, zero retries and
 the original 60000 ms limits. Capacity and exhaustive Unhold composites timed
