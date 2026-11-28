@@ -16,7 +16,7 @@ pub struct Tools {
 impl Tools {
     pub(super) fn discover() -> Result<Self, String> {
         let required = |name| {
-            crate::codec_process::executable(name).map_err(|_| format!("Rust 1.100.0 and Cargo must already be installed ({name} unavailable); no toolchain was installed"))
+            crate::codec_process::executable(name).map_err(|_| format!("Rust 1.100.1 and Cargo must already be installed ({name} unavailable); no toolchain was installed"))
         };
         Ok(Self {
             cargo: required("cargo")?,
@@ -275,7 +275,7 @@ pub fn environment(
     }
     for (key, value) in [
         ("RUSTUP_AUTO_INSTALL", "0"),
-        ("RUSTUP_TOOLCHAIN", "1.100.0"),
+        ("RUSTUP_TOOLCHAIN", "1.100.1"),
         ("NUMERA_EMOJI_MAPPER_NO_DOTENV", "1"),
         ("TELEGRAM_API_BASE", "http://127.0.0.1:9"),
         ("BRAND_LOGO_BOTS", ""),

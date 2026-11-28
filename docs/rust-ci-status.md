@@ -1,6 +1,6 @@
 # Rust build and CI policy
 
-The supported compiler is Rust **1.100.0**, pinned in `rust-toolchain.toml` and
+The supported compiler is Rust **1.100.1**, pinned in `rust-toolchain.toml` and
 CI. Supported application targets are four 64-bit platforms: **Linux x64**,
 **Linux arm64**, **Windows x64**, and **Windows arm64**. macOS and 32-bit
 build/test matrices are excluded.
@@ -51,7 +51,7 @@ test commands. Four focused choices provide earlier Linux x64 evidence:
 | `announcement-regressions` | The complete `supplemental_announce_ack` Cargo test target. |
 | `ci-regressions` | The complete `supplemental_ci` Cargo test target, including release dependency and condition-policy regressions. |
 
-Focused runs build all standalone executables with Rust 1.100.0 in release
+Focused runs build all standalone executables with Rust 1.100.1 in release
 mode, with LTO disabled and 16 codegen units to shorten diagnostic compilation.
 The runtime choices retain `tests/runtime-tests.toml`, the native isolation
 runner, private-network setup, and `--no-fail-fast`; they do not disable guards

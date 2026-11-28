@@ -102,7 +102,7 @@ update into a fresh directory when an existing installation contains local data.
 
 ## Contributor commands
 
-Install the exact compiler in `rust-toolchain.toml` (Rust 1.100.0), rustfmt,
+Install the exact compiler in `rust-toolchain.toml` (Rust 1.100.1), rustfmt,
 Clippy, CMake and the platform C/C++ linker for bundled third-party codecs. On
 Windows use the matching x64 or arm64 MSVC build tools. FFmpeg/FFprobe are required for video tests.
 Normal installed use needs none of these build tools.

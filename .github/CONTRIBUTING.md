@@ -20,7 +20,7 @@ retains HTML/CSS/JavaScript in `assets/`; the Cloudflare Worker retains TypeScri
 and SQL in `worker/`. Native C/C++ dependency internals are built through Cargo;
 they do not introduce a first-party interpreter or extension layer.
 
-Install the compiler pinned in `rust-toolchain.toml` (Rust 1.100.0), rustfmt,
+Install the compiler pinned in `rust-toolchain.toml` (Rust 1.100.1), rustfmt,
 Clippy, CMake and a C/C++ compiler/linker. Windows builds use the matching x64 or arm64 MSVC tools. Install
 FFmpeg and FFprobe for the video cohorts. Node 24 and Chromium are contributor
 requirements for the browser/Worker suites, not installed application requirements.

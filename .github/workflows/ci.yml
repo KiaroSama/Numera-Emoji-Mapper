@@ -61,8 +61,8 @@ jobs:
       - name: Select Rust compiler
         shell: bash
         run: |
-          rustup default 1.100.0
-          rustup component add rustfmt clippy --toolchain 1.100.0
+          rustup default 1.100.1
+          rustup component add rustfmt clippy --toolchain 1.100.1
       - name: Assert Rust host matches target platform
         shell: bash
         run: |
@@ -337,7 +337,7 @@ jobs:
       - name: Verify actual browser and source-contract identities
         working-directory: ${{ github.workspace }}
         run: |
-          rustup default 1.100.0
+          rustup default 1.100.1
           cargo run --manifest-path tools/test-inventory/Cargo.toml --locked -- --mode all --playwright-list logs/checkpoint/browser-inventory.json
       - name: Panel browser tests
         env:
@@ -370,7 +370,7 @@ jobs:
         with:
           node-version: "24"
       - name: Select Rust compiler for the launcher fixture
-        run: rustup default 1.100.0
+        run: rustup default 1.100.1
       # This exercises the legacy PowerShell host on Linux, not Windows desktop behavior.
       - name: Verify PowerShell archive and run launcher contracts
         shell: bash

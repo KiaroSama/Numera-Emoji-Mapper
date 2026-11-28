@@ -52,8 +52,8 @@ jobs:
       - name: Select supported Rust compiler
         shell: bash
         run: |
-          rustup default 1.100.0
-          rustup component add rustfmt clippy --toolchain 1.100.0
+          rustup default 1.100.1
+          rustup component add rustfmt clippy --toolchain 1.100.1
           host="$(rustc -vV | awk '/^host: / {print $2}')"
           test "$host" = "${{ matrix.triple }}"
       - name: Install external media tools
@@ -119,7 +119,7 @@ jobs:
           printf '%s\n' "$NUMERA_VALIDATION_SCOPE" > logs/checkpoint/validation-scope.log
       - name: Select supported Rust compiler
         run: |
-          rustup default 1.100.0
+          rustup default 1.100.1
           rustc -vV | tee logs/checkpoint/rustc.log
           test "$(awk '/^host: / {print $2}' logs/checkpoint/rustc.log)" = x86_64-unknown-linux-gnu
       - name: Install external media tools
