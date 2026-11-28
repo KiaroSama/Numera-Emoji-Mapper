@@ -80,6 +80,36 @@ describe("Numera-style six-orb log channel", () => {
     expect(line.endsWith("🕒 2026-11-27 12:00:00 UTC")).toBe(true);
   });
 
+  it("annotates users without an @username with their escaped display name or no @username", () => {
+    const withName = formatLine({
+      bot: "coin",
+      level: "WARNING",
+      event: "access.denied",
+      fields: {
+        chat_type: "private",
+        user_id: 5368118832,
+        user_name: "H <XXX>",
+        no_username: true,
+      },
+    }, Date.UTC(2026, 10, 28, 0, 32, 56));
+    expect(withName).toContain("user_id: <code>5368118832</code> (H &lt;XXX&gt; · no @username)");
+    expect(withName).not.toContain("user_name:");
+    expect(withName).not.toContain("no_username:");
+
+    const bare = formatLine({
+      bot: "coin",
+      level: "WARNING",
+      event: "access.denied",
+      fields: {
+        chat_type: "private",
+        user_id: 5368118832,
+        no_username: true,
+      },
+    }, Date.UTC(2026, 10, 28, 0, 32, 56));
+    expect(bare).toContain("user_id: <code>5368118832</code> (no @username)");
+    expect(bare).not.toContain("no_username:");
+  });
+
   it("routes important INFO business events and WARNING+ to the channel, skipping plain noise", () => {
     expect(isImportantLogEvent("INFO", "publish")).toBe(true);
     expect(isImportantLogEvent("INFO", "emoji.lookup")).toBe(true);

@@ -207,6 +207,18 @@ export function formatLine(e: LogEntry, atMs: number = Date.now(),
       if (!directHandles.has(idField)) directHandles.set(idField, handle);
     }
   }
+  foldedFields.add("user_name");
+  foldedFields.add("no_username");
+  if (!directHandles.has("user_id") && /^-?\d+$/.test(String(rawFields.user_id ?? "").trim())) {
+    const rawName = typeof rawFields.user_name === "string"
+      ? truncatePlain(rawFields.user_name.replace(/[\r\n\t]+/g, " ").trim(), 48)
+      : "";
+    if (rawName) {
+      directHandles.set("user_id", `${rawName} · no @username`);
+    } else if (rawFields.no_username === true) {
+      directHandles.set("user_id", "no @username");
+    }
+  }
 
   const entries: Array<[string, string, string[]]> = [["bot", sanitise(e.bot, env), []]];
   let omitted = false;

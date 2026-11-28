@@ -103,8 +103,20 @@ async function replyToTypedIds(tg: Telegram, chatId: number | string,
 
 function userFields(msg: TgMessage): Record<string, unknown> {
   const fields: Record<string, unknown> = { chat_type: msg.chat.type };
-  if (msg.from?.id !== undefined) fields.user_id = msg.from.id;
-  if (msg.from?.username) fields.username = msg.from.username;
+  if (msg.from?.id !== undefined) {
+    fields.user_id = msg.from.id;
+    if (msg.from.username) {
+      fields.username = msg.from.username;
+    } else {
+      const displayName = [msg.from.first_name, msg.from.last_name]
+        .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+        .join(" ")
+        .replace(/[\r\n\t]+/g, " ")
+        .trim();
+      if (displayName) fields.user_name = displayName;
+      fields.no_username = true;
+    }
+  }
   if (msg.chat.type !== "private") {
     fields.chat_id = msg.chat.id;
     if (msg.chat.username) fields.chat_username = msg.chat.username;
