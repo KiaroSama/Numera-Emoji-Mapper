@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-11-28
+
+### Added
+- Display-name and `no @username` fallback annotations beside numeric `user_id` values in Cloudflare Worker log-channel alerts when a Telegram sender has no handle.
+- Live drag-destination pack and capacity indicator (`#dragTarget`), bounded Worker Telegram request timeouts, privacy-safe channel fan-out delivery counts, provider `status=complete|partial` summaries, and cache reconciliation diagnostics.
+
+### Fixed
+- Guard `coin-remap-ids` cache reuse and set completeness with strict 1,024-byte decoded signature validation and unresolved-error retry (R32).
+- Protect all five durable remap roles, implicit `.prebroken.json` backups, and `.locks` storage against path and hard-link collisions on Unix and Windows (R33).
+- Return an ordinary validation error instead of panicking when `sets` is missing from a remap state object (R34).
+- Clear stale drag destination feedback when the pointer leaves `#grid` (R35).
+- Suppress automatic log-channel mirror echoes, harden `/log-test` body reads, stabilize Windows quiet-process fixtures, and isolate per-admin channel forwarding failures (R25–R31).
+
+### Changed
+- Advance the supported Rust compiler toolchain to `1.100.1` across CI, package builds, developer tooling, and documentation.
+- Refresh `coins/keywords.csv` across all 29 coin emoji packs from a complete pack-by-pack audit.
+
 ## [3.4.0] - 2026-11-27
 
 ### Added
