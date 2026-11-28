@@ -33,6 +33,11 @@ version references after byte-for-byte comparison of their old and new upstream
 license files. Their declared license expressions and included license texts
 are unchanged.
 
+The November 28, 2026 refresh updates `zip` to 9.9.0 and `libwebp-sys` to
+0.14.5. Their declared licenses are unchanged. The published zip license and
+libwebp native copyright/patent files are byte-identical to the previous
+versions, and the binding's source comparison contains no license change.
+
 Regenerate from the repository root:
 
 ```bash
@@ -132,7 +137,7 @@ cargo about generate --manifest-path runtime/Cargo.toml --locked --config runtim
 | [kurbo 0.13.1](https://crates.io/crates/kurbo/0.13.1) | Apache-2.0 OR MIT |
 | [libc 0.2.191](https://crates.io/crates/libc/0.2.191) | MIT OR Apache-2.0 |
 | [libsqlite3-sys 0.40.0](https://crates.io/crates/libsqlite3-sys/0.40.0) | MIT |
-| [libwebp-sys 0.14.4](https://crates.io/crates/libwebp-sys/0.14.4) | MIT |
+| [libwebp-sys 0.14.5](https://crates.io/crates/libwebp-sys/0.14.5) | MIT |
 | [linux-raw-sys 0.12.1](https://crates.io/crates/linux-raw-sys/0.12.1) | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | [litemap 0.8.3](https://crates.io/crates/litemap/0.8.3) | Unicode-3.0 |
 | [log 0.4.35](https://crates.io/crates/log/0.4.35) | MIT OR Apache-2.0 |
@@ -263,7 +268,7 @@ cargo about generate --manifest-path runtime/Cargo.toml --locked --config runtim
 | [zerotrie 0.2.5](https://crates.io/crates/zerotrie/0.2.5) | Unicode-3.0 |
 | [zerovec 0.11.9](https://crates.io/crates/zerovec/0.11.9) | Unicode-3.0 |
 | [zerovec-derive 0.11.7](https://crates.io/crates/zerovec-derive/0.11.7) | Unicode-3.0 |
-| [zip 9.8.2](https://crates.io/crates/zip/9.8.2) | MIT |
+| [zip 9.9.0](https://crates.io/crates/zip/9.9.0) | MIT |
 | [zlib-rs 0.6.8](https://crates.io/crates/zlib-rs/0.6.8) | Zlib |
 | [zmij 1.0.23](https://crates.io/crates/zmij/1.0.23) | MIT |
 | [zune-core 0.5.3](https://crates.io/crates/zune-core/0.5.3) | MIT OR Apache-2.0 OR Zlib |
@@ -3841,7 +3846,7 @@ SOFTWARE.
 ### MIT License (MIT)
 
 Used by:
-- libwebp-sys 0.14.4
+- libwebp-sys 0.14.5
 - windows-core 0.62.2
 - windows-implement 0.60.2
 - windows-interface 0.59.3
@@ -4259,7 +4264,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Used by:
 - tracing-core 0.1.36
-- zip 9.8.2
+- zip 9.9.0
 
 ````text
 The MIT License (MIT)
@@ -5509,7 +5514,7 @@ that were granted to the IJG for code derived from their software.
 
 ### 5aec868f669e384a
 
-- libwebp-sys 0.14.4: vendor/COPYING
+- libwebp-sys 0.14.5: vendor/COPYING
 
 SHA256: `5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf`
 
@@ -5548,7 +5553,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ### cc3273e0694ea589
 
-- libwebp-sys 0.14.4: vendor/PATENTS
+- libwebp-sys 0.14.5: vendor/PATENTS
 
 SHA256: `cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c`
 

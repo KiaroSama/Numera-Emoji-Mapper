@@ -29,7 +29,25 @@ fn durable_path_identity(path: &Path) -> Result<PathBuf, String> {
     Ok(resolved)
 }
 
-fn distinct_durable_paths(root: &Path, paths: &[&Path]) -> Result<(), String> {
+#[derive(Clone, Copy)]
+enum DurableRole {
+    State,
+    Cache,
+    Output,
+    Candidates,
+    Backup,
+}
+
+impl DurableRole {
+    fn permits_shared_file(self, other: Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Output, Self::Backup) | (Self::Backup, Self::Output)
+        )
+    }
+}
+
+fn distinct_durable_paths(root: &Path, paths: &[(DurableRole, &Path)]) -> Result<(), String> {
     let locks = durable_path_identity(&root.join(".locks"))?;
     let mut protected = std::collections::BTreeSet::new();
     match std::fs::read_dir(&locks) {
@@ -53,17 +71,29 @@ fn distinct_durable_paths(root: &Path, paths: &[&Path]) -> Result<(), String> {
         Err(_) => return Err("cannot inspect remap lock storage".into()),
     }
     let mut destinations = std::collections::BTreeSet::new();
-    for path in paths {
+    let mut identities = std::collections::BTreeMap::<_, Vec<DurableRole>>::new();
+    for &(role, path) in paths {
         let resolved = durable_path_identity(path)?;
+        let identity = crate::locks::existing_file_identity(&resolved)
+            .map_err(|_| "cannot identify remap durable file")?;
         if resolved.starts_with(&locks)
-            || crate::locks::existing_file_identity(&resolved)
-                .map_err(|_| "cannot identify remap durable file")?
-                .is_some_and(|identity| protected.contains(&identity))
+            || identity.is_some_and(|identity| protected.contains(&identity))
         {
             return Err("remap durable paths must not use lock storage".into());
         }
         if !destinations.insert(resolved) {
             return Err("remap durable paths and backup must be distinct".into());
+        }
+        if let Some(identity) = identity {
+            let previous = identities.entry(identity).or_default();
+            if previous
+                .iter()
+                .any(|previous| !role.permits_shared_file(*previous))
+            {
+                return Err("remap durable paths and backup must be distinct".into());
+            }
+            // Preserve every role so a valid map/backup pair cannot admit a third alias.
+            previous.push(role);
         }
     }
     Ok(())
@@ -109,10 +139,13 @@ impl CacheIo for Disk<'_> {
         std::thread::sleep(duration);
     }
 }
-fn local(
-    directory: &Path,
-    log: &crate::logging::RunLog,
-) -> Result<(Vec<String>, Vec<Vec<f32>>), String> {
+struct LocalSignatures {
+    tickers: Vec<String>,
+    signatures: Vec<Vec<f32>>,
+    failed_images: usize,
+}
+
+fn local(directory: &Path, log: &crate::logging::RunLog) -> Result<LocalSignatures, String> {
     let mut paths = std::fs::read_dir(directory)
         .map_err(|_| "cannot enumerate remap source logos")?
         .map(|entry| {
@@ -122,8 +155,11 @@ fn local(
         })
         .collect::<Result<Vec<_>, _>>()?;
     paths.sort();
-    let mut tickers = Vec::new();
-    let mut signatures = Vec::new();
+    let mut local = LocalSignatures {
+        tickers: Vec::new(),
+        signatures: Vec::new(),
+        failed_images: 0,
+    };
     for path in paths
         .into_iter()
         .filter(|path| path.extension().is_some_and(|value| value == "png"))
@@ -137,13 +173,18 @@ fn local(
         let data = std::fs::read(&path).map_err(|_| "cannot read remap source logo")?;
         match crate::codec_image::remap_signature(&data) {
             Ok(bytes) => {
-                tickers.push(ticker);
-                signatures.push(bytes.into_iter().map(f32::from).collect());
+                local.tickers.push(ticker);
+                local
+                    .signatures
+                    .push(bytes.into_iter().map(f32::from).collect());
             }
-            Err(_) => log.event("WARNING", "coins", "unreadable local remap source omitted"),
+            Err(_) => {
+                local.failed_images += 1;
+                log.event("WARNING", "coins", "unreadable local remap source omitted");
+            }
         }
     }
-    Ok((tickers, signatures))
+    Ok(local)
 }
 
 pub fn persist(
@@ -168,7 +209,14 @@ fn persist_with_lease(
         return Ok(());
     };
     let backup = output.with_extension("prebroken.json");
-    distinct_durable_paths(root, &[output, candidates, &backup])?;
+    distinct_durable_paths(
+        root,
+        &[
+            (DurableRole::Output, output),
+            (DurableRole::Candidates, candidates),
+            (DurableRole::Backup, &backup),
+        ],
+    )?;
     crate::coin_provider_recover::object(&backup, true)?;
     let target = if destination == "candidate" {
         candidates
@@ -242,11 +290,11 @@ fn run_with_effects(
     distinct_durable_paths(
         &files.root,
         &[
-            &files.state,
-            &files.cache,
-            &files.output,
-            &files.candidates,
-            &backup,
+            (DurableRole::State, &files.state),
+            (DurableRole::Cache, &files.cache),
+            (DurableRole::Output, &files.output),
+            (DurableRole::Candidates, &files.candidates),
+            (DurableRole::Backup, &backup),
         ],
     )?;
     crate::coin_provider_recover::object(&backup, true)?;
@@ -288,11 +336,20 @@ fn run_with_effects(
             stats.retired_sigs, stats.retired_errors, stats.retained_errors
         ),
     );
-    let (tickers, local) = local(&files.images, log)?;
+    let local = local(&files.images, log)?;
+    log.event(
+        "INFO",
+        "coins",
+        &format!(
+            "remap_local readable={} local_failed={}",
+            local.tickers.len(),
+            local.failed_images
+        ),
+    );
     let sigs = cache["sigs"]
         .as_object()
         .ok_or("invalid remap signatures")?;
-    if tickers.is_empty() || sigs.is_empty() {
+    if local.tickers.is_empty() || sigs.is_empty() {
         return Ok(4);
     }
     let cids = sigs.keys().cloned().collect::<Vec<_>>();
@@ -308,20 +365,21 @@ fn run_with_effects(
             Ok(bytes.into_iter().map(f32::from).collect::<Vec<_>>())
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let nearest = nearest(&local, &live)?;
-    let matches = crate::coin_remap_policy::matches(&tickers, &cids, nearest)?;
+    let nearest = nearest(&local.signatures, &live)?;
+    let matches = crate::coin_remap_policy::matches(&local.tickers, &cids, nearest)?;
     options.incomplete_sets = incomplete.len();
-    options.failed_images = stats.retained_errors;
+    options.failed_images = stats.retained_errors + local.failed_images;
     let decision = crate::coin_remap_policy::decide(&matches, options)?;
     log.event(
         "INFO",
         "coins",
         &format!(
-            "remap_matched={} omitted_far={} ambiguous={} incomplete={}",
+            "remap_matched={} omitted_far={} ambiguous={} incomplete={} failed_images={}",
             decision.mapping.len(),
             decision.far.len(),
             decision.ambiguous.len(),
-            incomplete.len()
+            incomplete.len(),
+            options.failed_images
         ),
     );
     persist_with_lease(
